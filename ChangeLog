@@ -1,5 +1,22 @@
 2004-11-19  Alexander Larsson  <alexl@redhat.com>
 
+	* configure.in:
+	Require new eel
+	
+	* src/file-manager/fm-actions.h:
+	* src/file-manager/fm-directory-view.[ch]:
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/nautilus-actions.h:
+	* src/nautilus-shell-ui.xml:
+	* src/nautilus-spatial-window-ui.xml:
+	* src/nautilus-spatial-window.c:
+	* src/nautilus-window-menus.c:
+	* src/nautilus-window.[ch]:
+	Implement some accels as GtkBindings instead to avoid
+	overriding widget-specific keybindings like "delete" and "backspace".
+
+2004-11-19  Alexander Larsson  <alexl@redhat.com>
+
 	* src/nautilus-navigation-window.c:
 	* src/nautilus-window-private.h:
 	Put location entry etc in a toolbar.

@@ -311,14 +311,6 @@ action_close_all_folders_callback (GtkAction *action,
 }
 
 static void
-action_go_up_close_callback (GtkAction *action, 
-			     gpointer user_data)
-{
-	nautilus_window_go_up (NAUTILUS_WINDOW (user_data), TRUE);
-}
-
-
-static void
 real_prompt_for_location (NautilusWindow *window)
 {
 	GtkWidget *dialog;
@@ -367,30 +359,6 @@ real_window_close (NautilusWindow *window)
 	nautilus_spatial_window_save_scroll_position (NAUTILUS_SPATIAL_WINDOW (window));
 	nautilus_spatial_window_save_show_hidden_files_mode (NAUTILUS_SPATIAL_WINDOW (window));
 }
-
-static void
-real_allow_up (NautilusWindow *nautilus_window, gboolean allow)
-{
-	GtkAction *action;
-	NautilusSpatialWindow *window;
-
-	window = NAUTILUS_SPATIAL_WINDOW (nautilus_window);
-	
-	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS, allow_up,
-			 (nautilus_window, allow));
-
-	action = gtk_action_group_get_action (window->details->spatial_action_group,
-					      NAUTILUS_ACTION_UP_CLOSE_ACCEL);
-	if (action != NULL) {
-		gtk_action_set_sensitive (action, allow);
-	}
-	action = gtk_action_group_get_action (window->details->spatial_action_group,
-					      NAUTILUS_ACTION_UP_CLOSE_ACCEL2);
-	if (action != NULL) {
-		gtk_action_set_sensitive (action, allow);
-	}
-}
-
 
 static void 
 real_get_default_size (NautilusWindow *window,
@@ -615,12 +583,6 @@ static GtkActionEntry spatial_entries[] = {
   { "Close All Folders", NULL, N_("Clos_e All Folders"), /* name, stock id, label */
     "<control>Q", N_("Close all folder windows"),
     G_CALLBACK (action_close_all_folders_callback) },
-  { "UpCloseAccel", NULL, N_("Go up and close the current window"), /* name, stock id, label */
-    "<alt><shift>Up", NULL,
-    G_CALLBACK (action_go_up_close_callback) },
-  { "UpCloseAccel2", NULL, N_("Go up and close the current window"), /* name, stock id, label */
-    "<shift>BackSpace", NULL,
-    G_CALLBACK (action_go_up_close_callback) },
 };
 
 static void
@@ -703,6 +665,8 @@ nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
 static void
 nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 {
+	GtkBindingSet *binding_set;
+	
 	NAUTILUS_WINDOW_CLASS (class)->window_type = NAUTILUS_WINDOW_SPATIAL;
 
 	G_OBJECT_CLASS (class)->finalize = nautilus_spatial_window_finalize;
@@ -721,8 +685,17 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 	NAUTILUS_WINDOW_CLASS (class)->close = 
 		real_window_close;
 	NAUTILUS_WINDOW_CLASS(class)->get_default_size = real_get_default_size;
-	NAUTILUS_WINDOW_CLASS(class)->allow_up = real_allow_up;
 
 	NAUTILUS_WINDOW_CLASS(class)->set_throbber_active =
 		real_set_throbber_active;
+
+
+	binding_set = gtk_binding_set_by_class (class);
+	gtk_binding_entry_add_signal (binding_set, GDK_BackSpace, GDK_SHIFT_MASK,
+				      "go_up", 1,
+				      G_TYPE_BOOLEAN, TRUE);
+	gtk_binding_entry_add_signal (binding_set, GDK_Up, GDK_SHIFT_MASK | GDK_MOD1_MASK,
+				      "go_up", 1,
+				      G_TYPE_BOOLEAN, TRUE);
+	
 }

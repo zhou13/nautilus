@@ -39,6 +39,7 @@
 #include "nautilus-window-manage-views.h"
 #include "nautilus-zoom-control.h"
 #include <eel/eel-debug.h>
+#include <eel/eel-marshal.h>
 #include <eel/eel-gdk-extensions.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-gtk-extensions.h>
@@ -48,6 +49,7 @@
 #include <eel/eel-vfs-extensions.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gdk/gdkx.h>
+#include <gdk/gdkkeysyms.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtkmenubar.h>
 #include <gtk/gtkmenuitem.h>
@@ -99,6 +101,13 @@ enum {
 	ARG_APP_ID,
 	ARG_APP
 };
+
+enum {
+	GO_UP,
+	LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = { 0 };
 
 static void cancel_view_as_callback             (NautilusWindow *window);
 static void nautilus_window_info_iface_init (NautilusWindowInfoIface *iface);
@@ -249,11 +258,21 @@ nautilus_window_go_to (NautilusWindow *window, const char *uri)
 	nautilus_window_open_location (window, uri, FALSE);
 }
 
+
 void
 nautilus_window_go_to_with_selection (NautilusWindow *window, const char *uri, GList *new_selection)
 {
 	nautilus_window_open_location_with_selection (window, uri, new_selection, FALSE);
 }
+
+static gboolean
+nautilus_window_go_up_signal (NautilusWindow *window, gboolean close_behind)
+{
+	nautilus_window_go_up (window, close_behind);
+	return TRUE;
+}
+
+
 
 void
 nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
@@ -272,7 +291,6 @@ nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
 	gnome_vfs_uri_unref (current_uri);
 
 	if (parent_uri == NULL) {
-		g_warning ("Can't go Up from here. The UI should have prevented us from getting this far.");
 		return;
 	}
 	
@@ -287,8 +305,8 @@ nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
 	eel_g_list_free_deep (selection);
 }
 
-static void
-real_nautilus_window_allow_up (NautilusWindow *window, gboolean allow)
+void
+nautilus_window_allow_up (NautilusWindow *window, gboolean allow)
 {
 	GtkAction *action;
 	
@@ -300,13 +318,6 @@ real_nautilus_window_allow_up (NautilusWindow *window, gboolean allow)
 	action = gtk_action_group_get_action (window->details->main_action_group,
 					      NAUTILUS_ACTION_UP_ACCEL);
 	gtk_action_set_sensitive (action, allow);
-}
-
-void
-nautilus_window_allow_up (NautilusWindow *window, gboolean allow)
-{
-	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-			 allow_up, (window, allow));
 }
 
 void
@@ -1459,6 +1470,8 @@ nautilus_window_info_iface_init (NautilusWindowInfoIface *iface)
 static void
 nautilus_window_class_init (NautilusWindowClass *class)
 {
+	GtkBindingSet *binding_set;
+	
 	G_OBJECT_CLASS (class)->finalize = nautilus_window_finalize;
 	G_OBJECT_CLASS (class)->get_property = nautilus_window_get_property;
 	G_OBJECT_CLASS (class)->set_property = nautilus_window_set_property;
@@ -1470,7 +1483,6 @@ nautilus_window_class_init (NautilusWindowClass *class)
 	class->set_title = real_set_title;
 	class->set_content_view_widget = real_set_content_view_widget;
 	class->load_view_as_menu = real_load_view_as_menu;
-	class->allow_up = real_nautilus_window_allow_up;
 
 	g_object_class_install_property (G_OBJECT_CLASS (class),
 					 ARG_APP_ID,
@@ -1494,4 +1506,21 @@ nautilus_window_class_init (NautilusWindowClass *class)
 	 * dialogs?
 	 */
 	set_up_default_icon_list ();
+
+	
+	signals[GO_UP] =
+		g_signal_new ("go_up",
+			      G_TYPE_FROM_CLASS (class),
+			      G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
+			      G_STRUCT_OFFSET (NautilusWindowClass, go_up),
+			      g_signal_accumulator_true_handled, NULL,
+			      eel_marshal_BOOLEAN__BOOLEAN,
+			      G_TYPE_BOOLEAN, 1, G_TYPE_BOOLEAN);
+	
+	binding_set = gtk_binding_set_by_class (class);
+	gtk_binding_entry_add_signal (binding_set, GDK_BackSpace, 0,
+				      "go_up", 1,
+				      G_TYPE_BOOLEAN, FALSE);
+
+	class->go_up = nautilus_window_go_up_signal;
 }

@@ -46,6 +46,7 @@
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
+#include <eel/eel-marshal.h>
 #include <gtk/gtkcheckmenuitem.h>
 #include <gtk/gtkclipboard.h>
 #include <gtk/gtkmain.h>
@@ -57,6 +58,7 @@
 #include <gtk/gtkhbox.h>
 #include <gtk/gtktoggleaction.h>
 #include <gtk/gtkentry.h>
+#include <gtk/gtkbindings.h>
 #include <libgnome/gnome-i18n.h>
 #include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-uidefs.h>
@@ -133,6 +135,8 @@ enum {
 	LOAD_ERROR,
 	MOVE_COPY_ITEMS,
 	REMOVE_FILE,
+	TRASH,
+	DELETE,
 	LAST_SIGNAL
 };
 
@@ -802,6 +806,13 @@ trash_or_delete_selected_files (FMDirectoryView *view)
         nautilus_file_list_free (selection);
 }
 
+static gboolean
+real_trash (FMDirectoryView *view)
+{
+        trash_or_delete_selected_files (view);
+	return TRUE;
+}
+
 static void
 action_trash_callback (GtkAction *action,
 		       gpointer callback_data)
@@ -890,6 +901,16 @@ action_delete_callback (GtkAction *action,
 		return;
 	}
         delete_selected_files (FM_DIRECTORY_VIEW (callback_data));
+}
+
+static gboolean
+real_delete (FMDirectoryView *view)
+{
+	if (!show_delete_command_auto_value) {
+		return FALSE;
+	}
+        delete_selected_files (view);
+	return TRUE;
 }
 
 static void
@@ -5795,25 +5816,9 @@ static GtkActionEntry directory_view_entries[] = {
     N_("Mo_ve to Trash"), "<control>T",                /* label, accelerator */
     N_("Move each selected item to the Trash"),                   /* tooltip */ 
     G_CALLBACK (action_trash_callback) },
-  { "TrashAccel", NULL,                  /* name, stock id */
-    "TrashAccel", "Delete",                /* label, accelerator */
-    NULL,                   /* tooltip */ 
-    G_CALLBACK (action_trash_callback) },
-  { "TrashAccel2", NULL,                  /* name, stock id */
-    "TrashAccel2", "KP_Delete",                /* label, accelerator */
-    NULL,                   /* tooltip */ 
-    G_CALLBACK (action_trash_callback) },
-  { "TrashAccel3", NULL,                  /* name, stock id */
-    "TrashAccel3", "<control>BackSpace",                /* label, accelerator */
-    NULL,                   /* tooltip */ 
-    G_CALLBACK (action_trash_callback) },
   { "Delete", NULL,                  /* name, stock id */
     N_("_Delete"), "<shift>Delete",                /* label, accelerator */
     N_("Delete each selected item, without moving to the Trash"),                   /* tooltip */ 
-    G_CALLBACK (action_delete_callback) },
-  { "DeleteAccel", NULL,                  /* name, stock id */
-    "DeleteAccel", "<shift>KP_Delete",                /* label, accelerator */
-    NULL,                   /* tooltip */ 
     G_CALLBACK (action_delete_callback) },
   { "Reset to Defaults", NULL,                  /* name, stock id */
     N_("Reset View to _Defaults"), NULL,                /* label, accelerator */
@@ -6265,17 +6270,6 @@ real_update_menus (FMDirectoryView *view)
 	gtk_action_set_sensitive (action, can_delete_files);
 
 	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_TRASH_ACCEL);
-	gtk_action_set_sensitive (action, can_delete_files);
-	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_TRASH_ACCEL2);
-	gtk_action_set_sensitive (action, can_delete_files);
-	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_TRASH_ACCEL3);
-	gtk_action_set_sensitive (action, can_delete_files);
-
-	
-	action = gtk_action_group_get_action (view->details->dir_action_group,
 					      FM_ACTION_DELETE);
 	gtk_action_set_visible (action, show_separate_delete_command);
 	
@@ -6285,12 +6279,6 @@ real_update_menus (FMDirectoryView *view)
 			      NULL);
 		gtk_action_set_sensitive (action, can_delete_files);
 	}
-
-	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_DELETE_ACCEL);
-	gtk_action_set_sensitive (action,
-				  show_separate_delete_command && can_delete_files);
-
 	
 	action = gtk_action_group_get_action (view->details->dir_action_group,
 					      FM_ACTION_DUPLICATE);
@@ -7793,6 +7781,7 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 {
 	GtkWidgetClass *widget_class;
 	GtkScrolledWindowClass *scrolled_window_class;
+	GtkBindingSet *binding_set;
 
 	widget_class = GTK_WIDGET_CLASS (klass);
 	scrolled_window_class = GTK_SCROLLED_WINDOW_CLASS (klass);
@@ -7934,4 +7923,33 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 							      G_PARAM_WRITABLE |
 							      G_PARAM_CONSTRUCT_ONLY));
 
+	signals[TRASH] =
+		g_signal_new ("trash",
+			      G_TYPE_FROM_CLASS (klass),
+			      G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
+			      G_STRUCT_OFFSET (FMDirectoryViewClass, trash),
+			      g_signal_accumulator_true_handled, NULL,
+			      eel_marshal_BOOLEAN__VOID,
+			      G_TYPE_BOOLEAN, 0);
+	signals[DELETE] =
+		g_signal_new ("delete",
+			      G_TYPE_FROM_CLASS (klass),
+			      G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
+			      G_STRUCT_OFFSET (FMDirectoryViewClass, trash),
+			      g_signal_accumulator_true_handled, NULL,
+			      eel_marshal_BOOLEAN__VOID,
+			      G_TYPE_BOOLEAN, 0);
+	
+	binding_set = gtk_binding_set_by_class (klass);
+	gtk_binding_entry_add_signal (binding_set, GDK_BackSpace, GDK_CONTROL_MASK,
+				      "trash", 0);
+	gtk_binding_entry_add_signal (binding_set, GDK_Delete, 0,
+				      "trash", 0);
+	gtk_binding_entry_add_signal (binding_set, GDK_KP_Delete, 0,
+				      "trash", 0);
+	gtk_binding_entry_add_signal (binding_set, GDK_KP_Delete, GDK_SHIFT_MASK,
+				      "delete", 0);
+
+	klass->trash = real_trash;
+	klass->delete = real_delete;
 }

@@ -283,6 +283,10 @@ struct FMDirectoryViewClass {
 	void	(* sort_directories_first_changed) (FMDirectoryView *view);
 
 	void	(* emblems_changed)                (FMDirectoryView *view);
+
+        /* Signals used only for keybindings */
+        gboolean (* trash)                         (FMDirectoryView *view);
+        gboolean (* delete)                        (FMDirectoryView *view);
 };
 
 /* GObject support */

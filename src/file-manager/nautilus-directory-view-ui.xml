@@ -2,9 +2,6 @@
 <accelerator action="OpenAccel"/>
 <accelerator action="OpenCloseParent"/>
 <accelerator action="PropertiesAccel"/>
-<accelerator action="TrashAccel"/>
-<accelerator action="TrashAccel2"/>
-<accelerator action="TrashAccel3"/>
 <menubar name="MenuBar">
 	<menu action="File">
 		<placeholder name="New Items Placeholder">

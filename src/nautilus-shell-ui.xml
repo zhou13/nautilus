@@ -1,5 +1,4 @@
 <ui>
-<accelerator action="UpAccel"/>
 <menubar name="MenuBar">
 	<menu action="File">
 		<placeholder name="New Items Placeholder"/>
