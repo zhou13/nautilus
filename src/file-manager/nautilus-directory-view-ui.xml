@@ -49,13 +49,13 @@
 	<cmd name="Reset Background"
          _label="Use _Default Background"
 	 _tip="Use the default background for this location"/>
-	<cmd name="Cut Files"
+	<cmd name="Cut"
          _label="Cu_t Files"
 	 _tip="Prepare the selected files to be moved with a Paste Files command"/>
-	<cmd name="Copy Files"
+	<cmd name="Copy"
          _label="_Copy Files"
 	 _tip="Prepare the selected files to be copied with a Paste Files command"/>
-	<cmd name="Paste Files"
+	<cmd name="Paste"
          _label="_Paste Files"
 	 _tip="Move or copy files previously selected by a Cut Files or Copy Files command"/>
 	<cmd name="Paste Files Into"
@@ -108,9 +108,9 @@
 	<accel name="*Control*o" action="Open"/>
 	<accel name="*Control**Shift*o" action="OpenAlternate"/>
 	<accel name="*Alt*Return" action="Properties"/>
-	<accel name="*Control*x" action="Cut Files"/>
-	<accel name="*Control*c" action="Copy Files"/>
-	<accel name="*Control*v" action="Paste Files"/>
+	<accel name="*Control*x" action="Cut"/>
+	<accel name="*Control*c" action="Copy"/>
+	<accel name="*Control*v" action="Paste"/>
 	<accel name="*Control*m" action="Create Link"/>
 	<accel name="F2" action="Rename"/>
 	<accel name="*Control*a" action="Select All"/>
@@ -176,11 +176,11 @@
 	<menu action="Edit">
 		<placeholder name="Clipboard Actions">
 			<menuitem name="Cut"
-			          action="Cut Files"/>
+			          action="Cut"/>
 			<menuitem name="Copy"
-			          action="Copy Files"/>
+			          action="Copy"/>
 			<menuitem name="Paste"
-			          action="Paste Files"/>
+			          action="Paste"/>
 		</placeholder>
 
 		<placeholder name="Select Items">
@@ -244,8 +244,8 @@
 		<placeholder name="View Items"/>
 		<separator/>
 		<placeholder name="File Clipboard Actions">
-			<menuitem name="Paste Files"
-			 	  action="Paste Files"/>
+			<menuitem name="Paste"
+			 	  action="Paste"/>
 		</placeholder>
 	</placeholder>
 	<placeholder name="After Zoom Items">
@@ -284,10 +284,10 @@
 	</placeholder>
 	<separator/>
 	<placeholder name="File Clipboard Actions">
-		<menuitem name="Cut Files" 
-		          action="Cut Files"/>
-		<menuitem name="Copy Files" 
-		          action="Copy Files"/>
+		<menuitem name="Cut" 
+		          action="Cut"/>
+		<menuitem name="Copy" 
+		          action="Copy"/>
 		<menuitem name="Paste Files Into" 
 		          action="Paste Files Into"/>
 	</placeholder>

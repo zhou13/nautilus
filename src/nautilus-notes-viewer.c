@@ -349,13 +349,6 @@ nautilus_notes_viewer_init (NautilusNotesViewer *sidebar)
      
         gtk_widget_show_all (GTK_WIDGET (sidebar));
         
-        /* handle selections */
-#ifdef GNOME2_CONVERSION_COMPLETE
-        nautilus_clipboard_set_up_editable_in_control
-                (GTK_EDITABLE (notes->note_text_field),
-                 nautilus_view_get_bonobo_control (notes->view),
-                 FALSE);
-#endif
 }
 
 static void
@@ -436,6 +429,15 @@ nautilus_notes_viewer_set_parent_window (NautilusNotesViewer *sidebar,
         g_free (sidebar->details->uri);
         sidebar->details->uri = nautilus_window_info_get_current_location (window);
         notes_load_metainfo (sidebar);
+
+        /* handle selections */
+#ifdef GNOME2_CONVERSION_COMPLETE
+        /* note_text_field is a text-view, not a GtkEditable */
+	nautilus_clipboard_set_up_editable
+                (GTK_EDITABLE (sidebar->details->note_text_field),
+		 nautilus_window_info_get_ui_manager (window),
+		 FALSE);
+#endif
 }
 
 static NautilusSidebar *

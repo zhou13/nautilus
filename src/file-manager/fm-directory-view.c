@@ -5760,24 +5760,26 @@ static GtkActionEntry directory_view_entries[] = {
     N_("_Empty Trash"), NULL,                /* label, accelerator */
     N_("Delete all items in the Trash"),                   /* tooltip */ 
     G_CALLBACK (action_empty_trash_callback) },
-  { "Cut Files", GTK_STOCK_CUT,                  /* name, stock id */
+  { "Cut", GTK_STOCK_CUT,                  /* name, stock id */
     N_("Cu_t Files"), "<control>x",                /* label, accelerator */
     N_("Prepare the selected files to be moved with a Paste Files command"),                   /* tooltip */ 
     G_CALLBACK (action_cut_files_callback) },
-  { "Copy Files", GTK_STOCK_COPY,                  /* name, stock id */
+  { "Copy", GTK_STOCK_COPY,                  /* name, stock id */
     N_("_Copy Files"), "<control>c",                /* label, accelerator */
     N_("Prepare the selected files to be copied with a Paste Files command"),                   /* tooltip */ 
     G_CALLBACK (action_copy_files_callback) },
-  { "Paste Files", GTK_STOCK_PASTE,                  /* name, stock id */
+  { "Paste", GTK_STOCK_PASTE,                  /* name, stock id */
     N_("_Paste Files"), "<control>v",                /* label, accelerator */
     N_("Move or copy files previously selected by a Cut Files or Copy Files command"),                   /* tooltip */ 
     G_CALLBACK (action_paste_files_callback) },
+  /* We make accelerator "" instead of null here to not inherit the stock
+     accelerator for paste */
   { "Paste Files Into", GTK_STOCK_PASTE,                  /* name, stock id */
-    N_("_Paste Files Into Folder"), NULL,                /* label, accelerator */
+    N_("_Paste Files Into Folder"), "",                /* label, accelerator */
     N_("Move or copy files previously selected by a Cut Files or Copy Files command into the selected folder"),                   /* tooltip */ 
     G_CALLBACK (action_paste_files_into_callback) },
   { "Select All", NULL,                  /* name, stock id */
-    N_("_Select _All Files"), "<control>A",                /* label, accelerator */
+    N_("Select _All Files"), "<control>A",                /* label, accelerator */
     N_("Select all items in this window"),                   /* tooltip */ 
     G_CALLBACK (action_select_all_callback) },
   { "Select Pattern", NULL,                  /* name, stock id */
@@ -5862,7 +5864,8 @@ real_merge_menus (FMDirectoryView *view)
 	action = gtk_action_group_get_action (action_group, FM_ACTION_NO_TEMPLATES);
 	gtk_action_set_sensitive (action, FALSE);
 
-	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
+	/* Insert action group at end so clipboard action group ends up before it */
+	gtk_ui_manager_insert_action_group (ui_manager, action_group, -1);
 	g_object_unref (action_group); /* owned by ui manager */
 
 	error = NULL;
@@ -5915,7 +5918,7 @@ clipboard_targets_received (GtkClipboard     *clipboard,
 	count = g_list_length (selection);
 	
 	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_PASTE_FILES);
+					      FM_ACTION_PASTE);
 	gtk_action_set_sensitive (action,
 				  can_paste && !fm_directory_view_is_read_only (view));
 
@@ -6091,7 +6094,7 @@ real_update_paste_menu (FMDirectoryView *view,
 		nautilus_file_is_directory (NAUTILUS_FILE (selection->data));
 
 	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_PASTE_FILES);
+					      FM_ACTION_PASTE);
 	gtk_action_set_sensitive (action, !is_read_only);
 	
 	action = gtk_action_group_get_action (view->details->dir_action_group,
@@ -6311,7 +6314,7 @@ real_update_menus (FMDirectoryView *view)
 	gtk_action_set_sensitive (action, !fm_directory_view_is_empty (view));
 
 	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_CUT_FILES);
+					      FM_ACTION_CUT);
 	g_object_set (action, "label",
 		      selection_count == 1
 		      ? _("Cu_t File")
@@ -6320,7 +6323,7 @@ real_update_menus (FMDirectoryView *view)
 	gtk_action_set_sensitive (action, can_delete_files);
 
 	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_COPY_FILES);
+					      FM_ACTION_COPY);
 	g_object_set (action, "label",
 		      selection_count == 1
 		      ? _("_Copy File")

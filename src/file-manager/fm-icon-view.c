@@ -1927,12 +1927,10 @@ renaming_icon_callback (NautilusIconContainer *container,
 	FMDirectoryView *directory_view;
 
 	directory_view = FM_DIRECTORY_VIEW (callback_data);
-#ifdef BONOBO_DONE
-	nautilus_clipboard_set_up_editable_in_control
+	nautilus_clipboard_set_up_editable
 		(GTK_EDITABLE (widget),
-		 fm_directory_view_get_bonobo_control (directory_view),
+		 fm_directory_view_get_ui_manager (directory_view),
 		 FALSE);
-#endif
 }
 
 int

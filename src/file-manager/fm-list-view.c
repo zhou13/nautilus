@@ -1898,12 +1898,10 @@ fm_list_view_start_renaming_file (FMDirectoryView *view, NautilusFile *file)
 	
 	gtk_tree_path_free (path);
 
-#ifdef BONOBO_DONE
-	nautilus_clipboard_set_up_editable_in_control
+	nautilus_clipboard_set_up_editable
 		(GTK_EDITABLE (entry),
-		 fm_directory_view_get_bonobo_control (view),
+		 fm_directory_view_get_ui_manager (view),
 		 FALSE);
-#endif
 }
 
 static void

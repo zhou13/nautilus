@@ -598,10 +598,6 @@ static GtkActionEntry main_entries[] = {
     N_("_Reload"), "<control>R",           /* label, accelerator */
     NULL,                                      /* tooltip */ 
     G_CALLBACK (action_reload_callback) },
-  { "Reload", GTK_STOCK_REFRESH,                        /* name, stock id */
-    N_("_Reload"), "<control>R",           /* label, accelerator */
-    NULL,                                      /* tooltip */ 
-    G_CALLBACK (action_reload_callback) },
   { "Nautilus Manual", GTK_STOCK_HELP,                        /* name, stock id */
     N_("_Contents"), "F1",           /* label, accelerator */
     N_("Display Nautilus help"),                                      /* tooltip */ 

@@ -42,11 +42,6 @@ marshal_sources = \
 	nautilus-marshal-guts.c \
 	$(NULL)
 
-uidir = $(datadir)/gnome-2.0/ui
-ui_DATA = \
-	nautilus-clipboard-ui.xml	\
-	$(NULL)
-
 libnautilus_private_la_SOURCES = \
 	$(nautilus_metafile_server_idl_sources)	\
 	nautilus-audio-player.c \
@@ -232,7 +227,6 @@ EXTRA_DIST = 				\
 	nautilus-metafile-server.idl	\
 	nautilus-marshal.list		\
 	$(schema_in_files)              \
-	$(ui_DATA)			\
 	$(NULL)
 
 CLEANFILES = \

@@ -1,3 +1,30 @@
+2004-11-18  Alexander Larsson  <alexl@redhat.com>
+
+	* libnautilus-private/nautilus-clipboard-monitor.c:
+	Handle ownership changes from XFixes
+	
+	* libnautilus-private/Makefile.am:
+	* libnautilus-private/nautilus-clipboard-ui.xml:
+	Remove (is now inline)
+	
+	* libnautilus-private/nautilus-clipboard.[ch]:
+	Convert to GtkUIManager
+	
+	* src/nautilus-location-bar.c:
+	* src/nautilus-notes-viewer.c:
+	Adapt to NautilusClipboard changes
+
+	* src/nautilus-window-menus.c:
+	Remove duplicated action
+
+	* src/file-manager/fm-actions.h:
+	* src/file-manager/fm-directory-view.c:
+	* src/file-manager/fm-icon-view.c:
+	* src/file-manager/fm-list-view.c:
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	Adapt to NautilusClipboard changes
+	Fix paste into folder to not use stock accelerator
+
 2004-11-17  Alexander Larsson  <alexl@redhat.com>
 
 	* components/Makefile.am:
