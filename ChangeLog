@@ -1,5 +1,22 @@
 2004-11-18  Alexander Larsson  <alexl@redhat.com>
 
+	* src/file-manager/fm-actions.h:
+	* src/file-manager/fm-directory-view.c:
+	* src/file-manager/nautilus-desktop-icon-view-ui.xml:
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/file-manager/nautilus-icon-view-ui.xml:
+	* src/file-manager/nautilus-list-view-ui.xml:
+	* src/nautilus-actions.h:
+	* src/nautilus-navigation-window-ui.xml:
+	* src/nautilus-shell-ui.xml:
+	* src/nautilus-spatial-window-ui.xml:
+	* src/nautilus-spatial-window.c:
+	* src/nautilus-window-menus.c:
+	* src/nautilus-window.[ch]:
+	Add all extra accellerators and clean up ui files.
+
+2004-11-18  Alexander Larsson  <alexl@redhat.com>
+
 	* src/nautilus-window-menus.c:
 	* src/nautilus-window-toolbars.c:
 	* libnautilus-private/nautilus-ui-utilities.[ch]:

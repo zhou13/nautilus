@@ -591,6 +591,9 @@ static GtkActionEntry main_entries[] = {
   { "Up", GTK_STOCK_GO_UP, N_("Open _Parent"),               /* name, stock id, label */
     "<alt>Up", N_("Open the parent folder"),
     G_CALLBACK (action_up_callback) },
+  { "UpAccel", NULL, "UpAccel",               /* name, stock id, label */
+    "BackSpace", NULL,
+    G_CALLBACK (action_up_callback) },
   { "Stop", GTK_STOCK_STOP,                        /* name, stock id */
     N_("_Stop"), NULL,           /* label, accelerator */
     NULL,                                      /* tooltip */ 

@@ -75,6 +75,7 @@ typedef struct {
         void   (* prompt_for_location) (NautilusWindow *window);
         void   (* get_default_size) (NautilusWindow *window, guint *default_width, guint *default_height);
         void   (* close) (NautilusWindow *window);
+        void   (* allow_up) (NautilusWindow *window, gboolean allow);
 } NautilusWindowClass;
 
 typedef enum {

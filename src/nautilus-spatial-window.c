@@ -31,6 +31,7 @@
 #include "nautilus-spatial-window.h"
 #include "nautilus-window-private.h"
 
+#include "nautilus-actions.h"
 #include "nautilus-application.h"
 #include "nautilus-desktop-window.h"
 #include "nautilus-bookmarks-window.h"
@@ -367,6 +368,30 @@ real_window_close (NautilusWindow *window)
 	nautilus_spatial_window_save_show_hidden_files_mode (NAUTILUS_SPATIAL_WINDOW (window));
 }
 
+static void
+real_allow_up (NautilusWindow *nautilus_window, gboolean allow)
+{
+	GtkAction *action;
+	NautilusSpatialWindow *window;
+
+	window = NAUTILUS_SPATIAL_WINDOW (nautilus_window);
+	
+	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS, allow_up,
+			 (nautilus_window, allow));
+
+	action = gtk_action_group_get_action (window->details->spatial_action_group,
+					      NAUTILUS_ACTION_UP_CLOSE_ACCEL);
+	if (action != NULL) {
+		gtk_action_set_sensitive (action, allow);
+	}
+	action = gtk_action_group_get_action (window->details->spatial_action_group,
+					      NAUTILUS_ACTION_UP_CLOSE_ACCEL2);
+	if (action != NULL) {
+		gtk_action_set_sensitive (action, allow);
+	}
+}
+
+
 static void 
 real_get_default_size (NautilusWindow *window,
 		       guint *default_width, guint *default_height)
@@ -590,8 +615,11 @@ static GtkActionEntry spatial_entries[] = {
   { "Close All Folders", NULL, N_("Clos_e All Folders"), /* name, stock id, label */
     "<control>Q", N_("Close all folder windows"),
     G_CALLBACK (action_close_all_folders_callback) },
-  { "Go Up Close", NULL, N_("Go up and close the current window"), /* name, stock id, label */
+  { "UpCloseAccel", NULL, N_("Go up and close the current window"), /* name, stock id, label */
     "<alt><shift>Up", NULL,
+    G_CALLBACK (action_go_up_close_callback) },
+  { "UpCloseAccel2", NULL, N_("Go up and close the current window"), /* name, stock id, label */
+    "<shift>BackSpace", NULL,
     G_CALLBACK (action_go_up_close_callback) },
 };
 
@@ -698,6 +726,7 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 	NAUTILUS_WINDOW_CLASS (class)->close = 
 		real_window_close;
 	NAUTILUS_WINDOW_CLASS(class)->get_default_size = real_get_default_size;
+	NAUTILUS_WINDOW_CLASS(class)->allow_up = real_allow_up;
 
 	NAUTILUS_WINDOW_CLASS(class)->set_throbber_active =
 		real_set_throbber_active;
