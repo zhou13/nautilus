@@ -35,9 +35,6 @@
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 
-#define STATUS_BAR_PATH         "/status"
-#define MENU_BAR_PATH           "/menu"
-
 struct NautilusDesktopWindowDetails {
 	int dummy;
 };

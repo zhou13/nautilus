@@ -58,6 +58,7 @@
 
 			<menuitem name="Clear History" 
 				  action="Clear History"/>
+			<separator/>
 			<placeholder name="History Placeholder"/>
 		</menu>
 
@@ -67,6 +68,7 @@
 			<menuitem name="Edit Bookmark" 
 				  action="Edit Bookmarks"/>
 
+			<separator/>
 			<placeholder name="Bookmarks Placeholder"/>
 		</menu>
         </placeholder>
@@ -76,10 +78,8 @@
 
 	<toolitem name="Back"
 	          action="Back"/>
-<!--	<control name="BackMenu"/> -->
 	<toolitem name="Forward"
 	          action="Forward"/>
-<!--	<control name="ForwardMenu"/> -->
 
 	<toolitem name="Up"
 	          action="Up"/>

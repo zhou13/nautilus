@@ -93,11 +93,6 @@
 
 #define MAX_TITLE_LENGTH 180
 
-/* dock items */
-#define LOCATION_BAR_PATH	"/Location Bar"
-#define TOOLBAR_PATH            "/Toolbar"
-#define MENU_BAR_PATH           "/menu"
-
 enum {
 	ARG_0,
 	ARG_APP_ID,

@@ -141,7 +141,8 @@
 				  action="Open"/>
 			<menuitem name="OpenAlternate"
 				  action="OpenAlternate"/>
-			<placeholder name="Applications Placeholder"/>
+			<placeholder name="Applications Placeholder">
+                        </placeholder>
 			<menu action="Open With">
 				<placeholder name="Applications Placeholder"/>
 				<separator/>
@@ -173,12 +174,14 @@
 	</menu>
 
 	<menu action="Edit">
-		<menuitem name="Cut"
-			  action="Cut Files"/>
-		<menuitem name="Copy"
-			  action="Copy Files"/>
-		<menuitem name="Paste"
-			  action="Paste Files"/>
+		<placeholder name="Clipboard Actions">
+			<menuitem name="Cut"
+			          action="Cut Files"/>
+			<menuitem name="Copy"
+			          action="Copy Files"/>
+			<menuitem name="Paste"
+			          action="Paste Files"/>
+		</placeholder>
 
 		<placeholder name="Select Items">
 		<menuitem name="Select All"
@@ -222,22 +225,24 @@
 			 	  action="New Folder"/>
 			<menuitem name="New Launcher"
 			 	  action="New Launcher"/>
+			<menu action="New Documents">
+		         	<menuitem name="No Templates"
+			                  action="No Templates"/>
+			 	<placeholder name="New Documents Placeholder"/>
+			 	<separator name="After New Documents"/>
+			 	<menuitem name="New Empty File" 
+			 	          action="New Empty File"/>
+			</menu>
+                	<menu action="Scripts">
+			 	<placeholder name="Scripts Placeholder"/>
+			 	<separator name="After Scripts"/>
+			 	<menuitem name="Open Scripts Folder"
+				          action="Open Scripts Folder"/>
+			</menu>
 		</placeholder>
-		<menu action="New Documents">
-		         <menuitem name="No Templates"
-			           action="No Templates"/>
-			 <placeholder name="New Documents Placeholder"/>
-			 <separator name="After New Documents"/>
-			 <menuitem name="New Empty File" 
-			 	   action="New Empty File"/>
-		</menu>
-                <menu action="Scripts">
-			 <placeholder name="Scripts Placeholder"/>
-			 <separator name="After Scripts"/>
-			 <menuitem name="Open Scripts Folder"
-				   action="Open Scripts Folder"/>
-		</menu>
+		<separator/>
 		<placeholder name="View Items"/>
+		<separator/>
 		<placeholder name="File Clipboard Actions">
 			<menuitem name="Paste Files"
 			 	  action="Paste Files"/>
@@ -256,6 +261,7 @@
 		<menuitem name="Open" action="Open"/>
 		<menuitem name="OpenAlternate" 
 		          action="OpenAlternate"/>
+		<separator/>
 		<placeholder name="Applications Placeholder"/>
 		<menu action="Open With">
 			<placeholder name="Applications Placeholder"/>
@@ -276,6 +282,7 @@
 		</menu>
 
 	</placeholder>
+	<separator/>
 	<placeholder name="File Clipboard Actions">
 		<menuitem name="Cut Files" 
 		          action="Cut Files"/>
@@ -284,24 +291,29 @@
 		<menuitem name="Paste Files Into" 
 		          action="Paste Files Into"/>
 	</placeholder>
+	<separator/>
 	<placeholder name="File Actions">
 		<menuitem name="Create Link" action="Create Link"/>
 		<menuitem name="Rename" action="Rename"/>
 	</placeholder>
+	<separator/>
 	<placeholder name="Dangerous File Actions">
 		<menuitem name="Trash" 
 		          action="Trash"/>
 		<menuitem name="Delete" action="Delete"/>
 	</placeholder>
 
+	<separator/>
 	<placeholder name="Icon Appearance Items">
 	</placeholder>
 
+	<separator/>
 	<placeholder name="Extension Actions"/>
         <separator/>
 
         <menuitem name="Properties"
                   action="Properties"/>
+	<separator/>
         <placeholder name="Removabel Media Holder">
 		<menuitem name="Mount Volume" action="Mount Volume"/>
                 <menuitem name="Unmount Volume" action="Unmount Volume"/>

@@ -9,15 +9,18 @@
 <menubar name="MenuBar">
 	<menu action="File">
 
-		<placeholder name="New Items Placeholder">
-		</placeholder>
+		<placeholder name="New Items Placeholder"/>
+		<separator/>
 		<placeholder name="Open Placeholder"/>
+		<separator/>
 		<placeholder name="Location Placeholder"/>
 		<menuitem name="Connect to Server"
 			  action="Connect to Server"/>
-		<placeholder name="General Status Placeholder"/>
+		<separator/>
 		<placeholder name="File Items Placeholder"/>
+		<separator/>
 		<placeholder name="Global File Items Placeholder"/>
+		<separator/>
 		<placeholder name="Extension Actions"/>
 		<separator/>
 
@@ -28,27 +31,28 @@
 	</menu>
 
 	<menu action="Edit">
-<!-- BONOBOTODO: These should be in the dir-view?
-		<menuitem name="Cut" action="Cut"/>
-		<menuitem name="Copy" action ="Copy"/>
-		<menuitem name="Paste" action="Paste"/>
-		<menuitem name="Clear" action="Clear"/>
+		<placeholder name="Clipboard Actions">
+<!-- BONOBOTODO: These should be in the dir-view? or are they text related?
+			<menuitem name="Cut" action="Cut"/>
+			<menuitem name="Copy" action ="Copy"/>
+			<menuitem name="Paste" action="Paste"/>
+			<menuitem name="Clear" action="Clear"/>
 -->
+                </placeholder>
 
 		<separator/>
 
-		<placeholder name="Select Items">
-<!-- BONOBOTODO: This should go in fm-directory-view?
-		<menuitem name="Select All"
-			  action="Select All"/>
--->
-		</placeholder>
+		<placeholder name="Select Items"/>
 				
+		<separator/>
 		<placeholder name="File Items Placeholder"/>
+		<separator/>
 		<placeholder name="Dangerous File Items Placeholder"/>
+		<separator/>
 		<placeholder name="Edit Items Placeholder"/>
 		<placeholder name="Global Edit Items Placeholder"/>
 		
+		<separator/>
 		<placeholder name="Extension Actions"/>
 		<separator/>
 		<menuitem name="Backgrounds and Emblems" action="Backgrounds and Emblems"/>
@@ -59,12 +63,14 @@
 		<menuitem name="Stop" action="Stop"/>
 		<menuitem name="Reload" action="Reload"/>
 
-		<placeholder name="Show Hide Placeholder">
-		</placeholder>
+		<separator/>
+		<placeholder name="Show Hide Placeholder"/>
 
+		<separator/>
 		<placeholder name="View Preferences Placeholder"/>
+		<separator/>
 		<placeholder name="View Items Placeholder"/>
-		
+		<separator/>
 		<placeholder name="Zoom Items Placeholder">
 			<menuitem name="Zoom In"
 				  action="Zoom In"/>
@@ -74,6 +80,7 @@
 				  action="Zoom Normal"/>
 		</placeholder>
 		<placeholder name="View Choices">
+		        <separator/>
 			<placeholder name="Extra Viewer"/>
 			<separator name="Before Short List"/>
 			<placeholder name="Short List"/>
@@ -92,12 +99,12 @@
 
 <popup name="background">
 	<placeholder name="Before Zoom Items">
-		<placeholder name="New Window Items">
-		</placeholder>
-		<placeholder name="New Object Items">
-		</placeholder>
+		<placeholder name="New Window Items"/>
+		<placeholder name="New Object Items"/>
+		<separator/>
 	       <placeholder name="Extension Actions"/>
 	</placeholder>
+        <separator/>
 	<placeholder name="Zoom Items">
 		<menuitem name="Zoom In" 
 		          action="Zoom In"/>
@@ -106,6 +113,7 @@
 		<menuitem name="Zoom Normal" 
 		          action="Zoom Normal"/>
 	</placeholder>
+        <separator/>
 	<placeholder name="After Zoom Items"/>
 </popup>
 

@@ -67,15 +67,6 @@
 #include <unistd.h>
 #include <gtk/gtkmessagedialog.h>
 
-#define DESKTOP_COMMAND_EMPTY_TRASH_CONDITIONAL		"/commands/Empty Trash Conditional"
-#define DESKTOP_COMMAND_UNMOUNT_VOLUME_CONDITIONAL	"/commands/Unmount Volume Conditional"
-#define DESKTOP_COMMAND_PROTECT_VOLUME_CONDITIONAL      "/commands/Protect Conditional"
-#define DESKTOP_COMMAND_FORMAT_VOLUME_CONDITIONAL       "/commands/Format Conditional"
-#define DESKTOP_COMMAND_MEDIA_PROPERTIES_VOLUME_CONDITIONAL     "/commands/Media Properties Conditional"
-
-#define DESKTOP_BACKGROUND_POPUP_PATH_DISKS	"/popups/background/Before Zoom Items/Volume Items/Disks"
-#define DESKTOP_BACKGROUND_POPUP_PATH_VOLUME_ITEMS	"/popups/background/Before Zoom Items/Volume Items"
-
 /* Timeout to check the desktop directory for updates */
 #define RESCAN_TIMEOUT 4000
 

@@ -1,5 +1,18 @@
 2004-11-17  Alexander Larsson  <alexl@redhat.com>
 
+	* src/file-manager/fm-desktop-icon-view.c:
+	* src/nautilus-navigation-window.c:
+	* src/nautilus-desktop-window.c:
+	Remove old defines
+
+	* src/file-manager/fm-directory-view.c:
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/nautilus-navigation-window-ui.xml:
+	* src/nautilus-shell-ui.xml:
+	Make the menus look like pre-bonobo-removal
+
+2004-11-17  Alexander Larsson  <alexl@redhat.com>
+
 	* src/file-manager/fm-desktop-icon-view.c: (real_merge_menus):
 	Don't have use default background on desktop context menu.
 

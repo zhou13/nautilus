@@ -93,9 +93,6 @@
 /* Number of seconds until cancel dialog shows up */
 #define DELAY_UNTIL_CANCEL_MSECS 5000
 
-#define DISPLAY_TIMEOUT_FIRST_MSECS 1000
-#define DISPLAY_TIMEOUT_INTERVAL_MSECS 10*1000
-
 #define SILENT_WINDOW_OPEN_LIMIT 5
 
 #define DUPLICATE_HORIZONTAL_ICON_OFFSET 70
@@ -105,52 +102,21 @@
 #define RESPONSE_DISPLAY 1001
 #define RESPONSE_RUN_IN_TERMINAL 1002
 
-/* MOD2 is num lock -- I would include MOD3-5 if I was sure they were not lock keys */
-#define ALL_NON_LOCK_MODIFIER_KEYS (GDK_SHIFT_MASK | GDK_CONTROL_MASK | GDK_MOD1_MASK)
-
-#define FM_DIRECTORY_VIEW_MENU_PATH_OPEN_WITH				"/MenuBar/File/Open Placeholder/Open With"
-#define FM_DIRECTORY_VIEW_MENU_PATH_NEW_DOCUMENTS			"/MenuBar/File/New Items Placeholder/New Documents"
-#define FM_DIRECTORY_VIEW_MENU_PATH_NEW_DOCUMENTS_NO_TEMPLATES		"/MenuBar/File/New Items Placeholder/New Documents/No Templates"
-#define FM_DIRECTORY_VIEW_MENU_PATH_SCRIPTS				"/MenuBar/File/Open Placeholder/Scripts"
-#define FM_DIRECTORY_VIEW_MENU_PATH_TRASH                    		"/MenuBar/Edit/Dangerous File Items Placeholder/Trash"
-#define FM_DIRECTORY_VIEW_MENU_PATH_DELETE                    		"/MenuBar/Edit/Dangerous File Items Placeholder/Delete"
-#define FM_DIRECTORY_VIEW_MENU_PATH_EMPTY_TRASH                    	"/MenuBar/File/Global File Items Placeholder/Empty Trash"
-#define FM_DIRECTORY_VIEW_MENU_PATH_CREATE_LINK                	 	"/MenuBar/Edit/File Items Placeholder/Create Link"
-#define FM_DIRECTORY_VIEW_MENU_PATH_APPLICATIONS_SUBMENU_PLACEHOLDER    	"/MenuBar/File/Open Placeholder/Open With/Applications Placeholder"
+#define FM_DIRECTORY_VIEW_MENU_PATH_APPLICATIONS_SUBMENU_PLACEHOLDER   	"/MenuBar/File/Open Placeholder/Open With/Applications Placeholder"
 #define FM_DIRECTORY_VIEW_MENU_PATH_APPLICATIONS_PLACEHOLDER    	"/MenuBar/File/Open Placeholder/Applications Placeholder"
-#define FM_DIRECTORY_VIEW_MENU_PATH_OTHER_APPLICATION_PLACEHOLDER    	"/MenuBar/File/Open Placeholder/OtherApplicationPlaceholder"
-#define FM_DIRECTORY_VIEW_MENU_PATH_OTHER_APPLICATION		    	"/MenuBar/File/Open Placeholder/OtherApplicationPlaceholder/OtherApplication"
 #define FM_DIRECTORY_VIEW_MENU_PATH_SCRIPTS_PLACEHOLDER    		"/MenuBar/File/Open Placeholder/Scripts/Scripts Placeholder"
-#define FM_DIRECTORY_VIEW_MENU_PATH_SCRIPTS_SEPARATOR    		"/MenuBar/File/Open Placeholder/Scripts/After Scripts"
-#define FM_DIRECTORY_VIEW_MENU_PATH_NEW_DOCUMENTS_PLACEHOLDER  		"/MenuBar/File/New Items Placeholder/New Documents/New Documents Placeholder"
-#define FM_DIRECTORY_VIEW_MENU_PATH_NEW_DOCUMENTS_SEPARATOR    		"/MenuBar/File/New Items Placeholder/New Documents/After New Documents"
-#define FM_DIRECTORY_VIEW_MENU_PATH_CUT_FILES    			"/MenuBar/Edit/Cut"
-#define FM_DIRECTORY_VIEW_MENU_PATH_COPY_FILES		    		"/MenuBar/Edit/Copy"
-#define FM_DIRECTORY_VIEW_MENU_PATH_PASTE_FILES		    		"/MenuBar/Edit/Paste"
 #define FM_DIRECTORY_VIEW_MENU_PATH_EXTENSION_ACTIONS_PLACEHOLDER       "/MenuBar/Edit/Extension Actions"
+#define FM_DIRECTORY_VIEW_MENU_PATH_NEW_DOCUMENTS_PLACEHOLDER  		"/MenuBar/File/New Items Placeholder/New Documents/New Documents Placeholder"
+
+#define FM_DIRECTORY_VIEW_POPUP_PATH_SELECTION				"/selection"
+#define FM_DIRECTORY_VIEW_POPUP_PATH_APPLICATIONS_SUBMENU_PLACEHOLDER  	"/selection/Open Placeholder/Open With/Applications Placeholder"
+#define FM_DIRECTORY_VIEW_POPUP_PATH_APPLICATIONS_PLACEHOLDER    	"/selection/Open Placeholder/Applications Placeholder"
+#define FM_DIRECTORY_VIEW_POPUP_PATH_SCRIPTS_PLACEHOLDER    		"/selection/Open Placeholder/Scripts/Scripts Placeholder"
+#define FM_DIRECTORY_VIEW_POPUP_PATH_EXTENSION_ACTIONS			"/selection/Extension Actions"
 
 #define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND				"/background"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_SELECTION				"/selection"
-
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_SCRIPTS         	"/background/Before Zoom Items/Scripts"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_SCRIPTS_PLACEHOLDER	"/background/Before Zoom Items/Scripts/Scripts Placeholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_SCRIPTS_SEPARATOR	"/background/Before Zoom Items/Scripts/After Scripts"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_NEW_DOCUMENTS         	"/background/Before Zoom Items/New Documents"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_NEW_DOCUMENTS_NO_TEMPLATES "/background/Before Zoom Items/New Documents/No Templates"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_NEW_DOCUMENTS_PLACEHOLDER "/background/Before Zoom Items/New Documents/New Documents Placeholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_NEW_DOCUMENTS_SEPARATOR	"/background/Before Zoom Items/New Documents/After New Documents"
-
-#define FM_DIRECTORY_VIEW_POPUP_PATH_APPLICATIONS_SUBMENU_PLACEHOLDER    	"/selection/Open Placeholder/Open With/Applications Placeholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_APPLICATIONS_PLACEHOLDER    	"/selection/Open Placeholder/Applications Placeholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_OPEN_PLACEHOLDER		    	"/selection/Open Placeholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_OTHER_APPLICATION_PLACEHOLDER    	"/selection/Open Placeholder/OtherApplicationPlaceholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_OTHER_APPLICATION		    	"/selection/Open Placeholder/OtherApplicationPlaceholder/OtherApplication"
-
-#define FM_DIRECTORY_VIEW_POPUP_PATH_SCRIPTS_PLACEHOLDER    		"/selection/Open Placeholder/Scripts/Scripts Placeholder"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_SCRIPTS_SEPARATOR    		"/selection/Open Placeholder/Scripts/After Scripts"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_OPEN_WITH				"/selection/Open Placeholder/Open With"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_SCRIPTS				"/selection/Open Placeholder/Scripts"
-#define FM_DIRECTORY_VIEW_POPUP_PATH_EXTENSION_ACTIONS			"/selection/Extension Actions"
+#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_SCRIPTS_PLACEHOLDER	"/background/Before Zoom Items/New Object Items/Scripts/Scripts Placeholder"
+#define FM_DIRECTORY_VIEW_POPUP_PATH_BACKGROUND_NEW_DOCUMENTS_PLACEHOLDER "/background/Before Zoom Items/New Object Items/New Documents/New Documents Placeholder"
 
 #define MAX_MENU_LEVELS 5
 
@@ -3940,7 +3906,15 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 				menu_path = FM_DIRECTORY_VIEW_MENU_PATH_APPLICATIONS_PLACEHOLDER;
 				popup_path = FM_DIRECTORY_VIEW_POPUP_PATH_APPLICATIONS_PLACEHOLDER;
 			}
-				
+
+			gtk_ui_manager_add_ui (nautilus_window_info_get_ui_manager (view->details->window),
+					       view->details->open_with_merge_id,
+					       menu_path,
+					       "separator",
+					       NULL,
+					       GTK_UI_MANAGER_SEPARATOR,
+					       FALSE);
+					       
 			add_application_to_open_with_menu (view, 
 							   node->data, 
 							   file, 
@@ -6237,8 +6211,8 @@ real_update_menus (FMDirectoryView *view)
 	
 	g_free (label_with_underscore);
 
+	show_open_alternate = file_list_all_are_folders (selection);
 	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION) {
-		show_open_alternate = TRUE;
 		if (selection_count == 0) {
 			label_with_underscore = g_strdup (_("Open in New Window"));
 		} else {
@@ -6248,7 +6222,6 @@ real_update_menus (FMDirectoryView *view)
 								 selection_count);
 		}
 	} else {
-		show_open_alternate = file_list_all_are_folders (selection);
 		if (selection_count <= 1) {
 			label_with_underscore = g_strdup (_("Browse Folder"));
 		} else {
