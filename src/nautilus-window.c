@@ -102,7 +102,6 @@ enum {
 
 static void cancel_view_as_callback             (NautilusWindow *window);
 static void nautilus_window_info_iface_init (NautilusWindowInfoIface *iface);
-static void set_initial_window_geometry (NautilusWindow *window);
 
 static GList *history_list;
 
@@ -206,8 +205,6 @@ nautilus_window_init (NautilusWindow *window)
 	/* Keep the main event loop alive as long as the window exists */
 	nautilus_main_event_loop_register (GTK_OBJECT (window));
 
-	set_initial_window_geometry (window);
-	
 	nautilus_window_allow_stop (window, FALSE);
 
 #ifdef BONOBO_DONE
@@ -411,8 +408,12 @@ get_max_forced_width (GdkScreen *screen)
 	return (gdk_screen_get_width (screen) * 90) / 100;
 }
 
+/* This must be called when construction of NautilusWindow is finished,
+ * since it depends on the type of the argument, which isn't decided at
+ * construction time.
+ */
 static void
-set_initial_window_geometry (NautilusWindow *window)
+nautilus_window_set_initial_window_geometry (NautilusWindow *window)
 {
 	GdkScreen *screen;
 	guint max_width_for_screen, max_height_for_screen, min_width, min_height;
@@ -452,15 +453,21 @@ set_initial_window_geometry (NautilusWindow *window)
 					  max_width_for_screen),
 				     MIN (min_height, 
 					  max_height_for_screen));
-					  
+
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
 			 get_default_size, (window, &default_width, &default_height));
-			 
+
 	gtk_window_set_default_size (GTK_WINDOW (window), 
 				     MIN (default_width, 
 				          max_width_for_screen), 
 				     MIN (default_height, 
 				          max_height_for_screen));
+}
+
+void
+nautilus_window_constructed (NautilusWindow *window)
+{
+	nautilus_window_set_initial_window_geometry (window);
 }
 
 static void
@@ -1170,7 +1177,6 @@ nautilus_window_show (GtkWidget *widget)
 	NautilusWindow *window;
 
 	window = NAUTILUS_WINDOW (widget);
-
 
 	GTK_WIDGET_CLASS (nautilus_window_parent_class)->show (widget);
 	

@@ -1,5 +1,14 @@
 2004-11-17  Alexander Larsson  <alexl@redhat.com>
 
+	* src/nautilus-application.c:
+	* src/nautilus-navigation-window.c:
+	* src/nautilus-spatial-window.c:
+	* src/nautilus-window-private.h:
+	* src/nautilus-window.c:
+	Make initial window geometry work.
+
+2004-11-17  Alexander Larsson  <alexl@redhat.com>
+
 	* src/nautilus-image-properties-page.c: (get_property_pages):
 	Only show for images.
 

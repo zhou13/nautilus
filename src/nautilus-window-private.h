@@ -199,7 +199,7 @@ void               nautilus_remove_from_history_list_no_notify           (const 
 GList *            nautilus_get_history_list                             (void);
 void               nautilus_window_bookmarks_preference_changed_callback (gpointer           user_data);
 void		   nautilus_window_update_icon				 (NautilusWindow    *window);
-
+void               nautilus_window_constructed                           (NautilusWindow    *window);
 
 /* Navigation window menus */
 void               nautilus_navigation_window_initialize_actions                    (NautilusNavigationWindow    *window);

@@ -937,6 +937,8 @@ create_window (NautilusApplication *application,
 						  "app_id", "nautilus",
 						  "screen", screen,
 						  NULL));
+	/* Must be called after construction finished */
+	nautilus_window_constructed (window);
 
 	g_signal_connect_data (window, "delete_event",
 			       G_CALLBACK (nautilus_window_delete_event_callback), NULL, NULL,

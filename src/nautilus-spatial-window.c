@@ -367,14 +367,15 @@ real_window_close (NautilusWindow *window)
 }
 
 static void 
-real_get_default_size(NautilusWindow *window, guint *default_width, guint *default_height)
+real_get_default_size (NautilusWindow *window,
+		       guint *default_width, guint *default_height)
 {
-   if(default_width) {
-      *default_width = NAUTILUS_SPATIAL_WINDOW_DEFAULT_WIDTH;
-   }
-   if(default_height) {
-      *default_height = NAUTILUS_SPATIAL_WINDOW_DEFAULT_HEIGHT;	
-   }
+	if (default_width) {
+		*default_width = NAUTILUS_SPATIAL_WINDOW_DEFAULT_WIDTH;
+	}
+	if (default_height) {
+		*default_height = NAUTILUS_SPATIAL_WINDOW_DEFAULT_HEIGHT;	
+	}
 }
 
 
