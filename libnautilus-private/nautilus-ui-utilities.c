@@ -24,6 +24,7 @@
 
 #include <config.h>
 #include "nautilus-ui-utilities.h"
+#include "nautilus-icon-factory.h"
 
 void
 nautilus_ui_unmerge_ui (GtkUIManager *ui_manager,
@@ -75,3 +76,111 @@ nautilus_ui_file (const char *partial_path)
 	return NULL;
 }
 
+static void
+extension_action_callback (GtkAction *action,
+			   gpointer callback_data)
+{
+	nautilus_menu_item_activate (NAUTILUS_MENU_ITEM (callback_data));
+}
+
+GtkAction *
+nautilus_action_from_menu_item (NautilusMenuItem *item)
+{
+	char *name, *label, *tip, *icon;
+	gboolean sensitive, priority;
+	GtkAction *action;
+	GdkPixbuf *pixbuf;
+	
+	g_object_get (G_OBJECT (item), 
+		      "name", &name, "label", &label, 
+		      "tip", &tip, "icon", &icon,
+		      "sensitive", &sensitive,
+		      "priority", &priority,
+		      NULL);
+	
+	action = gtk_action_new (name,
+				 label,
+				 tip,
+				 icon);
+	
+	/* TODO: This should really use themed icons, but that
+	   doesn't work here yet */
+	if (icon != NULL) {
+		pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
+			(icon,
+			 NULL,
+			 NAUTILUS_ICON_SIZE_FOR_MENUS,
+			 NULL);
+		if (pixbuf != NULL) {
+			g_object_set_data_full (G_OBJECT (action), "menu-icon",
+						pixbuf,
+						g_object_unref);
+		}
+	}
+	
+	gtk_action_set_sensitive (action, sensitive);
+	g_object_set (action, "is-important", priority, NULL);
+	
+	g_signal_connect_data (action, "activate",
+			       G_CALLBACK (extension_action_callback),
+			       g_object_ref (item), 
+			       (GClosureNotify)g_object_unref, 0);
+	
+	g_free (name);
+	g_free (label);
+	g_free (tip);
+	g_free (icon);
+	
+	return action;
+}
+
+GtkAction *
+nautilus_toolbar_action_from_menu_item (NautilusMenuItem *item)
+{
+	char *name, *label, *tip, *icon;
+	gboolean sensitive, priority;
+	GtkAction *action;
+	GdkPixbuf *pixbuf;
+	
+	g_object_get (G_OBJECT (item), 
+		      "name", &name, "label", &label, 
+		      "tip", &tip, "icon", &icon,
+		      "sensitive", &sensitive,
+		      "priority", &priority,
+		      NULL);
+	
+	action = gtk_action_new (name,
+				 label,
+				 tip,
+				 icon);
+	
+	/* TODO: This should really use themed icons, but that
+	   doesn't work here yet */
+	if (icon != NULL) {
+		pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
+			(icon,
+			 NULL,
+			 24,
+			 NULL);
+		if (pixbuf != NULL) {
+			g_object_set_data_full (G_OBJECT (action), "toolbar-icon",
+						pixbuf,
+						g_object_unref);
+		}
+	}
+	
+	gtk_action_set_sensitive (action, sensitive);
+	g_object_set (action, "is-important", priority, NULL);
+	
+	g_signal_connect_data (action, "activate",
+			       G_CALLBACK (extension_action_callback),
+			       g_object_ref (item), 
+			       (GClosureNotify)g_object_unref, 0);
+
+	g_free (name);
+	g_free (label);
+	g_free (tip);
+	g_free (icon);
+
+	return action;
+}

@@ -25,15 +25,18 @@
 #define NAUTILUS_UI_UTILITIES_H
 
 #include <gtk/gtkuimanager.h>
+#include <libnautilus-extension/nautilus-menu-item.h>
 
-char *nautilus_get_ui_directory    (void);
-char *nautilus_ui_file             (const char      *partial_path);
-void  nautilus_ui_unmerge_ui       (GtkUIManager    *ui_manager,
-				    guint           *merge_id,
-				    GtkActionGroup **action_group);
-void  nautilus_ui_prepare_merge_ui (GtkUIManager    *ui_manager,
-				    const char      *name,
-				    guint           *merge_id,
-				    GtkActionGroup **action_group);
+char *     nautilus_get_ui_directory              (void);
+char *     nautilus_ui_file                       (const char        *partial_path);
+void       nautilus_ui_unmerge_ui                 (GtkUIManager      *ui_manager,
+						   guint             *merge_id,
+						   GtkActionGroup   **action_group);
+void       nautilus_ui_prepare_merge_ui           (GtkUIManager      *ui_manager,
+						   const char        *name,
+						   guint             *merge_id,
+						   GtkActionGroup   **action_group);
+GtkAction *nautilus_action_from_menu_item         (NautilusMenuItem  *item);
+GtkAction *nautilus_toolbar_action_from_menu_item (NautilusMenuItem  *item);
 
 #endif /* NAUTILUS_UI_UTILITIES_H */

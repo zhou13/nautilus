@@ -723,21 +723,12 @@ get_extension_menus (NautilusWindow *window)
 	return items;
 }
 
-static void
-extension_action_callback (GtkAction *action,
-			   gpointer callback_data)
-{
-	nautilus_menu_item_activate (NAUTILUS_MENU_ITEM (callback_data));
-}
-
 void
 nautilus_window_load_extension_menus (NautilusWindow *window)
 {
-	char *name, *label, *tip, *icon;
-	gboolean sensitive, priority;
+	NautilusMenuItem *item;
 	GtkActionGroup *action_group;
 	GtkAction *action;
-	GdkPixbuf *pixbuf;
 	GList *items;
 	GList *l;
 	int i;
@@ -766,45 +757,9 @@ nautilus_window_load_extension_menus (NautilusWindow *window)
 	items = get_extension_menus (window);
 
 	for (l = items, i = 0; l != NULL; l = l->next, i++) {
-		NautilusMenuItem *item;
-		
 		item = NAUTILUS_MENU_ITEM (l->data);
 
-		g_object_get (G_OBJECT (item), 
-			      "name", &name, "label", &label, 
-			      "tip", &tip, "icon", &icon,
-			      "sensitive", &sensitive,
-			      "priority", &priority,
-			      NULL);
-
-		action = gtk_action_new (name,
-					 label,
-					 tip,
-					 icon);
-
-		/* TODO: This should really use themed icons, but that
-		   doesn't work here yet */
-		if (icon != NULL) {
-			pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
-				(icon,
-				 NULL,
-				 NAUTILUS_ICON_SIZE_FOR_MENUS,
-				 NULL);
-			if (pixbuf != NULL) {
-				g_object_set_data_full (G_OBJECT (action), "menu-icon",
-							pixbuf,
-							g_object_unref);
-			}
-		}
-		
-		gtk_action_set_sensitive (action, sensitive);
-		g_object_set (action, "is-important", priority, NULL);
-
-		g_signal_connect_data (action, "activate",
-				       G_CALLBACK (extension_action_callback),
-				       g_object_ref (item), 
-				       (GClosureNotify)g_object_unref, 0);
-		
+		action = nautilus_action_from_menu_item (item);
 		gtk_action_group_add_action (action_group,
 					     GTK_ACTION (action));
 		g_object_unref (action);
@@ -812,23 +767,19 @@ nautilus_window_load_extension_menus (NautilusWindow *window)
 		gtk_ui_manager_add_ui (window->details->ui_manager,
 				       merge_id,
 				       MENU_PATH_EXTENSION_ACTIONS,
-				       name,
-				       name,
+				       gtk_action_get_name (action),
+				       gtk_action_get_name (action),
 				       GTK_UI_MANAGER_MENUITEM,
 				       FALSE);
 
 		gtk_ui_manager_add_ui (window->details->ui_manager,
 				       merge_id,
 				       POPUP_PATH_EXTENSION_ACTIONS,
-				       name,
-				       name,
+				       gtk_action_get_name (action),
+				       gtk_action_get_name (action),
 				       GTK_UI_MANAGER_MENUITEM,
 				       FALSE);
 
-		g_free (name);
-		g_free (label);
-		g_free (tip);
-		g_free (icon);
 		
 		g_object_unref (item);
 	}

@@ -45,6 +45,7 @@
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-private/nautilus-bookmark.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-ui-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-theme.h>
@@ -137,25 +138,15 @@ get_extension_toolbar_items (NautilusNavigationWindow *window)
 	return items;
 }
 
-static void
-extension_action_callback (GtkAction *action,
-			   gpointer callback_data)
-{
-	nautilus_menu_item_activate (NAUTILUS_MENU_ITEM (callback_data));
-}
-
 void
 nautilus_navigation_window_load_extension_toolbar_items (NautilusNavigationWindow *window)
 {
-	char *name, *label, *tip, *icon;
-	gboolean sensitive, priority;
 	GtkActionGroup *action_group;
 	GtkAction *action;
-	GdkPixbuf *pixbuf;
 	GtkUIManager *ui_manager;
 	GList *items;
 	GList *l;
-	
+	NautilusMenuItem *item;
 	guint merge_id;
 
 	ui_manager = nautilus_window_get_ui_manager (NAUTILUS_WINDOW (window));
@@ -182,45 +173,10 @@ nautilus_navigation_window_load_extension_toolbar_items (NautilusNavigationWindo
 	items = get_extension_toolbar_items (window);
 
 	for (l = items; l != NULL; l = l->next) {
-		NautilusMenuItem *item;
-		
 		item = NAUTILUS_MENU_ITEM (l->data);
 
-		g_object_get (G_OBJECT (item), 
-			      "name", &name, "label", &label, 
-			      "tip", &tip, "icon", &icon,
-			      "sensitive", &sensitive,
-			      "priority", &priority,
-			      NULL);
+		action = nautilus_toolbar_action_from_menu_item (item);
 
-		action = gtk_action_new (name,
-					 label,
-					 tip,
-					 icon);
-
-		/* TODO: This should really use themed icons, but that
-		   doesn't work here yet */
-		if (icon != NULL) {
-			pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
-				(icon,
-				 NULL,
-				 24,
-				 NULL);
-			if (pixbuf != NULL) {
-				g_object_set_data_full (G_OBJECT (action), "toolbar-icon",
-							pixbuf,
-							g_object_unref);
-			}
-		}
-		
-		gtk_action_set_sensitive (action, sensitive);
-		g_object_set (action, "is-important", priority, NULL);
-
-		g_signal_connect_data (action, "activate",
-				       G_CALLBACK (extension_action_callback),
-				       g_object_ref (item), 
-				       (GClosureNotify)g_object_unref, 0);
-		
 		gtk_action_group_add_action (action_group,
 					     GTK_ACTION (action));
 		g_object_unref (action);
@@ -228,16 +184,11 @@ nautilus_navigation_window_load_extension_toolbar_items (NautilusNavigationWindo
 		gtk_ui_manager_add_ui (ui_manager,
 				       merge_id,
 				       TOOLBAR_PATH_EXTENSION_ACTIONS,
-				       name,
-				       name,
+				       gtk_action_get_name (action),
+				       gtk_action_get_name (action),
 				       GTK_UI_MANAGER_TOOLITEM,
 				       FALSE);
 
-		g_free (name);
-		g_free (label);
-		g_free (tip);
-		g_free (icon);
-		
 		g_object_unref (item);
 	}
 
