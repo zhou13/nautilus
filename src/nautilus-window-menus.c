@@ -539,6 +539,7 @@ connect_proxy_cb (GtkUIManager *manager,
 		  NautilusWindow *window)
 {
 	GdkPixbuf *icon;
+	GtkWidget *widget;
 	
 	if (GTK_IS_MENU_ITEM (proxy)) {
 		g_signal_connect (proxy, "select",
@@ -557,8 +558,10 @@ connect_proxy_cb (GtkUIManager *manager,
 	if (GTK_IS_TOOL_BUTTON (proxy)) {
 		icon = g_object_get_data (G_OBJECT (action), "toolbar-icon");
 		if (icon != NULL) {
+			widget = gtk_image_new_from_pixbuf (icon);
+			gtk_widget_show (widget);
 			gtk_tool_button_set_icon_widget (GTK_TOOL_BUTTON (proxy),
-							 gtk_image_new_from_pixbuf (icon));
+							 widget);
 		}
 	}
 	

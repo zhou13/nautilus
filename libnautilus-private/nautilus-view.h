@@ -27,7 +27,6 @@
 
 #include <glib-object.h>
 #include <gtk/gtkwidget.h>
-#include <bonobo/bonobo-ui-util.h>
 
 /* For NautilusZoomLevel */
 #include <libnautilus-private/nautilus-icon-factory.h>

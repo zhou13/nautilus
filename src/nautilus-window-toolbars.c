@@ -284,7 +284,7 @@ nautilus_navigation_window_load_extension_toolbar_items (NautilusNavigationWindo
 			pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
 				(icon,
 				 NULL,
-				 /*BONOBOTODO: size */48,
+				 24,
 				 NULL);
 			if (pixbuf != NULL) {
 				g_object_set_data_full (G_OBJECT (action), "toolbar-icon",

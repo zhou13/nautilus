@@ -1,5 +1,17 @@
 2004-11-16  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-view.h:
+	remove bonoboui inclide
+	
+	* src/nautilus-navigation-action.[ch]:
+	Add navigation GtkAction, based on epi code
+	
+	* src/nautilus-window-menus.c:
+	* src/nautilus-window-toolbars.c:
+	Correctly handle toolbar icons for extensions
+
+2004-11-16  Alexander Larsson  <alexl@redhat.com>
+
 	* configure.in:
 	Remove bonoboui dependencies
 	
