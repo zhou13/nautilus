@@ -108,8 +108,15 @@ enum {
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
-static void cancel_view_as_callback             (NautilusWindow *window);
+typedef struct  {
+	NautilusWindow *window;
+	char *id;
+} ActivateViewData;
+
+static void cancel_view_as_callback         (NautilusWindow          *window);
 static void nautilus_window_info_iface_init (NautilusWindowInfoIface *iface);
+static void action_view_as_callback         (GtkAction               *action,
+					     ActivateViewData        *data);
 
 static GList *history_list;
 
@@ -636,11 +643,6 @@ nautilus_window_size_request (GtkWidget		*widget,
  * Main API
  */
 
-typedef struct  {
-	NautilusWindow *window;
-	char *id;
-} ActivateViewData;
-
 static void
 free_activate_view_data (gpointer data)
 {
@@ -656,8 +658,10 @@ static void
 action_view_as_callback (GtkAction *action,
 			 ActivateViewData *data)
 {
-	nautilus_window_set_content_view (data->window, 
-					  data->id);
+	if (gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action))) {
+		nautilus_window_set_content_view (data->window, 
+						  data->id);
+	}
 }
 
 static GtkRadioAction *
@@ -826,7 +830,20 @@ nautilus_window_synch_view_as_menus (NautilusWindow *window)
 					      action_name);
 	g_free (action_name);
 
+	/* Don't trigger the action callback when we're synchronizing */
+	g_signal_handlers_block_matched (action,
+					 G_SIGNAL_MATCH_FUNC,
+					 0, 0,
+					 NULL,
+					 action_view_as_callback,
+					 NULL);
 	gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action), TRUE);
+	g_signal_handlers_unblock_matched (action,
+					   G_SIGNAL_MATCH_FUNC,
+					   0, 0,
+					   NULL,
+					   action_view_as_callback,
+					   NULL);
 }
 
 static void

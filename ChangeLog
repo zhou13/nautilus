@@ -1,3 +1,9 @@
+2004-11-22  Alexander Larsson  <alexl@redhat.com>
+
+	* src/nautilus-window.c: (action_view_as_callback),
+	(nautilus_window_synch_view_as_menus):
+	Don't reenter action callback when switching views.
+
 2004-11-19  Dave Camp  <dave@novell.com>
 
 	* src/file-manager/fm-directory-view.c: (reset_open_with_menu),
