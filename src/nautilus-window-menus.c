@@ -154,7 +154,7 @@ nautilus_menus_append_bookmark_to_menu (NautilusWindow *window,
 
 	bookmark_holder = bookmark_holder_new (bookmark, window, refresh_callback, failed_callback);
 
-	/* We double the underscores here to escape them so Bonobo will know they are
+	/* We double the underscores here to escape them so gtk+ will know they are
 	 * not keyboard accelerator character prefixes. If we ever find we need to
 	 * escape more than just the underscores, we'll add a menu helper function
 	 * instead of a string utility. (Like maybe escaping control characters.)

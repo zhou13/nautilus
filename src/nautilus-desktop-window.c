@@ -108,7 +108,6 @@ nautilus_desktop_window_new (NautilusApplication *application,
 	window = NAUTILUS_DESKTOP_WINDOW
 		(gtk_widget_new (nautilus_desktop_window_get_type(),
 				 "app", application,
-				 "app_id", "nautilus",
 				 "width_request", width_request,
 				 "height_request", height_request,
 				 "screen", screen,

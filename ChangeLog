@@ -1,5 +1,32 @@
 2004-11-19  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-mime-actions.c:
+	removed unneeded includes
+	
+	* src/nautilus-application.c:
+	* src/nautilus-desktop-window.c:
+	Removed app_id property on NautilusWindow
+	
+	* src/nautilus-main.c: (main):
+	Remove old code
+	
+	* src/nautilus-navigation-window.c:
+	* src/nautilus-sidebar-title.c:
+	* src/nautilus-window-menus.c:
+	* src/file-manager/fm-ditem-page.c:
+	Remove bonobo comments
+	
+	* src/nautilus-window.c:
+	Remove app_id property
+	fix last bonobo details
+	
+	* src/file-manager/fm-actions.h:
+	* src/file-manager/fm-directory-view.c:
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	remove edit launcher action
+
+2004-11-19  Alexander Larsson  <alexl@redhat.com>
+
 	* configure.in:
 	Require new eel
 	

@@ -934,7 +934,6 @@ create_window (NautilusApplication *application,
 	
 	window = NAUTILUS_WINDOW (gtk_widget_new (window_type,
 						  "app", application,
-						  "app_id", "nautilus",
 						  "screen", screen,
 						  NULL));
 	/* Must be called after construction finished */

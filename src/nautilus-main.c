@@ -282,10 +282,6 @@ main (int argc, char *argv[])
 	/* Initialize the services that we use. */
 	LIBXML_TEST_VERSION
 
-	if (g_getenv ("NAUTILUS_ENABLE_TEST_COMPONENTS") != NULL) {
-		bonobo_activation_set_test_components_enabled (TRUE);
-	}
-
 	/* Initialize preferences. This is needed so that proper 
 	 * defaults are available before any preference peeking 
 	 * happens.

@@ -610,7 +610,6 @@ create_view_as_menu_item (NautilusWindow *window,
 
 	info = nautilus_view_factory_lookup (identifier);
 
-	/* BONOBOTODO: nicer way for the labels */
 	menu_label = g_strdup_printf (_("View as %s"), _(info->label));
 	menu_item = gtk_menu_item_new_with_mnemonic (menu_label);
 	g_free (menu_label);
@@ -641,9 +640,6 @@ load_view_as_menu (NautilusWindow *window)
         for (node = window->details->short_list_viewers, index = 0; 
              node != NULL; 
              node = node->next, ++index) {
-        	/* Menu item in option menu. This doesn't use Bonobo, for various
-        	 * historical and technical reasons.
-        	 */
                 menu_item = create_view_as_menu_item (window, node->data, index);
                 gtk_menu_shell_append (GTK_MENU_SHELL (new_menu), menu_item);
 

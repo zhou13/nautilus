@@ -311,11 +311,12 @@ nautilus_sidebar_title_theme_changed (gpointer user_data)
 	}
 }
 
-/* get a property from the current content view's property bag if we can */
 static char*
 get_property_from_component (NautilusSidebarTitle *sidebar_title, const char *property)
 {
-	/* BONOBOTODO: way to get icon and summary_text from main view */
+	/* There used to be a way to get icon and summary_text from main view,
+	 *  but its not used right now, so this sas stubbed out for now
+	 */
 	return NULL;
 }
 

@@ -98,7 +98,6 @@
 
 enum {
 	ARG_0,
-	ARG_APP_ID,
 	ARG_APP
 };
 
@@ -215,12 +214,6 @@ nautilus_window_init (NautilusWindow *window)
 	nautilus_main_event_loop_register (GTK_OBJECT (window));
 
 	nautilus_window_allow_stop (window, FALSE);
-
-#ifdef BONOBO_DONE
-	/* BONOBOTODO: this crashes, because ->application is not set in initializer */
-	/* Set up undo manager */
-	nautilus_undo_manager_attach (window->application->undo_manager, G_OBJECT (window));
-#endif
 }
 
 /* Unconditionally synchronize the GtkUIManager of WINDOW. */
@@ -488,6 +481,7 @@ void
 nautilus_window_constructed (NautilusWindow *window)
 {
 	nautilus_window_set_initial_window_geometry (window);
+	nautilus_undo_manager_attach (window->application->undo_manager, G_OBJECT (window));
 }
 
 static void
@@ -501,12 +495,6 @@ nautilus_window_set_property (GObject *object,
 	window = NAUTILUS_WINDOW (object);
 	
 	switch (arg_id) {
-	case ARG_APP_ID:
-		if (g_value_get_string (value) == NULL) {
-			return;
-		}
-		/* BONOBOTODO: WTF? */
-		break;
 	case ARG_APP:
 		window->application = NAUTILUS_APPLICATION (g_value_get_object (value));
 		break;
@@ -520,11 +508,6 @@ nautilus_window_get_property (GObject *object,
 			      GParamSpec *pspec)
 {
 	switch (arg_id) {
-	case ARG_APP_ID:
-		/* BONOBOTODO: WTF? */
-		g_value_set_static_string (value,
-					   "none");
-		break;
 	case ARG_APP:
 		g_value_set_object (value, NAUTILUS_WINDOW (object)->application);
 		break;
@@ -693,9 +676,7 @@ add_view_as_menu_item (NautilusWindow *window,
 
 	info = nautilus_view_factory_lookup (identifier);
 
-	/* BONOBOTODO: nicer way for labels */
 	label = g_strdup_printf (_("View as %s"), _(info->label_with_mnemonic));
-	/* BONOBOTODO: nicer way for labels */
 	tip = g_strdup_printf (_("Display this location with \"%s\""),
 			       _(info->label));
 	
@@ -1152,13 +1133,6 @@ real_set_content_view_widget (NautilusWindow *window,
 	if (new_view != NULL) {
 		widget = nautilus_view_get_widget (new_view);
 		gtk_widget_show (widget);
-
-		/* When creating the desktop window the UI needs to
-		 * be in sync. Otherwise I get failed assertions in
-		 * bonobo while trying to reference something called
-		 * `/commands/Unmount Volume Conditional'
-		 */
-		nautilus_window_ui_update (window);
 	}
 
 	window->content_view = new_view;
@@ -1484,13 +1458,6 @@ nautilus_window_class_init (NautilusWindowClass *class)
 	class->set_content_view_widget = real_set_content_view_widget;
 	class->load_view_as_menu = real_load_view_as_menu;
 
-	g_object_class_install_property (G_OBJECT_CLASS (class),
-					 ARG_APP_ID,
-					 g_param_spec_string ("app_id",
-							      _("Application ID"),
-							      _("The application ID of the window."),
-							      NULL,
-							      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 	g_object_class_install_property (G_OBJECT_CLASS (class),
 					 ARG_APP,
 					 g_param_spec_object ("app",

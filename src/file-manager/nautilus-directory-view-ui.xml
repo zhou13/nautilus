@@ -27,8 +27,6 @@
 			<placeholder name="OtherApplicationPlaceholder">
 				<menuitem name="OtherApplication" action="OtherApplication2"/>
 			</placeholder>
-			<menuitem name="Edit Launcher"
-				  action="Edit Launcher"/>
 			<menu action="Scripts">
 				 <placeholder name="Scripts Placeholder"/>
 				 <separator name="After Scripts"/>
@@ -114,7 +112,6 @@
 		<placeholder name="OtherApplicationPlaceholder">
 		        <menuitem name="OtherApplication2" action="OtherApplication2"/>
 		</placeholder>
-		<menuitem name="Edit Launcher" action="Edit Launcher"/>
 		<menu action="Scripts">
 			 <placeholder name="Scripts Placeholder"/>
 			 <separator name="After Scripts"/>

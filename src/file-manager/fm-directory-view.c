@@ -760,43 +760,6 @@ action_other_application_callback (GtkAction *action,
 }
 
 static void
-edit_launcher (FMDirectoryView *view,
-	       NautilusFile    *file)
-{
-	char *uri;
-
-	uri = nautilus_file_get_uri (file);
-
-	nautilus_launch_application_from_command (gtk_widget_get_screen (GTK_WIDGET (view)),
-						  "gnome-desktop-item-edit", 
-						  "gnome-desktop-item-edit",
-						  uri, 
-						  FALSE);
-	g_free (uri);
-}
-
-  /* BONOBOTODO: do we use this anymore? */
-static void
-action_edit_launcher_callback (GtkAction *action,
-			       gpointer callback_data)
-{
-	GList *selection;
-	FMDirectoryView *view;
-
-	g_assert (FM_IS_DIRECTORY_VIEW (callback_data));
-
-	view = FM_DIRECTORY_VIEW (callback_data);
-
-       	selection = fm_directory_view_get_selection (view);
-
-	if (selection_contains_one_item_in_menu_callback (view, selection)) {
-		edit_launcher (view, NAUTILUS_FILE (selection->data));
-	}
-
-	nautilus_file_list_free (selection);
-}
-
-static void
 trash_or_delete_selected_files (FMDirectoryView *view)
 {
         GList *selection;
@@ -2019,7 +1982,6 @@ done_loading (FMDirectoryView *view)
 
 	/* This can be called during destruction, in which case there
 	 * is no NautilusWindowInfo any more.
-	 * BONOBOTODO: is this comment true now?
 	 */
 	if (view->details->window != NULL) {
 		nautilus_window_info_report_load_complete (view->details->window, NAUTILUS_VIEW (view));
@@ -5096,7 +5058,6 @@ create_popup_menu (FMDirectoryView *view, const char *popup_path)
 			     gtk_widget_get_screen (GTK_WIDGET (view)));
 	gtk_widget_show (GTK_WIDGET (menu));
 
-	/* BONOBOTODO: This is likely still needed, but perhaps not? */
 	g_signal_connect_object (menu, "hide",
 				 G_CALLBACK (popup_menu_hidden), G_OBJECT (view), G_CONNECT_SWAPPED);
 	
@@ -5762,10 +5723,6 @@ static GtkActionEntry directory_view_entries[] = {
     N_("Open with Other _Application..."), NULL,                /* label, accelerator */
     N_("Choose another application with which to open the selected item"),                   /* tooltip */ 
     G_CALLBACK (action_other_application_callback) },
-  { "Edit Launcher", NULL,                  /* name, stock id */
-    N_("Edit Launcher"), NULL,                /* label, accelerator */
-    N_("Edit the launcher information"),                   /* tooltip */ 
-    G_CALLBACK (action_edit_launcher_callback) },
   { "Open Scripts Folder", NULL,                  /* name, stock id */
     N_("_Open Scripts Folder"), NULL,                /* label, accelerator */
     N_("Show the folder containing the scripts that appear in this menu"),                   /* tooltip */ 
@@ -6347,11 +6304,6 @@ real_update_menus (FMDirectoryView *view)
 					      FM_ACTION_NEW_LAUNCHER);
 	gtk_action_set_visible (action, vfolder_directory);
 	gtk_action_set_sensitive (action, can_create_files);
-
-	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_EDIT_LAUNCHER);
-	gtk_action_set_visible (action, vfolder_directory);
-	gtk_action_set_sensitive (action, selection_count == 1);
 
 	real_update_menus_volumes (view, selection, selection_count);
 
@@ -7766,7 +7718,6 @@ fm_directory_view_set_property (GObject         *object,
   switch (prop_id)  {
   case PROP_WINDOW:
 	  g_assert (directory_view->details->window == NULL);
-	  /* BONOBOTODO: does this ref? check out lifecycle here */
 	  fm_directory_view_set_parent_window (directory_view, NAUTILUS_WINDOW_INFO (g_value_get_object (value)));
 		  
       break;

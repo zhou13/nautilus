@@ -39,7 +39,6 @@
 #define FM_ACTION_PASTE "Paste"
 #define FM_ACTION_PASTE_FILES_INTO "Paste Files Into"
 #define FM_ACTION_NEW_LAUNCHER "New Launcher"
-#define FM_ACTION_EDIT_LAUNCHER "Edit Launcher"
 #define FM_ACTION_RENAME "Rename"
 #define FM_ACTION_DUPLICATE "Duplicate"
 #define FM_ACTION_CREATE_LINK "Create Link"
