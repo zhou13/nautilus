@@ -39,13 +39,12 @@
 #include <libgnome/gnome-i18n.h>
 #include <libgnome/gnome-macros.h>
 #include <libgnome/gnome-util.h>
-#include <libgnomeui/gnome-icon-theme.h>
+#include <gtk/gtkicontheme.h>
 
 #define THROBBER_DEFAULT_TIMEOUT 100	/* Milliseconds Per Frame */
 
 struct NautilusThrobberDetails {
 	GList	*image_list;
-	GnomeIconTheme *icon_theme;
 
 	GdkPixbuf *quiescent_pixbuf;
 	
@@ -61,7 +60,7 @@ struct NautilusThrobberDetails {
 
 static void nautilus_throbber_load_images            (NautilusThrobber *throbber);
 static void nautilus_throbber_unload_images          (NautilusThrobber *throbber);
-static void nautilus_throbber_theme_changed          (GnomeIconTheme   *icon_theme,
+static void nautilus_throbber_theme_changed          (GtkIconTheme   *icon_theme,
 						      NautilusThrobber *throbber);
 static void nautilus_throbber_remove_update_callback (NautilusThrobber *throbber);
 static AtkObject *nautilus_throbber_get_accessible   (GtkWidget *widget);
@@ -133,8 +132,7 @@ nautilus_throbber_instance_init (NautilusThrobber *throbber)
 	
 	throbber->details->delay = THROBBER_DEFAULT_TIMEOUT;
 	
-	throbber->details->icon_theme = gnome_icon_theme_new ();
-	g_signal_connect (throbber->details->icon_theme,
+	g_signal_connect (gtk_icon_theme_get_default (),
 			  "changed",
 			  G_CALLBACK (nautilus_throbber_theme_changed),
 			  throbber);
@@ -146,7 +144,7 @@ nautilus_throbber_instance_init (NautilusThrobber *throbber)
 
 /* handler for handling theme changes */
 static void
-nautilus_throbber_theme_changed (GnomeIconTheme *icon_theme, NautilusThrobber *throbber)
+nautilus_throbber_theme_changed (GtkIconTheme *icon_theme, NautilusThrobber *throbber)
 {
 	gtk_widget_hide (GTK_WIDGET (throbber));
 	nautilus_throbber_load_images (throbber);
@@ -376,21 +374,32 @@ static void
 nautilus_throbber_load_images (NautilusThrobber *throbber)
 {
 	int grid_width, grid_height, x, y, size;
-	char *icon;
+	GtkIconInfo *icon_info;
+	const char *icon;
 	GdkPixbuf *icon_pixbuf, *pixbuf;
 	GList *image_list;
 
 	nautilus_throbber_unload_images (throbber);
 
 	/* Load the animation */
-	icon = gnome_icon_theme_lookup_icon (throbber->details->icon_theme,
-					     "gnome-spinner", -1, NULL, &size);
-	if (icon == NULL) {
+	icon_info = gtk_icon_theme_lookup_icon (gtk_icon_theme_get_default (),
+						"gnome-spinner", -1, 0);
+	if (icon_info == NULL) {
 		g_warning ("Throbber animation not found");
 		return;
 	}
 
+	size = gtk_icon_info_get_base_size (icon_info);
+	icon = gtk_icon_info_get_filename (icon_info);
+	g_return_if_fail (icon != NULL);
+	
 	icon_pixbuf = gdk_pixbuf_new_from_file (icon, NULL);
+	if (icon_pixbuf == NULL) {
+		g_warning ("Could not load the spinner file\n");
+		gtk_icon_info_free (icon_info);
+		return;
+	}
+	
 	grid_width = gdk_pixbuf_get_width (icon_pixbuf);
 	grid_height = gdk_pixbuf_get_height (icon_pixbuf);
 
@@ -399,12 +408,9 @@ nautilus_throbber_load_images (NautilusThrobber *throbber)
 		for (x = 0; x < grid_width ; x += size) {
 			pixbuf = extract_frame (throbber, icon_pixbuf, x, y, size);
 
-			if (pixbuf)
-			{
+			if (pixbuf) {
 				image_list = g_list_prepend (image_list, pixbuf);
-			}
-			else
-			{
+			} else {
 				g_warning ("Cannot extract frame from the grid");
 			}
 		}
@@ -412,22 +418,26 @@ nautilus_throbber_load_images (NautilusThrobber *throbber)
 	throbber->details->image_list = g_list_reverse (image_list);
 	throbber->details->max_frame = g_list_length (throbber->details->image_list);
 
-	g_free (icon);
+	gtk_icon_info_free (icon_info);
 	g_object_unref (icon_pixbuf);
 
 	/* Load the rest icon */
-	icon = gnome_icon_theme_lookup_icon (throbber->details->icon_theme,
-					     "gnome-spinner-rest", -1, NULL, &size);
-	if (icon == NULL) {
-		g_warning ("Throbber rest icon not found");
+	icon_info = gtk_icon_theme_lookup_icon (gtk_icon_theme_get_default (),
+						"gnome-spinner-rest", -1, 0);
+	if (icon_info == NULL) {
+		g_warning ("Throbber rest icon not found\n");
 		return;
 	}
+
+	size = gtk_icon_info_get_base_size (icon_info);
+	icon = gtk_icon_info_get_filename (icon_info);
+	g_return_if_fail (icon != NULL);
 
 	icon_pixbuf = gdk_pixbuf_new_from_file (icon, NULL);
 	throbber->details->quiescent_pixbuf = scale_to_real_size (throbber, icon_pixbuf);
 
 	g_object_unref (icon_pixbuf);
-	g_free (icon);
+	gtk_icon_info_free (icon_info);
 }
 
 void
@@ -466,8 +476,6 @@ nautilus_throbber_finalize (GObject *object)
 	nautilus_throbber_remove_update_callback (throbber);
 	nautilus_throbber_unload_images (throbber);
 	
-	g_object_unref (throbber->details->icon_theme);
-
 	g_free (throbber->details);
 
 	G_OBJECT_CLASS (parent_class)->finalize (object);

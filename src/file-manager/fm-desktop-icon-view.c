@@ -679,7 +679,7 @@ real_merge_menus (FMDirectoryView *view)
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
 	GtkAction *action;
-	char *file;
+	const char *ui;
 
 	EEL_CALL_PARENT (FM_DIRECTORY_VIEW_CLASS, merge_menus, (view));
 
@@ -697,10 +697,9 @@ real_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	file = nautilus_ui_file ("nautilus-desktop-icon-view-ui.xml");
+	ui = nautilus_ui_string_get ("nautilus-desktop-icon-view-ui.xml");
 	desktop_view->details->desktop_merge_id =
-		gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
-	g_free (file);
+		gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
 
 	/* We hide the reset background item on the desktop */
 	action = gtk_ui_manager_get_action (ui_manager,

@@ -1455,7 +1455,7 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
 	GtkAction *action;
-	char *file;
+	const char *ui;
 	
         g_assert (FM_IS_ICON_VIEW (view));
 
@@ -1484,10 +1484,9 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	file = nautilus_ui_file ("nautilus-icon-view-ui.xml");
+	ui = nautilus_ui_string_get ("nautilus-icon-view-ui.xml");
 	icon_view->details->icon_merge_id =
-		gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
-	g_free (file);
+		gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
 
 	/* Do one-time state-setting here; context-dependent state-setting
 	 * is done in update_menus.

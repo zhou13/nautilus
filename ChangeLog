@@ -1,3 +1,37 @@
+2004-11-19  Alexander Larsson  <alexl@redhat.com>
+
+	* libnautilus-private/nautilus-file.c: (is_desktop_file),
+	(nautilus_file_is_nautilus_link):
+	Don't check for "application/x-gnome-app-info", as that is already
+	handled by the alias system. This also avoids stating for a
+	mimetype xml file.
+	
+	* src/nautilus-throbber.c:
+	Don't create a new icon theme for each throbber.
+	Use GtkIconTheme instead of GnomeIconTheme
+	
+	* libnautilus-private/nautilus-ui-utilities.[ch]:
+	New function nautilus_ui_string_get to cache the loaded ui files.
+	
+	* src/nautilus-navigation-window.c:
+	Remove old bonoboui stuff
+	
+	* src/nautilus-navigation-window-menus.c:
+	Open New window is Ctrl-N.
+	Use the new nautilus_ui_string_get call
+	
+	* src/nautilus-spatial-window.c:
+	* src/nautilus-window-menus.c: 
+	* src/file-manager/fm-desktop-icon-view.c:
+	* src/file-manager/fm-directory-view.c:
+	* src/file-manager/fm-icon-view.c:
+	* src/file-manager/fm-list-view.c:
+	Use the new nautilus_ui_string_get call
+	
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/file-manager/nautilus-icon-view-ui.xml:
+	Name separators to work around bug #158620
+	
 2004-11-18  Alexander Larsson  <alexl@redhat.com>
 
 	* src/file-manager/fm-actions.h:

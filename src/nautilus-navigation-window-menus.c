@@ -536,7 +536,7 @@ static GtkActionEntry navigation_entries[] = {
   { "Go", NULL, N_("_Go") },               /* name, stock id, label */
   { "Bookmarks", NULL, N_("_Bookmarks") },               /* name, stock id, label */
   { "New Window", NULL, N_("Open New _Window"),               /* name, stock id, label */
-    "<control>L", N_("Open another Nautilus window for the displayed location"),
+    "<control>N", N_("Open another Nautilus window for the displayed location"),
     G_CALLBACK (action_new_window_callback) },
   { "Close All Windows", NULL, N_("Close _All Windows"),               /* name, stock id, label */
     "<control><shift>W", N_("Close all Navigation windows"),
@@ -639,18 +639,12 @@ void
 nautilus_navigation_window_initialize_menus (NautilusNavigationWindow *window)
 {
 	GtkUIManager *ui_manager;
-	GError *error;
-	char *file;
+	const char *ui;
 	
 	ui_manager = nautilus_window_get_ui_manager (NAUTILUS_WINDOW (window));
 
-	error = NULL;
-	file = nautilus_ui_file ("nautilus-navigation-window-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
-	g_free (file);
+	ui = nautilus_ui_string_get ("nautilus-navigation-window-ui.xml");
+	gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
 
 	nautilus_navigation_window_update_show_hide_menu_items (window);
 

@@ -5855,7 +5855,7 @@ real_merge_menus (FMDirectoryView *view)
 	GtkActionGroup *action_group;
 	GtkUIManager *ui_manager;
 	GtkAction *action;
-	char *file;
+	const char *ui;
 
 	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
 
@@ -5876,14 +5876,11 @@ real_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, -1);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	file = nautilus_ui_file ("nautilus-directory-view-ui.xml");
-	view->details->dir_merge_id = gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
-	g_free (file);
-
+	ui = nautilus_ui_string_get ("nautilus-directory-view-ui.xml");
+	view->details->dir_merge_id = gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
 	g_signal_connect_object (fm_directory_view_get_background (view), "settings_changed",
 				 G_CALLBACK (schedule_update_menus), G_OBJECT (view),
 				 G_CONNECT_SWAPPED);
-
 	
 	view->details->scripts_invalid = TRUE;
 	view->details->templates_invalid = TRUE;

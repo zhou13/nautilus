@@ -1633,7 +1633,7 @@ fm_list_view_merge_menus (FMDirectoryView *view)
 	FMListView *list_view;
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
-	char *file;
+	const char *ui;
 
 	EEL_CALL_PARENT (FM_DIRECTORY_VIEW_CLASS, merge_menus, (view));
 
@@ -1651,9 +1651,8 @@ fm_list_view_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	file = nautilus_ui_file ("nautilus-list-view-ui.xml");
-	list_view->details->list_merge_id = gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
-	g_free (file);
+	ui = nautilus_ui_string_get ("nautilus-list-view-ui.xml");
+	list_view->details->list_merge_id = gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
 
 	list_view->details->menus_ready = TRUE;
 }

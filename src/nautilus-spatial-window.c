@@ -631,8 +631,7 @@ nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
 	GtkWidget *hbox;
 	GtkActionGroup *action_group;
 	GtkUIManager *ui_manager;
-	GError *error;
-	char *file;
+	const char *ui;
 
 	window->details = g_new0 (NautilusSpatialWindowDetails, 1);
 	window->affect_spatial_window_on_next_location_change = TRUE;
@@ -695,13 +694,9 @@ nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 	
-	error = NULL;
-	file = nautilus_ui_file ("nautilus-spatial-window-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
-	g_free (file);
+	ui = nautilus_ui_string_get ("nautilus-spatial-window-ui.xml");
+	gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
+	
 	return;
 }
 

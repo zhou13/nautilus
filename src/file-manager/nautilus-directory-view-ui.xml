@@ -24,7 +24,7 @@
                         </placeholder>
 			<menu action="Open With">
 				<placeholder name="Applications Placeholder"/>
-				<separator/>
+				<separator name="Open With Separator"/>
 				<menuitem name="OtherApplication" action="OtherApplication1"/>
 			</menu>
 			<placeholder name="OtherApplicationPlaceholder">
@@ -90,9 +90,9 @@
 			 	<menuitem name="Open Scripts Folder" action="Open Scripts Folder"/>
 			</menu>
 		</placeholder>
-		<separator/>
+		<separator name="View items separator"/>
 		<placeholder name="View Items"/>
-		<separator/>
+		<separator name="Clipboard separator"/>
 		<placeholder name="File Clipboard Actions">
 			<menuitem name="Paste" action="Paste"/>
 		</placeholder>
@@ -107,11 +107,11 @@
 	<placeholder name="Open Placeholder">
 		<menuitem name="Open" action="Open"/>
 		<menuitem name="OpenAlternate" action="OpenAlternate"/>
-		<separator/>
+		<separator name="applications separator"/>
 		<placeholder name="Applications Placeholder"/>
 		<menu action="Open With">
 			<placeholder name="Applications Placeholder"/>
-			<separator/>
+			<separator name="open with separator"/>
 			<menuitem name="OtherApplication" action="OtherApplication1"/>
 		</menu>
 		<placeholder name="OtherApplicationPlaceholder">
@@ -124,30 +124,30 @@
 			 <menuitem name="Open Scripts Folder" action="Open Scripts Folder"/>
 		</menu>
 	</placeholder>
-	<separator/>
+	<separator name="Clipboard separator"/>
 	<placeholder name="File Clipboard Actions">
 		<menuitem name="Cut" action="Cut"/>
 		<menuitem name="Copy" action="Copy"/>
 		<menuitem name="Paste Files Into" action="Paste Files Into"/>
 	</placeholder>
-	<separator/>
+	<separator name="File actions separator"/>
 	<placeholder name="File Actions">
 		<menuitem name="Create Link" action="Create Link"/>
 		<menuitem name="Rename" action="Rename"/>
 	</placeholder>
-	<separator/>
+	<separator name="Dangerous separator"/>
 	<placeholder name="Dangerous File Actions">
 		<menuitem name="Trash" action="Trash"/>
 		<menuitem name="Delete" action="Delete"/>
 	</placeholder>
-	<separator/>
+	<separator name="Appearande separator"/>
 	<placeholder name="Icon Appearance Items">
 	</placeholder>
-	<separator/>
+	<separator name="Extension actions separator"/>
 	<placeholder name="Extension Actions"/>
-        <separator/>
+        <separator name="Properties separator"/>
         <menuitem name="Properties" action="Properties"/>
-	<separator/>
+	<separator name="Removable separator"/>
         <placeholder name="Removabel Media Holder">
 		<menuitem name="Mount Volume" action="Mount Volume"/>
                 <menuitem name="Unmount Volume" action="Unmount Volume"/>

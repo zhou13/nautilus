@@ -381,12 +381,6 @@ nautilus_navigation_window_unrealize (GtkWidget *widget)
 	NautilusNavigationWindow *window;
 	
 	window = NAUTILUS_NAVIGATION_WINDOW (widget);
-#ifdef BONOBO_DONE
-	if (window->details->throbber_property_bag != CORBA_OBJECT_NIL) {
-		bonobo_object_release_unref (window->details->throbber_property_bag, NULL);
-		window->details->throbber_property_bag = CORBA_OBJECT_NIL;
-	}
-#endif
 
 	GTK_WIDGET_CLASS (parent_class)->unrealize (widget);
 }

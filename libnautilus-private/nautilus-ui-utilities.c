@@ -26,6 +26,8 @@
 #include "nautilus-ui-utilities.h"
 #include "nautilus-icon-factory.h"
 
+#include <eel/eel-debug.h>
+
 void
 nautilus_ui_unmerge_ui (GtkUIManager *ui_manager,
 			guint *merge_id,
@@ -74,6 +76,33 @@ nautilus_ui_file (const char *partial_path)
 	}
 	g_free (path);
 	return NULL;
+}
+
+const char *
+nautilus_ui_string_get (const char *filename)
+{
+	static GHashTable *ui_cache = NULL;
+	char *ui;
+	char *path;
+
+	if (ui_cache == NULL) {
+		ui_cache = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+		eel_debug_call_at_shutdown_with_data ((GFreeFunc)g_hash_table_destroy, ui_cache);
+	}
+
+	ui = g_hash_table_lookup (ui_cache, filename);
+	if (ui == NULL) {
+		path = nautilus_ui_file (filename);
+		if (!g_file_get_contents (path, &ui, NULL, NULL)) {
+			g_warning ("Unable to load ui file %s\n", filename); 
+		} 
+		g_free (path);
+		g_hash_table_insert (ui_cache,
+				     g_strdup (filename),
+				     ui);
+	}
+	
+	return ui;
 }
 
 static void

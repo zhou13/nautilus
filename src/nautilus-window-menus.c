@@ -660,8 +660,7 @@ nautilus_window_initialize_menus (NautilusWindow *window)
 	GtkActionGroup *action_group;
 	GtkUIManager *ui_manager;
 	GtkAction *action;
-	char *file;
-	GError *error;
+	const char *ui;
 	
 	action_group = gtk_action_group_new ("ShellActions");
 	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
@@ -686,13 +685,8 @@ nautilus_window_initialize_menus (NautilusWindow *window)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	error = NULL;
-	file = nautilus_ui_file ("nautilus-shell-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
-	g_free (file);
+	ui = nautilus_ui_string_get ("nautilus-shell-ui.xml");
+	gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
 
 	if (!have_burn_uri ()) {
 		action = gtk_action_group_get_action (action_group, NAUTILUS_ACTION_GO_TO_BURN_CD);
