@@ -678,6 +678,7 @@ real_merge_menus (FMDirectoryView *view)
 	FMDesktopIconView *desktop_view;
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
+	GtkAction *action;
 	GError *error;
 	char *file;
 
@@ -704,6 +705,13 @@ real_merge_menus (FMDirectoryView *view)
 		g_error_free (error);
 	}
 	g_free (file);
+
+
+	/* We hide the reset background item on the desktop */
+	action = gtk_ui_manager_get_action (ui_manager,
+					    "/background/After Zoom Items/Background Items/Use Default Background");
+	gtk_action_set_visible (action,
+				FALSE);
 }
 
 static gboolean

@@ -1,5 +1,10 @@
 2004-11-17  Alexander Larsson  <alexl@redhat.com>
 
+	* src/file-manager/fm-desktop-icon-view.c: (real_merge_menus):
+	Don't have use default background on desktop context menu.
+
+2004-11-17  Alexander Larsson  <alexl@redhat.com>
+
 	* Makefile.am:
 	Remove libnautilus-adapter subdir
 	
