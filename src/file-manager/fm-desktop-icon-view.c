@@ -51,6 +51,7 @@
 #include <libnautilus-private/nautilus-file-changes-queue.h>
 #include <libnautilus-private/nautilus-file-operations.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-ui-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-view-factory.h>
 #include <libnautilus-private/nautilus-link.h>
@@ -74,7 +75,8 @@ struct FMDesktopIconViewDetails
 {
 	GdkWindow *root_window;
 	GtkActionGroup *desktop_action_group;
-
+	guint desktop_merge_id;
+	
 	/* For the desktop rescanning
 	 */
 	gulong delayed_init_signal;
@@ -221,6 +223,7 @@ static void
 fm_desktop_icon_view_destroy (GtkObject *object)
 {
 	FMDesktopIconView *icon_view;
+	GtkUIManager *ui_manager;
 
 	icon_view = FM_DESKTOP_ICON_VIEW (object);
 
@@ -234,6 +237,12 @@ fm_desktop_icon_view_destroy (GtkObject *object)
 					 default_zoom_level_changed,
 					 icon_view);
 	
+	ui_manager = fm_directory_view_get_ui_manager (FM_DIRECTORY_VIEW (icon_view));
+	if (ui_manager != NULL) {
+		nautilus_ui_unmerge_ui (ui_manager,
+					&icon_view->details->desktop_merge_id,
+					&icon_view->details->desktop_action_group);
+	}
 
 	GTK_OBJECT_CLASS (parent_class)->destroy (object);
 }
@@ -670,7 +679,6 @@ real_merge_menus (FMDirectoryView *view)
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
 	GtkAction *action;
-	GError *error;
 	char *file;
 
 	EEL_CALL_PARENT (FM_DIRECTORY_VIEW_CLASS, merge_menus, (view));
@@ -689,14 +697,10 @@ real_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	error = NULL;
 	file = nautilus_ui_file ("nautilus-desktop-icon-view-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
+	desktop_view->details->desktop_merge_id =
+		gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
 	g_free (file);
-
 
 	/* We hide the reset background item on the desktop */
 	action = gtk_ui_manager_get_action (ui_manager,

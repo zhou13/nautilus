@@ -66,10 +66,6 @@ char *   nautilus_pixmap_file                        (const char *partial_path);
 /* Locate a file in either the uers directory or the datadir. */
 char *   nautilus_get_data_file_path                 (const char *partial_path);
 
-
-char *nautilus_get_ui_directory (void);
-char *nautilus_ui_file          (const char *partial_path);
-
 /* Return an allocated file name that is guranteed to be unique. */
 char *   nautilus_unique_temporary_file_name         (void);
 char *   nautilus_find_file_in_gnome_path            (char       *file);

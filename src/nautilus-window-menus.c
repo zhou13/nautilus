@@ -59,6 +59,7 @@
 #include <libgnomevfs/gnome-vfs-ops.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-ui-utilities.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-undo-manager.h>

@@ -57,6 +57,7 @@
 #include <libnautilus-private/nautilus-dnd.h>
 #include <libnautilus-private/nautilus-file-dnd.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-ui-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
@@ -79,6 +80,7 @@ struct FMListViewDetails {
 	GtkTreeView *tree_view;
 	FMListModel *model;
 	GtkActionGroup *list_action_group;
+	guint list_merge_id;
 
 	GtkTreeViewColumn   *file_name_column;
 	int file_name_column_num;
@@ -1631,7 +1633,6 @@ fm_list_view_merge_menus (FMDirectoryView *view)
 	FMListView *list_view;
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
-	GError *error;
 	char *file;
 
 	EEL_CALL_PARENT (FM_DIRECTORY_VIEW_CLASS, merge_menus, (view));
@@ -1650,12 +1651,8 @@ fm_list_view_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	error = NULL;
 	file = nautilus_ui_file ("nautilus-list-view-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
+	list_view->details->list_merge_id = gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
 	g_free (file);
 
 	list_view->details->menus_ready = TRUE;
@@ -2003,6 +2000,7 @@ static void
 fm_list_view_dispose (GObject *object)
 {
 	FMListView *list_view;
+	GtkUIManager *ui_manager;
 
 	list_view = FM_LIST_VIEW (object);
 
@@ -2014,6 +2012,13 @@ fm_list_view_dispose (GObject *object)
 	if (list_view->details->drag_dest) {
 		g_object_unref (list_view->details->drag_dest);
 		list_view->details->drag_dest = NULL;
+	}
+
+	ui_manager = fm_directory_view_get_ui_manager (FM_DIRECTORY_VIEW (list_view));
+	if (ui_manager != NULL) {
+		nautilus_ui_unmerge_ui (ui_manager,
+					&list_view->details->list_merge_id,
+					&list_view->details->list_action_group);
 	}
 
 	G_OBJECT_CLASS (parent_class)->dispose (object);

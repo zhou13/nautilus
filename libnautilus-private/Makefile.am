@@ -48,9 +48,9 @@ libnautilus_private_la_SOURCES = \
 	nautilus-audio-player.h \
 	nautilus-bookmark.c \
 	nautilus-bookmark.h \
+	nautilus-cdrom-extensions.h \
 	nautilus-cell-renderer-pixbuf-emblem.c \
 	nautilus-cell-renderer-pixbuf-emblem.h \
-	nautilus-cdrom-extensions.h \
 	nautilus-clipboard-monitor.c \
 	nautilus-clipboard-monitor.h \
 	nautilus-clipboard.c \
@@ -63,16 +63,16 @@ libnautilus_private_la_SOURCES = \
 	nautilus-customization-data.h \
 	nautilus-default-file-icon.c \
 	nautilus-default-file-icon.h \
-	nautilus-desktop-directory.c \
-	nautilus-desktop-directory.h \
 	nautilus-desktop-directory-file.c \
 	nautilus-desktop-directory-file.h \
+	nautilus-desktop-directory.c \
+	nautilus-desktop-directory.h \
 	nautilus-desktop-icon-file.c \
 	nautilus-desktop-icon-file.h \
-	nautilus-desktop-link.c \
-	nautilus-desktop-link.h \
 	nautilus-desktop-link-monitor.c \
 	nautilus-desktop-link-monitor.h \
+	nautilus-desktop-link.c \
+	nautilus-desktop-link.h \
 	nautilus-directory-async.c \
 	nautilus-directory-background.c \
 	nautilus-directory-background.h \
@@ -95,9 +95,9 @@ libnautilus_private_la_SOURCES = \
 	nautilus-file-changes-queue.h \
 	nautilus-file-dnd.c \
 	nautilus-file-dnd.h \
+	nautilus-file-operations-progress-icons.h \
 	nautilus-file-operations-progress.c \
 	nautilus-file-operations-progress.h \
-	nautilus-file-operations-progress-icons.h \
 	nautilus-file-operations.c \
 	nautilus-file-operations.h \
 	nautilus-file-private.h \
@@ -151,8 +151,8 @@ libnautilus_private_la_SOURCES = \
 	nautilus-monitor.h \
 	nautilus-program-choosing.c \
 	nautilus-program-choosing.h \
-	nautilus-recent.h \
 	nautilus-recent.c \
+	nautilus-recent.h \
 	nautilus-sidebar-provider.c \
 	nautilus-sidebar-provider.h \
 	nautilus-sidebar.c \
@@ -171,6 +171,8 @@ libnautilus_private_la_SOURCES = \
 	nautilus-trash-monitor.h \
 	nautilus-tree-view-drag-dest.c \
 	nautilus-tree-view-drag-dest.h \
+	nautilus-ui-utilities.c \
+	nautilus-ui-utilities.h \
 	nautilus-undo-manager.c \
 	nautilus-undo-manager.h \
 	nautilus-undo-private.h \

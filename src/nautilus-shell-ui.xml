@@ -32,12 +32,6 @@
 
 	<menu action="Edit">
 		<placeholder name="Clipboard Actions">
-<!-- BONOBOTODO: These should be in the dir-view? or are they text related?
-			<menuitem name="Cut" action="Cut"/>
-			<menuitem name="Copy" action ="Copy"/>
-			<menuitem name="Paste" action="Paste"/>
-			<menuitem name="Clear" action="Clear"/>
--->
                 </placeholder>
 
 		<separator/>

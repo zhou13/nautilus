@@ -61,6 +61,7 @@
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-dnd.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-ui-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-icon-container.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
@@ -109,6 +110,7 @@ struct FMIconViewDetails
 	gboolean sort_reversed;
 
 	GtkActionGroup *icon_action_group;
+	guint icon_merge_id;
 	
 	NautilusAudioPlayerData *audio_player_data;
 	int audio_preview_timeout;
@@ -197,6 +199,7 @@ static void
 fm_icon_view_destroy (GtkObject *object)
 {
 	FMIconView *icon_view;
+	GtkUIManager *ui_manager;
 
 	icon_view = FM_ICON_VIEW (object);
 
@@ -211,6 +214,13 @@ fm_icon_view_destroy (GtkObject *object)
 	if (icon_view->details->icons_not_positioned) {
 		nautilus_file_list_free (icon_view->details->icons_not_positioned);
 		icon_view->details->icons_not_positioned = NULL;
+	}
+
+	ui_manager = fm_directory_view_get_ui_manager (FM_DIRECTORY_VIEW (icon_view));
+	if (ui_manager != NULL) {
+		nautilus_ui_unmerge_ui (ui_manager,
+					&icon_view->details->icon_merge_id,
+					&icon_view->details->icon_action_group);
 	}
 
 	GTK_OBJECT_CLASS (fm_icon_view_parent_class)->destroy (object);
@@ -1445,7 +1455,6 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	GtkUIManager *ui_manager;
 	GtkActionGroup *action_group;
 	GtkAction *action;
-	GError *error;
 	char *file;
 	
         g_assert (FM_IS_ICON_VIEW (view));
@@ -1459,7 +1468,7 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	action_group = gtk_action_group_new ("IconViewActions");
 	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
 	icon_view->details->icon_action_group = action_group;
-	gtk_action_group_add_actions (action_group, 
+	gtk_action_group_add_actions (action_group,
 				      icon_view_entries, G_N_ELEMENTS (icon_view_entries),
 				      icon_view);
 	gtk_action_group_add_toggle_actions (action_group, 
@@ -1475,12 +1484,9 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	error = NULL;
 	file = nautilus_ui_file ("nautilus-icon-view-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
+	icon_view->details->icon_merge_id =
+		gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
 	g_free (file);
 
 	/* Do one-time state-setting here; context-dependent state-setting
@@ -1493,18 +1499,15 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	}
 
 	if (FM_IS_DESKTOP_ICON_VIEW (icon_view)) {
-		guint merge_id;
-		
-		merge_id = gtk_ui_manager_new_merge_id (ui_manager);
 		gtk_ui_manager_add_ui (ui_manager,
-				       merge_id,
+				       icon_view->details->icon_merge_id,
 				       POPUP_PATH_ICON_APPEARANCE,
 				       FM_ACTION_STRETCH,
 				       FM_ACTION_STRETCH,
 				       GTK_UI_MANAGER_MENUITEM,
 				       FALSE);
 		gtk_ui_manager_add_ui (ui_manager,
-				       merge_id,
+				       icon_view->details->icon_merge_id,
 				       POPUP_PATH_ICON_APPEARANCE,
 				       FM_ACTION_UNSTRETCH,
 				       FM_ACTION_UNSTRETCH,

@@ -342,25 +342,6 @@ nautilus_pixmap_file (const char *partial_path)
 }
 
 char *
-nautilus_get_ui_directory (void)
-{
-	return g_strdup (DATADIR "/nautilus/ui");
-}
-
-char *
-nautilus_ui_file (const char *partial_path)
-{
-	char *path;
-
-	path = g_build_filename (DATADIR "/nautilus/ui", partial_path, NULL);
-	if (g_file_test (path, G_FILE_TEST_EXISTS)) {
-		return path;
-	}
-	g_free (path);
-	return NULL;
-}
-
-char *
 nautilus_get_data_file_path (const char *partial_path)
 {
 	char *path;

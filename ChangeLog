@@ -1,5 +1,26 @@
 2004-11-18  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-file-utilities.[ch]:
+	* src/nautilus-spatial-window.c:
+	* src/nautilus-navigation-window-menus.c:
+	* src/nautilus-window-menus.c:
+	Move some functions to nautilus-ui-utilities
+	
+	* libnautilus-private/Makefile.am:
+	* libnautilus-private/nautilus-ui-utilities.[ch]:
+	Various ui utility functions
+	
+	* src/file-manager/fm-desktop-icon-view.c:
+	* src/file-manager/fm-directory-view.c:
+	* src/file-manager/fm-icon-view.c: 
+	* src/file-manager/fm-list-view.c:
+	Unmerge everything on destroy
+	
+	* src/nautilus-shell-ui.xml:
+	Remove unused stuff
+	
+2004-11-18  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-clipboard-monitor.c:
 	Handle ownership changes from XFixes
 	

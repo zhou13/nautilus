@@ -88,6 +88,7 @@
 #include <libnautilus-private/nautilus-program-choosing.h>
 #include <libnautilus-private/nautilus-trash-directory.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
+#include <libnautilus-private/nautilus-ui-utilities.h>
 #include <unistd.h>
 
 /* Number of seconds until cancel dialog shows up */
@@ -162,6 +163,7 @@ struct FMDirectoryViewDetails
 	NautilusDirectory *model;
 	NautilusFile *directory_as_file;
 	GtkActionGroup *dir_action_group;
+	guint dir_merge_id;
 
 	GList *scripts_directory_list;
 	GtkActionGroup *scripts_action_group;
@@ -1622,6 +1624,34 @@ fm_directory_view_init (FMDirectoryView *view)
 }
 
 static void
+unmerge_ui (FMDirectoryView *view)
+{
+	GtkUIManager *ui_manager;
+
+	if (view->details->window == NULL) {
+		return;
+	}
+	
+	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
+
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->dir_merge_id,
+				&view->details->dir_action_group);
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->extensions_menu_merge_id,
+				&view->details->extensions_menu_action_group);
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->open_with_merge_id,
+				&view->details->open_with_action_group);
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->scripts_merge_id,
+				&view->details->scripts_action_group);
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->templates_merge_id,
+				&view->details->templates_action_group);
+}
+
+static void
 fm_directory_view_destroy (GtkObject *object)
 {
 	FMDirectoryView *view;
@@ -1631,6 +1661,8 @@ fm_directory_view_destroy (GtkObject *object)
 
 	disconnect_model_handlers (view);
 
+	unmerge_ui (view);
+	
 	/* We don't own the window, so no unref */
 	view->details->window = NULL;
 	
@@ -2862,6 +2894,9 @@ fm_directory_view_get_item_count (FMDirectoryView *view)
 GtkUIManager *
 fm_directory_view_get_ui_manager (FMDirectoryView  *view)
 {
+	if (view->details->window == NULL) {
+		return NULL;
+	}
 	return nautilus_window_info_get_ui_manager (view->details->window);	
 }
 
@@ -3827,33 +3862,20 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 	int index;
 	gboolean other_applications_visible;
 	GtkUIManager *ui_manager;
-	guint merge_id;
-	GtkActionGroup *action_group;
 	GtkAction *action;
 	
 	/* Clear any previous inserted items in the applications and viewers placeholders */
 
 	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
-	if (view->details->open_with_merge_id != 0) {
-		gtk_ui_manager_remove_ui (ui_manager,
-					  view->details->open_with_merge_id);
-		view->details->open_with_merge_id = 0;
-	}
-
-	if (view->details->open_with_action_group != NULL) {
-		gtk_ui_manager_remove_action_group (ui_manager,
-						    view->details->open_with_action_group);
-		view->details->open_with_action_group = NULL;
-	}
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->open_with_merge_id,
+				&view->details->open_with_action_group);
 	
-	merge_id = gtk_ui_manager_new_merge_id (ui_manager);
-	view->details->open_with_merge_id = merge_id;
-	action_group = gtk_action_group_new ("OpenWithGroup");
-	view->details->open_with_action_group = action_group;
-	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
-	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
-	g_object_unref (action_group); /* owned by ui manager */
-
+	nautilus_ui_prepare_merge_ui (ui_manager,
+				      "OpenWithGroup",
+				      &view->details->open_with_merge_id,
+				      &view->details->open_with_action_group);
+	
 	num_applications = 0;
 
 	/* This menu is only displayed when there's one selected item. */
@@ -4312,31 +4334,18 @@ reset_extension_actions_menu (FMDirectoryView *view, GList *selection)
 	GList *items;
 	GList *l;
 	GtkUIManager *ui_manager;
-	guint merge_id;
-	GtkActionGroup *action_group;
 	
 	/* Clear any previous inserted items in the extension actions placeholder */
 	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
 
-	if (view->details->extensions_menu_merge_id != 0) {
-		gtk_ui_manager_remove_ui (ui_manager,
-					  view->details->extensions_menu_merge_id);
-		view->details->extensions_menu_merge_id = 0;
-	}
-
-	if (view->details->extensions_menu_action_group != NULL) {
-		gtk_ui_manager_remove_action_group (ui_manager,
-						    view->details->extensions_menu_action_group);
-		view->details->extensions_menu_action_group = NULL;
-	}
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->extensions_menu_merge_id,
+				&view->details->extensions_menu_action_group);
 	
-	merge_id = gtk_ui_manager_new_merge_id (ui_manager);
-	view->details->extensions_menu_merge_id = merge_id;
-	action_group = gtk_action_group_new ("DirExtensionsMenuGroup");
-	view->details->extensions_menu_action_group = action_group;
-	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
-	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
-	g_object_unref (action_group); /* owned by ui manager */
+	nautilus_ui_prepare_merge_ui (ui_manager,
+				      "DirExtensionsMenuGroup",
+				      &view->details->extensions_menu_merge_id,
+				      &view->details->extensions_menu_action_group);
 
 	/* only query for the unique files */
 	unique_selection = get_unique_files (selection);
@@ -4757,8 +4766,6 @@ update_scripts_menu (FMDirectoryView *view)
 	NautilusDirectory *directory;
 	char *uri;
 	GtkUIManager *ui_manager;
-	guint merge_id;
-	GtkActionGroup *action_group;
 	GtkAction *action;
 
 	/* There is a race condition here.  If we don't mark the scripts menu as
@@ -4767,24 +4774,14 @@ update_scripts_menu (FMDirectoryView *view)
 	view->details->scripts_invalid = FALSE;
 
 	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
-	if (view->details->scripts_merge_id != 0) {
-		gtk_ui_manager_remove_ui (ui_manager,
-					  view->details->scripts_merge_id);
-		view->details->scripts_merge_id = 0;
-	}
-
-	if (view->details->scripts_action_group != NULL) {
-		gtk_ui_manager_remove_action_group (ui_manager,
-						    view->details->scripts_action_group);
-		view->details->scripts_action_group = NULL;
-	}
-
-	merge_id = gtk_ui_manager_new_merge_id (ui_manager);
-	view->details->scripts_merge_id = merge_id;
-	action_group = gtk_action_group_new ("ScriptsGroup");
-	view->details->scripts_action_group = action_group;
-	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
-	g_object_unref (action_group); /* owned by ui manager */
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->scripts_merge_id,
+				&view->details->scripts_action_group);
+	
+	nautilus_ui_prepare_merge_ui (ui_manager,
+				      "ScriptsGroup",
+				      &view->details->scripts_merge_id,
+				      &view->details->scripts_action_group);
 
 	/* As we walk through the directories, remove any that no longer belong. */
 	any_scripts = FALSE;
@@ -4990,8 +4987,6 @@ update_templates_menu (FMDirectoryView *view)
 	NautilusDirectory *directory;
 	GtkUIManager *ui_manager;
 	char *uri;
-	guint merge_id;
-	GtkActionGroup *action_group;
 	GtkAction *action;
 
 	/* There is a race condition here.  If we don't mark the scripts menu as
@@ -5000,24 +4995,14 @@ update_templates_menu (FMDirectoryView *view)
 	view->details->templates_invalid = FALSE;
 
 	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
-	if (view->details->templates_merge_id != 0) {
-		gtk_ui_manager_remove_ui (ui_manager,
-					  view->details->templates_merge_id);
-		view->details->templates_merge_id = 0;
-	}
+	nautilus_ui_unmerge_ui (ui_manager,
+				&view->details->templates_merge_id,
+				&view->details->templates_action_group);
 
-	if (view->details->templates_action_group != NULL) {
-		gtk_ui_manager_remove_action_group (ui_manager,
-						    view->details->templates_action_group);
-		view->details->templates_action_group = NULL;
-	}
-
-	merge_id = gtk_ui_manager_new_merge_id (ui_manager);
-	view->details->templates_merge_id = merge_id;
-	action_group = gtk_action_group_new ("TemplatesGroup");
-	view->details->templates_action_group = action_group;
-	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
-	g_object_unref (action_group); /* owned by ui manager */
+	nautilus_ui_prepare_merge_ui (ui_manager,
+				      "TemplatesGroup",
+				      &view->details->templates_merge_id,
+				      &view->details->templates_action_group);
 
 	/* As we walk through the directories, remove any that no longer belong. */
 	any_templates = FALSE;
@@ -5843,11 +5828,10 @@ static GtkToggleActionEntry directory_view_toggle_entries[] = {
 static void
 real_merge_menus (FMDirectoryView *view)
 {
-	GtkUIManager *ui_manager;
-	char *file;
-	GError *error;
 	GtkActionGroup *action_group;
+	GtkUIManager *ui_manager;
 	GtkAction *action;
+	char *file;
 
 	ui_manager = nautilus_window_info_get_ui_manager (view->details->window);
 
@@ -5868,14 +5852,9 @@ real_merge_menus (FMDirectoryView *view)
 	gtk_ui_manager_insert_action_group (ui_manager, action_group, -1);
 	g_object_unref (action_group); /* owned by ui manager */
 
-	error = NULL;
 	file = nautilus_ui_file ("nautilus-directory-view-ui.xml");
-	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
-		g_error ("building menus failed: %s", error->message);
-		g_error_free (error);
-	}
+	view->details->dir_merge_id = gtk_ui_manager_add_ui_from_file (ui_manager, file, NULL);
 	g_free (file);
-
 
 	g_signal_connect_object (fm_directory_view_get_background (view), "settings_changed",
 				 G_CALLBACK (schedule_update_menus), G_OBJECT (view),
