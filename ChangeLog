@@ -1,5 +1,10 @@
 2004-11-17  Alexander Larsson  <alexl@redhat.com>
 
+	* src/file-manager/fm-properties-window.h:
+	Don't include libnautilus files.
+
+2004-11-17  Alexander Larsson  <alexl@redhat.com>
+
 	* src/file-manager/fm-desktop-icon-view.c:
 	* src/nautilus-navigation-window.c:
 	* src/nautilus-desktop-window.c:
