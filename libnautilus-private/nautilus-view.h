@@ -52,6 +52,7 @@ struct _NautilusViewIface
 	/* emitted when the view-specific title as returned by get_title changes */
         void           (* title_changed)          (NautilusView          *view);
 
+	/* BONOBOTODO: remove this? */
         void           (* zoom_parameters_changed)(NautilusView          *view);
         void           (* zoom_level_changed)     (NautilusView          *view);
 	
@@ -141,15 +142,6 @@ void              nautilus_view_restore_default_zoom_level (NautilusView      *v
 gboolean          nautilus_view_can_zoom_in                (NautilusView      *view);
 gboolean          nautilus_view_can_zoom_out               (NautilusView      *view);
 NautilusZoomLevel nautilus_view_get_zoom_level             (NautilusView      *view);
-
-/* Temporary bonoboui stuff: */
-BonoboUIComponent * nautilus_view_set_up_ui (NautilusView *view,
-					     Bonobo_UIContainer ui_container,
-					     const char *datadir,
-					     const char *ui_file_name,
-					     const char *application_name);
-
-
 
 G_END_DECLS
 

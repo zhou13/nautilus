@@ -30,8 +30,6 @@
 
 #include "nautilus-window.h"
 
-#include <bonobo/bonobo-exception.h>
-#include <bonobo/bonobo-property-bag-client.h>
 #include <eel/eel-background.h>
 #include <eel/eel-gdk-extensions.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>

@@ -79,7 +79,6 @@
 #include <libnautilus-private/nautilus-metafile-factory.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-sound.h>
-#include <libnautilus-private/nautilus-bonobo-extensions.h>
 #include <libnautilus-private/nautilus-undo-manager.h>
 #include <libnautilus-private/nautilus-desktop-link-monitor.h>
 #include <libnautilus-private/nautilus-directory-private.h>
@@ -426,6 +425,23 @@ initialize_kde_trash_hack (void)
 		g_free (trash_dir);
 	}
 	g_free (desktop_dir);
+}
+
+
+static Bonobo_RegistrationResult
+nautilus_bonobo_activation_register_for_display (const char    *iid,
+						 Bonobo_Unknown ref)
+{
+	const char *display_name;
+	GSList *reg_env ;
+	Bonobo_RegistrationResult result;
+	
+	display_name = gdk_display_get_name (gdk_display_get_default());
+	reg_env = bonobo_activation_registration_env_set (NULL,
+							  "DISPLAY", display_name);
+	result = bonobo_activation_register_active_server (iid, ref, reg_env);
+	bonobo_activation_registration_env_free (reg_env);
+	return result;
 }
 
 void

@@ -52,8 +52,11 @@ nautilus_shell_interface_idl_sources =		\
 
 nautilus_SOURCES = \
 	$(nautilus_shell_interface_idl_sources)	\
+	nautilus-actions.h			\
 	nautilus-application.c			\
 	nautilus-application.h			\
+	nautilus-arrow-toolbutton.c		\
+	nautilus-arrow-toolbutton.h		\
 	nautilus-bookmark-list.c		\
 	nautilus-bookmark-list.h		\
 	nautilus-bookmark-parsing.c		\
@@ -82,6 +85,8 @@ nautilus_SOURCES = \
 	nautilus-location-entry.h               \
 	nautilus-main.c 			\
 	nautilus-main.h				\
+	nautilus-navigation-action.c		\
+	nautilus-navigation-action.h		\
 	nautilus-navigation-bar.c         	\
 	nautilus-navigation-bar.h		\
 	nautilus-navigation-window-menus.c      \
@@ -89,8 +94,6 @@ nautilus_SOURCES = \
 	nautilus-navigation-window.h            \
 	nautilus-notes-viewer.c			\
 	nautilus-notes-viewer.h			\
-	nautilus-profiler.c			\
-	nautilus-profiler.h			\
 	nautilus-property-browser.c     	\
 	nautilus-property-browser.h		\
 	nautilus-self-check-functions.c 	\
@@ -139,7 +142,7 @@ server_DATA = $(server_in_files:.server.in=.server)
 
 @INTLTOOL_SERVER_RULE@
 
-uidir = $(datadir)/gnome-2.0/ui
+uidir = $(datadir)/nautilus/ui
 ui_DATA = 					\
 	nautilus-shell-ui.xml			\
 	nautilus-navigation-window-ui.xml       \

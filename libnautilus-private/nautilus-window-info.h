@@ -27,7 +27,7 @@
 
 #include <glib-object.h>
 #include <libnautilus-private/nautilus-view.h>
-#include <bonobo/bonobo-ui-util.h>
+#include <gtk/gtkuimanager.h>
 
 G_BEGIN_DECLS
 
@@ -128,9 +128,7 @@ struct _NautilusWindowInfoIface
 				       NautilusWindowOpenFlags flags,
 				       GList *selection);
 	void   (* close_window)       (NautilusWindowInfo *window);
-	
-	/* Temporary bonoboui stuff: */
-	Bonobo_UIContainer (* get_ui_container) (NautilusWindowInfo *window);
+	GtkUIManager *     (* get_ui_manager)   (NautilusWindowInfo *window);
 };
 
 GType                             nautilus_window_info_get_type                 (void);
@@ -158,9 +156,7 @@ GList *                           nautilus_window_info_get_selection            
 NautilusWindowShowHiddenFilesMode nautilus_window_info_get_hidden_files_mode    (NautilusWindowInfo                *window);
 void                              nautilus_window_info_set_hidden_files_mode    (NautilusWindowInfo                *window,
 										 NautilusWindowShowHiddenFilesMode  mode);
-
-/* temporary BonoboUI stuff */
-Bonobo_UIContainer nautilus_window_info_get_ui_container (NautilusWindowInfo *window);
+GtkUIManager *                    nautilus_window_info_get_ui_manager           (NautilusWindowInfo                *window);
 
 
 G_END_DECLS

@@ -51,9 +51,6 @@ libnautilus_private_la_SOURCES = \
 	$(nautilus_metafile_server_idl_sources)	\
 	nautilus-audio-player.c \
 	nautilus-audio-player.h \
-	nautilus-bonobo-extensions.c \
-	nautilus-bonobo-extensions.h \
-	nautilus-bonobo-ui.h \
 	nautilus-bookmark.c \
 	nautilus-bookmark.h \
 	nautilus-cell-renderer-pixbuf-emblem.c \

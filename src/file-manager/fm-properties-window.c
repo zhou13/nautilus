@@ -77,8 +77,6 @@
 #include <libnautilus-private/nautilus-undo-signal-handlers.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <libnautilus-private/nautilus-undo.h>
-#include <bonobo/bonobo-widget.h>
-#include <bonobo/bonobo-exception.h>
 #include <string.h>
 
 static GHashTable *windows;

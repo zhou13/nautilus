@@ -27,7 +27,6 @@
  
 #include <config.h>
 
-#include <bonobo/bonobo-ui-util.h>
 #include <eel/eel-debug.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-glib-extensions.h>

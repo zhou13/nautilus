@@ -39,9 +39,6 @@
 #include "nautilus-signaller.h"
 #include "nautilus-window-manage-views.h"
 #include "nautilus-zoom-control.h"
-#include <bonobo/bonobo-exception.h>
-#include <bonobo/bonobo-property-bag-client.h>
-#include <bonobo/bonobo-ui-util.h>
 #include <eel/eel-debug.h>
 #include <eel/eel-gdk-extensions.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
@@ -56,6 +53,7 @@
 #include <gtk/gtkoptionmenu.h>
 #include <gtk/gtktogglebutton.h>
 #include <gtk/gtkvbox.h>
+#include <gtk/gtkuimanager.h>
 #include <libgnome/gnome-i18n.h>
 #include <libgnome/gnome-macros.h>
 #include <libgnome/gnome-util.h>
@@ -64,7 +62,6 @@
 #include <libgnomeui/gnome-window-icon.h>
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
-#include <libnautilus-private/nautilus-bonobo-extensions.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
@@ -73,7 +70,6 @@
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <libnautilus-private/nautilus-program-choosing.h>
-#include <libnautilus-private/nautilus-bonobo-ui.h>
 #include <libnautilus-private/nautilus-clipboard.h>
 #include <libnautilus-private/nautilus-undo.h>
 #include <math.h>
@@ -81,14 +77,14 @@
 
 #define MAX_TITLE_LENGTH 180
 
-struct _NautilusSpatialWindowDetails {        
+struct _NautilusSpatialWindowDetails {
+        GtkActionGroup *spatial_action_group; /* owned by ui_manager */
 	char *last_geometry;	
         guint save_geometry_timeout_id;	  
 	
 	GtkWidget *content_box;
 	GtkWidget *location_button;
 	GtkWidget *location_label;
-	GtkWidget *location_statusbar;
 
 	GnomeVFSURI *location;
 };
@@ -299,25 +295,22 @@ nautilus_spatial_window_show (GtkWidget *widget)
 }
 
 static void
-file_menu_close_parent_windows_callback (BonoboUIComponent *component, 
-					 gpointer user_data, 
-					 const char *verb)
+action_close_parent_folders_callback (GtkAction *action, 
+				      gpointer user_data)
 {
 	nautilus_application_close_parent_windows (NAUTILUS_SPATIAL_WINDOW (user_data));
 }
 
 static void
-file_menu_close_all_windows_callback (BonoboUIComponent *component, 
-					 gpointer user_data, 
-					 const char *verb)
+action_close_all_folders_callback (GtkAction *action, 
+				   gpointer user_data)
 {
 	nautilus_application_close_all_spatial_windows ();
 }
 
 static void
-go_up_close_current_window_callback (BonoboUIComponent *component, 
-				     gpointer user_data, 
-				     const char *verb)
+action_go_up_close_callback (GtkAction *action, 
+			     gpointer user_data)
 {
 	nautilus_window_go_up (NAUTILUS_WINDOW (user_data), TRUE);
 }
@@ -348,38 +341,6 @@ real_set_title (NautilusWindow *window, const char *title)
 		gtk_window_set_title (GTK_WINDOW (window), window_title);
 		g_free (window_title);
 	}
-}
-
-static void
-real_merge_menus (NautilusWindow *nautilus_window)
-{
-	NautilusSpatialWindow *window;
-	BonoboControl *control;
-	BonoboUIVerb verbs [] = {
-		BONOBO_UI_VERB ("Close Parent Folders", file_menu_close_parent_windows_callback),
-		BONOBO_UI_VERB ("Close All Folders", file_menu_close_all_windows_callback),
-		BONOBO_UI_VERB ("UpCloseCurrent", go_up_close_current_window_callback),
-		BONOBO_UI_VERB_END
-	};
-	
-	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS,
-			 merge_menus, (nautilus_window));
-
-	window = NAUTILUS_SPATIAL_WINDOW (nautilus_window);
-
-	bonobo_ui_util_set_ui (NAUTILUS_WINDOW (window)->details->shell_ui,
-			       DATADIR,
-			       "nautilus-spatial-window-ui.xml",
-			       "nautilus", NULL);
-
-	bonobo_ui_component_add_verb_list_with_data (nautilus_window->details->shell_ui,
-						     verbs, window);
-
-	control = bonobo_control_new (window->details->location_statusbar);
-	bonobo_ui_component_object_set (nautilus_window->details->shell_ui,
-		       			"/status/StatusButton",
-					BONOBO_OBJREF (control),
-					NULL);
 }
 
 static void
@@ -515,7 +476,9 @@ menu_popup_pos (GtkMenu   *menu,
 	gtk_widget_size_request (widget, &button_requisition);
 
 	gdk_window_get_origin (widget->window, x, y);
-
+	*x += widget->allocation.x;
+	*y += widget->allocation.y;
+	
 	*y -= menu_requisition.height - button_requisition.height;
 
 	*push_in = TRUE;
@@ -604,28 +567,55 @@ nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 }
 
 static void
+action_go_to_location_callback (GtkAction *action,
+				gpointer user_data)
+{
+	NautilusWindow *window;
+
+	window = NAUTILUS_WINDOW (user_data);
+
+	nautilus_window_prompt_for_location (window);
+}			   
+
+static GtkActionEntry spatial_entries[] = {
+  { "Places", NULL, N_("_Places") },               /* name, stock id, label */
+  { "Go to Location", NULL, N_("Open _Location..."), /* name, stock id, label */
+    "<control>L", N_("Specify a location to open"),
+    G_CALLBACK (action_go_to_location_callback) },
+  { "Close Parent Folders", NULL, N_("Close P_arent Folders"), /* name, stock id, label */
+    "<control><shift>W", N_("Close this folder's parents"),
+    G_CALLBACK (action_close_parent_folders_callback) },
+  { "Close All Folders", NULL, N_("Clos_e All Folders"), /* name, stock id, label */
+    "<control>Q", N_("Close all folder windows"),
+    G_CALLBACK (action_close_all_folders_callback) },
+  { "Go Up Close", NULL, N_("Go up and close the current window"), /* name, stock id, label */
+    "<alt><shift>Up", NULL,
+    G_CALLBACK (action_go_up_close_callback) },
+};
+
+static void
 nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
 {
-	GtkShadowType shadow_type;
-	GtkWidget *frame;
 	GtkRcStyle *rc_style;
 	GtkWidget *arrow;
 	GtkWidget *hbox;
+	GtkActionGroup *action_group;
+	GtkUIManager *ui_manager;
+	GError *error;
+	char *file;
 
 	window->details = g_new0 (NautilusSpatialWindowDetails, 1);
 	window->affect_spatial_window_on_next_location_change = TRUE;
 
 	window->details->content_box = 
 		gtk_hbox_new (FALSE, 0);
+	gtk_table_attach (GTK_TABLE (NAUTILUS_WINDOW (window)->details->table),
+			  window->details->content_box,
+			  /* X direction */       /* Y direction */
+			  0, 1,                   1, 4,
+			  GTK_EXPAND | GTK_FILL,  GTK_EXPAND | GTK_FILL,
+			  0,                      0);
 	gtk_widget_show (window->details->content_box);
-	bonobo_window_set_contents (BONOBO_WINDOW (window), 
-				    window->details->content_box);
-
-	window->details->location_statusbar = gtk_statusbar_new ();
-	gtk_widget_show (window->details->location_statusbar);
-	gtk_widget_hide (GTK_STATUSBAR (window->details->location_statusbar)->frame);
-	gtk_statusbar_set_has_resize_grip (GTK_STATUSBAR (window->details->location_statusbar), 
-					   FALSE);
 
 	window->details->location_button = gtk_button_new ();
 	gtk_button_set_relief (GTK_BUTTON (window->details->location_button),
@@ -652,22 +642,37 @@ nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
 	gtk_box_pack_start (GTK_BOX (hbox), arrow, FALSE, FALSE, 0);
 	gtk_widget_show (arrow);
 
-	frame = gtk_frame_new (NULL);
-	gtk_widget_style_get (GTK_WIDGET (window->details->location_statusbar), 
-			      "shadow_type", &shadow_type, NULL);
-	gtk_frame_set_shadow_type (GTK_FRAME (frame), shadow_type);
-	gtk_box_pack_start (GTK_BOX (window->details->location_statusbar), 
-			    frame, TRUE, TRUE, 0);
-	gtk_widget_show (frame);
-
-	gtk_container_add (GTK_CONTAINER (frame), 
-			   window->details->location_button);
 	
 	gtk_widget_set_sensitive (window->details->location_button, FALSE);
 	g_signal_connect (window->details->location_button, 
 			  "clicked", 
 			  G_CALLBACK (location_button_clicked_callback), window);
-	gtk_widget_show (window->details->location_statusbar);
+	gtk_box_pack_start (GTK_BOX (NAUTILUS_WINDOW (window)->details->statusbar),
+			    window->details->location_button,
+			    FALSE, TRUE, 0);
+
+	gtk_box_reorder_child (GTK_BOX (NAUTILUS_WINDOW (window)->details->statusbar), 
+			       window->details->location_button, 0);
+	
+	action_group = gtk_action_group_new ("SpatialActions");
+	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
+	window->details->spatial_action_group = action_group;
+	gtk_action_group_add_actions (action_group, 
+				      spatial_entries, G_N_ELEMENTS (spatial_entries),
+				      window);
+	
+	ui_manager = nautilus_window_get_ui_manager (NAUTILUS_WINDOW (window));
+	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
+	g_object_unref (action_group); /* owned by ui manager */
+	
+	error = NULL;
+	file = nautilus_ui_file ("nautilus-spatial-window-ui.xml");
+	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
+		g_error ("building menus failed: %s", error->message);
+		g_error_free (error);
+	}
+	g_free (file);
+	return;
 }
 
 static void
@@ -686,8 +691,6 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 		real_prompt_for_location;
 	NAUTILUS_WINDOW_CLASS (class)->set_title = 
 		real_set_title;
-	NAUTILUS_WINDOW_CLASS (class)->merge_menus = 
-		real_merge_menus;
 	NAUTILUS_WINDOW_CLASS (class)->set_content_view_widget = 
 		real_set_content_view_widget;
 	NAUTILUS_WINDOW_CLASS (class)->close = 

@@ -28,14 +28,12 @@
 #include <config.h>
 #include "nautilus-window-manage-views.h"
 
+#include "nautilus-actions.h"
 #include "nautilus-application.h"
 #include "nautilus-location-bar.h"
 #include "nautilus-main.h"
 #include "nautilus-window-private.h"
 #include "nautilus-zoom-control.h"
-#include <bonobo/bonobo-exception.h>
-#include <bonobo/bonobo-ui-util.h>
-#include <bonobo/bonobo-property-bag-client.h>
 #include <eel/eel-accessibility.h>
 #include <eel/eel-debug.h>
 #include <eel/eel-gdk-extensions.h>
@@ -53,7 +51,6 @@
 #include <libgnomevfs/gnome-vfs-async-ops.h>
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
-#include <libnautilus-private/nautilus-bonobo-extensions.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-file.h>
@@ -105,6 +102,8 @@ static void load_new_location                         (NautilusWindow           
 						       gboolean                    tell_new_content_view);
 static void location_has_really_changed               (NautilusWindow             *window);
 static void update_for_new_location                   (NautilusWindow             *window);
+static void zoom_parameters_changed_callback          (NautilusView               *view,
+						       NautilusWindow             *window);
 
 void
 nautilus_window_report_selection_changed (NautilusWindowInfo *window)
@@ -947,6 +946,7 @@ create_content_view (NautilusWindow *window,
 {
         NautilusView *view;
 	GList *selection;
+	GtkAction *action;
 
  	/* FIXME bugzilla.gnome.org 41243: 
 	 * We should use inheritance instead of these special cases
@@ -959,21 +959,16 @@ create_content_view (NautilusWindow *window,
         	 */
 		view_id = NAUTILUS_DESKTOP_ICON_VIEW_IID;
 	} 
-        
-	nautilus_window_ui_freeze (window);
 
-        bonobo_ui_component_freeze (window->details->shell_ui, NULL);
-	nautilus_bonobo_set_sensitive (window->details->shell_ui,
-				       NAUTILUS_COMMAND_ZOOM_IN,
-				       FALSE);
-	nautilus_bonobo_set_sensitive (window->details->shell_ui,
-				       NAUTILUS_COMMAND_ZOOM_OUT,
-				       FALSE);
-	nautilus_bonobo_set_sensitive (window->details->shell_ui,
-				       NAUTILUS_COMMAND_ZOOM_NORMAL,
-				       FALSE);
-        
-        bonobo_ui_component_thaw (window->details->shell_ui, NULL);
+	action = gtk_action_group_get_action (window->details->main_action_group,
+					      NAUTILUS_ACTION_ZOOM_IN);
+	gtk_action_set_sensitive (action, FALSE);
+	action = gtk_action_group_get_action (window->details->main_action_group,
+					      NAUTILUS_ACTION_ZOOM_OUT);
+	gtk_action_set_sensitive (action, FALSE);
+	action = gtk_action_group_get_action (window->details->main_action_group,
+					      NAUTILUS_ACTION_ZOOM_NORMAL);
+	gtk_action_set_sensitive (action, FALSE);
         
         if (window->content_view != NULL &&
 	    eel_strcmp (nautilus_view_get_view_id (window->content_view),
@@ -1020,7 +1015,6 @@ create_content_view (NautilusWindow *window,
 		nautilus_window_go_home (NAUTILUS_WINDOW (window));
 		
 	}
-	nautilus_window_ui_thaw (window);
 }
 
 static void
@@ -1104,8 +1098,6 @@ location_has_really_changed (NautilusWindow *window)
         if (window->details->pending_location != NULL) {
                 /* Tell the window we are finished. */
                 update_for_new_location (window);
-
-
 	}
 
         free_location_change (window);
@@ -1152,13 +1144,17 @@ update_for_new_location (NautilusWindow *window)
         
         /* Check if we can go up. */
         update_up_button (window);
+	
+	/* Set up the initial zoom levels */
+	zoom_parameters_changed_callback (window->content_view,
+					  window);
 
         /* Set up the content view menu for this new location. */
         nautilus_window_load_view_as_menus (window);
 	
 	/* Load menus from nautilus extensions for this location */
 	nautilus_window_load_extension_menus (window);
-      
+
 #if !NEW_UI_COMPLETE
         if (NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
                 /* Check if the back and forward buttons need enabling or disabling. */
@@ -1496,27 +1492,36 @@ static void
 zoom_level_changed_callback (NautilusView *view,
                              NautilusWindow *window)
 {
+	GtkAction *action;
+	gboolean supports_zooming;
+	
         g_assert (NAUTILUS_IS_WINDOW (window));
 
         /* This is called each time the component successfully completed
          * a zooming operation.
          */
 
-	nautilus_window_ui_freeze (window);
+	supports_zooming = nautilus_view_supports_zooming (view);
 
-        nautilus_bonobo_set_sensitive (window->details->shell_ui,
-                                       NAUTILUS_COMMAND_ZOOM_IN,
-                                       nautilus_view_can_zoom_in (view));
-        nautilus_bonobo_set_sensitive (window->details->shell_ui,
-                                       NAUTILUS_COMMAND_ZOOM_OUT,
-                                       nautilus_view_can_zoom_out (view));
-        nautilus_bonobo_set_sensitive (window->details->shell_ui,
-                                       NAUTILUS_COMMAND_ZOOM_NORMAL,
-                                       TRUE);
-        
+	action = gtk_action_group_get_action (window->details->main_action_group,
+					      NAUTILUS_ACTION_ZOOM_IN);
+	gtk_action_set_visible (action, supports_zooming);
+	gtk_action_set_sensitive (action,
+				  nautilus_view_can_zoom_in (view));
+	
+	action = gtk_action_group_get_action (window->details->main_action_group,
+					      NAUTILUS_ACTION_ZOOM_OUT);
+	gtk_action_set_visible (action, supports_zooming);
+	gtk_action_set_sensitive (action,
+				  nautilus_view_can_zoom_out (view));
+
+	action = gtk_action_group_get_action (window->details->main_action_group,
+					      NAUTILUS_ACTION_ZOOM_NORMAL);
+	gtk_action_set_visible (action, supports_zooming);
+	gtk_action_set_sensitive (action,
+				  TRUE);
+       
 	/* FIXME bugzilla.gnome.org 43442: Desensitize "Zoom Normal"? */
-
-        nautilus_window_ui_thaw (window);
 }
 
 static void
@@ -1524,6 +1529,7 @@ zoom_parameters_changed_callback (NautilusView *view,
                                   NautilusWindow *window)
 {
         float zoom_level;
+	GtkAction *action;
 
         g_assert (NAUTILUS_IS_WINDOW (window));
 
@@ -1535,19 +1541,15 @@ zoom_parameters_changed_callback (NautilusView *view,
          */
         zoom_level = nautilus_view_get_zoom_level (view);
         if (zoom_level == 0.0) {
-		nautilus_window_ui_freeze (window);
-
-                nautilus_bonobo_set_sensitive (window->details->shell_ui,
-                                               NAUTILUS_COMMAND_ZOOM_IN,
-                                               FALSE);
-                nautilus_bonobo_set_sensitive (window->details->shell_ui,
-                                               NAUTILUS_COMMAND_ZOOM_OUT,
-                                               FALSE);
-                nautilus_bonobo_set_sensitive (window->details->shell_ui,
-                                               NAUTILUS_COMMAND_ZOOM_NORMAL,
-                                               FALSE);
-
-		nautilus_window_ui_thaw (window);
+		action = gtk_action_group_get_action (window->details->main_action_group,
+						      NAUTILUS_ACTION_ZOOM_IN);
+		gtk_action_set_sensitive (action, FALSE);
+		action = gtk_action_group_get_action (window->details->main_action_group,
+						      NAUTILUS_ACTION_ZOOM_OUT);
+		gtk_action_set_sensitive (action, FALSE);
+		action = gtk_action_group_get_action (window->details->main_action_group,
+						      NAUTILUS_ACTION_ZOOM_NORMAL);
+		gtk_action_set_sensitive (action, FALSE);
 
                 /* Don't attempt to set 0.0 as zoom level. */
                 return;

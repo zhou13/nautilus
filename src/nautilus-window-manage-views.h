@@ -53,9 +53,6 @@ const char             *nautilus_window_get_content_view_id           (NautilusW
 char                   *nautilus_window_get_view_label                (NautilusWindow           *window);
 void                    nautilus_navigation_window_set_sidebar_panels (NautilusNavigationWindow *window,
                                                                        GList                    *view_identifier_list);
-void                    nautilus_navigation_window_back_or_forward    (NautilusNavigationWindow *window,
-                                                                       gboolean                  back,
-                                                                       guint                     distance);
 
 
 /* NautilusWindowInfo implementation: */

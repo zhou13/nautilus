@@ -1,3 +1,76 @@
+2004-11-16  Alexander Larsson  <alexl@redhat.com>
+
+	* configure.in:
+	Remove bonoboui dependencies
+	
+	* libnautilus-private/Makefile.am:
+	* libnautilus-private/nautilus-bonobo-extensions.[ch]:
+	* libnautilus-private/nautilus-bonobo-ui.h:
+	Remove unneeded files
+	
+	* libnautilus-private/nautilus-clipboard.c:
+	Comment out for now.
+	
+	* libnautilus-private/nautilus-directory-metafile-monitor.c:
+	* libnautilus-private/nautilus-metafile.c:
+	* src/nautilus-application.c: 
+	* src/nautilus-history-sidebar.c:
+	* src/nautilus-information-panel.c:
+	* src/nautilus-main.c: (main):
+	* src/nautilus-notes-viewer.c:
+	* src/nautilus-sidebar-title.c:
+	* src/file-manager/fm-properties-window.c:
+	Remove bonobo includes
+	
+	* libnautilus-private/nautilus-file-utilities.[ch]:
+	(nautilus_get_ui_directory), (nautilus_ui_file):
+	Util functions for ui files.
+	
+	* libnautilus-private/nautilus-view.[ch]:
+	* libnautilus-private/nautilus-window-info.[ch]:
+	Remove bonoboui methods
+	
+	* src/Makefile.am:
+	Add new files, remove some old ones
+	Move ui files to datadir/nautilus/ui
+	
+	* src/nautilus-actions.h:
+	New file with action names
+	
+	* src/nautilus-arrow-toolbutton.[ch]:
+	New widget for back/forward buttons.
+	
+	* src/nautilus-desktop-window.c:
+	* src/nautilus-navigation-window-menus.c:
+	* src/nautilus-navigation-window-ui.xml:
+	* src/nautilus-navigation-window.[ch]:
+	* src/nautilus-shell-ui.xml:
+	* src/nautilus-spatial-window-ui.xml:
+	* src/nautilus-spatial-window.c:
+	* src/nautilus-window-manage-views.[ch]: 
+	* src/nautilus-window-menus.c:
+	* src/nautilus-window-private.h:
+	* src/nautilus-window-toolbars.c:
+	* src/nautilus-window.[ch]:
+	Initial port to GtkUIManager
+	
+	* src/nautilus-profiler.[ch]:
+	Remove
+	
+	* src/file-manager/Makefile.am:
+	* src/file-manager/fm-actions.h:
+	New file with action names
+	
+	* src/file-manager/fm-desktop-icon-view.c:
+	* src/file-manager/fm-directory-view.[ch]: 
+	* src/file-manager/fm-icon-view.c:
+	* src/file-manager/fm-list-view.c:
+	* src/file-manager/nautilus-desktop-icon-view-ui.xml:
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/file-manager/nautilus-icon-view-ui.xml:
+	* src/file-manager/nautilus-list-view-ui.xml:
+	Initial port of views to GtkUIManager
+
 2004-11-09  Alexander Larsson  <alexl@redhat.com>
 
 	* libnautilus-private/nautilus-bonobo-extensions.[ch]:

@@ -251,11 +251,11 @@ nautilus_window_info_set_hidden_files_mode (NautilusWindowInfo *window,
 									    mode);
 }
 
-Bonobo_UIContainer
-nautilus_window_info_get_ui_container (NautilusWindowInfo *window)
+GtkUIManager *
+nautilus_window_info_get_ui_manager (NautilusWindowInfo *window)
 {
 	g_return_val_if_fail (NAUTILUS_IS_WINDOW_INFO (window), CORBA_OBJECT_NIL);
 	
-	return (* NAUTILUS_WINDOW_INFO_GET_IFACE (window)->get_ui_container) (window);
+	return (* NAUTILUS_WINDOW_INFO_GET_IFACE (window)->get_ui_manager) (window);
 }
 

@@ -28,10 +28,6 @@
 
 #include "nautilus-sidebar-title.h"
 
-#include <bonobo/bonobo-property-bag-client.h>
-#include <bonobo/bonobo-ui-util.h>
-#include <bonobo/bonobo-exception.h>
-
 #include <eel/eel-background.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gtk-extensions.h>

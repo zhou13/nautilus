@@ -30,7 +30,6 @@
 #include <config.h>
 #include "nautilus-clipboard.h"
 
-#include "nautilus-bonobo-ui.h"
 #include <bonobo/bonobo-ui-util.h>
 #include <gtk/gtkinvisible.h>
 #include <gtk/gtkmain.h>
@@ -39,6 +38,8 @@
 #include <string.h>
 
 typedef void (* EditableFunction) (GtkEditable *editable);
+
+#ifdef BONOBO_DONE
 
 static void disconnect_set_up_in_control_handlers (GtkObject *object,
 						   gpointer callback_data);
@@ -401,11 +402,14 @@ initialize_clipboard_component_with_callback_data (GtkEditable *target,
 	return target_data;
 }
 
+#endif
+
 void
 nautilus_clipboard_set_up_editable (GtkEditable *target,
 				    Bonobo_UIContainer ui_container,
 				    gboolean shares_selection_changes)
 {
+#ifdef BONOBO_DONE
 	TargetCallbackData *target_data;
 	
 	g_return_if_fail (GTK_IS_EDITABLE (target));
@@ -429,7 +433,10 @@ nautilus_clipboard_set_up_editable (GtkEditable *target,
 	 * already in focus.
 	 */
 	focus_changed_callback (GTK_WIDGET (target), NULL, target_data);
+#endif
 }
+
+#ifdef BONOBO_DONE
 
 static gboolean
 widget_was_set_up_with_selection_sensitivity (GtkWidget *widget)
@@ -464,11 +471,14 @@ control_destroyed_callback (GtkObject *object,
 	disconnect_set_up_in_control_handlers (object, callback_data);
 }
 
+#endif
+
 void
 nautilus_clipboard_set_up_editable_in_control (GtkEditable *target,
 					       BonoboControl *control,
 					       gboolean shares_selection_changes)
 {
+#ifdef BONOBO_DONE
 	g_return_if_fail (GTK_IS_EDITABLE (target));
 	g_return_if_fail (BONOBO_IS_CONTROL (control));
 
@@ -493,7 +503,10 @@ nautilus_clipboard_set_up_editable_in_control (GtkEditable *target,
 			  G_CALLBACK (first_focus_callback), control);
 	g_signal_connect (target, "destroy",
 			  G_CALLBACK (control_destroyed_callback), control);
+#endif
 }
+
+#ifdef BONOBO_DONE
 
 static void
 disconnect_set_up_in_control_handlers (GtkObject *object,
@@ -510,3 +523,5 @@ disconnect_set_up_in_control_handlers (GtkObject *object,
 					      G_CALLBACK (control_destroyed_callback),
 					      callback_data);
 }
+
+#endif

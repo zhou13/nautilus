@@ -32,7 +32,6 @@
 #include "fm-error-reporting.h"
 #include "fm-list-model.h"
 #include <string.h>
-#include <bonobo/bonobo-ui-util.h>
 #include <eel/eel-cell-renderer-pixbuf-list.h>
 #include <eel/eel-vfs-extensions.h>
 #include <eel/eel-glib-extensions.h>
@@ -57,6 +56,7 @@
 #include <libnautilus-private/nautilus-directory-background.h>
 #include <libnautilus-private/nautilus-dnd.h>
 #include <libnautilus-private/nautilus-file-dnd.h>
+#include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
@@ -78,6 +78,7 @@ typedef struct {
 struct FMListViewDetails {
 	GtkTreeView *tree_view;
 	FMListModel *model;
+	GtkActionGroup *list_action_group;
 
 	GtkTreeViewColumn   *file_name_column;
 	int file_name_column_num;
@@ -105,7 +106,6 @@ struct FMListViewDetails {
 	/* typeahead selection state */
 	TypeSelectState *type_select_state;
 
-	BonoboUIComponent *ui;
 	gboolean menus_ready;
 	
 	GHashTable *columns;
@@ -1601,9 +1601,8 @@ create_column_editor (FMListView *view)
 }
 
 static void
-visible_columns_callback (BonoboUIComponent *component,
-			  gpointer callback_data,
-			  const char *verb)
+action_visible_columns_callback (GtkAction *action,
+				 gpointer callback_data)
 {
 	FMListView *list_view;
 	
@@ -1619,31 +1618,45 @@ visible_columns_callback (BonoboUIComponent *component,
 	}
 }
 
+static GtkActionEntry list_view_entries[] = {
+  { "Visible Columns", NULL,                  /* name, stock id */
+    N_("Visible _Columns..."), NULL,                /* label, accelerator */
+    N_("Select the columns visible in this folder"),                   /* tooltip */ 
+    G_CALLBACK (action_visible_columns_callback) },
+};
+
 static void
 fm_list_view_merge_menus (FMDirectoryView *view)
 {
 	FMListView *list_view;
-	Bonobo_UIContainer ui_container;
-	BonoboUIVerb verbs [] = {
-		BONOBO_UI_VERB ("Visible Columns", visible_columns_callback),
-		BONOBO_UI_VERB_END
-	};
-	
+	GtkUIManager *ui_manager;
+	GtkActionGroup *action_group;
+	GError *error;
+	char *file;
+
 	EEL_CALL_PARENT (FM_DIRECTORY_VIEW_CLASS, merge_menus, (view));
 
 	list_view = FM_LIST_VIEW (view);
 
-	list_view->details->ui = bonobo_ui_component_new ("List View");
-	ui_container = fm_directory_view_get_bonobo_ui_container (view);
-	bonobo_ui_component_set_container (list_view->details->ui,
-					   ui_container, NULL);
-	bonobo_object_release_unref (ui_container, NULL);
-	bonobo_ui_util_set_ui (list_view->details->ui,
-			       DATADIR,
-			       "nautilus-list-view-ui.xml",
-			       "nautilus", NULL);
+	ui_manager = fm_directory_view_get_ui_manager (view);
 
-	bonobo_ui_component_add_verb_list_with_data (list_view->details->ui, verbs, view);	
+	action_group = gtk_action_group_new ("ListViewActions");
+	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
+	list_view->details->list_action_group = action_group;
+	gtk_action_group_add_actions (action_group, 
+				      list_view_entries, G_N_ELEMENTS (list_view_entries),
+				      list_view);
+
+	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
+	g_object_unref (action_group); /* owned by ui manager */
+
+	error = NULL;
+	file = nautilus_ui_file ("nautilus-list-view-ui.xml");
+	if (!gtk_ui_manager_add_ui_from_file (ui_manager, file, &error)) {
+		g_error ("building menus failed: %s", error->message);
+		g_error_free (error);
+	}
+	g_free (file);
 
 	list_view->details->menus_ready = TRUE;
 }
@@ -2005,12 +2018,6 @@ fm_list_view_dispose (GObject *object)
 		list_view->details->drag_dest = NULL;
 	}
 
-	if (list_view->details->ui != NULL) {
-		bonobo_ui_component_unset_container (list_view->details->ui, NULL);
-		bonobo_object_unref (list_view->details->ui);
-		list_view->details->ui = NULL;
-	}
-	
 	G_OBJECT_CLASS (parent_class)->dispose (object);
 }
 

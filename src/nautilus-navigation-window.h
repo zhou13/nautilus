@@ -102,5 +102,11 @@ void     nautilus_navigation_window_add_sidebar_panel    (NautilusNavigationWind
                                                           NautilusSidebar          *sidebar_panel);
 void     nautilus_navigation_window_remove_sidebar_panel (NautilusNavigationWindow *window,
                                                           NautilusSidebar          *sidebar_panel);
+void     nautilus_navigation_window_hide_status_bar      (NautilusNavigationWindow *window);
+void     nautilus_navigation_window_show_status_bar      (NautilusNavigationWindow *window);
+gboolean nautilus_navigation_window_status_bar_showing   (NautilusNavigationWindow *window);
+void     nautilus_navigation_window_back_or_forward      (NautilusNavigationWindow *window,
+                                                          gboolean                  back,
+                                                          guint                     distance);
 
 #endif

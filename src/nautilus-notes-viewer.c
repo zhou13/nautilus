@@ -38,13 +38,12 @@
 #include <gtk/gtktextview.h>
 #include <gtk/gtkvbox.h>
 #include <gtk/gtkscrolledwindow.h>
-#include <bonobo/bonobo-property-bag.h>
+#include <libgnome/gnome-i18n.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-clipboard.h>
-#include <libnautilus-private/nautilus-bonobo-extensions.h>
 #include <libnautilus-private/nautilus-theme.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-sidebar-provider.h>

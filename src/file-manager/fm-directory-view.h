@@ -40,14 +40,9 @@
 #include <eel/eel-string-list.h>
 #include <libnautilus-private/nautilus-view.h>
 #include <libnautilus-private/nautilus-window-info.h>
-#include <bonobo/bonobo-ui-component.h>
 
 typedef struct FMDirectoryView FMDirectoryView;
 typedef struct FMDirectoryViewClass FMDirectoryViewClass;
-
-
-/* Bonobo command paths that are used by subclasses. Others are defined in fm-directory-view.c */
-#define FM_DIRECTORY_VIEW_COMMAND_RESET_BACKGROUND		"/commands/Reset Background"
 
 #define FM_TYPE_DIRECTORY_VIEW			(fm_directory_view_get_type ())
 #define FM_DIRECTORY_VIEW(obj)			(GTK_CHECK_CAST ((obj), FM_TYPE_DIRECTORY_VIEW, FMDirectoryView))
@@ -357,7 +352,7 @@ gboolean            fm_directory_view_confirm_multiple_windows         (FMDirect
 void                fm_directory_view_queue_file_change                (FMDirectoryView  *view,
 									NautilusFile     *file);
 void                fm_directory_view_notify_selection_changed         (FMDirectoryView  *view);
-Bonobo_UIContainer  fm_directory_view_get_bonobo_ui_container          (FMDirectoryView  *view);
+GtkUIManager *      fm_directory_view_get_ui_manager                   (FMDirectoryView  *view);
 EelStringList *     fm_directory_view_get_emblem_names_to_exclude      (FMDirectoryView  *view);
 NautilusDirectory  *fm_directory_view_get_model                        (FMDirectoryView  *view);
 GtkWindow	   *fm_directory_view_get_containing_window	       (FMDirectoryView  *view);

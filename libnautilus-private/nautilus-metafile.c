@@ -23,7 +23,6 @@
 #include <config.h>
 #include "nautilus-metafile.h"
 
-#include "nautilus-bonobo-extensions.h"
 #include "nautilus-directory.h"
 #include "nautilus-directory.h"
 #include "nautilus-file-private.h"

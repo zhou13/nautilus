@@ -33,12 +33,6 @@
 #include "nautilus-window-manage-views.h"
 #include "nautilus-window-private.h"
 #include "nautilus-window.h"
-#include <bonobo/bonobo-control.h>
-#include <bonobo/bonobo-property-bag.h>
-#include <bonobo/bonobo-property-bag-client.h>
-#include <bonobo/bonobo-exception.h>
-#include <bonobo/bonobo-moniker-util.h>
-#include <bonobo/bonobo-ui-util.h>
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-string.h>
@@ -48,7 +42,6 @@
 #include <libgnome/gnome-i18n.h>
 #include <libgnomeui/gnome-popup-menu.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
-#include <libnautilus-private/nautilus-bonobo-extensions.h>
 #include <libnautilus-private/nautilus-bookmark.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
@@ -68,177 +61,7 @@ enum {
 	TOOLBAR_ITEM_ORIENTATION_PROP
 };
 
-static void
-activate_back_or_forward_menu_item (GtkMenuItem *menu_item, 
-				    NautilusNavigationWindow *window,
-				    gboolean back)
-{
-	int index;
-	
-	g_assert (GTK_IS_MENU_ITEM (menu_item));
-	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
-
-	index = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (menu_item), "user_data"));
-
-	nautilus_navigation_window_back_or_forward (window, back, index);
-}
-
-static void
-activate_back_menu_item_callback (GtkMenuItem *menu_item, NautilusNavigationWindow *window)
-{
-	activate_back_or_forward_menu_item (menu_item, window, TRUE);
-}
-
-static void
-activate_forward_menu_item_callback (GtkMenuItem *menu_item, NautilusNavigationWindow *window)
-{
-	activate_back_or_forward_menu_item (menu_item, window, FALSE);
-}
-
-static GtkMenu *
-create_back_or_forward_menu (NautilusNavigationWindow *window, gboolean back)
-{
-	GtkMenu *menu;
-	GtkWidget *menu_item;
-	GList *list_link;
-	int index;
-
-	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
-	
-	menu = GTK_MENU (gtk_menu_new ());
-
-	list_link = back ? window->back_list : window->forward_list;
-	index = 0;
-	while (list_link != NULL)
-	{
-		menu_item = nautilus_bookmark_menu_item_new (NAUTILUS_BOOKMARK (list_link->data));		
-		g_object_set_data (G_OBJECT (menu_item), "user_data", GINT_TO_POINTER (index));
-		gtk_widget_show (GTK_WIDGET (menu_item));
-  		g_signal_connect_object (menu_item, "activate",
-					 back
-					 ? G_CALLBACK (activate_back_menu_item_callback)
-					 : G_CALLBACK (activate_forward_menu_item_callback),
-					 window, 0);
-		
-		gtk_menu_shell_append (GTK_MENU_SHELL (menu), menu_item);
-		list_link = g_list_next (list_link);
-		++index;
-	}
-
-	return menu;
-}
-
-static GtkWidget *
-get_back_button (NautilusNavigationWindow *window)
-{
-	return window->details->back_button_item;
-}
-
-static GtkWidget *
-get_forward_button (NautilusNavigationWindow *window)
-{
-	return window->details->forward_button_item;
-}
-
-static void
-menu_position_under_widget (GtkMenu *menu, int *x, int *y,
-			    gboolean *push_in, gpointer user_data)
-{
-	GtkWidget *w;
-	int screen_width, screen_height;
-	GtkRequisition requisition;
-
-	w = GTK_WIDGET (user_data);
-	
-	gdk_window_get_origin (w->window, x, y);
-	*x += w->allocation.x;
-	*y += w->allocation.y + w->allocation.height;
-
-	gtk_widget_size_request (GTK_WIDGET (menu), &requisition);
-
-	screen_width = gdk_screen_width ();
-	screen_height = gdk_screen_height ();
-
-	*x = CLAMP (*x, 0, MAX (0, screen_width - requisition.width));
-	*y = CLAMP (*y, 0, MAX (0, screen_height - requisition.height));
-}
-
-static gboolean
-back_or_forward_button_pressed_callback (GtkWidget *widget, 
-					 GdkEventButton *event,
-					 gpointer *user_data)
-{
-	NautilusNavigationWindow *window;
-	gboolean back;
-
-	g_return_val_if_fail (GTK_IS_BUTTON (widget), FALSE);
-	g_return_val_if_fail (NAUTILUS_IS_NAVIGATION_WINDOW (user_data), FALSE);
-
-	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
-
-	back = widget == get_back_button (window);
-	g_assert (back || widget == get_forward_button (window));
-
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (widget), TRUE);
-
-	gnome_popup_menu_do_popup_modal (GTK_WIDGET (create_back_or_forward_menu (NAUTILUS_NAVIGATION_WINDOW (user_data), back)),
-					 menu_position_under_widget, widget, event, widget, widget);
-	
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (widget), FALSE);
-	
-	return TRUE;
-}
-
-static gboolean
-back_or_forward_key_pressed_callback (GtkWidget *widget,
-				      GdkEventKey *event,
-				      gpointer *user_data)
-{
-	if (event->keyval == GDK_space ||
-	    event->keyval == GDK_KP_Space ||
-	    event->keyval == GDK_Return ||
-	    event->keyval == GDK_KP_Enter) {
-		back_or_forward_button_pressed_callback (widget, NULL, user_data);
-	}
-
-	return FALSE;
-}
-
-static GtkWidget *
-create_back_or_forward_toolbar_item (NautilusNavigationWindow *window, 
-				     const char     *tooltip,
-				     const char     *control_path)
-{
-	GtkWidget *button;
-
-	button = gtk_toggle_button_new ();
-
-	gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-
-	gtk_container_add (GTK_CONTAINER (button),
-			   gtk_arrow_new (GTK_ARROW_DOWN, GTK_SHADOW_OUT));
-
-	gtk_widget_show_all (GTK_WIDGET (button));
-
-	gtk_tooltips_set_tip (window->details->tooltips,
-			      GTK_WIDGET (button),
-			      tooltip, NULL);
-
-	g_signal_connect_object (button, "key_press_event",
-				 G_CALLBACK (back_or_forward_key_pressed_callback),
-				 window, 0);
-	g_signal_connect_object (button, "button_press_event",
-				 G_CALLBACK (back_or_forward_button_pressed_callback),
-				 window, 0);
-
-	bonobo_ui_component_widget_set (NAUTILUS_WINDOW (window)->details->shell_ui,
-					control_path,
-					button,
-					NULL);
-
-	return button;
-}
-
+#ifdef BONOBO_DONE
 static void
 throbber_set_throbbing (NautilusNavigationWindow *window,
 			gboolean        throbbing)
@@ -296,10 +119,13 @@ throbber_created_callback (Bonobo_Unknown     throbber,
 	g_object_unref (window);
 }
 
+#endif
+
 void
 nautilus_navigation_window_set_throbber_active (NautilusNavigationWindow *window, 
 						gboolean allow)
 {
+#ifdef BONOBO_DONE
 	if (( window->details->throbber_active &&  allow) ||
 	    (!window->details->throbber_active && !allow)) {
 		return;
@@ -317,11 +143,13 @@ nautilus_navigation_window_set_throbber_active (NautilusNavigationWindow *window
 	if (window->details->throbber_property_bag != CORBA_OBJECT_NIL) {
 		throbber_set_throbbing (window, allow);
 	}
+#endif
 }
 
 void
 nautilus_navigation_window_activate_throbber (NautilusNavigationWindow *window)
 {
+#ifdef BONOBO_DONE
 	CORBA_Environment ev;
 	char *exception_as_text;
 
@@ -352,33 +180,15 @@ nautilus_navigation_window_activate_throbber (NautilusNavigationWindow *window)
 		CORBA_exception_free (&ev);
 		window->details->throbber_activating = TRUE;		
 	}
+#endif
 }
 
 void
 nautilus_navigation_window_initialize_toolbars (NautilusNavigationWindow *window)
 {
-	GtkWidget *space;
-
-	nautilus_window_ui_freeze (NAUTILUS_WINDOW (window));
-
 	nautilus_navigation_window_activate_throbber (window);
-
-	window->details->back_button_item = create_back_or_forward_toolbar_item 
-		(window, _("Go back a few pages"),
-		 "/Toolbar/BackMenu");
-	window->details->forward_button_item = create_back_or_forward_toolbar_item 
-		(window, _("Go forward a number of pages"),
-		 "/Toolbar/ForwardMenu");
-
-	space = gtk_event_box_new ();
-	gtk_event_box_set_visible_window (GTK_EVENT_BOX (space), FALSE);
-	bonobo_ui_component_widget_set (NAUTILUS_WINDOW (window)->details->shell_ui,
-					"/Toolbar/SpaceWrapper",
-					space,
-					NULL);
-
-	nautilus_window_ui_thaw (NAUTILUS_WINDOW (window));
 }
+
 
 static GList *
 get_extension_toolbar_items (NautilusNavigationWindow *window)
@@ -407,15 +217,47 @@ get_extension_toolbar_items (NautilusNavigationWindow *window)
 	return items;
 }
 
+static void
+extension_action_callback (GtkAction *action,
+			   gpointer callback_data)
+{
+	nautilus_menu_item_activate (NAUTILUS_MENU_ITEM (callback_data));
+}
+
 void
 nautilus_navigation_window_load_extension_toolbar_items (NautilusNavigationWindow *window)
 {
+	char *name, *label, *tip, *icon;
+	gboolean sensitive, priority;
+	GtkActionGroup *action_group;
+	GtkAction *action;
+	GdkPixbuf *pixbuf;
+	GtkUIManager *ui_manager;
 	GList *items;
 	GList *l;
 	
-	nautilus_bonobo_remove_menu_items_and_commands
-		(NAUTILUS_WINDOW (window)->details->shell_ui, 
-		 TOOLBAR_PATH_EXTENSION_ACTIONS);
+	guint merge_id;
+
+	ui_manager = nautilus_window_get_ui_manager (NAUTILUS_WINDOW (window));
+	if (window->details->extensions_toolbar_merge_id != 0) {
+		gtk_ui_manager_remove_ui (ui_manager,
+					  window->details->extensions_toolbar_merge_id);
+		window->details->extensions_toolbar_merge_id = 0;
+	}
+
+	if (window->details->extensions_toolbar_action_group != NULL) {
+		gtk_ui_manager_remove_action_group (ui_manager,
+						    window->details->extensions_toolbar_action_group);
+		window->details->extensions_toolbar_action_group = NULL;
+	}
+	
+	merge_id = gtk_ui_manager_new_merge_id (ui_manager);
+	window->details->extensions_toolbar_merge_id = merge_id;
+	action_group = gtk_action_group_new ("ExtensionsMenuGroup");
+	window->details->extensions_toolbar_action_group = action_group;
+	gtk_action_group_set_translation_domain (action_group, GETTEXT_PACKAGE);
+	gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
+	g_object_unref (action_group); /* owned by ui manager */
 
 	items = get_extension_toolbar_items (window);
 
@@ -424,14 +266,58 @@ nautilus_navigation_window_load_extension_toolbar_items (NautilusNavigationWindo
 		
 		item = NAUTILUS_MENU_ITEM (l->data);
 
-		nautilus_bonobo_add_extension_item_command
-			(NAUTILUS_WINDOW (window)->details->shell_ui, item);
-		
-		nautilus_bonobo_add_extension_toolbar_item
-			(NAUTILUS_WINDOW (window)->details->shell_ui, 
-			 TOOLBAR_PATH_EXTENSION_ACTIONS,
-			 item);
+		g_object_get (G_OBJECT (item), 
+			      "name", &name, "label", &label, 
+			      "tip", &tip, "icon", &icon,
+			      "sensitive", &sensitive,
+			      "priority", &priority,
+			      NULL);
 
+		action = gtk_action_new (name,
+					 label,
+					 tip,
+					 icon);
+
+		/* TODO: This should really use themed icons, but that
+		   doesn't work here yet */
+		if (icon != NULL) {
+			pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
+				(icon,
+				 NULL,
+				 /*BONOBOTODO: size */48,
+				 NULL);
+			if (pixbuf != NULL) {
+				g_object_set_data_full (G_OBJECT (action), "toolbar-icon",
+							pixbuf,
+							g_object_unref);
+			}
+		}
+		
+		gtk_action_set_sensitive (action, sensitive);
+		g_object_set (action, "is-important", priority, NULL);
+
+		g_signal_connect_data (action, "activate",
+				       G_CALLBACK (extension_action_callback),
+				       g_object_ref (item), 
+				       (GClosureNotify)g_object_unref, 0);
+		
+		gtk_action_group_add_action (action_group,
+					     GTK_ACTION (action));
+		g_object_unref (action);
+		
+		gtk_ui_manager_add_ui (ui_manager,
+				       merge_id,
+				       TOOLBAR_PATH_EXTENSION_ACTIONS,
+				       name,
+				       name,
+				       GTK_UI_MANAGER_TOOLITEM,
+				       FALSE);
+
+		g_free (name);
+		g_free (label);
+		g_free (tip);
+		g_free (icon);
+		
 		g_object_unref (item);
 	}
 
