@@ -1,5 +1,7 @@
 NULL=
 
 SUBDIRS = 					\
-	throbber 				\
 	$(NULL)
+
+# Still needs converting:
+# throbber 				\

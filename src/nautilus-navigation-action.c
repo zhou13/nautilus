@@ -30,11 +30,12 @@
 #include <config.h>
 
 #include "nautilus-navigation-action.h"
-#include "nautilus-arrow-toolbutton.h"
 #include "nautilus-navigation-window.h"
 
 #include <gtk/gtkimage.h>
 #include <gtk/gtkimagemenuitem.h>
+#include <gtk/gtktoolbar.h>
+#include <gtk/gtkmenutoolbutton.h>
 
 static void nautilus_navigation_action_init       (NautilusNavigationAction *action);
 static void nautilus_navigation_action_class_init (NautilusNavigationActionClass *class);
@@ -109,19 +110,17 @@ activate_forward_menu_item_callback (GtkMenuItem *menu_item, NautilusNavigationW
 	activate_back_or_forward_menu_item (menu_item, window, FALSE);
 }
 
-static GtkMenu *
-fill_menu (NautilusNavigationWindow *window, GtkMenuShell *ms,
+static void
+fill_menu (NautilusNavigationWindow *window,
+	   GtkWidget *menu,
 	   gboolean back)
 {
-	GtkMenu *menu;
 	GtkWidget *menu_item;
 	int index;
 	GList *list;
 
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
 	
-	menu = GTK_MENU (ms);
-
 	list = back ? window->back_list : window->forward_list;
 	index = 0;
 	while (list != NULL) {
@@ -138,32 +137,36 @@ fill_menu (NautilusNavigationWindow *window, GtkMenuShell *ms,
 		list = g_list_next (list);
 		++index;
 	}
-
-	return menu;
 }
 
 
 static void
-menu_activated_cb (NautilusArrowToolButton *w, NautilusNavigationAction *b)
+show_menu_callback (GtkMenuToolButton *button,
+		    NautilusNavigationAction *action)
 {
-	NautilusNavigationActionPrivate *p = b->priv;
-	GtkMenuShell *ms = nautilus_arrow_toolbutton_get_menu (w);
-	NautilusNavigationWindow *win = b->priv->window;
+	NautilusNavigationActionPrivate *p;
+	NautilusNavigationWindow *window;
+	GtkWidget *menu;
 	GList *children;
 	GList *li;
 
-	children = gtk_container_get_children (GTK_CONTAINER (ms));
+	p = action->priv;
+	window = action->priv->window;
+	
+	menu = gtk_menu_tool_button_get_menu (button);
+	
+	children = gtk_container_get_children (GTK_CONTAINER (menu));
 	for (li = children; li; li = li->next) {
-		gtk_container_remove (GTK_CONTAINER (ms), li->data);
+		gtk_container_remove (GTK_CONTAINER (menu), li->data);
 	}
 	g_list_free (children);
 
 	switch (p->direction) {
 	case NAUTILUS_NAVIGATION_DIRECTION_FORWARD:
-		fill_menu (win, ms, FALSE);
+		fill_menu (window, menu, FALSE);
 		break;
 	case NAUTILUS_NAVIGATION_DIRECTION_BACK:
-		fill_menu (win, ms, TRUE);
+		fill_menu (window, menu, TRUE);
 		break;
 	default:
 		g_assert_not_reached ();
@@ -172,11 +175,43 @@ menu_activated_cb (NautilusArrowToolButton *w, NautilusNavigationAction *b)
 }
 
 static void
+nautilus_navigation_action_sync_tooltip (GtkAction  *action, 
+					 GParamSpec *pspec, 
+					 GtkWidget  *proxy)
+{
+	char *tooltip;
+	
+	g_return_if_fail (GTK_IS_TOOL_ITEM (proxy));
+	
+	if (GTK_IS_TOOLBAR (gtk_widget_get_parent (proxy)))  {
+		GtkToolbar *toolbar = GTK_TOOLBAR (gtk_widget_get_parent (proxy));
+
+		g_object_get (action, "tooltip", &tooltip, NULL);
+
+		gtk_menu_tool_button_set_arrow_tooltip (GTK_MENU_TOOL_BUTTON (proxy),
+							toolbar->tooltips,
+							tooltip,
+							NULL);
+		g_free (tooltip);
+	}
+}
+
+
+static void
 connect_proxy (GtkAction *action, GtkWidget *proxy)
 {
-	if (NAUTILUS_IS_ARROW_TOOLBUTTON (proxy)) {
-		g_signal_connect (proxy, "menu-activated",
-				  G_CALLBACK (menu_activated_cb), action);
+	GtkWidget *menu;
+	
+	if (GTK_IS_MENU_TOOL_BUTTON (proxy)) {
+		menu = gtk_menu_new ();
+		gtk_menu_tool_button_set_menu (GTK_MENU_TOOL_BUTTON (proxy),
+					       menu);
+		g_signal_connect_object (action, "notify::tooltip",
+					 G_CALLBACK (nautilus_navigation_action_sync_tooltip), 
+					 proxy, 0);
+		
+		g_signal_connect (proxy, "show-menu",
+				  G_CALLBACK (show_menu_callback), action);
 	}
 
 	(* GTK_ACTION_CLASS (parent_class)->connect_proxy) (action, proxy);
@@ -235,7 +270,7 @@ nautilus_navigation_action_class_init (NautilusNavigationActionClass *class)
 
 	parent_class = g_type_class_peek_parent (class);
 
-	action_class->toolbar_item_type = NAUTILUS_TYPE_ARROW_TOOLBUTTON;
+	action_class->toolbar_item_type = GTK_TYPE_MENU_TOOL_BUTTON;
 	action_class->connect_proxy = connect_proxy;
 
 	g_object_class_install_property (object_class,

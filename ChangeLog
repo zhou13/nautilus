@@ -1,3 +1,18 @@
+2004-11-17  Alexander Larsson  <alexl@redhat.com>
+
+	* Makefile.am:
+	Remove libnautilus-adapter subdir
+	
+	* components/Makefile.am:
+	Don't build throbber atm
+	
+	* src/nautilus-navigation-action.c:
+	Use GtkMenuToolButton instead of NautilusArrowToolbutton
+	
+	* src/Makefile.am:
+	* src/nautilus-arrow-toolbutton.[ch]:
+	Remove.
+
 2004-11-16  Anders Carlsson  <andersca@gnome.org>
 
 	* libnautilus-private/nautilus-window-info.c:

@@ -19,7 +19,6 @@ SUBDIRS =			\
 	cut-n-paste-code 	\
 	libbackground		\
 	libnautilus-private	\
-	libnautilus-adapter	\
 	src 			\
 	test 			\
 	components		\

@@ -55,8 +55,6 @@ nautilus_SOURCES = \
 	nautilus-actions.h			\
 	nautilus-application.c			\
 	nautilus-application.h			\
-	nautilus-arrow-toolbutton.c		\
-	nautilus-arrow-toolbutton.h		\
 	nautilus-bookmark-list.c		\
 	nautilus-bookmark-list.h		\
 	nautilus-bookmark-parsing.c		\
