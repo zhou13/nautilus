@@ -1,5 +1,11 @@
 2004-11-19  Alexander Larsson  <alexl@redhat.com>
 
+	* src/nautilus-navigation-window.c:
+	* src/nautilus-window-private.h:
+	Put location entry etc in a toolbar.
+
+2004-11-19  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-file.c: (is_desktop_file),
 	(nautilus_file_is_nautilus_link):
 	Don't check for "application/x-gnome-app-info", as that is already

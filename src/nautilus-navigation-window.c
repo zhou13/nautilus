@@ -53,6 +53,7 @@
 #include <gtk/gtkmenubar.h>
 #include <gtk/gtkmenuitem.h>
 #include <gtk/gtkoptionmenu.h>
+#include <gtk/gtktoolbar.h>
 #include <gtk/gtktogglebutton.h>
 #include <gtk/gtkvbox.h>
 #include <libgnome/gnome-i18n.h>
@@ -118,8 +119,9 @@ nautilus_navigation_window_instance_init (NautilusNavigationWindow *window)
 {
 	GtkUIManager *ui_manager;
 	GtkWidget *toolbar;
-	GtkWidget *location_bar_box;
+	GtkWidget *location_bar;
 	GtkWidget *view_as_menu_vbox;
+	GtkToolItem *item;
 	
 	window->details = g_new0 (NautilusNavigationWindowDetails, 1);
 
@@ -159,9 +161,8 @@ nautilus_navigation_window_instance_init (NautilusNavigationWindow *window)
 	nautilus_navigation_window_allow_forward (window, FALSE);
 
 	/* set up location bar */
-	location_bar_box = gtk_hbox_new (FALSE, GNOME_PAD);
-	window->details->location_bar_box = location_bar_box;
-	gtk_container_set_border_width (GTK_CONTAINER (location_bar_box), GNOME_PAD_SMALL);
+	location_bar = gtk_toolbar_new ();
+	window->details->location_bar = location_bar;
 	
 	window->navigation_bar = nautilus_location_bar_new (window);
 	gtk_widget_show (GTK_WIDGET (window->navigation_bar));
@@ -169,15 +170,27 @@ nautilus_navigation_window_instance_init (NautilusNavigationWindow *window)
 	g_signal_connect_object (window->navigation_bar, "location_changed",
 				 G_CALLBACK (navigation_bar_location_changed_callback), window, 0);
 
-	gtk_box_pack_start (GTK_BOX (location_bar_box), window->navigation_bar,
-			    TRUE, TRUE, GNOME_PAD_SMALL);
+
+	item = gtk_tool_item_new ();
+	gtk_container_set_border_width (GTK_CONTAINER (item), GNOME_PAD_SMALL);
+	gtk_widget_show (GTK_WIDGET (item));
+	gtk_tool_item_set_expand (item, TRUE);
+	gtk_container_add (GTK_CONTAINER (item),  window->navigation_bar);
+	gtk_toolbar_insert (GTK_TOOLBAR (location_bar),
+			    item, -1);
 
 	/* Option menu for content view types; it's empty here, filled in when a uri is set.
 	 * Pack it into vbox so it doesn't grow vertically when location bar does. 
 	 */
 	view_as_menu_vbox = gtk_vbox_new (FALSE, GNOME_PAD_SMALL);
 	gtk_widget_show (view_as_menu_vbox);
-	gtk_box_pack_end (GTK_BOX (location_bar_box), view_as_menu_vbox, FALSE, FALSE, 0);
+
+	item = gtk_tool_item_new ();
+	gtk_container_set_border_width (GTK_CONTAINER (item), GNOME_PAD_SMALL);
+	gtk_widget_show (GTK_WIDGET (item));
+	gtk_container_add (GTK_CONTAINER (item), view_as_menu_vbox);
+	gtk_toolbar_insert (GTK_TOOLBAR (location_bar),
+			    item, -1);
 	
 	window->view_as_option_menu = gtk_option_menu_new ();
 	gtk_box_pack_end (GTK_BOX (view_as_menu_vbox), window->view_as_option_menu, TRUE, FALSE, 0);
@@ -199,12 +212,18 @@ nautilus_navigation_window_instance_init (NautilusNavigationWindow *window)
 	g_signal_connect_object (window->zoom_control, "zoom_to_default",
 				 G_CALLBACK (nautilus_window_zoom_to_default),
 				 window, G_CONNECT_SWAPPED);
-	gtk_box_pack_end (GTK_BOX (location_bar_box), window->zoom_control, FALSE, FALSE, 0);
+	
+	item = gtk_tool_item_new ();
+	gtk_container_set_border_width (GTK_CONTAINER (item), GNOME_PAD_SMALL);
+	gtk_widget_show (GTK_WIDGET (item));
+	gtk_container_add (GTK_CONTAINER (item),  window->zoom_control);
+	gtk_toolbar_insert (GTK_TOOLBAR (location_bar),
+			    item, 1);
 
-	gtk_widget_show (location_bar_box);
+	gtk_widget_show (location_bar);
 
 	gtk_table_attach (GTK_TABLE (NAUTILUS_WINDOW (window)->details->table),
-			  location_bar_box,
+			  location_bar,
 			  /* X direction */       /* Y direction */
 			  0, 1,                   2, 3,
 			  GTK_EXPAND | GTK_FILL,  0,
@@ -856,7 +875,7 @@ void
 nautilus_navigation_window_hide_location_bar (NautilusNavigationWindow *window, gboolean save_preference)
 {
 	window->details->temporary_navigation_bar = FALSE;
-	gtk_widget_hide (window->details->location_bar_box);
+	gtk_widget_hide (window->details->location_bar);
 	nautilus_navigation_window_update_show_hide_menu_items (window);
 	if (save_preference &&
 	    eel_preferences_key_is_writable (NAUTILUS_PREFERENCES_START_WITH_LOCATION_BAR)) {
@@ -867,7 +886,7 @@ nautilus_navigation_window_hide_location_bar (NautilusNavigationWindow *window, 
 void 
 nautilus_navigation_window_show_location_bar (NautilusNavigationWindow *window, gboolean save_preference)
 {
-	gtk_widget_show (window->details->location_bar_box);
+	gtk_widget_show (window->details->location_bar);
 	nautilus_navigation_window_update_show_hide_menu_items (window);
 	if (save_preference &&
 	    eel_preferences_key_is_writable (NAUTILUS_PREFERENCES_START_WITH_LOCATION_BAR)) {
@@ -878,8 +897,8 @@ nautilus_navigation_window_show_location_bar (NautilusNavigationWindow *window, 
 gboolean
 nautilus_navigation_window_location_bar_showing (NautilusNavigationWindow *window)
 {
-	if (window->details->location_bar_box != NULL) {
-		return GTK_WIDGET_VISIBLE (window->details->location_bar_box);
+	if (window->details->location_bar != NULL) {
+		return GTK_WIDGET_VISIBLE (window->details->location_bar);
 	}
 	/* If we're not visible yet we haven't changed visibility, so its TRUE */
 	return TRUE;
