@@ -1,3 +1,10 @@
+2004-11-19  Dave Camp  <dave@novell.com>
+
+	* src/file-manager/fm-directory-view.c: (reset_open_with_menu),
+	(can_show_default_app), (real_update_menus): Fix some jumping
+	menus.
+	* test/Makefile.am: Don't link to libnautilus
+
 2004-11-19  Alexander Larsson  <alexl@redhat.com>
 
 	* libnautilus-private/nautilus-mime-actions.c:

@@ -324,9 +324,13 @@ static void     monitor_file_for_open_with                     (FMDirectoryView 
 static void     create_scripts_directory                       (void);
 static void     activate_activation_uri_ready_callback         (NautilusFile         *file,
 								gpointer              callback_data);
+static gboolean can_show_default_app                           (FMDirectoryView *view,
+								NautilusFile *file);
+
 static gboolean activate_check_mime_types                      (FMDirectoryView *view,
 								NautilusFile *file,
 								gboolean warn_on_mismatch);
+
 
 static void action_open_scripts_folder_callback    (GtkAction *action,
 						    gpointer   callback_data);
@@ -3880,12 +3884,12 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 		   a mime mismatch, otherwise we can't use it in the
 		   open with menu */
 		if (action == ACTIVATION_ACTION_OPEN_IN_APPLICATION &&
-		    activate_check_mime_types (view, file, FALSE)) {
+		    can_show_default_app (view, file)) {
 			default_app = nautilus_mime_get_default_application_for_file (file);
 		} else {
 			default_app = NULL;
 		}
-
+		
 		applications = NULL;
 		if (other_applications_visible) {
 			applications = nautilus_mime_get_open_with_applications_for_file (NAUTILUS_FILE (selection->data));
@@ -4187,6 +4191,13 @@ warn_mismatched_mime_types (FMDirectoryView *view,
 			  file);
 
 	gtk_widget_show (dialog);
+}
+
+static gboolean 
+can_show_default_app (FMDirectoryView *view, NautilusFile *file)
+{
+	return (!nautilus_file_check_if_ready (file, NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE) || activate_check_mime_types (view, file, FALSE));
+
 }
 
 static gboolean
@@ -6155,7 +6166,7 @@ real_update_menus (FMDirectoryView *view)
 		   a mime mismatch, otherwise we can't use it in the
 		   open with menu */
 		if (activation_action == ACTIVATION_ACTION_OPEN_IN_APPLICATION &&
-		    activate_check_mime_types (view, file, FALSE)) {
+		    can_show_default_app (view, file)) {
 			GnomeVFSMimeApplication *app;
 
 			app = nautilus_mime_get_default_application_for_file (file);
