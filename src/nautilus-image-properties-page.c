@@ -442,9 +442,26 @@ get_property_pages (NautilusPropertyPageProvider *provider,
 		return NULL;
 	}
 
+	file = NAUTILUS_FILE_INFO (files->data);
+	
+	if (!
+	    (nautilus_file_info_is_mime_type (file, "image/x-bmp") ||
+	     nautilus_file_info_is_mime_type (file, "image/x-ico") ||
+	     nautilus_file_info_is_mime_type (file, "image/jpeg") ||
+	     nautilus_file_info_is_mime_type (file, "image/gif") ||
+	     nautilus_file_info_is_mime_type (file, "image/png") ||
+	     nautilus_file_info_is_mime_type (file, "image/pnm") ||
+	     nautilus_file_info_is_mime_type (file, "image/ras") ||
+	     nautilus_file_info_is_mime_type (file, "image/tga") ||
+	     nautilus_file_info_is_mime_type (file, "image/tiff") ||
+	     nautilus_file_info_is_mime_type (file, "image/wbmp") ||
+	     nautilus_file_info_is_mime_type (file, "image/x-xbitmap") ||
+	     nautilus_file_info_is_mime_type (file, "image/x-xpixmap"))) {
+		return NULL;
+	}
+	
 	pages = NULL;
 	
-	file = NAUTILUS_FILE_INFO (files->data);
         uri = nautilus_file_info_get_uri (file);
 	
 	page = g_object_new (nautilus_image_properties_page_get_type (), NULL);
