@@ -73,6 +73,8 @@ nautilus_SOURCES = \
 	nautilus-first-time-druid.h		\
 	nautilus-history-sidebar.c		\
 	nautilus-history-sidebar.h		\
+	nautilus-image-properties-page.c	\
+	nautilus-image-properties-page.h	\
 	nautilus-information-panel.c            \
 	nautilus-information-panel.h            \
 	nautilus-location-bar.c         	\
@@ -106,8 +108,8 @@ nautilus_SOURCES = \
 	nautilus-signaller.h			\
 	nautilus-spatial-window.c               \
 	nautilus-spatial-window.h               \
-	nautilus-image-properties-page.c	\
-	nautilus-image-properties-page.h	\
+	nautilus-throbber.c			\
+	nautilus-throbber.h			\
 	nautilus-window-manage-views.c		\
 	nautilus-window-manage-views.h		\
 	nautilus-window-menus.c         	\

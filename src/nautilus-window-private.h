@@ -119,12 +119,9 @@ struct _NautilusNavigationWindowDetails {
         guint extensions_toolbar_merge_id;
         GtkActionGroup *extensions_toolbar_action_group;
         
-#ifdef BONOBO_DONE
 	/* Throbber */
-        gboolean           throbber_active;
-        gboolean           throbber_activating;
-	Bonobo_PropertyBag throbber_property_bag;
-#endif
+        gboolean    throbber_active;
+        GtkWidget  *throbber;
 };
 
 #define NAUTILUS_MENU_PATH_BACK_ITEM			"/menu/Go/Back"

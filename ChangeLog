@@ -1,5 +1,18 @@
 2004-11-17  Alexander Larsson  <alexl@redhat.com>
 
+	* components/Makefile.am:
+	Remove references to throbber
+	
+	* src/Makefile.am:
+	* src/nautilus-throbber.[ch]:
+	Moved throbber here and made it not be a bonobo object
+	
+	* src/nautilus-window-private.h:
+	* src/nautilus-window-toolbars.c:
+	Work with the throbber
+
+2004-11-17  Alexander Larsson  <alexl@redhat.com>
+
 	* src/nautilus-application.c:
 	* src/nautilus-navigation-window.c:
 	* src/nautilus-spatial-window.c:

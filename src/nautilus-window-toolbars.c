@@ -33,6 +33,7 @@
 #include "nautilus-window-manage-views.h"
 #include "nautilus-window-private.h"
 #include "nautilus-window.h"
+#include "nautilus-throbber.h"
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-string.h>
@@ -56,131 +57,50 @@
 
 #define TOOLBAR_PATH_EXTENSION_ACTIONS "/Toolbar/Extra Buttons Placeholder/Extension Actions"
 
-enum {
-	TOOLBAR_ITEM_STYLE_PROP,
-	TOOLBAR_ITEM_ORIENTATION_PROP
-};
-
-#ifdef BONOBO_DONE
-static void
-throbber_set_throbbing (NautilusNavigationWindow *window,
-			gboolean        throbbing)
-{
-	CORBA_boolean b;
-	CORBA_any     val;
-
-	val._type = TC_CORBA_boolean;
-	val._value = &b;
-	b = throbbing;
-
-	bonobo_pbclient_set_value_async (
-		window->details->throbber_property_bag,
-		"throbbing", &val, NULL);
-}
-
-static void
-throbber_created_callback (Bonobo_Unknown     throbber,
-			   CORBA_Environment *ev,
-			   gpointer           user_data)
-{
-	char *exception_as_text;
-	NautilusNavigationWindow *window;
-
-	if (BONOBO_EX (ev)) {
-		exception_as_text = bonobo_exception_get_text (ev);
-		g_warning ("Throbber activation exception '%s'", exception_as_text);
-		g_free (exception_as_text);
-		return;
-	}
-
-	g_return_if_fail (NAUTILUS_IS_NAVIGATION_WINDOW (user_data));
-
-	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
-
-	window->details->throbber_activating = FALSE;
-
-	bonobo_ui_component_object_set (NAUTILUS_WINDOW (window)->details->shell_ui,
-					"/Toolbar/ThrobberWrapper",
-					throbber, ev);
-	CORBA_exception_free (ev);
-
-	window->details->throbber_property_bag =
-		Bonobo_Control_getProperties (throbber, ev);
-
-	if (BONOBO_EX (ev)) {
-		window->details->throbber_property_bag = CORBA_OBJECT_NIL;
-		CORBA_exception_free (ev);
-	} else {
-		throbber_set_throbbing (window, window->details->throbber_active);
-	}
-
-	bonobo_object_release_unref (throbber, ev);
-
-	g_object_unref (window);
-}
-
-#endif
-
 void
 nautilus_navigation_window_set_throbber_active (NautilusNavigationWindow *window, 
 						gboolean allow)
 {
-#ifdef BONOBO_DONE
 	if (( window->details->throbber_active &&  allow) ||
 	    (!window->details->throbber_active && !allow)) {
 		return;
 	}
 
-	if (allow)
-		access ("nautilus-throbber: start", 0);
-	else
-		access ("nautilus-throbber: stop", 0);
-
-	nautilus_bonobo_set_sensitive (NAUTILUS_WINDOW (window)->details->shell_ui,
-				       NAUTILUS_COMMAND_STOP, allow);
-
 	window->details->throbber_active = allow;
-	if (window->details->throbber_property_bag != CORBA_OBJECT_NIL) {
-		throbber_set_throbbing (window, allow);
+	if (allow) {
+		nautilus_throbber_start (NAUTILUS_THROBBER (window->details->throbber));
+	} else {
+		nautilus_throbber_stop (NAUTILUS_THROBBER (window->details->throbber));
 	}
-#endif
 }
 
 void
 nautilus_navigation_window_activate_throbber (NautilusNavigationWindow *window)
 {
-#ifdef BONOBO_DONE
-	CORBA_Environment ev;
-	char *exception_as_text;
+	GtkToolItem *item;
+	GtkWidget *throbber;
 
-	if (window->details->throbber_activating ||
-	    window->details->throbber_property_bag != CORBA_OBJECT_NIL) {
+	if (window->details->throbber != NULL) {
 		return;
 	}
 
-	/* FIXME bugzilla.gnome.org 41243: 
-	 * We should use inheritance instead of these special cases
-	 * for the desktop window.
-	 */
-	if (!NAUTILUS_IS_DESKTOP_WINDOW (window)) {
-		CORBA_exception_init (&ev);
-
-		g_object_ref (window);
-		bonobo_get_object_async ("OAFIID:Nautilus_Throbber",
-					 "IDL:Bonobo/Control:1.0",
-					 &ev,
-					 throbber_created_callback,
-					 window);
-
-		if (BONOBO_EX (&ev)) {
-			exception_as_text = bonobo_exception_get_text (&ev);
-			g_warning ("Throbber activation exception '%s'", exception_as_text);
-			g_free (exception_as_text);
-		}
-		CORBA_exception_free (&ev);
-		window->details->throbber_activating = TRUE;		
-	}
-#endif
+	item = gtk_tool_item_new ();
+	gtk_widget_show (GTK_WIDGET (item));
+	gtk_tool_item_set_expand (item, TRUE);
+	gtk_toolbar_insert (GTK_TOOLBAR (window->details->toolbar),
+			    item, -1);
+	
+	throbber = nautilus_throbber_new ();
+	gtk_widget_show (GTK_WIDGET (throbber));
+	
+	item = gtk_tool_item_new ();
+	gtk_container_add (GTK_CONTAINER (item), throbber);
+	gtk_widget_show (GTK_WIDGET (item));
+	
+	gtk_toolbar_insert (GTK_TOOLBAR (window->details->toolbar),
+			    item, -1);
+	
+	window->details->throbber = throbber;
 }
 
 void
