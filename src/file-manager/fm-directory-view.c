@@ -82,6 +82,7 @@
 #include <libnautilus-private/nautilus-clipboard-monitor.h>
 #include <libnautilus-private/nautilus-debug-log.h>
 #include <libnautilus-private/nautilus-desktop-icon-file.h>
+#include <libnautilus-private/nautilus-desktop-link.h>
 #include <libnautilus-private/nautilus-desktop-directory.h>
 #include <libnautilus-private/nautilus-search-directory.h>
 #include <libnautilus-private/nautilus-directory-background.h>
@@ -7265,11 +7266,22 @@ file_list_all_are_folders (GList *file_list)
 {
 	GList *l;
 	NautilusFile *file, *linked_file;
+    NautilusDesktopLink *desktop_link;
 	char *activation_uri;
 	gboolean is_dir;
 	
 	for (l = file_list; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
+        
+        if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
+            desktop_link = 
+                nautilus_desktop_icon_file_get_link(NAUTILUS_DESKTOP_ICON_FILE(file));
+            if (nautilus_desktop_link_get_link_type(desktop_link) == 
+                    NAUTILUS_DESKTOP_LINK_GLOBAL) {
+                return FALSE;
+            }
+        }
+
 		if (nautilus_file_is_nautilus_link (file) &&
 		    !NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
 			activation_uri = nautilus_file_get_activation_uri (file);

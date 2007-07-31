@@ -1,3 +1,16 @@
+2007-07-31	Sayamindu Dasgupta <sayamindu@gmail.com>
+
+		* src/file-manager/fm-directory-view.c: 
+		(file_list_all_are_folders):	  
+		* libnautilus-private/nautilus-desktop-link.[ch]:
+		(nautilus_desktop_link_new_from_file):
+		* libnautilus-private/apps_nautilus_preferences.schemas.in:
+		* libnautilus-private/nautilus-desktop-link-monitor.c:
+		(nautilus_desktop_link_monitor_init):
+		* libnautilus-private/nautilus-global-preferences.h:
+	Initial support for global desktop links (part of Summer of 
+	Code 2007)
+
 2007-07-31  Martin Wehner  <martin.wehner@gmail.com>
 
 	* configure.in:

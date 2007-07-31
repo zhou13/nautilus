@@ -41,11 +41,13 @@
 #include <glib/gi18n.h>
 #include <libgnomevfs/gnome-vfs.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
+#include <libgnome/gnome-desktop-item.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <string.h>
 
 struct NautilusDesktopLinkMonitorDetails {
 	NautilusDirectory *desktop_dir;
+    NautilusDirectory *global_dir;
 	
 	NautilusDesktopLink *home_link;
 	NautilusDesktopLink *computer_link;
@@ -56,6 +58,9 @@ struct NautilusDesktopLinkMonitorDetails {
 	gulong unmount_id;
 	
 	GList *volume_links;
+    GList *global_links;
+
+    void *global_dir_client;
 };
 
 
@@ -151,6 +156,7 @@ nautilus_desktop_link_monitor_delete_link (NautilusDesktopLinkMonitor *monitor,
 	case NAUTILUS_DESKTOP_LINK_COMPUTER:
 	case NAUTILUS_DESKTOP_LINK_TRASH:
 	case NAUTILUS_DESKTOP_LINK_NETWORK:
+    case NAUTILUS_DESKTOP_LINK_GLOBAL:
 		/* just ignore. We don't allow you to delete these */
 		break;
 	default:
@@ -347,6 +353,109 @@ desktop_volumes_visible_changed (gpointer callback_data)
 	}
 }
 
+
+static gint
+compare_link_file(NautilusDesktopLink *link, NautilusFile *file) {
+    NautilusFile *other_file;
+
+    other_file = nautilus_desktop_link_get_file(link);
+
+    /* FIXME: Is this the right way to compare two NautilusFiles ? */
+    return g_utf8_collate(nautilus_file_get_uri(other_file), 
+            (nautilus_file_get_uri(file)));
+
+    nautilus_file_unref(other_file);
+}
+
+static void
+global_dir_files_added (NautilusDirectory *directory, GList *changed_files, gpointer callback_data) 
+{
+    NautilusDesktopLinkMonitor *monitor;
+    GList *l;
+
+    monitor = NAUTILUS_DESKTOP_LINK_MONITOR (callback_data);
+
+    for (l = changed_files; l != NULL; l = l->next) {
+	    /* We filter out anything other than .desktop files */
+        if (g_str_has_suffix(nautilus_file_get_uri(NAUTILUS_FILE(l->data)), ".desktop")) { 
+            monitor->details->global_links = g_list_prepend (monitor->details->global_links, 
+                    nautilus_desktop_link_new_from_file(NAUTILUS_FILE(l->data)));
+        }
+    }
+}
+
+static void 
+global_dir_files_changed (NautilusDirectory *directory, GList *changed_files, gpointer callback_data) {
+    NautilusDesktopLinkMonitor *monitor;
+    GList *l, *deleted_link;
+    deleted_link = NULL;
+
+    monitor = NAUTILUS_DESKTOP_LINK_MONITOR (callback_data);
+
+    for (l = changed_files; l != NULL; l = l->next) {
+        if (nautilus_file_is_gone (l->data)) {/* We need to run this only if a file gets deleted */
+            deleted_link = 
+                g_list_find_custom(monitor->details->global_links, NAUTILUS_FILE(l->data), 
+                        (GCompareFunc )compare_link_file);
+
+            if (deleted_link != NULL) { /* Found a link, unref it */
+                
+                NAUTILUS_DESKTOP_LINK_MONITOR(callback_data)->details->global_links =
+                    g_list_remove_link(monitor->details->global_links, deleted_link);                
+                g_object_unref(deleted_link->data);
+                g_list_free(deleted_link);
+                deleted_link = NULL;
+            }
+        }   
+    }
+}
+
+static void
+desktop_global_items_visible_changed (gpointer callback_data)
+{
+    NautilusDesktopLinkMonitor *monitor;
+    gchar *global_dir_uri;
+
+    monitor = NAUTILUS_DESKTOP_LINK_MONITOR (callback_data);
+
+    if (eel_preferences_get_boolean (NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_VISIBLE)) {     
+	    if (monitor->details->global_links == NULL) {
+            global_dir_uri = eel_preferences_get(NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_DIR);
+
+            if (global_dir_uri == NULL || !g_utf8_collate(global_dir_uri, "")) /* Just a sanity check */
+        	    return;
+
+        	monitor->details->global_dir = nautilus_directory_get(global_dir_uri);
+
+        	monitor->details->global_dir_client = g_new0 (int, 1);
+
+            nautilus_directory_file_monitor_add (monitor->details->global_dir,
+                monitor->details->global_dir_client, FALSE, FALSE,
+                NAUTILUS_FILE_ATTRIBUTE_METADATA,
+                global_dir_files_added, monitor);
+
+    	    g_signal_connect (monitor->details->global_dir, "files_added", 
+                    G_CALLBACK (global_dir_files_added), monitor);
+    	    g_signal_connect (monitor->details->global_dir, "files_changed", 
+                    G_CALLBACK (global_dir_files_changed), monitor);
+
+        }
+    }	
+    else {
+        if (monitor->details->global_links != NULL) {
+            g_list_foreach (monitor->details->global_links, (GFunc)g_object_unref, NULL);
+    	    g_list_free (monitor->details->global_links);
+	        monitor->details->global_links = NULL;
+
+    	    nautilus_directory_file_monitor_remove (monitor->details->global_dir, 
+                    monitor->details->global_dir_client);
+	        nautilus_directory_unref (monitor->details->global_dir);
+    	    monitor->details->global_dir = NULL;
+        }
+    }
+
+}
+
 static void
 create_link_and_add_preference (NautilusDesktopLink   **link_ref,
 				NautilusDesktopLinkType link_type,
@@ -368,6 +477,7 @@ nautilus_desktop_link_monitor_init (gpointer object, gpointer klass)
 	GList *l, *volumes;
 	GnomeVFSVolume *volume;
 	GnomeVFSVolumeMonitor *volume_monitor;
+    char *global_dir_uri;
 
 	monitor = NAUTILUS_DESKTOP_LINK_MONITOR (object);
 
@@ -425,6 +535,34 @@ nautilus_desktop_link_monitor_init (gpointer object, gpointer klass)
 	monitor->details->unmount_id = g_signal_connect_object (volume_monitor, "volume_unmounted",
 								G_CALLBACK (volume_unmounted_callback), monitor, 0);
 
+    /* Global Items */
+
+    global_dir_uri = eel_preferences_get(NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_DIR);
+
+    if (eel_preferences_get_boolean (NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_VISIBLE) 
+            && global_dir_uri != NULL && g_utf8_collate(global_dir_uri, "")) {
+        
+        monitor->details->global_dir = nautilus_directory_get(global_dir_uri);
+
+        monitor->details->global_dir_client = g_new0 (int, 1);
+
+        nautilus_directory_file_monitor_add (monitor->details->global_dir,
+            monitor->details->global_dir_client, FALSE, FALSE,
+            NAUTILUS_FILE_ATTRIBUTE_METADATA,
+            global_dir_files_added, monitor);
+
+        g_signal_connect (monitor->details->global_dir, 
+                "files_added", G_CALLBACK (global_dir_files_added), monitor);
+        g_signal_connect (monitor->details->global_dir, 
+                "files_changed", G_CALLBACK (global_dir_files_changed), monitor);
+
+    }
+    
+
+    eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_VISIBLE,
+                                  desktop_global_items_visible_changed,
+                                  monitor);
+    
 }
 
 static void
@@ -489,6 +627,16 @@ desktop_link_monitor_finalize (GObject *object)
 	if (monitor->details->unmount_id != 0) {
 		g_source_remove (monitor->details->unmount_id);
 	}
+
+    /* Global Items */
+
+    g_list_foreach (monitor->details->global_links, (GFunc)g_object_unref, NULL);
+    g_list_free (monitor->details->global_links);
+    monitor->details->global_links = NULL;
+
+    nautilus_directory_file_monitor_remove (monitor->details->global_dir, monitor->details->global_dir_client);
+    nautilus_directory_unref (monitor->details->global_dir);
+    monitor->details->global_dir = NULL;
 	
 	g_free (monitor->details);
 

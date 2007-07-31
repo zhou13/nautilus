@@ -840,6 +840,35 @@ most cases, this should be left alone. -->Sans 10</default>
     </schema>
 
     <schema>
+      <key>/schemas/apps/nautilus/desktop/global_items_visible</key>
+      <applyto>/apps/nautilus/desktop/global_items_visible</applyto>
+      <owner>nautilus</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+      	<short>Global items visible on the desktop</short>
+	<long>
+	  If this is set to true, global desktop items will be shown on the 
+      desktop.
+	</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/nautilus/desktop/global_items_dir</key>
+      <applyto>/apps/nautilus/desktop/global_items_dir</applyto>
+      <owner>nautilus</owner>
+      <type>string</type>
+      <locale name="C">
+      	<short>Directory for storing global desktop items</short>
+	<long>
+      Location of the desktop item directories.
+	</long>
+      </locale>
+    </schema>
+
+
+    <schema>
       <key>/schemas/apps/nautilus/desktop/computer_icon_name</key>
       <applyto>/apps/nautilus/desktop/computer_icon_name</applyto>
       <owner>nautilus</owner>

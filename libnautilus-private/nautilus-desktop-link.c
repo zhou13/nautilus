@@ -28,12 +28,15 @@
 #include "nautilus-desktop-icon-file.h"
 #include "nautilus-directory-private.h"
 #include "nautilus-desktop-directory.h"
+#include "nautilus-icon-factory.h"
+#include "nautilus-mime-actions.h"
 
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-vfs-extensions.h>
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <libgnomevfs/gnome-vfs.h>
+#include <libgnome/gnome-desktop-item.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
@@ -56,6 +59,9 @@ struct NautilusDesktopLinkDetails {
 
 	/* Just for volume icons: */
 	GnomeVFSVolume *volume;
+
+    /* Just for global icons */
+    NautilusFile *file;
 };
 
 static void nautilus_desktop_link_init       (gpointer              object,
@@ -208,6 +214,71 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 	return link;
 }
 
+
+static void
+ready_callback (NautilusFile *file,
+                gpointer callback_data)
+{ 
+    NautilusDesktopLink *link;
+    
+    link = NAUTILUS_DESKTOP_LINK(callback_data);
+    link->details->icon = g_strdup(nautilus_icon_factory_get_icon_for_file(file, FALSE));
+    link->details->filename = nautilus_file_get_name(file);
+    link->details->display_name = nautilus_file_get_display_name(file);
+
+    create_icon_file(link);
+}
+
+static char *
+get_real_activation_url (NautilusFile *file) {
+    GnomeDesktopItem *desktop_file;
+    char *type, *activation_url;
+
+    desktop_file = gnome_desktop_item_new_from_uri(nautilus_file_get_uri(file), 
+            GNOME_DESKTOP_ITEM_LOAD_ONLY_IF_EXISTS, NULL);
+
+    type = g_strdup(gnome_desktop_item_get_string(desktop_file, GNOME_DESKTOP_ITEM_TYPE));
+
+    if (!g_ascii_strcasecmp(type, "Link")) {
+            activation_url = g_strdup(gnome_desktop_item_get_string(desktop_file, 
+                    GNOME_DESKTOP_ITEM_URL));
+    } else if (!g_ascii_strcasecmp(type, "Application")){
+        if (gnome_desktop_item_get_boolean(desktop_file,
+                    GNOME_DESKTOP_ITEM_TERMINAL)) {
+                activation_url = g_strdup (nautilus_file_get_uri(file));
+        }
+        else {
+            activation_url = g_strdup(gnome_desktop_item_get_string(desktop_file,
+                    GNOME_DESKTOP_ITEM_EXEC));
+        }
+    }
+    else {
+        activation_url = g_strdup (nautilus_file_get_uri(file));
+    }
+
+    return (activation_url);
+}
+
+NautilusDesktopLink *
+nautilus_desktop_link_new_from_file (NautilusFile *file) 
+{
+    NautilusDesktopLink *link;
+    NautilusFileAttributes attributes;
+
+    link = NAUTILUS_DESKTOP_LINK (g_object_new (NAUTILUS_TYPE_DESKTOP_LINK, NULL));
+    link->details->type = NAUTILUS_DESKTOP_LINK_GLOBAL;
+    link->details->filename = g_path_get_basename(nautilus_file_get_uri(file));
+    link->details->activation_uri = get_real_activation_url (file);
+    link->details->file = nautilus_file_ref(file);
+    
+    /* TODO: The code below should be replaced by nautilus_file_monitor_add() */
+    attributes = nautilus_mime_actions_get_full_file_attributes();
+    nautilus_file_call_when_ready (link->details->file, attributes, ready_callback, link);
+
+    return link;
+}
+
+
 NautilusDesktopLink *
 nautilus_desktop_link_new_from_volume (GnomeVFSVolume *volume)
 {
@@ -254,6 +325,11 @@ nautilus_desktop_link_get_volume (NautilusDesktopLink *link)
 	return gnome_vfs_volume_ref (link->details->volume);
 }
 
+NautilusFile *
+nautilus_desktop_link_get_file (NautilusDesktopLink *link)
+{
+    return nautilus_file_ref(link->details->file);
+}
 
 NautilusDesktopLinkType
 nautilus_desktop_link_get_link_type  (NautilusDesktopLink *link)
@@ -418,6 +494,10 @@ desktop_link_finalize (GObject *object)
 	if (link->details->type == NAUTILUS_DESKTOP_LINK_VOLUME) {
 		gnome_vfs_volume_unref (link->details->volume);
 	}
+
+    if (link->details->type == NAUTILUS_DESKTOP_LINK_GLOBAL) {
+        nautilus_file_unref(link->details->file);
+    }
 
 	g_free (link->details->filename);
 	g_free (link->details->display_name);

@@ -55,12 +55,14 @@ typedef enum {
 	NAUTILUS_DESKTOP_LINK_COMPUTER,
 	NAUTILUS_DESKTOP_LINK_TRASH,
 	NAUTILUS_DESKTOP_LINK_VOLUME,
-	NAUTILUS_DESKTOP_LINK_NETWORK
+	NAUTILUS_DESKTOP_LINK_NETWORK,
+    NAUTILUS_DESKTOP_LINK_GLOBAL
 } NautilusDesktopLinkType;
 
 GType   nautilus_desktop_link_get_type (void);
 
 NautilusDesktopLink *   nautilus_desktop_link_new                (NautilusDesktopLinkType  type);
+NautilusDesktopLink *   nautilus_desktop_link_new_from_file      (NautilusFile            *file);
 NautilusDesktopLink *   nautilus_desktop_link_new_from_volume    (GnomeVFSVolume          *volume);
 NautilusDesktopLinkType nautilus_desktop_link_get_link_type      (NautilusDesktopLink     *link);
 char *                  nautilus_desktop_link_get_file_name      (NautilusDesktopLink     *link);
@@ -71,6 +73,7 @@ gboolean                nautilus_desktop_link_get_date           (NautilusDeskto
 								  NautilusDateType         date_type,
 								  time_t                  *date);
 GnomeVFSVolume *        nautilus_desktop_link_get_volume         (NautilusDesktopLink     *link);
+NautilusFile *          nautilus_desktop_link_get_file           (NautilusDesktopLink     *link);
 
 gboolean                nautilus_desktop_link_can_rename         (NautilusDesktopLink     *link);
 gboolean                nautilus_desktop_link_rename             (NautilusDesktopLink     *link,
