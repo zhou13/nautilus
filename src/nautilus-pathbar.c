@@ -38,6 +38,7 @@
 #include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include "nautilus-pathbar.h"
 
 enum {
@@ -1533,18 +1534,25 @@ nautilus_path_bar_update_path (NautilusPathBar *path_bar, const char *file_path)
 
         gtk_widget_push_composite_child ();
 
-        while (path != NULL) {
+        while (path != NULL && nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), 
+                    path )) {
 
                 parent_path = get_parent_directory (path);
                 name = get_display_name_for_folder (path);	
-		last_directory = !parent_path;
+		last_directory = !parent_path || !nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(),
+                                    parent_path );
                 button_data = make_directory_button (path_bar, name, path, first_directory, last_directory, FALSE);
                 g_free (path);
 		g_free (name);
 
                 new_buttons = g_list_prepend (new_buttons, button_data);
 
-		if (BUTTON_IS_FAKE_ROOT (button_data)) {
+		if (BUTTON_IS_FAKE_ROOT (button_data) 
+                && nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(),
+                                                        parent_path )) {
+            /* If the parent directory of a fake_root is not allowed, we treat is 
+             * as the _real_ root, so that no "<" button gets added.
+             * */
 			fake_root = new_buttons;
 		}
 		

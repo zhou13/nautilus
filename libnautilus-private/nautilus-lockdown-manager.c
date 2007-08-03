@@ -86,6 +86,8 @@ nautilus_lockdown_manager_is_uri_allowed (NautilusLockdownManager *manager,
     GList *l;
     gchar *match_uri;
 
+    /* FIXME: How do I handle a NULL uri ?? */
+
     if (!manager->details->restricted_views_enabled) {
         /* The feature is disabled, so we allow everything */
         return TRUE;

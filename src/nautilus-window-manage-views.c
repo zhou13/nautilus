@@ -60,6 +60,7 @@
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <libnautilus-private/nautilus-module.h>
@@ -280,13 +281,19 @@ static void
 update_up_button (NautilusWindow *window)
 {
         gboolean allowed;
-        GnomeVFSURI *new_uri;
+        GnomeVFSURI *new_uri, *parent_uri;
 
         allowed = FALSE;
         if (window->details->location != NULL) {
                 new_uri = gnome_vfs_uri_new (window->details->location);
                 if (new_uri != NULL) {
-                        allowed = gnome_vfs_uri_has_parent (new_uri);
+                        if (gnome_vfs_uri_has_parent (new_uri)) {
+                            parent_uri = gnome_vfs_uri_get_parent(new_uri);
+                            allowed = 
+                                nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), 
+                                        gnome_vfs_uri_to_string (parent_uri, GNOME_VFS_URI_HIDE_NONE));
+                            gnome_vfs_uri_unref (parent_uri);
+                        }
                         gnome_vfs_uri_unref (new_uri);
                 }
         }

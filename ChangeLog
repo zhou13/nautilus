@@ -1,3 +1,12 @@
+2007-08-04  Sayamindu Dasgupta <sayamindu@gmail.com>
+		* nautilus-pathbar.c:
+		(nautilus_path_bar_update_path):
+		* nautilus-window-manage-views.c:
+		(update_up_button):
+	Pathbar should not show restricted directories, 
+	and the "Up" button/menu item should be disabled in 
+	some cases.
+
 2007-08-04	Sayamindu Dasgupta <sayamindu@gmail.com>
 		* libnautilus-private/nautilus-lockdown-manager.[ch]:
 		* src/nautilus-application.c:
