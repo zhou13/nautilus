@@ -88,6 +88,7 @@
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-undo-manager.h>
 #include <libnautilus-private/nautilus-desktop-link-monitor.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <libnautilus-private/nautilus-directory-private.h>
 #include <libnautilus-private/nautilus-signaller.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
@@ -418,6 +419,9 @@ finish_startup (NautilusApplication *application)
 
 	/* Initialize the desktop link monitor singleton */
 	nautilus_desktop_link_monitor_get ();
+
+    /* Initialize lockdown manager */
+    nautilus_lockdown_manager_get ();
 }
 
 static void

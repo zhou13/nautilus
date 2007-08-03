@@ -49,6 +49,7 @@
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-entry.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <libnautilus-private/nautilus-clipboard.h>
 #include <stdio.h>
 #include <string.h>
@@ -189,6 +190,13 @@ try_to_expand_path (gpointer callback_data)
 	editable = GTK_EDITABLE (entry);
 	user_location = gtk_editable_get_chars (editable, 0, -1);
 	entry->details->idle_id = 0;
+
+    /* Lockdown: We check if the path being typed in is allowed or not */
+    if (!nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), 
+                gnome_vfs_make_uri_from_input(user_location))) {
+        g_free (user_location);
+        return FALSE;
+    }
 
 	/* if it's just '~' don't expand because slash shouldn't be appended */
 	if (eel_strcmp (user_location, "~") == 0) {

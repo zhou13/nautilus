@@ -138,6 +138,8 @@ libnautilus_private_la_SOURCES = \
 	nautilus-link-desktop-file.h \
 	nautilus-link.c \
 	nautilus-link.h \
+	nautilus-lockdown-manager.c \
+	nautilus-lockdown-manager.h \
 	nautilus-marshal.c \
 	nautilus-marshal.h \
 	nautilus-merged-directory.c \

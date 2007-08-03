@@ -33,6 +33,7 @@
 #include <libgnomeui/gnome-help.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include "nautilus-location-entry.h"
 #include "nautilus-desktop-window.h"
 
@@ -83,7 +84,13 @@ open_current_location (NautilusLocationDialog *dialog)
 	uri = gnome_vfs_make_uri_from_input (user_location);
 	g_free (user_location);
 
-	nautilus_window_go_to (dialog->details->window, uri);
+    if (nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), uri)) {
+        nautilus_window_go_to (dialog->details->window, uri);
+    }
+    else {
+        eel_show_error_dialog(_("Access denied"), 
+                _("Access restrictions in your system prevents you from accessing this location"), NULL);
+    }
 
 	g_free (uri);
 }

@@ -65,6 +65,7 @@
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-horizontal-splitter.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <libnautilus-private/nautilus-program-choosing.h>
@@ -621,7 +622,9 @@ location_button_clicked_callback (GtkWidget *widget, NautilusSpatialWindow *wind
 	first_item = NULL;
 	uri = gnome_vfs_uri_ref (window->details->location);
 	child_uri = NULL;
-	while (uri != NULL) {
+	while (uri != NULL && 
+            nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), 
+                gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_NONE))) {
 		NautilusFile *file;
 		char *uri_string;
 

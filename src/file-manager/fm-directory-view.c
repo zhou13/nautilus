@@ -97,6 +97,7 @@
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-link.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <libnautilus-private/nautilus-marshal.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
@@ -9426,9 +9427,19 @@ fm_directory_view_accepts_dragged_files (FMDirectoryView *view)
 gboolean
 fm_directory_view_should_show_file (FMDirectoryView *view, NautilusFile *file)
 {
-	return nautilus_file_should_show (file, 
-					  view->details->show_hidden_files, 
-					  view->details->show_backup_files);
+    gchar *uri;
+    uri = nautilus_file_get_uri(file);
+    
+    if (!nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), uri)) {
+        g_free (uri);
+        return FALSE;
+    }
+    else {
+        g_free (uri);
+        return nautilus_file_should_show (file, 
+		    			  view->details->show_hidden_files, 
+			    		  view->details->show_backup_files);
+    }
 }
 
 static gboolean

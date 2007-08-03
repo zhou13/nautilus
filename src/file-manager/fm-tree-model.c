@@ -35,6 +35,7 @@
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <gtk/gtkenums.h>
 #include <string.h>
 
@@ -862,10 +863,17 @@ should_show_file (FMTreeModel *model, NautilusFile *file)
 {
 	gboolean should;
 	TreeNode *node;
+    gchar *uri;
+    uri = nautilus_file_get_uri(file);
 
-	should = nautilus_file_should_show (file,
-					    model->details->show_hidden_files,
-					    model->details->show_backup_files);
+    if (!nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), uri)) {
+        should = FALSE;
+    }
+    else {
+        should = nautilus_file_should_show (file,
+		    			    model->details->show_hidden_files,
+			    		    model->details->show_backup_files);
+    }
 
 	if (should
 	    && model->details->show_only_directories

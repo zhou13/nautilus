@@ -923,6 +923,35 @@ most cases, this should be left alone. -->Sans 10</default>
          </long>
       </locale>
     </schema>
+
+    <schema>
+      <key>/schemas/apps/nautilus/lockdown/enable_restricted_views</key>
+      <applyto>/apps/nautilus/lockdown/enable_restricted_views</applyto>
+      <owner>nautilus</owner>
+      <type>bool</type>
+      <locale name="C">
+         <short>Restricted views enabled</short>
+         <long>
+            If this is set to true, only a specified list of URIs (and their 
+            children) are visible/accessible to the user.
+         </long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/nautilus/lockdown/allowed_uris</key>
+      <applyto>/apps/nautilus/lockdown/allowed_uris</applyto>
+      <owner>nautilus</owner>
+      <type>list</type>
+      <list_type>string</list_type>
+      <locale name="C">
+         <short>List of allowed URIs</short>
+         <long>
+            If this is set to true, only a specified list of URIs (and their 
+            children) are visible/accessible to the user.
+         </long>
+      </locale>
+    </schema>
         
   </schemalist>  
 </gconfschemafile>

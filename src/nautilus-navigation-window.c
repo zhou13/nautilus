@@ -68,6 +68,7 @@
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
+#include <libnautilus-private/nautilus-lockdown-manager.h>
 #include <libnautilus-private/nautilus-horizontal-splitter.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-metadata.h>
@@ -464,8 +465,14 @@ navigation_bar_location_changed_callback (GtkWidget *widget,
 					  const char *uri,
 					  NautilusNavigationWindow *window)
 {
-	hide_temporary_bars (window);
-	nautilus_window_go_to (NAUTILUS_WINDOW (window), uri);
+    if (nautilus_lockdown_manager_is_uri_allowed(nautilus_lockdown_manager_get(), uri)) {
+        hide_temporary_bars (window);
+        nautilus_window_go_to (NAUTILUS_WINDOW (window), uri);
+    }
+    else {
+        eel_show_error_dialog(_("Access denied"), 
+                _("Access restrictions in your system prevents you from accessing this location"), NULL);
+    }
 }
 
 static void

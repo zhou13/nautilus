@@ -514,6 +514,16 @@ static const PreferenceDefault preference_defaults[] = {
 	  NULL,
 	  default_network_link_name, g_free,
 	},
+
+    { NAUTILUS_PREFERENCES_LOCKDOWN_RESTRICTED_VIEW_ENABLED,
+      PREFERENCE_BOOLEAN,
+      GINT_TO_POINTER (FALSE)
+    },
+
+    { NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_URIS,
+      PREFERENCE_STRING_LIST,
+      "/", NULL, NULL, NULL
+    },
 	
 	{ NULL }
 };

@@ -191,6 +191,11 @@ typedef enum
 #define NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_VISIBLE  "desktop/global_items_visible"
 #define NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_DIR      "desktop/global_items_dir"
 
+/* Lockdown related stuff */
+#define NAUTILUS_PREFERENCES_LOCKDOWN_RESTRICTED_VIEW_ENABLED "lockdown/enable_restricted_views"
+#define NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_URIS "lockdown/allowed_uris"
+
+
 void nautilus_global_preferences_init                      (void);
 char *nautilus_global_preferences_get_default_folder_viewer_preference_as_iid (void);
 G_END_DECLS
