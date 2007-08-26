@@ -1,3 +1,10 @@
+2007-08-27  Sayamindu Dasgupta <sayamindu@gmail.com>
+		* src/file-manager/fm-directory-view.c:
+		* libnautilus-private/nautilus-desktop-link.c:
+		* libnautilus-private/nautilus-global-preferences.c:
+	Fix crash if /apps/nautilus/desktop/global_items_visible 
+	is disabled after a global desktop item has been clicked.
+
 2007-08-26  Sayamindu Dasgupta <sayamindu@gmail.com>
 		* libnautilus-private/apps_nautilus_preferences.schemas.in:
 		* libnautilus-private/nautilus-global-preferences.c:

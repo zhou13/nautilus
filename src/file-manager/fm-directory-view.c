@@ -7268,6 +7268,7 @@ file_list_all_are_folders (GList *file_list)
 	GList *l;
 	NautilusFile *file, *linked_file;
     NautilusDesktopLink *desktop_link;
+    NautilusDesktopLinkType type;
 	char *activation_uri;
 	gboolean is_dir;
 	
@@ -7275,10 +7276,15 @@ file_list_all_are_folders (GList *file_list)
 		file = NAUTILUS_FILE (l->data);
         
         if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
+
+            /* Global desktop items are not necessarily folders */
+            
             desktop_link = 
                 nautilus_desktop_icon_file_get_link(NAUTILUS_DESKTOP_ICON_FILE(file));
-            if (nautilus_desktop_link_get_link_type(desktop_link) == 
-                    NAUTILUS_DESKTOP_LINK_GLOBAL) {
+            type = nautilus_desktop_link_get_link_type(desktop_link);
+            g_object_unref (G_OBJECT (desktop_link));
+
+            if (type == NAUTILUS_DESKTOP_LINK_GLOBAL) {
                 return FALSE;
             }
         }

@@ -232,29 +232,34 @@ ready_callback (NautilusFile *file,
 static char *
 get_real_activation_url (NautilusFile *file) {
     GnomeDesktopItem *desktop_file;
-    char *type, *activation_url;
+    const char *type, *text;
+    char *activation_url;
 
     desktop_file = gnome_desktop_item_new_from_uri(nautilus_file_get_uri(file), 
             GNOME_DESKTOP_ITEM_LOAD_ONLY_IF_EXISTS, NULL);
 
-    type = g_strdup(gnome_desktop_item_get_string(desktop_file, GNOME_DESKTOP_ITEM_TYPE));
+    type = gnome_desktop_item_get_string(desktop_file, GNOME_DESKTOP_ITEM_TYPE);
 
     if (!g_ascii_strcasecmp(type, "Link")) {
-            activation_url = g_strdup(gnome_desktop_item_get_string(desktop_file, 
-                    GNOME_DESKTOP_ITEM_URL));
+            text = gnome_desktop_item_get_string(desktop_file, 
+                    GNOME_DESKTOP_ITEM_URL);
     } else if (!g_ascii_strcasecmp(type, "Application")){
         if (gnome_desktop_item_get_boolean(desktop_file,
                     GNOME_DESKTOP_ITEM_TERMINAL)) {
-                activation_url = g_strdup (nautilus_file_get_uri(file));
+                text = nautilus_file_get_uri(file);
         }
         else {
-            activation_url = g_strdup(gnome_desktop_item_get_string(desktop_file,
-                    GNOME_DESKTOP_ITEM_EXEC));
+            text = gnome_desktop_item_get_string(desktop_file,
+                    GNOME_DESKTOP_ITEM_EXEC);
         }
     }
     else {
-        activation_url = g_strdup (nautilus_file_get_uri(file));
+        text = nautilus_file_get_uri(file);
     }
+
+    activation_url = g_strdup(text);
+
+    gnome_desktop_item_unref(desktop_file);
 
     return (activation_url);
 }

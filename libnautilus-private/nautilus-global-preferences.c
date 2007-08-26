@@ -514,6 +514,16 @@ static const PreferenceDefault preference_defaults[] = {
 	  NULL,
 	  default_network_link_name, g_free,
 	},
+	
+    { NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_VISIBLE,
+      PREFERENCE_BOOLEAN,
+      GINT_TO_POINTER (FALSE)
+    },
+
+    { NAUTILUS_PREFERENCES_DESKTOP_GLOBAL_ITEMS_DIR,
+      PREFERENCE_STRING,
+      ""
+    },	
 
     { NAUTILUS_PREFERENCES_LOCKDOWN_RESTRICTED_VIEW_ENABLED,
       PREFERENCE_BOOLEAN,
