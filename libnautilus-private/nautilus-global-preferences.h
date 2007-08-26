@@ -193,7 +193,7 @@ typedef enum
 
 /* Lockdown related stuff */
 #define NAUTILUS_PREFERENCES_LOCKDOWN_RESTRICTED_VIEW_ENABLED "lockdown/enable_restricted_views"
-#define NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_URIS "lockdown/allowed_uris"
+#define NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_PATHS "lockdown/allowed_paths"
 
 
 void nautilus_global_preferences_init                      (void);

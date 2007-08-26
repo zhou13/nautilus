@@ -95,6 +95,10 @@ nautilus_lockdown_manager_is_uri_allowed (NautilusLockdownManager *manager,
 
     for (l = manager->details->allowed_uris; l != NULL; l = l->next) {
         match_uri = gnome_vfs_make_uri_from_input(l->data);
+        /* 
+         * Does gnome_vfs_uri_get_parent() instead of g_str_has_prefix 
+         * sound like a better idea ? 
+         * */
         if (g_str_has_prefix(uri, match_uri)) {
             g_free(match_uri);
             return TRUE;
@@ -156,7 +160,7 @@ update_allowed_uri_list(NautilusLockdownManager *manager)
 
 
     manager->details->allowed_uris = 
-        eel_preferences_get_string_glist(NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_URIS);
+        eel_preferences_get_string_glist(NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_PATHS);
 
     /* We add all the mount points for removable devices since policy for removable 
      * devices is determined by HAL, or more specifically, PolicyKit */

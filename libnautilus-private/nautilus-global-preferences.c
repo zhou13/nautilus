@@ -520,7 +520,7 @@ static const PreferenceDefault preference_defaults[] = {
       GINT_TO_POINTER (FALSE)
     },
 
-    { NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_URIS,
+    { NAUTILUS_PREFERENCES_LOCKDOWN_ALLOWED_PATHS,
       PREFERENCE_STRING_LIST,
       "/", NULL, NULL, NULL
     },

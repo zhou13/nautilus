@@ -1,3 +1,13 @@
+2007-08-26  Sayamindu Dasgupta <sayamindu@gmail.com>
+		* libnautilus-private/apps_nautilus_preferences.schemas.in:
+		* libnautilus-private/nautilus-global-preferences.c:
+		* libnautilus-private/nautilus-global-preferences.h:
+		* libnautilus-private/nautilus-lockdown-manager.c:
+	General cleanup and polish. Renamed Gconf key
+	/apps/nautilus/lockdown/allowed_uris to 
+	/apps/nautilus/lockdown/allowed_paths to avoid confusion.
+
+
 2007-08-04  Sayamindu Dasgupta <sayamindu@gmail.com>
 		* nautilus-pathbar.c:
 		(nautilus_path_bar_update_path):

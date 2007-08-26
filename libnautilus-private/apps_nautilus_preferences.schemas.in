@@ -939,16 +939,17 @@ most cases, this should be left alone. -->Sans 10</default>
     </schema>
 
     <schema>
-      <key>/schemas/apps/nautilus/lockdown/allowed_uris</key>
-      <applyto>/apps/nautilus/lockdown/allowed_uris</applyto>
+      <key>/schemas/apps/nautilus/lockdown/allowed_paths</key>
+      <applyto>/apps/nautilus/lockdown/allowed_paths</applyto>
       <owner>nautilus</owner>
       <type>list</type>
       <list_type>string</list_type>
       <locale name="C">
          <short>List of allowed URIs</short>
          <long>
-            If this is set to true, only a specified list of URIs (and their 
-            children) are visible/accessible to the user.
+            Whitelist of paths which can be accessed by the user. 
+            /apps/nautilus/lockdown/enable_restricted_views needs to be set to 
+            true to use this feature.
          </long>
       </locale>
     </schema>
