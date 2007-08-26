@@ -1,5 +1,11 @@
 2007-08-27  Sayamindu Dasgupta <sayamindu@gmail.com>
 		* src/file-manager/fm-directory-view.c:
+		(fm_directory_view_should_show_file):
+	Make restricted file system view and global desktop items 
+	play nicely together.
+
+2007-08-27  Sayamindu Dasgupta <sayamindu@gmail.com>
+		* src/file-manager/fm-directory-view.c:
 		* libnautilus-private/nautilus-desktop-link.c:
 		* libnautilus-private/nautilus-global-preferences.c:
 	Fix crash if /apps/nautilus/desktop/global_items_visible 
