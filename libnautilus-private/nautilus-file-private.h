@@ -62,6 +62,9 @@ struct NautilusFileDetails
 	NautilusDirectory *directory;
 	char *relative_uri;
 
+	/* File info: */
+	GnomeVFSFileType type;
+	
 	/* Cached version of the display name, guaranteed UTF8 safe.
 	 * This is used a lot for sorting views.
 	 */
@@ -72,24 +75,22 @@ struct NautilusFileDetails
 	 */
 	char *display_name_collation_key;
 
-	/* File info: */
-	eel_boolean_bit got_file_info                 : 1;
-	eel_boolean_bit is_symlink                    : 1;
-	GnomeVFSFileType type;
+	goffset size; /* -1 is unknown */
+	
+	guint permissions;
 	int uid; /* -1 is none */
 	int gid; /* -1 is none */
-	eel_boolean_bit can_read                  : 1;
-	eel_boolean_bit can_write                 : 1;
-	eel_boolean_bit can_execute               : 1;
-	eel_boolean_bit has_permissions           : 1;
-	GnomeVFSFilePermissions permissions;
-	goffset size; /* -1 is unknown */
+	
 	time_t atime; /* 0 is unknown */
 	time_t mtime; /* 0 is unknown */
 	time_t ctime; /* 0 is unknown */
+	
 	char *symlink_name;
+	
 	char *mime_type;
+	
 	char* selinux_context;
+	
 	GnomeVFSResult get_info_error;
 
 	guint directory_count;
@@ -145,7 +146,7 @@ struct NautilusFileDetails
 	 * list so the file knows not to do redundant I/O.
 	 */
 	eel_boolean_bit loading_directory             : 1;
-	/* got_info known from info field being non-NULL */
+	eel_boolean_bit got_file_info                 : 1;
 	eel_boolean_bit get_info_failed               : 1;
 	eel_boolean_bit file_info_is_up_to_date       : 1;
 	
@@ -179,7 +180,13 @@ struct NautilusFileDetails
 	/* TRUE if the file is open in a spatial window */
 	eel_boolean_bit has_open_window               : 1;
 
+	eel_boolean_bit is_symlink                    : 1;
+
+	eel_boolean_bit has_permissions               : 1;
 	
+	eel_boolean_bit can_read                      : 1;
+	eel_boolean_bit can_write                     : 1;
+	eel_boolean_bit can_execute                   : 1;
 };
 
 NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory      *directory,

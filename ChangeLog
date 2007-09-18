@@ -1,4 +1,9 @@
 2007-09-18  Alexander Larsson  <alexl@redhat.com>
+	
+        * libnautilus-private/nautilus-file-private.h:
+	Clean up NautilusFileDetails a bit.
+
+2007-09-18  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-extension/nautilus-file-info.[ch]:
         * libnautilus-private/nautilus-desktop-directory-file.c:
