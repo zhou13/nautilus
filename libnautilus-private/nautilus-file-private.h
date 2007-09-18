@@ -80,7 +80,7 @@ struct NautilusFileDetails
 	guint deep_directory_count;
 	guint deep_file_count;
 	guint deep_unreadable_count;
-	GnomeVFSFileSize deep_size;
+	goffset deep_size;
 
 	GList *mime_list; /* If this is a directory, the list of MIME types in it. */
 	char *top_left_text;

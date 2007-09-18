@@ -88,8 +88,8 @@ struct NautilusFileOperationsProgressDetails {
 	gulong files_total;
 	gulong file_index;
 	
-	GnomeVFSFileSize bytes_copied;
-	GnomeVFSFileSize bytes_total;
+	goffset bytes_copied;
+	goffset bytes_total;
 
 	/* system time (microseconds) when show timeout was started */
 	gint64 start_time;
@@ -486,7 +486,7 @@ nautilus_file_operations_progress_new (const char *title,
 				       const char *from_prefix,
 				       const char *to_prefix,
 				       gulong total_files,
-				       GnomeVFSFileSize total_bytes,
+				       goffset total_bytes,
 				       gboolean use_timeout)
 {
 	GtkWidget *widget;
@@ -531,7 +531,7 @@ nautilus_file_operations_progress_new (const char *title,
 void
 nautilus_file_operations_progress_set_total (NautilusFileOperationsProgress *progress,
 					     gulong files_total,
-					     GnomeVFSFileSize bytes_total)
+					     goffset bytes_total)
 {
 	g_return_if_fail (NAUTILUS_IS_FILE_OPERATIONS_PROGRESS (progress));
 
@@ -562,7 +562,7 @@ nautilus_file_operations_progress_new_file (NautilusFileOperationsProgress *prog
 					    const char *from_prefix,
 					    const char *to_prefix,
 					    gulong file_index,
-					    GnomeVFSFileSize size)
+					    goffset size)
 {
 	char *operation_markup;
 	char *item_markup;
@@ -621,8 +621,8 @@ nautilus_file_operations_progress_clear (NautilusFileOperationsProgress *progres
 
 void
 nautilus_file_operations_progress_update_sizes (NautilusFileOperationsProgress *progress,
-						GnomeVFSFileSize bytes_done_in_file,
-						GnomeVFSFileSize bytes_done)
+						goffset bytes_done_in_file,
+						goffset bytes_done)
 {
 	g_return_if_fail (NAUTILUS_IS_FILE_OPERATIONS_PROGRESS (progress));
 

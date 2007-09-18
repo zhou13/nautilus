@@ -2125,7 +2125,7 @@ void
 fm_directory_view_display_selection_info (FMDirectoryView *view)
 {
 	GList *selection;
-	GnomeVFSFileSize non_folder_size;
+	goffset non_folder_size;
 	gboolean non_folder_size_known;
 	guint non_folder_count, folder_count, folder_item_count;
 	gboolean folder_item_count_known;

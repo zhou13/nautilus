@@ -163,7 +163,7 @@ struct FMPropertiesWindowDetails {
 	gboolean deep_count_finished;
 
 	guint total_count;
-	GnomeVFSFileSize total_size;
+	goffset total_size;
 
 	guint long_operation_underway;
 
@@ -2252,12 +2252,12 @@ directory_contents_value_field_update (FMPropertiesWindow *window)
 	guint file_count;
 	guint total_count;
 	guint unreadable_directory_count;
-	GnomeVFSFileSize total_size;
+	goffset total_size;
 	gboolean used_two_lines;
 	NautilusFile *file;
 	GList *l;
 	guint file_unreadable;
-	GnomeVFSFileSize file_size;
+	goffset file_size;
 
 	g_assert (FM_IS_PROPERTIES_WINDOW (window));
 
@@ -2852,7 +2852,7 @@ get_mount_stats (gchar *path, guint64 *capacity, guint64 *free)
 #else
 	struct statfs statfs_buffer;
 #endif
-	GnomeVFSFileSize block_size;
+	goffset block_size;
 
 	if (path == NULL) {
 		return FALSE;

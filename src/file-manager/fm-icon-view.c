@@ -1768,7 +1768,7 @@ play_file (gpointer callback_data)
 	GnomeVFSHandle *handle;
 	char *buffer;
 	const char *audio_device = NULL;
-	GnomeVFSFileSize bytes_read;
+	goffset bytes_read;
 
 	audio_device = g_getenv ("AUDIODEV");
 	icon_view = FM_ICON_VIEW (callback_data);

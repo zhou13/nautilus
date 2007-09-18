@@ -1627,7 +1627,7 @@ get_item_count (NautilusFile *file,
 
 static Knowledge
 get_size (NautilusFile *file,
-	  GnomeVFSFileSize *size)
+	  goffset *size)
 {
 	/* If we tried and failed, then treat it like there is no size
 	 * to know.
@@ -1753,7 +1753,7 @@ compare_files_by_size (NautilusFile *file_1, NautilusFile *file_2)
 	 */
 
 	Knowledge size_known_1, size_known_2;
-	GnomeVFSFileSize size_1, size_2;
+	goffset size_1, size_2;
 
 	size_known_1 = get_size (file_1, &size_1);
 	size_known_2 = get_size (file_2, &size_2);
@@ -3324,7 +3324,7 @@ nautilus_file_get_deep_counts (NautilusFile *file,
 			       guint *directory_count,
 			       guint *file_count,
 			       guint *unreadable_directory_count,
-			       GnomeVFSFileSize *total_size,
+			       goffset *total_size,
 			       gboolean force)
 {
 	if (directory_count != NULL) {
@@ -3415,7 +3415,7 @@ nautilus_file_get_directory_item_mime_types (NautilusFile *file,
  * Returns: Size in bytes.
  * 
  **/
-GnomeVFSFileSize
+goffset
 nautilus_file_get_size (NautilusFile *file)
 {
 	/* Before we have info on the file, we don't know the size. */
@@ -4440,7 +4440,7 @@ nautilus_file_get_deep_count_as_string_internal (NautilusFile *file,
 	guint file_count;
 	guint unreadable_count;
 	guint total_count;
-	GnomeVFSFileSize total_size;
+	goffset total_size;
 
 	/* Must ask for size or some kind of count, but not both. */
 	g_return_val_if_fail (!report_size || (!report_directory_count && !report_file_count), NULL);
@@ -5096,7 +5096,7 @@ char *
 nautilus_file_get_volume_free_space (NautilusFile *file)
 {
 	char * file_uri;
-	GnomeVFSFileSize free_space;
+	goffset free_space;
 	GnomeVFSResult result;
 	GnomeVFSURI * vfs_uri;
 

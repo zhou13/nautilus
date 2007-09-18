@@ -117,7 +117,7 @@ typedef struct MetafileReadState {
 typedef struct MetafileWriteState {
 	GnomeVFSAsyncHandle *handle;
 	xmlChar *buffer;
-	GnomeVFSFileSize size;
+	goffset size;
 	gboolean write_again;
 } MetafileWriteState;
 
@@ -1882,7 +1882,7 @@ metafile_read_failed (NautilusMetafile *metafile)
 
 static void
 metafile_read_done_callback (GnomeVFSResult result,
-			     GnomeVFSFileSize file_size,
+			     goffset file_size,
 			     char *file_contents,
 			     gpointer callback_data)
 {
@@ -1900,7 +1900,7 @@ metafile_read_done_callback (GnomeVFSResult result,
 	}
 
 	size = file_size;
-	if ((GnomeVFSFileSize) size != file_size) {
+	if ((goffset) size != file_size) {
 		g_free (file_contents);
 		metafile_read_failed (metafile);
 		return;

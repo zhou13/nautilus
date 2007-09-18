@@ -125,7 +125,7 @@ search_directory_file_get_deep_counts (NautilusFile *file,
 				       guint *directory_count,
 				       guint *file_count,
 				       guint *unreadable_directory_count,
-				       GnomeVFSFileSize *total_size)
+				       goffset *total_size)
 {
 	NautilusSearchDirectory *search_dir;
 	NautilusFile *dir_file;

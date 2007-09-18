@@ -444,7 +444,7 @@ nautilus_thumbnail_load_image (const char *path,
 
 static void
 async_thumbnail_read_image (GnomeVFSResult result,
-			    GnomeVFSFileSize file_size,
+			    goffset file_size,
 			    char *file_contents,
 			    gpointer callback_data)
 {

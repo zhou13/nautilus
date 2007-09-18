@@ -141,7 +141,7 @@ char *                  nautilus_file_get_uri_scheme                    (Nautilu
 NautilusFile *          nautilus_file_get_parent                        (NautilusFile                   *file);
 char *                  nautilus_file_get_parent_uri                    (NautilusFile                   *file);
 char *                  nautilus_file_get_parent_uri_for_display        (NautilusFile                   *file);
-GnomeVFSFileSize        nautilus_file_get_size                          (NautilusFile                   *file);
+goffset        nautilus_file_get_size                          (NautilusFile                   *file);
 GnomeVFSFileType        nautilus_file_get_file_type                     (NautilusFile                   *file);
 char *                  nautilus_file_get_guessed_mime_type             (NautilusFile                   *file);
 char *                  nautilus_file_get_mime_type                     (NautilusFile                   *file);
@@ -170,7 +170,7 @@ NautilusRequestStatus   nautilus_file_get_deep_counts                   (Nautilu
 									 guint                          *directory_count,
 									 guint                          *file_count,
 									 guint                          *unreadable_directory_count,
-									 GnomeVFSFileSize               *total_size,
+									 goffset               *total_size,
 									 gboolean                        force);
 gboolean                nautilus_file_should_show_directory_item_count  (NautilusFile                   *file);
 gboolean                nautilus_file_should_show_type                  (NautilusFile                   *file);
@@ -407,7 +407,7 @@ typedef struct {
 							  guint                  *directory_count,
 							  guint                  *file_count,
 							  guint                  *unreadable_directory_count,
-							  GnomeVFSFileSize       *total_size);
+							  goffset       *total_size);
 	gboolean              (* get_date)               (NautilusFile           *file,
 							  NautilusDateType        type,
 							  time_t                 *date);

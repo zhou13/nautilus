@@ -126,7 +126,7 @@ desktop_icon_file_get_deep_counts (NautilusFile *file,
 				   guint *directory_count,
 				   guint *file_count,
 				   guint *unreadable_directory_count,
-				   GnomeVFSFileSize *total_size)
+				   goffset *total_size)
 {
 	if (directory_count != NULL) {
 		*directory_count = 0;

@@ -595,13 +595,13 @@ trash_file_get_deep_counts (NautilusFile *file,
 			    guint *directory_count,
 			    guint *file_count,
 			    guint *unreadable_directory_count,
-			    GnomeVFSFileSize *total_size)
+			    goffset *total_size)
 {
 	NautilusTrashFile *trash;
 	GList *node;
 	NautilusRequestStatus status, one_status;
 	guint one_directory_count, one_file_count, one_unreadable_directory_count;
-	GnomeVFSFileSize one_total_size;
+	goffset one_total_size;
 
 	trash = NAUTILUS_TRASH_FILE (file);
 	

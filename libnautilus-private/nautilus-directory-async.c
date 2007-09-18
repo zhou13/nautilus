@@ -2697,7 +2697,7 @@ top_left_read_done (NautilusDirectory *directory)
 
 static void
 top_left_read_callback (GnomeVFSResult result,
-			GnomeVFSFileSize bytes_read,
+			goffset bytes_read,
 			char *file_contents,
 			gpointer callback_data)
 {
@@ -2730,7 +2730,7 @@ top_left_read_callback (GnomeVFSResult result,
 }
 
 static gboolean
-top_left_read_more_callback (GnomeVFSFileSize bytes_read,
+top_left_read_more_callback (goffset bytes_read,
 			     const char *file_contents,
 			     gpointer callback_data)
 {
@@ -3057,7 +3057,7 @@ link_info_read_done (NautilusDirectory *directory,
 
 static void
 link_info_nautilus_link_read_callback (GnomeVFSResult result,
-				       GnomeVFSFileSize bytes_read,
+				       goffset bytes_read,
 				       char *file_contents,
 				       gpointer callback_data)
 {

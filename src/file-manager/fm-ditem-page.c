@@ -373,7 +373,7 @@ create_page (GnomeDesktopItem *item, GtkWidget *box)
 
 static void
 ditem_read_cb (GnomeVFSResult result,
-	       GnomeVFSFileSize file_size,
+	       goffset file_size,
 	       char *file_contents,
 	       gpointer user_data)
 {
