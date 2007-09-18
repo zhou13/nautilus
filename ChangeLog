@@ -1,6 +1,14 @@
 2007-09-18  Alexander Larsson  <alexl@redhat.com>
 
 	* configure.in:
+	Add -gio to version for now
+	Pull in gio-standalone
+
+=== gio-branch starts here ===
+	
+2007-09-18  Alexander Larsson  <alexl@redhat.com>
+
+	* configure.in:
 	Post release version bump
 
 === nautilus 2.20.0 ===
