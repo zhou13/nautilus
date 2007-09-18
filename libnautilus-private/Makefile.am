@@ -204,6 +204,8 @@ libnautilus_private_la_SOURCES = \
 	nautilus-vfs-directory.h \
 	nautilus-vfs-file.c \
 	nautilus-vfs-file.h \
+	nautilus-vfs-utils.c \
+	nautilus-vfs-utils.h \
 	nautilus-view-factory.c \
 	nautilus-view-factory.h \
 	nautilus-view.c \

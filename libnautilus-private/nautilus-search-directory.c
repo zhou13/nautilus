@@ -31,6 +31,7 @@
 #include <eel/eel-glib-extensions.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <gtk/gtksignal.h>
+#include <gio/gioerror.h>
 #include <libgnome/gnome-macros.h>
 #include <string.h>
 #include <sys/time.h>
@@ -559,8 +560,13 @@ search_callback_add_pending_file_callbacks (SearchCallback *callback)
 static void
 search_engine_error (NautilusSearchEngine *engine, const char *error_message, NautilusSearchDirectory *search)
 {
+	GError *error;
+
+	error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_FAILED,
+				     error_message);
 	nautilus_directory_emit_load_error (NAUTILUS_DIRECTORY (search),
-					    -1, error_message);
+					    error);
+	g_error_free (error);
 }
 
 static void

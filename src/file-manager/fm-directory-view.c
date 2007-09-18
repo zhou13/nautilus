@@ -3201,8 +3201,7 @@ done_loading_callback (NautilusDirectory *directory,
 
 static void
 load_error_callback (NautilusDirectory *directory,
-		     GnomeVFSResult load_error_code,
-		     const char *load_error_message,
+		     GError *error,
 		     gpointer callback_data)
 {
 	FMDirectoryView *view;
@@ -3218,14 +3217,12 @@ load_error_callback (NautilusDirectory *directory,
 	 * occurred, so they can handle it in the UI.
 	 */
 	g_signal_emit (view,
-		       signals[LOAD_ERROR], 0, load_error_code, load_error_message);
+		       signals[LOAD_ERROR], 0, error);
 }
 
 static void
-real_load_error (FMDirectoryView *view, GnomeVFSResult result, const char *error_message)
+real_load_error (FMDirectoryView *view, GError *error)
 {
-	g_assert (result != GNOME_VFS_OK);
-
 	/* Report only one error per failed directory load (from the UI
 	 * point of view, not from the NautilusDirectory point of view).
 	 * Otherwise you can get multiple identical errors caused by 
@@ -3234,8 +3231,8 @@ real_load_error (FMDirectoryView *view, GnomeVFSResult result, const char *error
 	 */
 	if (!view->details->reported_load_error) {
 		fm_report_error_loading_directory 
-			(fm_directory_view_get_directory_as_file (view), 
-			 result, error_message,
+			(fm_directory_view_get_directory_as_file (view),
+			 error,
 			 fm_directory_view_get_containing_window (view));
 	}
 	view->details->reported_load_error = TRUE;
@@ -10237,7 +10234,7 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 		              G_STRUCT_OFFSET (FMDirectoryViewClass, load_error),
 		              NULL, NULL,
 		              nautilus_marshal_VOID__INT_STRING,
-		              G_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_STRING);
+		              G_TYPE_NONE, 1, G_TYPE_POINTER);
 	signals[REMOVE_FILE] =
 		g_signal_new ("remove_file",
 		              G_TYPE_FROM_CLASS (klass),

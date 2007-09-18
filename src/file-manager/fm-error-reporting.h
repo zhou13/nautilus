@@ -31,8 +31,7 @@
 #include <libnautilus-private/nautilus-file.h>
 
 void fm_report_error_loading_directory	 (NautilusFile   *file,
-					  GnomeVFSResult  error_code,
-					  const char     *error_message,
+					  GError         *error,
 					  GtkWindow	 *parent_window);
 void fm_report_error_renaming_file       (NautilusFile   *file,
 					  const char     *new_name,

@@ -121,8 +121,7 @@ struct FMDirectoryViewClass {
 	 * load failures like ACCESS_DENIED.
 	 */
 	void    (* load_error)           (FMDirectoryView *view,
-					  GnomeVFSResult result,
-					  const char *error_message);
+					  GError *error);
 
 	/* Function pointers that don't have corresponding signals */
 

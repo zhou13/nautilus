@@ -121,7 +121,7 @@ nautilus_directory_class_init (NautilusDirectoryClass *klass)
 		              G_STRUCT_OFFSET (NautilusDirectoryClass, load_error),
 		              NULL, NULL,
 		              nautilus_marshal_VOID__INT_STRING,
-		              G_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_STRING);
+		              G_TYPE_NONE, 1, G_TYPE_POINTER);
 
 	klass->get_name_for_self_as_new_file = real_get_name_for_self_as_new_file;
 	klass->get_file_list = real_get_file_list;
@@ -805,12 +805,11 @@ nautilus_directory_emit_done_loading (NautilusDirectory *directory)
 
 void
 nautilus_directory_emit_load_error (NautilusDirectory *directory,
-				    GnomeVFSResult error_result,
-				    const char *error_message)
+				    GError *error)
 {
 	g_signal_emit (directory,
 			 signals[LOAD_ERROR], 0,
-			 error_result, error_message);
+			 error);
 }
 
 

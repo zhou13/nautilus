@@ -1,5 +1,19 @@
 2007-09-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/Makefile.am:
+        * libnautilus-private/nautilus-vfs-utils.[ch]:
+	Added tools for conversion from GnomeVFSResult to GError
+	
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.[ch]:
+        * libnautilus-private/nautilus-search-directory.c:
+        * src/file-manager/fm-directory-view.[ch]:
+        * src/file-manager/fm-error-reporting.[ch]:
+	Use GError instead of GnomeVFSResult for directory loading errors
+
+2007-09-18  Alexander Larsson  <alexl@redhat.com>
+
 	* configure.in:
 	Add -gio to version for now
 	Pull in gio-standalone

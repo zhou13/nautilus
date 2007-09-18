@@ -32,6 +32,7 @@
 #include "nautilus-file-utilities.h"
 #include "nautilus-global-preferences.h"
 #include "nautilus-link.h"
+#include "nautilus-vfs-utils.h"
 #include "nautilus-marshal.h"
 #include "nautilus-metafile.h"
 #include <eel/eel-glib-extensions.h>
@@ -1003,6 +1004,7 @@ directory_load_done (NautilusDirectory *directory,
 		     GnomeVFSResult result)
 {
 	GList *node;
+	GError *error;
 
 	directory_load_cancel (directory);
 	directory->details->directory_loaded = TRUE;
@@ -1024,8 +1026,11 @@ directory_load_done (NautilusDirectory *directory,
 			set_file_unconfirmed (NAUTILUS_FILE (node->data), FALSE);
 		}
 
+		
+		error = g_error_new_literal (GNOME_VFS_ERROR, result, "");
 		nautilus_directory_emit_load_error (directory,
-						    result, NULL);
+						    error);
+		g_error_free (error);
 	}
 
 	/* Call the idle function right away. */

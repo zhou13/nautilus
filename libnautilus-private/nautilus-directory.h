@@ -32,7 +32,7 @@
 /* NautilusDirectory is a class that manages the model for a directory,
    real or virtual, for Nautilus, mainly the file-manager component. The directory is
    responsible for managing both real data and cached metadata. On top of
-   the file system independence provided by gnome-vfs, the directory
+   the file system independence provided by gio, the directory
    object also provides:
   
        1) A synchronization framework, which notifies via signals as the
@@ -101,8 +101,7 @@ typedef struct
 	void     (* done_loading)        (NautilusDirectory         *directory);
 
 	void     (* load_error)          (NautilusDirectory         *directory,
-					  GnomeVFSResult             error_result,
-					  const char                *error_message);
+					  GError                    *error);
 
 	/*** Virtual functions for subclasses to override. ***/
 	gboolean (* contains_file)       (NautilusDirectory         *directory,
