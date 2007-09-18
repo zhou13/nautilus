@@ -165,21 +165,12 @@ nautilus_file_info_is_directory (NautilusFileInfo *file)
 	return NAUTILUS_FILE_INFO_GET_IFACE (file)->is_directory (file);
 }
 
-GnomeVFSFileInfo *
-nautilus_file_info_get_vfs_file_info (NautilusFileInfo *file)
-{
-	g_return_val_if_fail (NAUTILUS_IS_FILE_INFO (file), NULL);
-	g_return_val_if_fail (NAUTILUS_FILE_INFO_GET_IFACE (file)->get_vfs_file_info != NULL, NULL);
-
-	return NAUTILUS_FILE_INFO_GET_IFACE (file)->get_vfs_file_info (file);
-}
-
 void
 nautilus_file_info_add_emblem (NautilusFileInfo *file,
 			       const char *emblem_name)
 {
 	g_return_if_fail (NAUTILUS_IS_FILE_INFO (file));
-	g_return_if_fail (NAUTILUS_FILE_INFO_GET_IFACE (file)->get_vfs_file_info != NULL);
+	g_return_if_fail (NAUTILUS_FILE_INFO_GET_IFACE (file)->add_emblem != NULL);
 
 	NAUTILUS_FILE_INFO_GET_IFACE (file)->add_emblem (file, emblem_name);
 }

@@ -87,13 +87,6 @@ vfs_file_check_if_ready (NautilusFile *file,
 		 file_attributes);
 }
 
-static GnomeVFSFileType
-vfs_file_get_file_type (NautilusFile *file)
-{
-	return nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_TYPE)
-		? GNOME_VFS_FILE_TYPE_UNKNOWN : file->details->info->type;
-}
-
 static gboolean
 vfs_file_get_item_count (NautilusFile *file, 
 			 guint *count,
@@ -175,35 +168,34 @@ vfs_file_get_date (NautilusFile *file,
 	switch (date_type) {
 	case NAUTILUS_DATE_TYPE_CHANGED:
 		/* Before we have info on a file, the date is unknown. */
-		if (nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_CTIME)) {
+		if (file->details->ctime == 0) {
 			return FALSE;
 		}
 		if (date != NULL) {
-			*date = file->details->info->ctime;
+			*date = file->details->ctime;
 		}
 		return TRUE;
 	case NAUTILUS_DATE_TYPE_ACCESSED:
 		/* Before we have info on a file, the date is unknown. */
-		if (nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_ATIME)) {
+		if (file->details->atime == 0) {
 			return FALSE;
 		}
 		if (date != NULL) {
-			*date = file->details->info->atime;
+			*date = file->details->atime;
 		}
 		return TRUE;
 	case NAUTILUS_DATE_TYPE_MODIFIED:
 		/* Before we have info on a file, the date is unknown. */
-		if (nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_MTIME)) {
+		if (file->details->mtime == 0) {
 			return FALSE;
 		}
 		if (date != NULL) {
-			*date = file->details->info->mtime;
+			*date = file->details->mtime;
 		}
 		return TRUE;
 	case NAUTILUS_DATE_TYPE_PERMISSIONS_CHANGED:
 		/* Before we have info on a file, the date is unknown. */
-		if (nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_MTIME) ||
-		    nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_CTIME)) {
+		if (file->details->mtime == 0 || file->details->ctime == 0) {
 			return FALSE;
 		}
 		/* mtime is when the contents changed; ctime is when the
@@ -211,11 +203,11 @@ vfs_file_get_date (NautilusFile *file,
 		 * So we can only know when the permissions changed if mtime
 		 * and ctime are different.
 		 */
-		if (file->details->info->mtime == file->details->info->ctime) {
+		if (file->details->mtime == file->details->ctime) {
 			return FALSE;
 		}
 		if (date != NULL) {
-			*date = file->details->info->ctime;
+			*date = file->details->ctime;
 		}
 		return TRUE;
 	}
@@ -249,7 +241,6 @@ nautilus_vfs_file_class_init (gpointer klass)
 	file_class->call_when_ready = vfs_file_call_when_ready;
 	file_class->cancel_call_when_ready = vfs_file_cancel_call_when_ready;
 	file_class->check_if_ready = vfs_file_check_if_ready;
-	file_class->get_file_type = vfs_file_get_file_type;
 	file_class->get_item_count = vfs_file_get_item_count;
 	file_class->get_deep_counts = vfs_file_get_deep_counts;
 	file_class->get_date = vfs_file_get_date;

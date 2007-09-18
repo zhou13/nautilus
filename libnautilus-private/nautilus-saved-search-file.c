@@ -24,6 +24,7 @@
 */
 #include <config.h>
 #include "nautilus-saved-search-file.h"
+#include "nautilus-file-private.h"
 #include <eel/eel-gtk-macros.h>
 
 static void nautilus_saved_search_file_init (gpointer object, gpointer klass);
@@ -42,12 +43,7 @@ nautilus_saved_search_file_init (gpointer object, gpointer klass)
 
 	file = NAUTILUS_VFS_FILE (object);
 
-}
-
-static GnomeVFSFileType
-saved_search_get_file_type (NautilusFile *file)
-{
-	return GNOME_VFS_FILE_TYPE_DIRECTORY;
+	NAUTILUS_FILE (file)->details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
 }
 
 static void
@@ -57,6 +53,5 @@ nautilus_saved_search_file_class_init (gpointer klass)
 
 	file_class = NAUTILUS_FILE_CLASS (klass);
 
-	file_class->get_file_type = saved_search_get_file_type;
 }
   

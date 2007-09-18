@@ -120,7 +120,7 @@ nautilus_directory_class_init (NautilusDirectoryClass *klass)
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (NautilusDirectoryClass, load_error),
 		              NULL, NULL,
-		              nautilus_marshal_VOID__INT_STRING,
+		              g_cclosure_marshal_VOID__POINTER,
 		              G_TYPE_NONE, 1, G_TYPE_POINTER);
 
 	klass->get_name_for_self_as_new_file = real_get_name_for_self_as_new_file;
@@ -1672,7 +1672,7 @@ is_tentative (gpointer data, gpointer callback_data)
 	 * will later be sent with the files_added signal, and a
 	 * user doing get_file_list + files_added monitoring will
 	 * then see the file twice */
-	return file->details->info == NULL || !file->details->is_added;
+	return !file->details->got_file_info || !file->details->is_added;
 }
 
 GList *

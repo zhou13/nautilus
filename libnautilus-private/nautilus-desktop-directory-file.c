@@ -370,12 +370,6 @@ desktop_directory_file_check_if_ready (NautilusFile *file,
 					      delegated_attributes);
 }
 
-static GnomeVFSFileType
-desktop_directory_file_get_file_type (NautilusFile *file)
-{
-	return GNOME_VFS_FILE_TYPE_DIRECTORY;
-}			      
-
 static gboolean
 desktop_directory_file_get_item_count (NautilusFile *file, 
 				       guint *count,
@@ -473,6 +467,8 @@ nautilus_desktop_directory_file_init (gpointer object, gpointer klass)
 		(desktop_callback_hash, desktop_callback_equal);
 	desktop_file->details->monitors = g_hash_table_new_full (NULL, NULL,
 								 NULL, monitor_destroy);
+
+	desktop_file->parent_slot.details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
 	
 	real_dir = nautilus_desktop_directory_get_real_directory (desktop_directory);
 	real_dir_file = nautilus_directory_get_corresponding_file (real_dir);
@@ -542,7 +538,6 @@ nautilus_desktop_directory_file_class_init (gpointer klass)
 	file_class->call_when_ready = desktop_directory_file_call_when_ready;
 	file_class->cancel_call_when_ready = desktop_directory_file_cancel_call_when_ready;
 	file_class->check_if_ready = desktop_directory_file_check_if_ready;
-	file_class->get_file_type = desktop_directory_file_get_file_type;
 	file_class->get_item_count = desktop_directory_file_get_item_count;
 	file_class->get_deep_counts = desktop_directory_file_get_deep_counts;
 	file_class->get_date = desktop_directory_file_get_date;

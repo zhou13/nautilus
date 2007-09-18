@@ -2164,7 +2164,7 @@ fm_directory_view_display_selection_info (FMDirectoryView *view)
 			}
 		} else {
 			non_folder_count++;
-			if (!nautilus_file_info_missing (file, GNOME_VFS_FILE_INFO_FIELDS_SIZE)) {
+			if (!nautilus_file_can_get_size (file)) {
 				non_folder_size_known = TRUE;
 				non_folder_size += nautilus_file_get_size (file);
 			}
@@ -10233,7 +10233,7 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (FMDirectoryViewClass, load_error),
 		              NULL, NULL,
-		              nautilus_marshal_VOID__INT_STRING,
+		              g_cclosure_marshal_VOID__POINTER,
 		              G_TYPE_NONE, 1, G_TYPE_POINTER);
 	signals[REMOVE_FILE] =
 		g_signal_new ("remove_file",

@@ -675,10 +675,10 @@ nautilus_create_thumbnail (NautilusFile *file)
 	
 	/* Hopefully the NautilusFile will already have the image file mtime,
 	   so we can just use that. Otherwise we have to get it ourselves. */
-	if (file->details->info
-	    && file->details->file_info_is_up_to_date
-	    && file->details->info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MTIME) {
-		file_mtime = file->details->info->mtime;
+	if (file->details->got_file_info &&
+	    file->details->file_info_is_up_to_date &&
+	    file->details->mtime != 0) {
+		file_mtime = file->details->mtime;
 	} else {
 		get_file_mtime (info->image_uri, &file_mtime);
 	}

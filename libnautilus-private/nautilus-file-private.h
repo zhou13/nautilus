@@ -72,7 +72,24 @@ struct NautilusFileDetails
 	 */
 	char *display_name_collation_key;
 
-	GnomeVFSFileInfo *info;
+	/* File info: */
+	eel_boolean_bit got_file_info                 : 1;
+	eel_boolean_bit is_symlink                    : 1;
+	GnomeVFSFileType type;
+	int uid; /* -1 is none */
+	int gid; /* -1 is none */
+	eel_boolean_bit can_read                  : 1;
+	eel_boolean_bit can_write                 : 1;
+	eel_boolean_bit can_execute               : 1;
+	eel_boolean_bit has_permissions           : 1;
+	GnomeVFSFilePermissions permissions;
+	goffset size; /* -1 is unknown */
+	time_t atime; /* 0 is unknown */
+	time_t mtime; /* 0 is unknown */
+	time_t ctime; /* 0 is unknown */
+	char *symlink_name;
+	char *mime_type;
+	char* selinux_context;
 	GnomeVFSResult get_info_error;
 
 	guint directory_count;
@@ -161,6 +178,8 @@ struct NautilusFileDetails
 
 	/* TRUE if the file is open in a spatial window */
 	eel_boolean_bit has_open_window               : 1;
+
+	
 };
 
 NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory      *directory,
@@ -181,6 +200,7 @@ void          nautilus_file_updated_deep_count_in_progress (NautilusFile        
 void          nautilus_file_clear_cached_display_name      (NautilusFile           *file);
 
 
+void          nautilus_file_clear_info                     (NautilusFile           *file);
 /* Compare file's state with a fresh file info struct, return FALSE if
  * no change, update file and return TRUE if the file info contains
  * new state.  */
@@ -208,7 +228,6 @@ NautilusFileAttributes nautilus_file_get_all_attributes                 (void);
 gboolean               nautilus_file_is_self_owned                      (NautilusFile           *file);
 void                   nautilus_file_invalidate_count_and_mime_list     (NautilusFile           *file);
 gboolean               nautilus_file_rename_in_progress                 (NautilusFile           *file);
-GnomeVFSFileInfo *     nautilus_file_peek_vfs_file_info                 (NautilusFile           *file);
 void                   nautilus_file_invalidate_extension_info_internal (NautilusFile           *file);
 void                   nautilus_file_info_providers_done                (NautilusFile           *file);
 

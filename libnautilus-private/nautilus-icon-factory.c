@@ -964,10 +964,10 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
  	char *custom_uri, *file_uri, *icon_name, *mime_type, *custom_icon, *special_icon;
 	NautilusIconFactory *factory;
 	GnomeIconLookupResultFlags lookup_result;
-	GnomeVFSFileInfo *file_info;
 	GnomeThumbnailFactory *thumb_factory;
 	gboolean show_thumb;
 	GnomeIconLookupFlags lookup_flags;
+	GnomeVFSFileInfo *file_info;
 	
 	if (file == NULL) {
 		return NULL;
@@ -994,8 +994,6 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 
 	mime_type = nautilus_file_get_mime_type (file);
 	
-	file_info = nautilus_file_peek_vfs_file_info (file);
-	
 	show_thumb = should_show_thumbnail (file, mime_type);	
 	
 	if (show_thumb) {
@@ -1008,15 +1006,21 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 	if (embedd_text) {
 		lookup_flags |= GNOME_ICON_LOOKUP_FLAGS_EMBEDDING_TEXT;
 	}
+
+	file_info = gnome_vfs_file_info_new ();
+	file_info->size = nautilus_file_get_size (file);
+	file_info->mtime = nautilus_file_get_mtime (file);
+	
 	icon_name = gnome_icon_lookup (factory->icon_theme,
 				       thumb_factory,
 				       file_uri,
 				       custom_icon,
-				       nautilus_file_peek_vfs_file_info (file),
+				       file_info,
 				       mime_type,
 				       lookup_flags,
 				       &lookup_result);
 
+	gnome_vfs_file_info_unref (file_info);
 
 	/* Create thumbnails if we can, and if the looked up icon isn't a thumbnail
 	   or an absolute pathname (custom icon or image as itself) */

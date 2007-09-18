@@ -101,12 +101,6 @@ desktop_icon_file_check_if_ready (NautilusFile *file,
 		 attributes);
 }
 
-static GnomeVFSFileType
-desktop_icon_file_get_file_type (NautilusFile *file)
-{
-	return GNOME_VFS_FILE_TYPE_REGULAR;
-}			      
-
 static gboolean
 desktop_icon_file_get_item_count (NautilusFile *file, 
 				  guint *count,
@@ -171,13 +165,13 @@ nautilus_desktop_icon_file_init (gpointer object, gpointer klass)
 	desktop_file = NAUTILUS_DESKTOP_ICON_FILE (object);
 
 	desktop_file->details = g_new0 (NautilusDesktopIconFileDetails, 1);
+	desktop_file->parent_slot.details->type = GNOME_VFS_FILE_TYPE_REGULAR;
 }	
 
 static void
 update_info_from_link (NautilusDesktopIconFile *icon_file)
 {
 	NautilusFile *file;
-	GnomeVFSFileInfo *file_info;
 	NautilusDesktopLink *link;
 	GnomeVFSVolume *volume;
 	
@@ -188,33 +182,20 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	if (link == NULL) {
 		return;
 	}
-	
-	file_info = file->details->info;
 
-	gnome_vfs_file_info_clear (file_info);
-
-	file_info->name = nautilus_desktop_link_get_file_name (link);
-	file_info->mime_type = g_strdup ("application/x-nautilus-link");
-	file_info->type = GNOME_VFS_FILE_TYPE_REGULAR;
-	file_info->flags = GNOME_VFS_FILE_FLAGS_NONE;
-	file_info->link_count = 1;
-	file_info->size = 0;
-	file_info->permissions =
+	g_free (file->details->mime_type);
+	file->details->mime_type = g_strdup ("application/x-nautilus-link");
+	file->details->type = GNOME_VFS_FILE_TYPE_REGULAR;
+	file->details->size = 0;
+	file->details->has_permissions = TRUE;
+	file->details->permissions =
 		GNOME_VFS_PERM_OTHER_WRITE |
 		GNOME_VFS_PERM_GROUP_WRITE |
 		GNOME_VFS_PERM_USER_READ |
 		GNOME_VFS_PERM_OTHER_READ |
-		GNOME_VFS_PERM_GROUP_READ |
-		GNOME_VFS_PERM_ACCESS_READABLE |
-		GNOME_VFS_PERM_ACCESS_WRITABLE;
-	
-	file_info->valid_fields = GNOME_VFS_FILE_INFO_FIELDS_TYPE |
-		GNOME_VFS_FILE_INFO_FIELDS_FLAGS |
-		GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE |
-		GNOME_VFS_FILE_INFO_FIELDS_SIZE |
-		GNOME_VFS_FILE_INFO_FIELDS_PERMISSIONS |
-		GNOME_VFS_FILE_INFO_FIELDS_ACCESS |
-		GNOME_VFS_FILE_INFO_FIELDS_LINK_COUNT;
+		GNOME_VFS_PERM_GROUP_READ;
+	file->details->can_read = TRUE;
+	file->details->can_write = TRUE;
 
 	volume = nautilus_desktop_link_get_volume (link);
 	nautilus_file_set_volume (file, volume);
@@ -299,7 +280,6 @@ nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 	icon_file = NAUTILUS_DESKTOP_ICON_FILE (file);
 	icon_file->details->link = link;
 
-	file->details->info = gnome_vfs_file_info_new ();
 	name = nautilus_desktop_link_get_file_name (link);
 	file->details->relative_uri = gnome_vfs_escape_string (name);
 	g_free (name);
@@ -355,7 +335,6 @@ nautilus_desktop_icon_file_class_init (gpointer klass)
 	file_class->call_when_ready = desktop_icon_file_call_when_ready;
 	file_class->cancel_call_when_ready = desktop_icon_file_cancel_call_when_ready;
 	file_class->check_if_ready = desktop_icon_file_check_if_ready;
-	file_class->get_file_type = desktop_icon_file_get_file_type;
 	file_class->get_item_count = desktop_icon_file_get_item_count;
 	file_class->get_deep_counts = desktop_icon_file_get_deep_counts;
 	file_class->get_date = desktop_icon_file_get_date;

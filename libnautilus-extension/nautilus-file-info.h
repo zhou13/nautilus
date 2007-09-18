@@ -65,8 +65,6 @@ struct _NautilusFileInfoIface
 						   const char       *mime_Type);
 	gboolean          (*is_directory)         (NautilusFileInfo *file);
 	
-	GnomeVFSFileInfo *(*get_vfs_file_info)    (NautilusFileInfo *file);
-	
 	void              (*add_emblem)           (NautilusFileInfo *file,
 						   const char       *emblem_name);
 	char *            (*get_string_attribute) (NautilusFileInfo *file,
@@ -103,12 +101,6 @@ char *            nautilus_file_info_get_mime_type        (NautilusFileInfo *fil
 gboolean          nautilus_file_info_is_mime_type         (NautilusFileInfo *file,
 							   const char       *mime_type);
 gboolean          nautilus_file_info_is_directory         (NautilusFileInfo *file);
-
-
-
-/* Other File Info */
-GnomeVFSFileInfo *nautilus_file_info_get_vfs_file_info    (NautilusFileInfo *file);
-
 
 
 /* Modifying the NautilusFileInfo */

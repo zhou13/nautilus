@@ -1,5 +1,24 @@
 2007-09-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-extension/nautilus-file-info.[ch]:
+        * libnautilus-private/nautilus-desktop-directory-file.c:
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-icon-factory.c:
+        * libnautilus-private/nautilus-saved-search-file.c:
+        * libnautilus-private/nautilus-search-directory-file.c:
+        * libnautilus-private/nautilus-thumbnails.c:
+        * libnautilus-private/nautilus-trash-file.c:
+        * libnautilus-private/nautilus-vfs-file.c:
+        * src/file-manager/fm-directory-view.c:
+	Store file info directly in NautilusFile instead of using a
+	GnomeVfsFileInfo.
+
+2007-09-18  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-directory-file.c:
         * libnautilus-private/nautilus-desktop-icon-file.c:
         * libnautilus-private/nautilus-directory-async.c:

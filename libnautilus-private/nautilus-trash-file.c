@@ -545,12 +545,6 @@ trash_file_monitor_remove (NautilusFile *file,
 	g_free (monitor);
 }
 
-static GnomeVFSFileType
-trash_file_get_file_type (NautilusFile *file)
-{
-	return GNOME_VFS_FILE_TYPE_DIRECTORY;
-}			      
-
 static gboolean
 trash_file_get_item_count (NautilusFile *file, 
 			   guint *count,
@@ -730,6 +724,9 @@ nautilus_trash_file_init (gpointer object, gpointer klass)
 		add_real_file_given_directory (trash_file, node->data);
 	}
 	g_list_free (real_directories);
+
+
+	NAUTILUS_FILE (trash_file)->details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
 }
 
 static void
@@ -776,7 +773,6 @@ nautilus_trash_file_class_init (gpointer klass)
 	file_class->call_when_ready = trash_file_call_when_ready;
 	file_class->cancel_call_when_ready = trash_file_cancel_call_when_ready;
 	file_class->check_if_ready = trash_file_check_if_ready;
-	file_class->get_file_type = trash_file_get_file_type;
 	file_class->get_item_count = trash_file_get_item_count;
 	file_class->get_deep_counts = trash_file_get_deep_counts;
 	file_class->get_date = trash_file_get_date;

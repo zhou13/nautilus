@@ -141,7 +141,9 @@ char *                  nautilus_file_get_uri_scheme                    (Nautilu
 NautilusFile *          nautilus_file_get_parent                        (NautilusFile                   *file);
 char *                  nautilus_file_get_parent_uri                    (NautilusFile                   *file);
 char *                  nautilus_file_get_parent_uri_for_display        (NautilusFile                   *file);
-goffset        nautilus_file_get_size                          (NautilusFile                   *file);
+gboolean                nautilus_file_can_get_size                      (NautilusFile                   *file);
+goffset                 nautilus_file_get_size                          (NautilusFile                   *file);
+time_t                  nautilus_file_get_mtime                         (NautilusFile                   *file);
 GnomeVFSFileType        nautilus_file_get_file_type                     (NautilusFile                   *file);
 char *                  nautilus_file_get_guessed_mime_type             (NautilusFile                   *file);
 char *                  nautilus_file_get_mime_type                     (NautilusFile                   *file);
@@ -399,7 +401,6 @@ typedef struct {
 							  gpointer                callback_data);
 	gboolean              (* check_if_ready)         (NautilusFile           *file,
 							  NautilusFileAttributes  attributes);
-	GnomeVFSFileType      (* get_file_type)          (NautilusFile           *file);
 	gboolean              (* get_item_count)         (NautilusFile           *file,
 							  guint                  *count,
 							  gboolean               *count_unreadable);

@@ -2872,10 +2872,7 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 			nautilus_file_mark_gone (get_info_file);
 		}
 		get_info_file->details->file_info_is_up_to_date = TRUE;
-		if (get_info_file->details->info != NULL) {
-			gnome_vfs_file_info_unref (get_info_file->details->info);
-			get_info_file->details->info = NULL;
-		}
+		nautilus_file_clear_info (get_info_file);
 		get_info_file->details->get_info_failed = TRUE;
 		get_info_file->details->get_info_error = result->result;
 	} else {
