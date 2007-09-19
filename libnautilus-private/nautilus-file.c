@@ -750,21 +750,14 @@ gboolean
 nautilus_file_is_desktop_directory (NautilusFile *file)
 {
 	GFile *dir;
-	char *path;
-	gboolean res;
 
 	dir = file->details->directory->details->location;
 
-	if (dir == NULL || !g_file_is_native (dir)) {
+	if (dir == NULL) {
 		return FALSE;
 	}
 
-	/* TODO: Shouldn't be duping here, but instead passing in the GFile */
-	path = g_file_get_path (dir);
-	res = nautilus_is_desktop_directory_file (path,
-						  file->details->name);
-	g_free (path);
-	return res;
+	return nautilus_is_desktop_directory_file (dir, file->details->name);
 }
 
 static gboolean
@@ -2458,21 +2451,14 @@ gboolean
 nautilus_file_is_home (NautilusFile *file)
 {
 	GFile *dir;
-	char *path;
-	gboolean res;
 
 	dir = file->details->directory->details->location;
-
-	if (dir == NULL || !g_file_is_native (dir)) {
+	if (dir == NULL) {
 		return FALSE;
 	}
 
-	/* TODO: Pass GFile instead of dup:ing */
-	path = g_file_get_path (dir);
-	res = nautilus_is_home_directory_file (path,
-					       file->details->name);
-	g_free (path);
-	return res;
+	return nautilus_is_home_directory_file (dir,
+						file->details->name);
 }
 
 gboolean

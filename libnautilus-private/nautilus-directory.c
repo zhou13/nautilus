@@ -1839,22 +1839,11 @@ nautilus_directory_list_sort_by_uri (GList *list)
 gboolean
 nautilus_directory_is_desktop_directory (NautilusDirectory   *directory)
 {
-	char *path;
-	gboolean res;
-
-	if (directory->details->location == NULL ||
-	    !g_file_is_native (directory->details->location)) {
+	if (directory->details->location == NULL) {
 		return FALSE;
 	}
 
-	/* TODO: Should not be dup:ing path here, instead pass in the GFile */
-	path = g_file_get_path (directory->details->location);
-
-	res = nautilus_is_desktop_directory (path);
-	
-	g_free (path);
-
-	return res;
+	return nautilus_is_desktop_directory (directory->details->location);
 }
 
 #if !defined (NAUTILUS_OMIT_SELF_CHECK)

@@ -1,5 +1,19 @@
 2007-09-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory.c:
+        (nautilus_directory_is_desktop_directory):
+        * libnautilus-private/nautilus-file-utilities.[ch]:
+        (nautilus_is_home_directory_file):
+        (nautilus_is_desktop_directory_file):
+        (nautilus_is_desktop_directory):
+        * libnautilus-private/nautilus-file.c:
+        (nautilus_file_is_desktop_directory):
+        (nautilus_file_is_home):
+	Don't keep dup:ing strings for these commonly called
+	functions.
+
+2007-09-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-directory-private.h:
         * libnautilus-private/nautilus-directory.c:

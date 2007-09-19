@@ -25,6 +25,7 @@
 #ifndef NAUTILUS_FILE_UTILITIES_H
 #define NAUTILUS_FILE_UTILITIES_H
 
+#include <gio/gfile.h>
 #include <libgnomevfs/gnome-vfs-types.h>
 
 #define NAUTILUS_SAVED_SEARCH_EXTENSION ".savedSearch"
@@ -42,10 +43,10 @@ char *   nautilus_get_user_directory                 (void);
 char *   nautilus_get_desktop_directory              (void);
 char *   nautilus_get_desktop_directory_uri          (void);
 char *   nautilus_get_home_directory_uri             (void);
-gboolean nautilus_is_desktop_directory_file          (char *dirname,
+gboolean nautilus_is_desktop_directory_file          (GFile *dir,
 						      char *filename);
-gboolean nautilus_is_desktop_directory               (char *dir);
-gboolean nautilus_is_home_directory_file             (char *dirname,
+gboolean nautilus_is_desktop_directory               (GFile *dir);
+gboolean nautilus_is_home_directory_file             (GFile *dir,
 						      char *filename);
 char *   nautilus_get_gmc_desktop_directory          (void);
 char *   nautilus_get_pixmap_directory               (void);

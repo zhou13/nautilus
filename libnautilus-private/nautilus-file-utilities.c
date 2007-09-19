@@ -590,8 +590,8 @@ nautilus_get_searches_directory (void)
 }
 
 /* These need to be reset to NULL when desktop_is_home_dir changes */
-static char *desktop_dir = NULL;
-static char *desktop_dir_dirname = NULL;
+static GFile *desktop_dir = NULL;
+static GFile *desktop_dir_dir = NULL;
 static char *desktop_dir_filename = NULL;
 static gboolean desktop_dir_changed_callback_installed = FALSE;
 
@@ -599,11 +599,15 @@ static gboolean desktop_dir_changed_callback_installed = FALSE;
 static void
 desktop_dir_changed (void)
 {
-	g_free (desktop_dir);
+	if (desktop_dir) {
+		g_object_unref (desktop_dir);
+	}
+	if (desktop_dir_dir) {
+		g_object_unref (desktop_dir_dir);
+	}
 	g_free (desktop_dir_filename);
-	g_free (desktop_dir_dirname);
 	desktop_dir = NULL;
-	desktop_dir_dirname = NULL;
+	desktop_dir_dir = NULL;
 	desktop_dir_filename = NULL;
 }
 
@@ -616,29 +620,40 @@ desktop_dir_changed_callback (gpointer callback_data)
 static void
 update_desktop_dir (void)
 {
-	desktop_dir = get_desktop_path ();
-	desktop_dir_dirname = g_path_get_dirname (desktop_dir);
-	desktop_dir_filename = g_path_get_basename (desktop_dir);
+	char *path;
+	char *dirname;
+
+	path = get_desktop_path ();
+	desktop_dir = g_file_new_for_path (path);
+	
+	dirname = g_path_get_dirname (path);
+	desktop_dir_dir = g_file_new_for_path (dirname);
+	g_free (dirname);
+	desktop_dir_filename = g_path_get_basename (path);
+	g_free (path);
 }
 
 gboolean
-nautilus_is_home_directory_file (char *dirname,
+nautilus_is_home_directory_file (GFile *dir,
 				 char *filename)
 {
-	static char *home_dir_dirname = NULL;
+	char *dirname;
+	static GFile *home_dir_dir = NULL;
 	static char *home_dir_filename = NULL;
 	
-	if (home_dir_dirname == NULL) {
-		home_dir_dirname = g_path_get_dirname (g_get_home_dir ());
+	if (home_dir_dir == NULL) {
+		dirname = g_path_get_dirname (g_get_home_dir ());
+		home_dir_dir = g_file_new_for_path (dirname);
+		g_free (dirname);
 		home_dir_filename = g_path_get_basename (g_get_home_dir ());
 	}
 
-	return (strcmp (dirname, home_dir_dirname) == 0 &&
+	return (g_file_equal (dir, home_dir_dir) &&
 		strcmp (filename, home_dir_filename) == 0);
 }
 					 
 gboolean
-nautilus_is_desktop_directory_file (char *dirname,
+nautilus_is_desktop_directory_file (GFile *dir,
 				    char *file)
 {
 
@@ -653,12 +668,12 @@ nautilus_is_desktop_directory_file (char *dirname,
 		update_desktop_dir ();
 	}
 
-	return (strcmp (dirname, desktop_dir_dirname) == 0 &&
+	return (g_file_equal (dir, desktop_dir_dir) &&
 		strcmp (file, desktop_dir_filename) == 0);
 }
 
 gboolean
-nautilus_is_desktop_directory (char *dir)
+nautilus_is_desktop_directory (GFile *dir)
 {
 
 	if (!desktop_dir_changed_callback_installed) {
@@ -672,7 +687,7 @@ nautilus_is_desktop_directory (char *dir)
 		update_desktop_dir ();
 	}
 
-	return strcmp (dir, desktop_dir) == 0;
+	return g_file_equal (dir, desktop_dir);
 }
 
 
