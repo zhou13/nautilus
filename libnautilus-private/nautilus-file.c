@@ -749,17 +749,22 @@ nautilus_file_can_execute (NautilusFile *file)
 gboolean
 nautilus_file_is_desktop_directory (NautilusFile *file)
 {
-	GnomeVFSURI *dir_vfs_uri;
+	GFile *dir;
+	char *path;
+	gboolean res;
 
-	dir_vfs_uri = file->details->directory->details->vfs_uri;
+	dir = file->details->directory->details->location;
 
-	if (dir_vfs_uri == NULL ||
-	    strcmp (dir_vfs_uri->method_string, "file") != 0) {
+	if (dir == NULL || !g_file_is_native (dir)) {
 		return FALSE;
 	}
 
-	return nautilus_is_desktop_directory_file_escaped (dir_vfs_uri->text,
-							   file->details->name);
+	/* TODO: Shouldn't be duping here, but instead passing in the GFile */
+	path = g_file_get_path (dir);
+	res = nautilus_is_desktop_directory_file (path,
+						  file->details->name);
+	g_free (path);
+	return res;
 }
 
 static gboolean
@@ -920,20 +925,25 @@ nautilus_file_get_drive (NautilusFile *file)
 static GnomeVFSURI *
 nautilus_file_get_gnome_vfs_uri (NautilusFile *file)
 {
+	GFile *dir, *child;
 	GnomeVFSURI *vfs_uri;
+	char *uri;
 
-	vfs_uri = file->details->directory->details->vfs_uri;
-	if (vfs_uri == NULL) {
+	dir = file->details->directory->details->location;
+	if (dir == NULL) {
 		return NULL;
 	}
 
 	if (nautilus_file_is_self_owned (file)) {
-		gnome_vfs_uri_ref (vfs_uri);
-		return vfs_uri;
+		child = g_object_ref (dir);
+	} else {
+		child = g_file_get_child (dir, file->details->name);
 	}
 
-	return gnome_vfs_uri_append_path
-		(vfs_uri, file->details->name);
+	uri = g_file_get_uri (child);
+	vfs_uri = gnome_vfs_uri_new (uri);
+	g_free (uri);
+	return vfs_uri;
 }
 
 static Operation *
@@ -1004,7 +1014,7 @@ operation_cancel (Operation *op)
 static gboolean
 has_local_path (NautilusFile *file)
 {
-	return eel_str_has_prefix (file->details->directory->details->uri, "file:");
+	return g_file_is_native (file->details->directory->details->location);
 }
 
 static void
@@ -2447,26 +2457,42 @@ nautilus_file_should_show (NautilusFile *file,
 gboolean
 nautilus_file_is_home (NautilusFile *file)
 {
-	GnomeVFSURI *dir_vfs_uri;
+	GFile *dir;
+	char *path;
+	gboolean res;
 
-	dir_vfs_uri = file->details->directory->details->vfs_uri;
+	dir = file->details->directory->details->location;
 
-	if (dir_vfs_uri == NULL ||
-	    strcmp (dir_vfs_uri->method_string, "file") != 0) {
+	if (dir == NULL || !g_file_is_native (dir)) {
 		return FALSE;
 	}
 
-	return nautilus_is_home_directory_file_escaped (dir_vfs_uri->text,
-							file->details->name);
+	/* TODO: Pass GFile instead of dup:ing */
+	path = g_file_get_path (dir);
+	res = nautilus_is_home_directory_file (path,
+					       file->details->name);
+	g_free (path);
+	return res;
 }
 
 gboolean
 nautilus_file_is_in_desktop (NautilusFile *file)
 {
+	char *path;
+	gboolean res;
+
 	/* This handles visiting other people's desktops, but it can arguably
 	 * be said that this might break and that we should lookup the passwd table.
 	 */
-	return strstr (file->details->directory->details->uri, "/Desktop") != NULL;
+	/* TODO: This is totally broken with translated desktop dirs, and the dup is slow */
+	path = g_file_get_path (file->details->directory->details->location);
+	res = FALSE;
+	if (path) {
+		res = (strstr (path, "/Desktop") != NULL);
+	}
+	g_free (path);
+	return res;
+	
 }
 
 static gboolean
@@ -2800,8 +2826,9 @@ nautilus_file_get_display_name_nocopy (NautilusFile *file)
 			} else if (strcmp (name, "/") == 0) {
 				/* Special-case the display name for roots that are not local files */
 				g_free (name);
-				
-				vfs_uri = gnome_vfs_uri_new (file->details->directory->details->uri);
+				uri = nautilus_directory_get_uri (file->details->directory);
+				vfs_uri = gnome_vfs_uri_new (uri);
+				g_free (uri);
 				method = nautilus_get_vfs_method_display_name (vfs_uri->method_string);
 				if (method == NULL) {
 					method = vfs_uri->method_string;
@@ -2969,12 +2996,12 @@ nautilus_file_get_uri (NautilusFile *file)
 {
 	GnomeVFSURI *vfs_uri;
 	char *uri;
-	char *relative_uri;
-
+	GFile *dir, *child;
+	
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
 	if (nautilus_file_is_self_owned (file)) {
-		return g_strdup (file->details->directory->details->uri);
+		return g_file_get_uri (file->details->directory->details->location);
 	}
 
 	vfs_uri = nautilus_file_get_gnome_vfs_uri (file);
@@ -2983,27 +3010,32 @@ nautilus_file_get_uri (NautilusFile *file)
 		gnome_vfs_uri_unref (vfs_uri);
 		return uri;
 	}
-
-	relative_uri = gnome_vfs_escape_path_string (file->details->name);
-	uri =  g_strconcat (file->details->directory->details->uri,
-			    relative_uri,
-			    NULL);
-	g_free (relative_uri);
+	
+	dir = file->details->directory->details->location;
+	child = g_file_get_child (dir, file->details->name);
+	uri = g_file_get_uri (child);
+	g_object_unref (child);
+	
 	return uri;
 }
 
 char *
 nautilus_file_get_uri_scheme (NautilusFile *file)
 {
-
+	char *uri;
+	char *scheme;
+	
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
 	if (file->details->directory == NULL || 
-	    file->details->directory->details->uri == NULL) {
+	    file->details->directory->details->location == NULL) {
 		return NULL;
 	}
 
-	return gnome_vfs_get_uri_scheme (file->details->directory->details->uri);
+	uri = nautilus_directory_get_uri (file->details->directory);
+	scheme = gnome_vfs_get_uri_scheme (uri);
+	g_free (uri);
+	return scheme;
 }
 
 gboolean

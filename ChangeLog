@@ -1,5 +1,15 @@
 2007-09-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file-utilities.[ch]:
+        * libnautilus-private/nautilus-file.c:
+	Use GFile *location to store the uri for NautilusDirectory.
+	In preparation for using GFile for all I/O.
+
+2007-09-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-file-attributes.h:

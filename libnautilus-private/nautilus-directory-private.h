@@ -22,6 +22,7 @@
    Author: Darin Adler <darin@bentspoon.com>
 */
 
+#include <gio/gfile.h>
 #include <eel/eel-vfs-extensions.h>
 #include <libgnomevfs/gnome-vfs-file-info.h>
 #include <libgnomevfs/gnome-vfs-types.h>
@@ -43,9 +44,7 @@ typedef struct FileMonitors FileMonitors;
 struct NautilusDirectoryDetails
 {
 	/* The location. */
-	char *uri;
-	GnomeVFSURI *vfs_uri;
-	int is_local_state;
+	GFile *location;
 
 	/* The file objects. */
 	NautilusFile *as_file;

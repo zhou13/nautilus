@@ -70,12 +70,12 @@ static void               nautilus_directory_finalize         (GObject          
 static void               nautilus_directory_init             (gpointer                object,
 							       gpointer                klass);
 static void               nautilus_directory_class_init (NautilusDirectoryClass *klass);
-static NautilusDirectory *nautilus_directory_new              (const char             *uri);
+static NautilusDirectory *nautilus_directory_new              (GFile                  *location);
 static char *             real_get_name_for_self_as_new_file  (NautilusDirectory      *directory);
 static GList *            real_get_file_list                  (NautilusDirectory      *directory);
 static gboolean		  real_is_editable                    (NautilusDirectory      *directory);
-static void               set_directory_uri                   (NautilusDirectory      *directory,
-							       const char             *new_uri);
+static void               set_directory_location              (NautilusDirectory      *directory,
+							       GFile                  *location);
 
 EEL_CLASS_BOILERPLATE (NautilusDirectory,
 		       nautilus_directory,
@@ -179,7 +179,7 @@ nautilus_directory_finalize (GObject *object)
 
 	directory = NAUTILUS_DIRECTORY (object);
 
-	g_hash_table_remove (directories, directory->details->uri);
+	g_hash_table_remove (directories, directory->details->location);
 
 	nautilus_directory_cancel (directory);
 	g_assert (directory->details->count_in_progress == NULL);
@@ -207,11 +207,9 @@ nautilus_directory_finalize (GObject *object)
 	if (directory->details->call_ready_idle_id != 0) {
 		g_source_remove (directory->details->call_ready_idle_id);
 	}
-	
-	g_free (directory->details->uri);
 
-	if (directory->details->vfs_uri != NULL) {
-		gnome_vfs_uri_unref (directory->details->vfs_uri);
+	if (directory->details->location) {
+		g_object_unref (directory->details->location);
 	}
 
 	g_assert (directory->details->file_list == NULL);
@@ -367,22 +365,15 @@ nautilus_directory_make_uri_canonical (const char *uri)
  * Returns a referenced object, not a floating one. Unref when finished.
  * If two windows are viewing the same uri, the directory object is shared.
  */
-NautilusDirectory *
-nautilus_directory_get_internal (const char *uri, gboolean create)
+static NautilusDirectory *
+nautilus_directory_get_for_location (GFile *location, gboolean create)
 {
-	char *canonical_uri;
 	NautilusDirectory *directory;
-
-	if (uri == NULL) {
-    		return NULL;
-	}
-
-	canonical_uri = nautilus_directory_make_uri_canonical (uri);
-
+	
 	/* Create the hash table first time through. */
 	if (directories == NULL) {
 		directories = eel_g_hash_table_new_free_at_exit
-			(g_str_hash, g_str_equal, "nautilus-directory.c: directories");
+			(g_file_hash, (GCompareFunc)g_file_equal, "nautilus-directory.c: directories");
 
 		add_preferences_callbacks ();
 	}
@@ -390,26 +381,39 @@ nautilus_directory_get_internal (const char *uri, gboolean create)
 	/* If the object is already in the hash table, look it up. */
 
 	directory = g_hash_table_lookup (directories,
-					 canonical_uri);
+					 location);
 	if (directory != NULL) {
 		nautilus_directory_ref (directory);
 	} else if (create) {
 		/* Create a new directory object instead. */
-		directory = nautilus_directory_new (canonical_uri);
+		directory = nautilus_directory_new (location);
 		if (directory == NULL) {
 			return NULL;
 		}
 
-		g_assert (strcmp (directory->details->uri, canonical_uri) == 0);
-
 		/* Put it in the hash table. */
 		g_hash_table_insert (directories,
-				     directory->details->uri,
+				     directory->details->location,
 				     directory);
 	}
 
-	g_free (canonical_uri);
+	return directory;
+}
 
+NautilusDirectory *
+nautilus_directory_get_internal (const char *uri, gboolean create)
+{
+	NautilusDirectory *directory;
+	GFile *location;
+
+	if (uri == NULL) {
+    		return NULL;
+	}
+
+	location = g_file_new_for_uri (uri);
+
+	directory = nautilus_directory_get_for_location (location, create);
+	g_object_unref (location);
 	return directory;
 }
 
@@ -445,10 +449,13 @@ NautilusFile *
 nautilus_directory_get_corresponding_file (NautilusDirectory *directory)
 {
 	NautilusFile *file;
+	char *uri;
 
 	file = nautilus_directory_get_existing_corresponding_file (directory);
 	if (file == NULL) {
-		file = nautilus_file_get (directory->details->uri);
+		uri = nautilus_directory_get_uri (directory);
+		file = nautilus_file_get (uri);
+		g_free (uri);
 	}
 
 	return file;
@@ -461,6 +468,7 @@ NautilusFile *
 nautilus_directory_get_existing_corresponding_file (NautilusDirectory *directory)
 {
 	NautilusFile *file;
+	char *uri;
 	
 	file = directory->details->as_file;
 	if (file != NULL) {
@@ -468,7 +476,10 @@ nautilus_directory_get_existing_corresponding_file (NautilusDirectory *directory
 		return file;
 	}
 
-	return nautilus_file_get_existing (directory->details->uri);
+	uri = nautilus_directory_get_uri (directory);
+	file = nautilus_file_get_existing (uri);
+	g_free (uri);
+	return file;
 }
 
 /* nautilus_directory_get_name_for_self_as_new_file:
@@ -490,10 +501,10 @@ nautilus_directory_get_name_for_self_as_new_file (NautilusDirectory *directory)
 static char *
 real_get_name_for_self_as_new_file (NautilusDirectory *directory)
 {
-	const char *directory_uri;
+	char *directory_uri;
 	char *name, *colon;
 	
-	directory_uri = directory->details->uri;
+	directory_uri = nautilus_directory_get_uri (directory);
 
 	colon = strchr (directory_uri, ':');
 	if (colon == NULL || colon == directory_uri) {
@@ -501,7 +512,8 @@ real_get_name_for_self_as_new_file (NautilusDirectory *directory)
 	} else {
 		name = g_strndup (directory_uri, colon - directory_uri);
 	}
-
+	g_free (directory_uri);
+	
 	return name;
 }
 
@@ -510,17 +522,18 @@ nautilus_directory_get_uri (NautilusDirectory *directory)
 {
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
 
-	return g_strdup (directory->details->uri);
+	return g_file_get_uri (directory->details->location);
 }
 
 
 static NautilusDirectory *
-nautilus_directory_new (const char *uri)
+nautilus_directory_new (GFile *location)
 {
 	NautilusDirectory *directory;
+	char *uri;
 
-	g_assert (uri != NULL);
-
+	uri = g_file_get_uri (location);
+	
 	if (eel_uri_is_trash (uri)) {
 		directory = NAUTILUS_DIRECTORY (g_object_new (NAUTILUS_TYPE_TRASH_DIRECTORY, NULL));
 	} else if (eel_uri_is_desktop (uri)) {
@@ -533,8 +546,10 @@ nautilus_directory_new (const char *uri)
 		directory = NAUTILUS_DIRECTORY (g_object_new (NAUTILUS_TYPE_VFS_DIRECTORY, NULL));
 	}
 
-	set_directory_uri (directory, uri);
+	set_directory_location (directory, location);
 
+	g_free (uri);
+	
 	return directory;
 }
 
@@ -543,34 +558,30 @@ nautilus_directory_is_local (NautilusDirectory *directory)
 {
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), FALSE);
 	
-	if (directory->details->vfs_uri == NULL) {
+	if (directory->details->location == NULL) {
 		return TRUE;
 	}
-	if (directory->details->is_local_state == 0) {
-		if (gnome_vfs_uri_is_local (directory->details->vfs_uri)) {
-			directory->details->is_local_state = 1;
-		} else {
-			directory->details->is_local_state = -1;
-		}
-	}
-	
-	return directory->details->is_local_state > 0;
+	return g_file_is_native (directory->details->location);
 }
 
 gboolean
 nautilus_directory_is_in_trash (NautilusDirectory *directory)
 {
+	char *uri;
+	
 	g_assert (NAUTILUS_IS_DIRECTORY (directory));
 	
-	if (directory->details->uri == NULL) {
+	if (directory->details->location == NULL) {
 		return FALSE;
 	}
 	if (directory->details->is_in_trash_state == 0) {
-		if (eel_uri_is_in_trash (directory->details->uri)) {
+		uri = nautilus_directory_get_uri (directory);
+		if (eel_uri_is_in_trash (uri)) {
 			directory->details->is_in_trash_state = 1;
 		} else {
 			directory->details->is_in_trash_state = -1;
 		}
+		g_free (uri);
 	}
 	
 	return directory->details->is_in_trash_state > 0;
@@ -812,44 +823,38 @@ nautilus_directory_emit_load_error (NautilusDirectory *directory,
 			 error);
 }
 
-
 static char *
 uri_get_directory_part (const char *uri)
 {
-	GnomeVFSURI *vfs_uri, *directory_vfs_uri;
-	char *directory_uri;
+	GFile *parent, *location;
+	char *parent_uri;
 
-	/* Make VFS version of URI. */
-	vfs_uri = gnome_vfs_uri_new (uri);
-	if (vfs_uri == NULL) {
-		return NULL;
+	location = g_file_new_for_uri (uri);
+	parent = g_file_get_parent (location);
+	g_object_unref (location);
+
+	parent_uri = NULL;
+	if (parent) {
+		parent_uri = g_file_get_uri (parent);
+		g_object_unref (parent);
 	}
-
-	/* Make VFS version of directory URI. */
-	directory_vfs_uri = gnome_vfs_uri_get_parent (vfs_uri);
-	gnome_vfs_uri_unref (vfs_uri);
-	if (directory_vfs_uri == NULL) {
-		return NULL;
-	}
-
-	/* Make text version of directory URI. */
-	directory_uri = gnome_vfs_uri_to_string (directory_vfs_uri,
-						 GNOME_VFS_URI_HIDE_NONE);
-	gnome_vfs_uri_unref (directory_vfs_uri);
-	
-	return directory_uri;
+	return parent_uri;
 }
+
 
 /* Return a directory object for this one's parent. */
 static NautilusDirectory *
 get_parent_directory (const char *uri)
 {
-	char *directory_uri;
 	NautilusDirectory *directory;
+	GFile *parent, *location;
 
-	directory_uri = uri_get_directory_part (uri);
-	directory = nautilus_directory_get (directory_uri);
-	g_free (directory_uri);
+	location = g_file_new_for_uri (uri);
+	parent = g_file_get_parent (location);
+	g_object_unref (location);
+	
+	directory = nautilus_directory_get_for_location (parent, TRUE);
+	g_object_unref (parent);
 	return directory;
 }
 
@@ -859,13 +864,15 @@ get_parent_directory (const char *uri)
 static NautilusDirectory *
 get_parent_directory_if_exists (const char *uri)
 {
-	char *directory_uri;
 	NautilusDirectory *directory;
+	GFile *parent, *location;
 
-	/* Make text version of directory URI. */
-	directory_uri = uri_get_directory_part (uri);
-	directory = nautilus_directory_get_existing (directory_uri);
-	g_free (directory_uri);
+	location = g_file_new_for_uri (uri);
+	parent = g_file_get_parent (location);
+	g_object_unref (location);
+	
+	directory = nautilus_directory_get_for_location (parent, FALSE);
+	g_object_unref (parent);
 	return directory;
 }
 
@@ -932,12 +939,19 @@ call_files_changed_unref_free_list (gpointer key, gpointer value, gpointer user_
 static void
 call_get_file_info_free_list (gpointer key, gpointer value, gpointer user_data)
 {
+	NautilusDirectory *directory;
+	GList *files;
+	
 	g_assert (NAUTILUS_IS_DIRECTORY (key));
 	g_assert (value != NULL);
 	g_assert (user_data == NULL);
 
-	nautilus_directory_get_info_for_new_files (key, value);
-	gnome_vfs_uri_list_free (value);
+	directory = key;
+	files = value;
+	
+	nautilus_directory_get_info_for_new_files (directory, files);
+	g_list_foreach (files, (GFunc) g_object_unref, NULL);
+	g_list_free (files);
 }
 
 static void
@@ -972,8 +986,8 @@ nautilus_directory_notify_files_added (GList *uris)
 	GHashTable *parent_directories;
 	const char *uri;
 	char *directory_uri;
-	GnomeVFSURI *vfs_uri;
 	NautilusFile *file;
+	GFile *location;
 
 	/* Make a list of added files in each directory. */
 	added_lists = g_hash_table_new (NULL, NULL);
@@ -1020,9 +1034,9 @@ nautilus_directory_notify_files_added (GList *uris)
 			nautilus_file_changed (file);
 			nautilus_file_unref (file);
 		} else {
-			/* Collect the URIs to use. */
-			vfs_uri = gnome_vfs_uri_new (uri);
-			if (vfs_uri == NULL) {
+			/* Collect the GFiles to use. */
+			location = g_file_new_for_uri (uri);
+			if (location == NULL) {
 				nautilus_directory_unref (directory);
 				g_warning ("bad uri %s", uri);
 				continue;
@@ -1030,7 +1044,7 @@ nautilus_directory_notify_files_added (GList *uris)
 			
 			hash_table_list_prepend (added_lists, 
 						 directory, 
-						 vfs_uri);
+						 location);
 		}
 		nautilus_directory_unref (directory);
 	}
@@ -1132,26 +1146,22 @@ nautilus_directory_notify_files_removed (GList *uris)
 }
 
 static void
-set_directory_uri (NautilusDirectory *directory,
-		   const char *new_uri)
+set_directory_location (NautilusDirectory *directory,
+			GFile *location)
 {
-	GnomeVFSURI *new_vfs_uri;
-
-	new_vfs_uri = gnome_vfs_uri_new (new_uri);
-
-	g_free (directory->details->uri);
-	directory->details->uri = g_strdup (new_uri);
-	
-	if (directory->details->vfs_uri != NULL) {
-		gnome_vfs_uri_unref (directory->details->vfs_uri);
+	if (directory->details->location) {
+		g_object_unref (directory->details->location);
 	}
-	directory->details->vfs_uri = new_vfs_uri;
+	directory->details->location = g_object_ref (location);
+	
 }
 
 static void
-change_directory_uri (NautilusDirectory *directory,
-		      const char *new_uri)
+change_directory_location (NautilusDirectory *directory,
+			   GFile *new_location)
 {
+	char *new_uri;
+	
 	/* I believe it's impossible for a self-owned file/directory
 	 * to be moved. But if that did somehow happen, this function
 	 * wouldn't do enough to handle it.
@@ -1159,15 +1169,17 @@ change_directory_uri (NautilusDirectory *directory,
 	g_return_if_fail (directory->details->as_file == NULL);
 
 	g_hash_table_remove (directories,
-			     directory->details->uri);
+			     directory->details->location);
 
-	set_directory_uri (directory, new_uri);
+	set_directory_location (directory, new_location);
 
 	g_hash_table_insert (directories,
-			     directory->details->uri,
+			     directory->details->location,
 			     directory);
 
+	new_uri = g_file_get_uri (new_location);
 	nautilus_directory_rename_directory_metadata (directory, new_uri);
+	g_free (new_uri);
 }
 
 typedef struct {
@@ -1221,8 +1233,10 @@ nautilus_directory_moved_internal (const char *old_uri,
 	char *canonical_old_uri, *canonical_new_uri;
 	CollectData collection;
 	NautilusDirectory *directory;
+	char *old_directory_uri;
 	char *new_directory_uri;
 	GList *node, *affected_files;
+	GFile *new_location;
 
 	canonical_old_uri = nautilus_directory_make_uri_canonical (old_uri);
 	canonical_new_uri = nautilus_directory_make_uri_canonical (new_uri);
@@ -1239,12 +1253,15 @@ nautilus_directory_moved_internal (const char *old_uri,
 	for (node = collection.directories; node != NULL; node = node->next) {
 		directory = NAUTILUS_DIRECTORY (node->data);
 
+		old_directory_uri = nautilus_directory_get_uri (directory);
 		/* Change the URI in the directory object. */
-		new_directory_uri = str_replace_prefix (directory->details->uri,
+		new_directory_uri = str_replace_prefix (old_directory_uri,
 							canonical_old_uri,
 							canonical_new_uri);
-		change_directory_uri (directory,
-				      new_directory_uri);
+		new_location = g_file_new_for_uri (new_directory_uri);
+		change_directory_location (directory, new_location);
+		g_object_unref (new_location);
+		g_free (old_directory_uri);
 		g_free (new_directory_uri);
 
 		/* Collect affected files. */
@@ -1555,7 +1572,7 @@ char *
 nautilus_directory_get_file_uri (NautilusDirectory *directory,
 				 const char *file_name)
 {
-	GnomeVFSURI *directory_uri, *file_uri;
+	GFile *child;
 	char *result;
 
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
@@ -1563,18 +1580,10 @@ nautilus_directory_get_file_uri (NautilusDirectory *directory,
 
 	result = NULL;
 
-	directory_uri = gnome_vfs_uri_new (directory->details->uri);
-
-	g_assert (directory_uri != NULL);
-
-	file_uri = gnome_vfs_uri_append_string (directory_uri, file_name);
-	gnome_vfs_uri_unref (directory_uri);
-
-	if (file_uri != NULL) {
-		result = gnome_vfs_uri_to_string (file_uri, GNOME_VFS_URI_HIDE_NONE);
-		gnome_vfs_uri_unref (file_uri);
-	}
-
+	child = g_file_get_child (directory->details->location, file_name);
+	result = g_file_get_uri (child);
+	g_object_unref (child);
+	
 	return result;
 }
 
@@ -1795,7 +1804,18 @@ nautilus_directory_list_copy (GList *list)
 static int
 compare_by_uri (NautilusDirectory *a, NautilusDirectory *b)
 {
-	return strcmp (a->details->uri, b->details->uri);
+	char *uri_a, *uri_b;
+	int res;
+
+	uri_a = g_file_get_uri (a->details->location);
+	uri_b = g_file_get_uri (b->details->location);
+	
+	res = strcmp (uri_a, uri_b);
+
+	g_free (uri_a);
+	g_free (uri_b);
+	
+	return res;
 }
 
 static int
@@ -1819,16 +1839,22 @@ nautilus_directory_list_sort_by_uri (GList *list)
 gboolean
 nautilus_directory_is_desktop_directory (NautilusDirectory   *directory)
 {
-	GnomeVFSURI *dir_vfs_uri;
+	char *path;
+	gboolean res;
 
-	dir_vfs_uri = directory->details->vfs_uri;
-
-	if (dir_vfs_uri == NULL ||
-	    strcmp (dir_vfs_uri->method_string, "file") != 0) {
+	if (directory->details->location == NULL ||
+	    !g_file_is_native (directory->details->location)) {
 		return FALSE;
 	}
 
-	return nautilus_is_desktop_directory_escaped (dir_vfs_uri->text);
+	/* TODO: Should not be dup:ing path here, instead pass in the GFile */
+	path = g_file_get_path (directory->details->location);
+
+	res = nautilus_is_desktop_directory (path);
+	
+	g_free (path);
+
+	return res;
 }
 
 #if !defined (NAUTILUS_OMIT_SELF_CHECK)

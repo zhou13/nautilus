@@ -228,7 +228,7 @@ async_job_start (NautilusDirectory *directory,
 #endif
 
 #ifdef DEBUG_START_STOP
-	g_message ("starting %s in %s", job, directory->details->uri);
+	g_message ("starting %s in %p", job, directory->details->location);
 #endif
 
 	g_assert (async_job_count >= 0);
@@ -249,18 +249,22 @@ async_job_start (NautilusDirectory *directory,
 	}
 
 #ifdef DEBUG_ASYNC_JOBS
-	if (async_jobs == NULL) {
-		async_jobs = eel_g_hash_table_new_free_at_exit
-			(g_str_hash, g_str_equal,
-			 "nautilus-directory-async.c: async_jobs");
+	{
+		char *uri;
+		if (async_jobs == NULL) {
+			async_jobs = eel_g_hash_table_new_free_at_exit
+				(g_str_hash, g_str_equal,
+				 "nautilus-directory-async.c: async_jobs");
+		}
+		uri = = nautilus_directory_get_uri (directory);
+		key = g_strconcat (uri, ": ", job, NULL);
+		if (g_hash_table_lookup (async_jobs, key) != NULL) {
+			g_warning ("same job twice: %s in %s",
+				   job, uri);
+		}
+		g_free (uri);
+		g_hash_table_insert (async_jobs, key, directory);
 	}
-	key = g_strconcat (directory->details->uri, ": ", job, NULL);
-	if (g_hash_table_lookup (async_jobs, key) != NULL) {
-		g_warning ("same job twice: %s in %s",
-			   job,
-			   directory->details->uri);
-	}
-	g_hash_table_insert (async_jobs, key, directory);
 #endif	
 
 	async_job_count += 1;
@@ -278,23 +282,27 @@ async_job_end (NautilusDirectory *directory,
 #endif
 
 #ifdef DEBUG_START_STOP
-	g_message ("stopping %s in %s", job, directory->details->uri);
+	g_message ("stopping %s in %p", job, directory->details->location);
 #endif
 
 	g_assert (async_job_count > 0);
 
 #ifdef DEBUG_ASYNC_JOBS
-	g_assert (async_jobs != NULL);
-	key = g_strconcat (directory->details->uri, ": ", job, NULL);
-	if (!g_hash_table_lookup_extended (async_jobs, key, &table_key, &value)) {
-		g_warning ("ending job we didn't start: %s in %s",
-			   job,
-			   directory->details->uri);
-	} else {
-		g_hash_table_remove (async_jobs, key);
-		g_free (table_key);
+	{
+		char *uri;
+		uri = nautilus_directory_get_uri (directory);
+		g_assert (async_jobs != NULL);
+		key = g_strconcat (uri, ": ", job, NULL);
+		if (!g_hash_table_lookup_extended (async_jobs, key, &table_key, &value)) {
+			g_warning ("ending job we didn't start: %s in %s",
+				   job, uri);
+		} else {
+			g_hash_table_remove (async_jobs, key);
+			g_free (table_key);
+		}
+		g_free (uri);
+		g_free (key);
 	}
-	g_free (key);
 #endif
 
 	async_job_count -= 1;
@@ -571,7 +579,8 @@ nautilus_directory_monitor_add_internal (NautilusDirectory *directory,
 {
 	Monitor *monitor;
 	GList *file_list;
-
+	char *uri;
+		
 	g_assert (NAUTILUS_IS_DIRECTORY (directory));
 
 	/* Replace any current monitor for this client/file pair. */
@@ -601,7 +610,9 @@ nautilus_directory_monitor_add_internal (NautilusDirectory *directory,
 	 * it allows us to avoid one file monitor per file in a directory.
 	 */
 	if (directory->details->monitor == NULL) {
-		directory->details->monitor = nautilus_monitor_directory (directory->details->uri);
+		uri = nautilus_directory_get_uri (directory);
+		directory->details->monitor = nautilus_monitor_directory (uri);
+		g_free (uri);
 	}
 	
 	/* We could just call update_metadata_monitors here, but we can be smarter
@@ -1477,9 +1488,28 @@ new_files_callback (GnomeVFSAsyncHandle *handle,
 
 void
 nautilus_directory_get_info_for_new_files (NautilusDirectory *directory,
-					   GList *vfs_uri_list)
+					   GList *location_list)
 {
 	GnomeVFSAsyncHandle *handle;
+	GFile *location;
+	char *uri;
+	GnomeVFSURI *vfs_uri;
+	GList *vfs_uri_list, *l;
+
+	vfs_uri_list = NULL;
+	for (l = location_list; l != NULL; l = l->next) {
+		location = l->data;
+
+		uri = g_file_get_uri (location);
+		vfs_uri = gnome_vfs_uri_new (uri);
+		if (vfs_uri) {
+			vfs_uri_list = g_list_prepend (vfs_uri_list, vfs_uri);
+		}
+		g_free (uri);
+	}
+
+	
+	
 	gnome_vfs_async_get_file_info
 		(&handle,
 		 vfs_uri_list,
@@ -1488,6 +1518,8 @@ nautilus_directory_get_info_for_new_files (NautilusDirectory *directory,
 		 new_files_callback,
 		 directory);
 
+	gnome_vfs_uri_list_free (vfs_uri_list);
+	
 	directory->details->get_file_infos_in_progress
 		= g_list_prepend (directory->details->get_file_infos_in_progress,
 				  handle);
@@ -1923,21 +1955,23 @@ read_dot_hidden_file (NautilusDirectory *directory)
 	char *file_contents;
 	GnomeVFSFileInfo *file_info;
 	gboolean file_ok;
+	GFile *child;
 
 
 	/* FIXME: We only support .hidden on file: uri's for the moment.
 	 * Need to figure out if we should do this async or sync to extend
 	 * it to all types of uris.
 	 */
-	if (directory->details->vfs_uri == NULL ||
-	    (eel_strcasecmp (directory->details->vfs_uri->method_string, "file") != 0)) {
+	if (directory->details->location == NULL ||
+	    !g_file_is_native (directory->details->location)) {
 		return;
 	}
 	
-	/* FIXME: what we really need is a uri_append_file_name call
-	 * that works on strings, so we can avoid the VFS parsing step.
-	 */
-	dot_hidden_vfs_uri = gnome_vfs_uri_append_file_name (directory->details->vfs_uri, ".hidden");
+	child = g_file_get_child (directory->details->location, ".hidden");
+	dot_hidden_uri = g_file_get_uri (child);
+	dot_hidden_vfs_uri = gnome_vfs_uri_new (dot_hidden_uri);
+	g_free (dot_hidden_uri);
+	g_object_unref (child);
 
 	file_info = gnome_vfs_file_info_new ();
 	if (!file_info) {
@@ -2003,6 +2037,8 @@ read_dot_hidden_file (NautilusDirectory *directory)
 static void
 start_monitoring_file_list (NautilusDirectory *directory)
 {
+	char *uri;
+	
 	if (!directory->details->file_list_monitored) {
 		g_assert (directory->details->directory_load_in_progress == NULL);
 		directory->details->file_list_monitored = TRUE;
@@ -2020,7 +2056,7 @@ start_monitoring_file_list (NautilusDirectory *directory)
 
 	mark_all_files_unconfirmed (directory);
 
-	g_assert (directory->details->uri != NULL);
+	g_assert (directory->details->location != NULL);
         directory->details->load_directory_file =
 		nautilus_directory_get_corresponding_file (directory);
 
@@ -2040,16 +2076,18 @@ start_monitoring_file_list (NautilusDirectory *directory)
 
 	
 #ifdef DEBUG_LOAD_DIRECTORY
-	g_message ("load_directory called to monitor file list of %s", directory->details->uri);
+	g_message ("load_directory called to monitor file list of %p", directory->details->location);
 #endif
+	uri = nautilus_directory_get_uri (directory);
 	gnome_vfs_async_load_directory
 		(&directory->details->directory_load_in_progress, /* handle */
-		 directory->details->uri,                         /* uri */
+		 uri,                         /* uri */
 		 NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS,
 		 DIRECTORY_LOAD_ITEMS_PER_CALLBACK,               /* items_per_notification */
 		 GNOME_VFS_PRIORITY_DEFAULT,
 		 directory_load_callback,                         /* callback */
 		 directory);
+	g_free (uri);
 }
 
 /* Stop monitoring the file list if it is being monitored. */
