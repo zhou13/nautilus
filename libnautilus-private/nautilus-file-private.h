@@ -193,8 +193,6 @@ NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory   
 							    GnomeVFSFileInfo       *info);
 void          nautilus_file_emit_changed                   (NautilusFile           *file);
 void          nautilus_file_mark_gone                      (NautilusFile           *file);
-gboolean      nautilus_file_info_missing                   (NautilusFile           *file,
-							    GnomeVFSFileInfoFields  needed_mask);
 char *        nautilus_extract_top_left_text               (const char             *text,
 							    gboolean                large,
 							    int                     length);
