@@ -4862,8 +4862,7 @@ create_properties_window (StartupData *startup_data)
 
 		attributes = nautilus_icon_factory_get_required_file_attributes ();
 		attributes |= NAUTILUS_FILE_ATTRIBUTE_INFO |
-			NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
-			NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
+			NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 
 		nautilus_file_monitor_add (NAUTILUS_FILE (l->data),
 					   &window->details->original_files, 

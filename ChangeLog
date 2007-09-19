@@ -1,5 +1,21 @@
 2007-09-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-attributes.h:
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-mime-actions.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-ditem-page.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/nautilus-window.c:
+	Remove slow mimetype attribute and all its use.
+	This is in preparation for the gio move which has
+	a canonical mimetype definition instead of the
+	guessed/slow couple.
+
+2007-09-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-attributes.h:
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-directory.c:

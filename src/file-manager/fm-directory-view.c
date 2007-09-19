@@ -381,13 +381,8 @@ static void     monitor_file_for_open_with                     (FMDirectoryView 
 static void     create_scripts_directory                       (void);
 static void     activate_activation_uris_ready_callback        (GList                *files,
 								gpointer              callback_data);
-static gboolean can_show_default_app                           (FMDirectoryView *view,
-								NautilusFile *file);
 static gboolean can_delete_uri_without_confirm                 (const char           *uri);
 
-static gboolean activate_check_mime_types                      (FMDirectoryView *view,
-								NautilusFile *file,
-								gboolean warn_on_mismatch);
 static GdkDragAction ask_link_action                           (FMDirectoryView      *view);
 static void     update_templates_directory                     (FMDirectoryView *view);
 static void     user_dirs_changed                              (FMDirectoryView *view);
@@ -4710,18 +4705,6 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 			 nautilus_file_is_directory (file));
 
 		activation_action = get_activation_action (file);
-
-		/* Only use the default app for open if there is not
-		   a mime mismatch, otherwise we can't use it in the
-		   open with menu */
-		if (activation_action == ACTIVATION_ACTION_OPEN_IN_APPLICATION &&
-		    !can_show_default_app (view, file)) {
-			filter_default = TRUE;
-		}
-
-		if (filter_default && !other_applications_visible) {
-			break;
-		}
 	}
 
 	default_app = NULL;
@@ -4840,8 +4823,8 @@ extension_action_callback_data_free (ExtensionActionCallbackData *data)
 }
 
 static void
-extension_action_slow_mime_types_ready_callback (GList *selection, 
-						 gpointer callback_data)
+extension_action_callback (GtkAction *action,
+			   gpointer callback_data)
 {
 	ExtensionActionCallbackData *data;
 	char *item_name;
@@ -4881,26 +4864,6 @@ extension_action_slow_mime_types_ready_callback (GList *selection,
 	if (is_valid) {
 		nautilus_menu_item_activate (data->item);
 	}
-
-	g_object_unref (data->action);
-}
-
-static void
-extension_action_callback (GtkAction *action,
-			   gpointer callback_data)
-{
-	ExtensionActionCallbackData *data;
-
-	data = callback_data;
-
-	g_object_ref (action);
-
-	nautilus_file_list_call_when_ready
-		(data->selection,
-		 NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE,
-		 NULL,
-		 extension_action_slow_mime_types_ready_callback,
-		 callback_data);
 }
 
 static GtkAction *
@@ -4962,126 +4925,6 @@ add_extension_action_for_files (FMDirectoryView *view,
 	g_free (icon);
 
 	return action;
-}
-
-static void
-warn_mismatched_mime_types_response_cb (GtkWidget *dialog,
-					int response,
-					gpointer user_data)
-{
-	gtk_widget_destroy (dialog);
-}
-
-static void
-warn_mismatched_mime_types (FMDirectoryView *view,
-			    NautilusFile *file)
-{
-	GtkWidget *dialog;
-	char *guessed_mime_type;
-	char *mime_type;
-	const char *guessed_description;
-	const char *real_description;
-	char *primary;
-	char *secondary;
-	char *name;
-	
-	guessed_mime_type = nautilus_file_get_guessed_mime_type (file);
-	mime_type = nautilus_file_get_mime_type (file);
-
-	guessed_description = gnome_vfs_mime_get_description (guessed_mime_type);
-	real_description = gnome_vfs_mime_get_description (mime_type);
-
-	name = nautilus_file_get_name (file);
-
-	primary = g_strdup_printf (_("Cannot open %s"), name);
-
-	secondary = g_strdup_printf 
-		(_("The filename \"%s\" indicates that this file is of type \"%s\". " 
-		   "The contents of the file indicate that the file is of type \"%s\". If "
-		   "you open this file, the file might present a security risk to your system.\n\n"
-		   "Do not open the file unless you created the file yourself, or received "
-		   "the file from a trusted source. To open the file, rename the file to the "
-		   "correct extension for \"%s\", then open the file normally. "
-		   "Alternatively, use the Open With menu to choose a specific application "
-		   "for the file. "),
-		 name, 
-		 guessed_description ? guessed_description : guessed_mime_type, 
-		 real_description ? real_description : mime_type,
-		 real_description ? real_description : mime_type);
-
-	g_free (guessed_mime_type);
-	g_free (mime_type);
-
-	dialog = eel_alert_dialog_new (GTK_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (view))),
-				       0,
-				       GTK_MESSAGE_ERROR,
-				       GTK_BUTTONS_NONE,
-				       primary,
-				       secondary);
-
-	g_free (primary);
-	g_free (secondary);
-	g_free (name);
-
-	gtk_dialog_add_button (GTK_DIALOG (dialog),
-			       GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
-	gtk_dialog_set_default_response (GTK_DIALOG (dialog), 
-					 GTK_RESPONSE_CANCEL);
-
-	g_signal_connect (dialog, 
-			  "response",
-			  G_CALLBACK (warn_mismatched_mime_types_response_cb),
-			  file);
-
-	gtk_widget_show (dialog);
-}
-
-static gboolean 
-can_show_default_app (FMDirectoryView *view, NautilusFile *file)
-{
-	return (!nautilus_file_check_if_ready (file, NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE) || activate_check_mime_types (view, file, FALSE));
-
-}
-
-static gboolean
-activate_check_mime_types (FMDirectoryView *view,
-			   NautilusFile *file,
-			   gboolean warn_on_mismatch)
-{
-	char *guessed_mime_type;
-	char *mime_type;
-	gboolean ret;
-	GnomeVFSMimeApplication *default_app;
-	GnomeVFSMimeApplication *guessed_default_app;
-	
-	if (!nautilus_file_check_if_ready (file, NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE)) {
-		return FALSE;
-	}
-
-	ret = TRUE;
-
-	guessed_mime_type = nautilus_file_get_guessed_mime_type (file);
-	mime_type = nautilus_file_get_mime_type (file);
-
-	if (gnome_vfs_mime_type_get_equivalence (mime_type, guessed_mime_type) == GNOME_VFS_MIME_UNRELATED) {
-		default_app = gnome_vfs_mime_get_default_application
-			(mime_type);
-		guessed_default_app = gnome_vfs_mime_get_default_application
-			(guessed_mime_type);
-		if (default_app != NULL &&
-		    guessed_default_app != NULL &&
-		    !gnome_vfs_mime_application_equal (default_app, guessed_default_app)) {
-			if (warn_on_mismatch) {
-				warn_mismatched_mime_types (view, file);
-			}
-			ret = FALSE;
-		}
-	}
-
-	g_free (guessed_mime_type);
-	g_free (mime_type);
-	
-	return ret;
 }
 
 static void
@@ -7762,19 +7605,11 @@ real_update_menus (FMDirectoryView *view)
 		
 		activation_action = get_activation_action (file);
 		
-		/* Only use the default app for open if there is not
-		   a mime mismatch, otherwise we can't use it in the
-		   open with menu */
-		if (activation_action == ACTIVATION_ACTION_OPEN_IN_APPLICATION &&
-		    !can_show_default_app (view, file)) {
-			can_open = FALSE;
-		}
-
 		if (activation_action != ACTIVATION_ACTION_OPEN_IN_APPLICATION) {
 			show_app = FALSE;
 		}
 
-		if (!can_open && !show_app) {
+		if (!show_app) {
 			break;
 		}
 	} 
@@ -8121,7 +7956,6 @@ schedule_update_status (FMDirectoryView *view)
 void
 fm_directory_view_notify_selection_changed (FMDirectoryView *view)
 {
-	NautilusFile *file;
 	GList *selection;
 	GtkWindow *window;
 	
@@ -8158,28 +7992,6 @@ fm_directory_view_notify_selection_changed (FMDirectoryView *view)
 
 		/* Schedule an update of menu item states to match selection */
 		schedule_update_menus (view);
-
-		/* If there's exactly one item selected we sniff the slower attributes needed
-		 * to activate a file ahead of time to improve interactive response.
-		 */
-
-		if (eel_g_list_exactly_one_item (selection)) {
-			file = NAUTILUS_FILE (selection->data);
-			
-			if (nautilus_file_needs_slow_mime_type (file)) {
-				nautilus_file_call_when_ready
-					(file,
-					 NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE,
-					 NULL,
-					 NULL);
-			}
-
-			nautilus_file_call_when_ready 
-				(file, 
-				 NAUTILUS_FILE_ATTRIBUTE_LINK_INFO,
-				 NULL, 
-				 NULL);
-		}
 	}
 
 	nautilus_file_list_free (selection);
@@ -8458,8 +8270,7 @@ activate_callback (GList *files, gpointer callback_data)
 	for (l = files; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
 
-		if (!activate_check_mime_types (view, file, TRUE) ||
-		    file_was_cancelled (file)) {
+		if (file_was_cancelled (file)) {
 			continue;
 		}
 
@@ -8791,8 +8602,7 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	
 	/* get the parameters for the actual file */	
 	attributes = nautilus_mime_actions_get_minimum_file_attributes () | 
-		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
-		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 
 	nautilus_file_list_call_when_ready
 		(parameters->files, attributes,

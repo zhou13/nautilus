@@ -122,41 +122,6 @@ fm_ditem_page_url_drag_data_received (GtkWidget *widget, GdkDragContext *context
 }
 
 static void
-mime_type_ready_cb (NautilusFile *file,
-		    gpointer user_data)
-{
-	GnomeDesktopItem *item;
-	GtkEntry *entry;
-	char *uri;
-	const char *exec;
-	
-	entry = GTK_ENTRY (user_data);
-	uri = nautilus_file_get_uri (file);
-	
-	if (nautilus_file_is_mime_type (file, "application/x-desktop")) {
-	  item = gnome_desktop_item_new_from_uri (uri,
-						  GNOME_DESKTOP_ITEM_LOAD_ONLY_IF_EXISTS,
-						  NULL);
-		if (item != NULL &&
-		    gnome_desktop_item_get_entry_type (item) == GNOME_DESKTOP_ITEM_TYPE_APPLICATION) {
-		  
-			exec = gnome_desktop_item_get_string (item, GNOME_DESKTOP_ITEM_EXEC);
-			gtk_entry_set_text (entry,
-					    exec?exec:"");
-			gnome_desktop_item_unref (item);
-
-			gtk_widget_grab_focus (GTK_WIDGET (entry));
-		}
-	} else {
-		gtk_entry_set_text (entry,
-				    uri?uri:"");
-	}
-
-	g_free (uri);
-	nautilus_file_unref (file);
-}
-
-static void
 fm_ditem_page_exec_drag_data_received (GtkWidget *widget, GdkDragContext *context,
 				       int x, int y,
 				       GtkSelectionData *selection_data,
@@ -166,6 +131,9 @@ fm_ditem_page_exec_drag_data_received (GtkWidget *widget, GdkDragContext *contex
 	char **uris;
 	gboolean exactly_one;
 	NautilusFile *file;
+	GnomeDesktopItem *item;
+	char *uri;
+	const char *exec;
 	
 	uris = g_strsplit (selection_data->data, "\r\n", 0);
         exactly_one = uris[0] != NULL && (uris[1] == NULL || uris[1][0] == '\0');
@@ -179,9 +147,29 @@ fm_ditem_page_exec_drag_data_received (GtkWidget *widget, GdkDragContext *contex
 
 	g_return_if_fail (file != NULL);
 	
-	nautilus_file_call_when_ready (file,
-				       NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE,
-				       mime_type_ready_cb, entry);
+	uri = nautilus_file_get_uri (file);
+	if (nautilus_file_is_mime_type (file, "application/x-desktop")) {
+		item = gnome_desktop_item_new_from_uri (uri,
+							GNOME_DESKTOP_ITEM_LOAD_ONLY_IF_EXISTS,
+							NULL);
+		if (item != NULL &&
+		    gnome_desktop_item_get_entry_type (item) == GNOME_DESKTOP_ITEM_TYPE_APPLICATION) {
+			
+			exec = gnome_desktop_item_get_string (item, GNOME_DESKTOP_ITEM_EXEC);
+			gtk_entry_set_text (entry,
+					    exec?exec:"");
+			gnome_desktop_item_unref (item);
+			
+			gtk_widget_grab_focus (GTK_WIDGET (entry));
+		}
+	} else {
+		gtk_entry_set_text (entry,
+				    uri?uri:"");
+	}
+	
+	g_free (uri);
+	
+	nautilus_file_unref (file);
 	
 	g_strfreev (uris);
 }

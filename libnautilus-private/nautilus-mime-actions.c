@@ -71,8 +71,7 @@ nautilus_mime_actions_get_minimum_file_attributes (void)
 {
 	return NAUTILUS_FILE_ATTRIBUTE_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
-		NAUTILUS_FILE_ATTRIBUTE_METADATA |
-		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
+		NAUTILUS_FILE_ATTRIBUTE_METADATA;
 }
 
 static NautilusFileAttributes 
@@ -140,23 +139,6 @@ file_compare_by_mime_type (NautilusFile *file_a,
 }
 
 static int
-file_compare_by_guessed_mime_type (NautilusFile *file_a,
-				   NautilusFile *file_b) {
-	char *guessed_mime_type_a, *guessed_mime_type_b;
-	int ret;
-
-	guessed_mime_type_a = nautilus_file_get_guessed_mime_type (file_a);
-	guessed_mime_type_b = nautilus_file_get_guessed_mime_type (file_b);
-
-	ret = strcmp (guessed_mime_type_a, guessed_mime_type_b);
-
-	g_free (guessed_mime_type_a);
-	g_free (guessed_mime_type_b);
-
-	return ret;
-}
-
-static int
 file_compare_by_parent_uri (NautilusFile *file_a,
 			    NautilusFile *file_b) {
 	char *parent_uri_a, *parent_uri_b;
@@ -180,45 +162,20 @@ application_compare_by_name (const GnomeVFSMimeApplication *app_a,
 	return g_utf8_collate (app_a->name, app_b->name);
 }
 
-static int
-application_compare_by_id (const GnomeVFSMimeApplication *app_a,
-			   const GnomeVFSMimeApplication *app_b)
-{
-	return strcmp (app_a->id, app_b->id);
-}
-
 static GList *
 get_open_with_mime_applications (NautilusFile *file)
 {
-	char *guessed_mime_type;
 	char *mime_type, *uri;
 	GList *result;
 
-	guessed_mime_type = nautilus_file_get_guessed_mime_type (file);
 	mime_type = nautilus_file_get_mime_type (file);
 	uri = nautilus_file_get_uri (file);
 
 	result = gnome_vfs_mime_get_all_applications_for_uri (uri, mime_type);
 	result = g_list_sort (result, (GCompareFunc) application_compare_by_name);
 
-	if (strcmp (guessed_mime_type, mime_type) != 0) {
-		GList *result_2;
-		GList *l;
-
-		result_2 = gnome_vfs_mime_get_all_applications (guessed_mime_type);
-		for (l = result_2; l != NULL; l = l->next) {
-			if (!g_list_find_custom (result, l->data,
-						 (GCompareFunc) application_compare_by_id)) {
-				result = g_list_insert_sorted (result, l->data,
-							       (GCompareFunc) application_compare_by_name);
-			}
-		}
-		g_list_free (result_2);
-	}
-
 	g_free (mime_type);
 	g_free (uri);
-	g_free (guessed_mime_type);
 	
 	return result;
 }
@@ -226,7 +183,7 @@ get_open_with_mime_applications (NautilusFile *file)
 /* Get a list of applications for the Open With menu.  This is 
  * different than nautilus_mime_get_applications_for_file()
  * because this function will merge the lists of the fast and slow
- * mime types for the file */
+ * mime types for the file (not any more...) */
 GList *
 nautilus_mime_get_open_with_applications_for_file (NautilusFile *file)
 {
@@ -388,7 +345,6 @@ nautilus_mime_get_open_with_applications_for_files (GList *files)
 
 		if (l->prev &&
 		    file_compare_by_mime_type (file, l->prev->data) == 0 &&
-		    file_compare_by_guessed_mime_type (file, l->prev->data) == 0 &&
 		    file_compare_by_parent_uri (file, l->prev->data) == 0) {
 			continue;
 		}

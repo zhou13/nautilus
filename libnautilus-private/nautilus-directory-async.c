@@ -540,7 +540,6 @@ nautilus_directory_set_up_request (Request *request,
 	}
 
 	request->metafile |= (file_attributes & NAUTILUS_FILE_ATTRIBUTE_METADATA) != 0;
-	request->slow_mime_type = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE) != 0;
 	request->extension_info = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_EXTENSION_INFO) != 0;
 }
 
@@ -554,7 +553,6 @@ mime_db_changed_callback (GnomeVFSMIMEMonitor *ignore, NautilusDirectory *dir)
 
 	attrs = NAUTILUS_FILE_ATTRIBUTE_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
-		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
 		NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_MIME_TYPES;
 
@@ -828,7 +826,7 @@ dequeue_pending_idle_callback (gpointer callback_data)
 				nautilus_file_ref (file);
 				file->details->is_added = TRUE;
 				added_files = g_list_prepend (added_files, file);
-			} else if (nautilus_file_update_info (file, file_info, FALSE)) {
+			} else if (nautilus_file_update_info (file, file_info)) {
 				/* File changed, notify about the change. */
 				nautilus_file_ref (file);
 				changed_files = g_list_prepend (changed_files, file);
@@ -1643,27 +1641,6 @@ wants_info (const Request *request)
 }
 
 static gboolean
-always_lacks (NautilusFile *file)
-{
-	return TRUE;
-}
-
-static gboolean
-lacks_slow_mime_type (NautilusFile *file)
-{
-	return !file->details->got_slow_mime_type
-		&& !file->details->is_gone &&
-		!file->details->get_info_failed;
-}
-
-static gboolean
-wants_slow_mime_type (const Request *request)
-{
-	return request->slow_mime_type;
-}
-
-
-static gboolean
 lacks_deep_count (NautilusFile *file)
 {
 	return file->details->deep_counts_status != NAUTILUS_REQUEST_DONE;
@@ -1767,12 +1744,6 @@ request_is_satisfied (NautilusDirectory *directory,
 
 	if (request->file_info) {
 		if (has_problem (directory, file, lacks_info)) {
-			return FALSE;
-		}
-	}
-
-	if (request->slow_mime_type) {
-		if (has_problem (directory, file, lacks_slow_mime_type)) {
 			return FALSE;
 		}
 	}
@@ -2802,7 +2773,6 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 	NautilusDirectory *directory;
 	NautilusFile *get_info_file;
 	GnomeVFSGetFileInfoResult *result;
-	gboolean has_slow_mime_type;
 
 	directory = NAUTILUS_DIRECTORY (callback_data);
 	g_assert (handle == NULL || handle == directory->details->get_info_in_progress);
@@ -2812,11 +2782,8 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 
 	nautilus_directory_ref (directory);
 
-	has_slow_mime_type = directory->details->get_info_has_slow_mime_type;
-	
 	directory->details->get_info_file = NULL;
 	directory->details->get_info_in_progress = NULL;
-	directory->details->get_info_has_slow_mime_type = FALSE;
 	
 	/* ref here because we might be removing the last ref when we
 	 * mark the file gone below, but we need to keep a ref at
@@ -2837,7 +2804,7 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 		get_info_file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR, result->result,
 									      gnome_vfs_result_to_string (result->result));
 	} else {
-		nautilus_file_update_info (get_info_file, result->file_info, has_slow_mime_type);
+		nautilus_file_update_info (get_info_file, result->file_info);
 	}
 
 	nautilus_file_changed (get_info_file);
@@ -2859,8 +2826,7 @@ file_info_stop (NautilusDirectory *directory)
 		if (file != NULL) {
 			g_assert (NAUTILUS_IS_FILE (file));
 			g_assert (file->details->directory == directory);
-			if (is_needy (file, lacks_info, wants_info) ||
-			    is_needy (file, lacks_slow_mime_type, wants_slow_mime_type)) {
+			if (is_needy (file, lacks_info, wants_info)) {
 				return;
 			}
 		}
@@ -2878,7 +2844,6 @@ file_info_start (NautilusDirectory *directory,
 	char *uri;
 	GnomeVFSURI *vfs_uri;
 	GList fake_list;
-	gboolean need_slow_mime;
 	GnomeVFSFileInfoOptions options;
 	
 	file_info_stop (directory);
@@ -2888,14 +2853,11 @@ file_info_start (NautilusDirectory *directory,
 		return;
 	}
 
-	if (!is_needy (file, lacks_info, wants_info) &&
-	    !is_needy (file, lacks_slow_mime_type, wants_slow_mime_type)) {
+	if (!is_needy (file, lacks_info, wants_info)) {
 		return;
 	}
 	*doing_io = TRUE;
 
-	need_slow_mime = is_needy (file, always_lacks, wants_slow_mime_type);
-	
 	uri = nautilus_file_get_uri (file);
 	vfs_uri = gnome_vfs_uri_new (uri);
 	g_free (uri);
@@ -2909,7 +2871,6 @@ file_info_start (NautilusDirectory *directory,
 		file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR,
 								     GNOME_VFS_ERROR_INVALID_URI,
 								     gnome_vfs_result_to_string (GNOME_VFS_ERROR_INVALID_URI));
-		file->details->got_slow_mime_type = need_slow_mime;
 
 		nautilus_directory_async_state_changed (directory);
 		return;
@@ -2929,10 +2890,6 @@ file_info_start (NautilusDirectory *directory,
 	fake_list.next = NULL;
 
 	options = NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS;
-	if (need_slow_mime) {
-		options |= GNOME_VFS_FILE_INFO_FORCE_SLOW_MIME_TYPE;
-	}
-	directory->details->get_info_has_slow_mime_type = need_slow_mime;
 	gnome_vfs_async_get_file_info
 		(&directory->details->get_info_in_progress,
 		 &fake_list,

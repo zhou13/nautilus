@@ -109,10 +109,6 @@ struct NautilusFileDetails
 	char *custom_icon;
 	char *activation_uri;
 
-	/* The guessed (extension-based) mime type.  This is saved for
-	 * comparison vs. the slow mime type upon activation */
-	char *guessed_mime_type;
-
 	/* The following is for file operations in progress. Since
 	 * there are normally only a few of these, we can move them to
 	 * a separate hash table or something if required to keep the
@@ -151,8 +147,6 @@ struct NautilusFileDetails
 	eel_boolean_bit get_info_failed               : 1;
 	eel_boolean_bit file_info_is_up_to_date       : 1;
 	
-	eel_boolean_bit got_slow_mime_type            : 1;
-
 	eel_boolean_bit got_directory_count           : 1;
 	eel_boolean_bit directory_count_failed        : 1;
 	eel_boolean_bit directory_count_is_up_to_date : 1;
@@ -211,8 +205,7 @@ void          nautilus_file_clear_info                     (NautilusFile        
  * no change, update file and return TRUE if the file info contains
  * new state.  */
 gboolean      nautilus_file_update_info                    (NautilusFile           *file,
-							    GnomeVFSFileInfo       *info,
-							    gboolean                info_has_slow_mime);
+							    GnomeVFSFileInfo       *info);
 gboolean      nautilus_file_update_name                    (NautilusFile           *file,
 							    const char             *name);
 
