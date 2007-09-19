@@ -47,6 +47,7 @@
 #include "nautilus-trash-file.h"
 #include "nautilus-users-groups-cache.h"
 #include "nautilus-vfs-file.h"
+#include "nautilus-vfs-utils.h"
 #include "nautilus-saved-search-file.h"
 #include <eel/eel-debug.h>
 #include <eel/eel-glib-extensions.h>
@@ -194,7 +195,7 @@ nautilus_file_clear_info (NautilusFile *file)
 {
 	file->details->got_file_info = FALSE;
 	file->details->is_symlink = FALSE;
-	file->details->type = GNOME_VFS_FILE_TYPE_UNKNOWN;
+	file->details->type = G_FILE_TYPE_UNKNOWN;
 	file->details->uid = -1;
 	file->details->gid = -1;
 	file->details->can_read = TRUE;
@@ -1411,7 +1412,7 @@ update_info_internal (NautilusFile *file,
 	if (file->details->type != info->type) {
 		changed = TRUE;
 	}
-	file->details->type = info->type;
+	file->details->type = gnome_vfs_file_type_to_g_file_type (info->type);
 
 	is_symlink =
 		(info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_FLAGS) &&
@@ -4953,11 +4954,11 @@ nautilus_file_get_type_as_string (NautilusFile *file)
  * Returns: The type.
  * 
  **/
-GnomeVFSFileType
+GFileType
 nautilus_file_get_file_type (NautilusFile *file)
 {
 	if (file == NULL) {
-		return GNOME_VFS_FILE_TYPE_UNKNOWN;
+		return G_FILE_TYPE_UNKNOWN;
 	}
 	
 	return file->details->type;
@@ -5174,7 +5175,7 @@ nautilus_file_is_broken_symbolic_link (NautilusFile *file)
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
 
 	/* Non-broken symbolic links return the target's type for get_file_type. */
-	return nautilus_file_get_file_type (file) == GNOME_VFS_FILE_TYPE_SYMBOLIC_LINK;
+	return nautilus_file_get_file_type (file) == G_FILE_TYPE_SYMBOLIC_LINK;
 }
 
 /**
@@ -5331,7 +5332,7 @@ nautilus_file_is_nautilus_link (NautilusFile *file)
 gboolean
 nautilus_file_is_directory (NautilusFile *file)
 {
-	return nautilus_file_get_file_type (file) == GNOME_VFS_FILE_TYPE_DIRECTORY;
+	return nautilus_file_get_file_type (file) == G_FILE_TYPE_DIRECTORY;
 }
 
 /**
@@ -5904,34 +5905,25 @@ nautilus_file_dump (NautilusFile *file)
 	} else {
 		g_print ("size: %ld \n", size);
 		switch (file->details->type) {
-		case GNOME_VFS_FILE_TYPE_REGULAR:
+		case G_FILE_TYPE_REGULAR:
 			file_kind = "regular file";
 			break;
-		case GNOME_VFS_FILE_TYPE_DIRECTORY:
+		case G_FILE_TYPE_DIRECTORY:
 			file_kind = "folder";
 			break;
-		case GNOME_VFS_FILE_TYPE_FIFO:
-			file_kind = "fifo";
+		case G_FILE_TYPE_SPECIAL:
+			file_kind = "special";
 			break;
-		case GNOME_VFS_FILE_TYPE_SOCKET:
-			file_kind = "socket";
-			break;
-		case GNOME_VFS_FILE_TYPE_CHARACTER_DEVICE:
-			file_kind = "character device";
-			break;
-		case GNOME_VFS_FILE_TYPE_BLOCK_DEVICE:
-			file_kind = "block device";
-			break;
-		case GNOME_VFS_FILE_TYPE_SYMBOLIC_LINK:
+		case G_FILE_TYPE_SYMBOLIC_LINK:
 			file_kind = "symbolic link";
 			break;
-		case GNOME_VFS_FILE_TYPE_UNKNOWN:
+		case G_FILE_TYPE_UNKNOWN:
 		default:
 			file_kind = "unknown";
 			break;
 		}
 		g_print ("kind: %s \n", file_kind);
-		if (file->details->type == GNOME_VFS_FILE_TYPE_SYMBOLIC_LINK) {
+		if (file->details->type == G_FILE_TYPE_SYMBOLIC_LINK) {
 			g_print ("link to %s \n", file->details->symlink_name);
 			/* FIXME bugzilla.gnome.org 42430: add following of symlinks here */
 		}

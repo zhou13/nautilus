@@ -125,7 +125,7 @@ search_directory_file_get_deep_counts (NautilusFile *file,
 	NautilusFile *dir_file;
 	GList *file_list, *l;
 	guint dirs, files;
-	GnomeVFSFileType type;
+	GFileType type;
 
 	search_dir = NAUTILUS_SEARCH_DIRECTORY (file->details->directory);
 	
@@ -135,7 +135,7 @@ search_directory_file_get_deep_counts (NautilusFile *file,
 	for (l = file_list; l != NULL; l = l->next) {
 		dir_file = NAUTILUS_FILE (l->data);
 		type = nautilus_file_get_file_type (dir_file);
-		if (type == GNOME_VFS_FILE_TYPE_DIRECTORY) {
+		if (type == G_FILE_TYPE_DIRECTORY) {
 			dirs++;
 		} else {
 			files++;
@@ -178,7 +178,7 @@ nautilus_search_directory_file_init (gpointer object, gpointer klass)
 
 	file->details->got_file_info = TRUE;
 	file->details->mime_type = g_strdup ("x-directory/normal");
-	file->details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
+	file->details->type = G_FILE_TYPE_DIRECTORY;
 	file->details->size = 0;
 	file->details->permissions =
 		GNOME_VFS_PERM_OTHER_WRITE |

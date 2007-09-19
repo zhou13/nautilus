@@ -43,7 +43,7 @@ nautilus_saved_search_file_init (gpointer object, gpointer klass)
 
 	file = NAUTILUS_VFS_FILE (object);
 
-	NAUTILUS_FILE (file)->details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
+	NAUTILUS_FILE (file)->details->type = G_FILE_TYPE_DIRECTORY;
 }
 
 static void

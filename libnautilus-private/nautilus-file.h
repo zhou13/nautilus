@@ -28,6 +28,7 @@
 #include <gtk/gtkobject.h>
 #include <libgnomevfs/gnome-vfs-types.h>
 #include <libgnomevfs/gnome-vfs-volume.h>
+#include <gio/gfileinfo.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 
 /* NautilusFile is an object used to represent a single element of a
@@ -144,7 +145,7 @@ char *                  nautilus_file_get_parent_uri_for_display        (Nautilu
 gboolean                nautilus_file_can_get_size                      (NautilusFile                   *file);
 goffset                 nautilus_file_get_size                          (NautilusFile                   *file);
 time_t                  nautilus_file_get_mtime                         (NautilusFile                   *file);
-GnomeVFSFileType        nautilus_file_get_file_type                     (NautilusFile                   *file);
+GFileType               nautilus_file_get_file_type                     (NautilusFile                   *file);
 char *                  nautilus_file_get_guessed_mime_type             (NautilusFile                   *file);
 char *                  nautilus_file_get_mime_type                     (NautilusFile                   *file);
 gboolean                nautilus_file_is_mime_type                      (NautilusFile                   *file,

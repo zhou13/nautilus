@@ -63,7 +63,7 @@ struct NautilusFileDetails
 	char *relative_uri;
 
 	/* File info: */
-	GnomeVFSFileType type;
+	GFileType type;
 	
 	/* Cached version of the display name, guaranteed UTF8 safe.
 	 * This is used a lot for sorting views.

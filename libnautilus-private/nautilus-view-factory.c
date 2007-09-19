@@ -72,7 +72,7 @@ nautilus_view_factory_create (const char *id,
 gboolean
 nautilus_view_factory_view_supports_uri (const char *id,
 					 const char *uri,
-					 GnomeVFSFileType file_type,
+					 GFileType file_type,
 					 const char *mime_type)
 {
 	const NautilusViewInfo *view_info;
@@ -88,7 +88,7 @@ nautilus_view_factory_view_supports_uri (const char *id,
 
 GList *
 nautilus_view_factory_get_views_for_uri (const char *uri,
-					 GnomeVFSFileType file_type,
+					 GFileType file_type,
 					 const char *mime_type)
 {
 	GList *l, *res;

@@ -726,7 +726,7 @@ nautilus_trash_file_init (gpointer object, gpointer klass)
 	g_list_free (real_directories);
 
 
-	NAUTILUS_FILE (trash_file)->details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
+	NAUTILUS_FILE (trash_file)->details->type = G_FILE_TYPE_DIRECTORY;
 }
 
 static void

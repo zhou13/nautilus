@@ -468,7 +468,7 @@ nautilus_desktop_directory_file_init (gpointer object, gpointer klass)
 	desktop_file->details->monitors = g_hash_table_new_full (NULL, NULL,
 								 NULL, monitor_destroy);
 
-	desktop_file->parent_slot.details->type = GNOME_VFS_FILE_TYPE_DIRECTORY;
+	NAUTILUS_FILE (desktop_file)->details->type = G_FILE_TYPE_DIRECTORY;
 	
 	real_dir = nautilus_desktop_directory_get_real_directory (desktop_directory);
 	real_dir_file = nautilus_directory_get_corresponding_file (real_dir);

@@ -357,10 +357,10 @@ fm_empty_view_create (NautilusWindowInfo *window)
 
 static gboolean
 fm_empty_view_supports_uri (const char *uri,
-			   GnomeVFSFileType file_type,
+			   GFileType file_type,
 			   const char *mime_type)
 {
-	if (file_type == GNOME_VFS_FILE_TYPE_DIRECTORY) {
+	if (file_type == G_FILE_TYPE_DIRECTORY) {
 		return TRUE;
 	}
 	if (strcmp (mime_type, NAUTILUS_SAVED_SEARCH_MIMETYPE) == 0){

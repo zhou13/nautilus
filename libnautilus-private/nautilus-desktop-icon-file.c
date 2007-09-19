@@ -165,7 +165,7 @@ nautilus_desktop_icon_file_init (gpointer object, gpointer klass)
 	desktop_file = NAUTILUS_DESKTOP_ICON_FILE (object);
 
 	desktop_file->details = g_new0 (NautilusDesktopIconFileDetails, 1);
-	desktop_file->parent_slot.details->type = GNOME_VFS_FILE_TYPE_REGULAR;
+	NAUTILUS_FILE (desktop_file)->details->type = G_FILE_TYPE_REGULAR;
 }	
 
 static void
@@ -185,7 +185,7 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 
 	g_free (file->details->mime_type);
 	file->details->mime_type = g_strdup ("application/x-nautilus-link");
-	file->details->type = GNOME_VFS_FILE_TYPE_REGULAR;
+	file->details->type = G_FILE_TYPE_REGULAR;
 	file->details->size = 0;
 	file->details->has_permissions = TRUE;
 	file->details->permissions =

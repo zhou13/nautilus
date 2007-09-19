@@ -114,7 +114,7 @@ vfs_file_get_deep_counts (NautilusFile *file,
 			  guint *unreadable_directory_count,
 			  goffset *total_size)
 {
-	GnomeVFSFileType type;
+	GFileType type;
 
 	if (directory_count != NULL) {
 		*directory_count = 0;
@@ -151,8 +151,8 @@ vfs_file_get_deep_counts (NautilusFile *file,
 
 	/* For directories, or before we know the type, we haven't started. */
 	type = nautilus_file_get_file_type (file);
-	if (type == GNOME_VFS_FILE_TYPE_UNKNOWN
-	    || type == GNOME_VFS_FILE_TYPE_DIRECTORY) {
+	if (type == G_FILE_TYPE_UNKNOWN
+	    || type == G_FILE_TYPE_DIRECTORY) {
 		return NAUTILUS_REQUEST_NOT_STARTED;
 	}
 
