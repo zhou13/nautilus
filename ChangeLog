@@ -1,5 +1,27 @@
 2007-09-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-attributes.h:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file-utilities.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-icon-factory.c:
+        * libnautilus-private/nautilus-mime-actions.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.c:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-spatial-window.c:
+        * src/nautilus-window-manage-views.c:
+        * src/nautilus-window.c:
+	Limit the set of file attributes to the ones we actually read
+	separately. This makes it more obvious what is happening when
+	doing I/O. It does put some extra work on users, because they
+	need to know where the data is coming from, but that is rarely
+	a problem.
+
+2007-09-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-icon-file.c:
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-directory.c:

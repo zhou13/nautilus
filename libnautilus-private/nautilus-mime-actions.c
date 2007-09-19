@@ -69,20 +69,18 @@ nautilus_mime_actions_check_if_minimum_attributes_ready (NautilusFile *file)
 NautilusFileAttributes 
 nautilus_mime_actions_get_minimum_file_attributes (void)
 {
-	return NAUTILUS_FILE_ATTRIBUTE_VOLUMES |
-		NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI |
+	return NAUTILUS_FILE_ATTRIBUTE_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
-		NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
 		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
 }
 
 static NautilusFileAttributes 
 nautilus_mime_actions_get_open_with_file_attributes (void)
 {
-	return NAUTILUS_FILE_ATTRIBUTE_VOLUMES |
-		NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI |
-		NAUTILUS_FILE_ATTRIBUTE_METADATA |
-		NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE;
+	return NAUTILUS_FILE_ATTRIBUTE_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_METADATA;
 }
 
 static gboolean

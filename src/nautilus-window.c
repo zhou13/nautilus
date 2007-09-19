@@ -1347,7 +1347,10 @@ nautilus_window_set_viewed_file (NautilusWindow *window,
 	}
 
 	if (file != NULL) {
-		attributes = NAUTILUS_FILE_ATTRIBUTE_DISPLAY_NAME | NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
+		attributes =
+			NAUTILUS_FILE_ATTRIBUTE_INFO |
+			NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
+			NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
 		nautilus_file_monitor_add (file, window, attributes);
 	}
 

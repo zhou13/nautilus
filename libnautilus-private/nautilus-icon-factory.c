@@ -1051,10 +1051,10 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 NautilusFileAttributes 
 nautilus_icon_factory_get_required_file_attributes (void)
 {
-	return NAUTILUS_FILE_ATTRIBUTE_CUSTOM_ICON |
-		NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE;
+	return NAUTILUS_FILE_ATTRIBUTE_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_METADATA;
 }
-
 
 /**
  * nautilus_icon_factory_is_icon_ready_for_file

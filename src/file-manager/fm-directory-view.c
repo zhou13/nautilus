@@ -1704,7 +1704,7 @@ add_directory_to_directory_list (FMDirectoryView *view,
 		nautilus_directory_ref (directory);
 
 		attributes = nautilus_icon_factory_get_required_file_attributes ();
-		attributes |= NAUTILUS_FILE_ATTRIBUTE_CAPABILITIES |
+		attributes |= NAUTILUS_FILE_ATTRIBUTE_INFO |
 			NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT;
  
 		nautilus_directory_file_monitor_add (directory, directory_list,
@@ -3252,9 +3252,9 @@ fm_directory_view_add_subdirectory (FMDirectoryView  *view,
 
 	attributes = nautilus_icon_factory_get_required_file_attributes ();
 	attributes |= NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT |
+		NAUTILUS_FILE_ATTRIBUTE_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
-		NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
-		NAUTILUS_FILE_ATTRIBUTE_DISPLAY_NAME |
 		NAUTILUS_FILE_ATTRIBUTE_EXTENSION_INFO;
 
 	nautilus_directory_file_monitor_add (directory,
@@ -8176,7 +8176,7 @@ fm_directory_view_notify_selection_changed (FMDirectoryView *view)
 
 			nautilus_file_call_when_ready 
 				(file, 
-				 NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI,
+				 NAUTILUS_FILE_ATTRIBUTE_LINK_INFO,
 				 NULL, 
 				 NULL);
 		}
@@ -8791,9 +8791,8 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	
 	/* get the parameters for the actual file */	
 	attributes = nautilus_mime_actions_get_minimum_file_attributes () | 
-		NAUTILUS_FILE_ATTRIBUTE_FILE_TYPE |
-		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE |
-		NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI;
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
 
 	nautilus_file_list_call_when_ready
 		(parameters->files, attributes,
@@ -8872,13 +8871,14 @@ fm_directory_view_activate_files (FMDirectoryView *view,
 
 		if (nautilus_file_is_symbolic_link (file)) {
 			nautilus_file_invalidate_attributes 
-				(file, NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI);
+				(file,
+				 NAUTILUS_FILE_ATTRIBUTE_INFO |
+				 NAUTILUS_FILE_ATTRIBUTE_LINK_INFO);
 		}
 	}
 
 	/* Might have to read some of the file to activate it. */
-	attributes = NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI |
-		NAUTILUS_FILE_ATTRIBUTE_VOLUMES;
+	attributes = NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 
 	parameters = g_new (ActivateParameters, 1);
 	parameters->view = view;
@@ -9002,7 +9002,7 @@ load_directory (FMDirectoryView *view,
 	/* If capabilities change, then we need to update the menus
 	 * because of New Folder, and relative emblems.
 	 */
-	attributes = NAUTILUS_FILE_ATTRIBUTE_CAPABILITIES;
+	attributes = NAUTILUS_FILE_ATTRIBUTE_INFO;
 	nautilus_file_monitor_add (view->details->directory_as_file,
 				   &view->details->directory_as_file,
 				   attributes);
@@ -9054,9 +9054,9 @@ finish_loading (FMDirectoryView *view)
 	 */
 	attributes = nautilus_icon_factory_get_required_file_attributes ();
 	attributes |= NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT |
+		NAUTILUS_FILE_ATTRIBUTE_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
-		NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
-		NAUTILUS_FILE_ATTRIBUTE_DISPLAY_NAME |
 		NAUTILUS_FILE_ATTRIBUTE_EXTENSION_INFO;
 
 	nautilus_directory_file_monitor_add (view->details->model,

@@ -1036,8 +1036,7 @@ get_tree_monitor_attributes (void)
 	NautilusFileAttributes attributes;
 
 	attributes = nautilus_icon_factory_get_required_file_attributes ();
-	attributes |= NAUTILUS_FILE_ATTRIBUTE_IS_DIRECTORY |
-		NAUTILUS_FILE_ATTRIBUTE_DISPLAY_NAME;
+	attributes |= NAUTILUS_FILE_ATTRIBUTE_INFO | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 	
 	return attributes;
 }

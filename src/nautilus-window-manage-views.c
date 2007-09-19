@@ -787,8 +787,7 @@ begin_location_change (NautilusWindow *window,
         cancel_viewed_file_changed_callback (window);
 
 	nautilus_file_call_when_ready (window->details->determine_view_file,
-				       NAUTILUS_FILE_ATTRIBUTE_IS_DIRECTORY |
-				       NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
+				       NAUTILUS_FILE_ATTRIBUTE_INFO |
 				       NAUTILUS_FILE_ATTRIBUTE_METADATA,
                                        got_file_info_for_view_selection_callback,
 				       window);

@@ -516,18 +516,18 @@ nautilus_directory_set_up_request (Request *request,
 {
 	memset (request, 0, sizeof (*request));
 	
-	request->directory_count = (file_attributes & 
-				    NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT) != FALSE;
-	request->deep_count = (file_attributes &
-			       NAUTILUS_FILE_ATTRIBUTE_DEEP_COUNTS) != FALSE;
-	request->mime_list = (file_attributes & 
-			      NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_MIME_TYPES) != FALSE;
-	request->file_info = (file_attributes & 
-			      (NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
-			       NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE |
-			       NAUTILUS_FILE_ATTRIBUTE_IS_DIRECTORY |
-			       NAUTILUS_FILE_ATTRIBUTE_CAPABILITIES |
-			       NAUTILUS_FILE_ATTRIBUTE_FILE_TYPE)) != FALSE;
+	request->directory_count =
+		(file_attributes & NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT) != 0;
+	request->deep_count =
+		(file_attributes & NAUTILUS_FILE_ATTRIBUTE_DEEP_COUNTS) != 0;
+	request->mime_list =
+		(file_attributes & NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_MIME_TYPES) != 0;
+	request->file_info = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_INFO) != 0;
+	
+	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_LINK_INFO) {
+		request->file_info = TRUE;
+		request->link_info = TRUE;
+	}
 	
 	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_TOP_LEFT_TEXT) {
 		request->top_left_text = TRUE;
@@ -538,44 +538,10 @@ nautilus_directory_set_up_request (Request *request,
 		request->large_top_left_text = TRUE;
 		request->file_info = TRUE;
 	}
-	
-	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI) {
-		request->file_info = TRUE;
-		request->link_info = TRUE;
-	}
-	
-	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_VOLUMES) {
-		request->link_info = TRUE;
-	}
 
-	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_DISPLAY_NAME) {
-		request->file_info = TRUE;
-		request->link_info = TRUE;
-	}
-
-	/* FIXME bugzilla.gnome.org 42435:
-	 * Some file attributes are really pieces of metadata.
-	 * This is a confusing/broken design, since other metadata
-	 * pieces are handled separately from file attributes. There
-	 * are many ways this could be changed, ranging from making
-	 * all metadata pieces have corresponding file attributes, to
-	 * making a single file attribute that means "get all metadata",
-	 * to making metadata keys be acceptable as file attributes
-	 * directly (would need some funky char trick to prevent
-	 * namespace collisions).
-	 */
-	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_CUSTOM_ICON) {
-		request->metafile = TRUE;
-		request->file_info = TRUE;
-		request->link_info = TRUE;
-	}
-	
-	request->metafile |= (file_attributes & 
-			      NAUTILUS_FILE_ATTRIBUTE_METADATA) != FALSE;
-
-	request->slow_mime_type = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE) != FALSE;
-
-	request->extension_info = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_EXTENSION_INFO) != FALSE;
+	request->metafile |= (file_attributes & NAUTILUS_FILE_ATTRIBUTE_METADATA) != 0;
+	request->slow_mime_type = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE) != 0;
+	request->extension_info = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_EXTENSION_INFO) != 0;
 }
 
 static void
@@ -586,13 +552,10 @@ mime_db_changed_callback (GnomeVFSMIMEMonitor *ignore, NautilusDirectory *dir)
 	g_return_if_fail (dir != NULL);
 	g_return_if_fail (dir->details != NULL);
 
-	attrs = NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI |
-		NAUTILUS_FILE_ATTRIBUTE_CAPABILITIES |
-		NAUTILUS_FILE_ATTRIBUTE_CUSTOM_ICON |
-		NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
+	attrs = NAUTILUS_FILE_ATTRIBUTE_INFO |
+		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
-		NAUTILUS_FILE_ATTRIBUTE_FILE_TYPE |
 		NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_MIME_TYPES;
 
 	nautilus_directory_invalidate_file_attributes (dir, attrs);

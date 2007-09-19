@@ -467,7 +467,7 @@ selection_changed_timer_callback(FMTreeView *view)
 	}
 	view->details->activation_in_new_window = FALSE;
 		
-	attributes = NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI;
+	attributes = NAUTILUS_FILE_ATTRIBUTE_INFO | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 	nautilus_file_call_when_ready (view->details->activation_file, attributes,
 				       got_activation_uri_callback, view);
 	return FALSE; /* remove timeout */
@@ -852,7 +852,7 @@ fm_tree_view_activate_file (FMTreeView *view,
 	view->details->activation_file = nautilus_file_ref (file);
 	view->details->activation_in_new_window = open_in_new_window;
 		
-	attributes = NAUTILUS_FILE_ATTRIBUTE_ACTIVATION_URI;
+	attributes = NAUTILUS_FILE_ATTRIBUTE_INFO | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 	nautilus_file_call_when_ready (view->details->activation_file, attributes,
 				       got_activation_uri_callback, view);
 }

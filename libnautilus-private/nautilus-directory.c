@@ -1944,7 +1944,7 @@ nautilus_self_check_directory (void)
 	got_files_flag = FALSE;
 
 	nautilus_directory_call_when_ready (directory,
-					    NAUTILUS_FILE_ATTRIBUTE_MIME_TYPE |
+					    NAUTILUS_FILE_ATTRIBUTE_INFO |
 					    NAUTILUS_FILE_ATTRIBUTE_DEEP_COUNTS,
 					    TRUE,
 					    got_files_callback, &data_dummy);

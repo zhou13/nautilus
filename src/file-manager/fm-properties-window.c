@@ -4861,8 +4861,9 @@ create_properties_window (StartupData *startup_data)
 		file = NAUTILUS_FILE (l->data);
 
 		attributes = nautilus_icon_factory_get_required_file_attributes ();
-		attributes |= NAUTILUS_FILE_ATTRIBUTE_DISPLAY_NAME
-			| NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
+		attributes |= NAUTILUS_FILE_ATTRIBUTE_INFO |
+			NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
+			NAUTILUS_FILE_ATTRIBUTE_SLOW_MIME_TYPE;
 
 		nautilus_file_monitor_add (NAUTILUS_FILE (l->data),
 					   &window->details->original_files, 
@@ -5169,7 +5170,7 @@ fm_properties_window_present (GList *original_files,
 		next = l->next;
 		nautilus_file_call_when_ready
 			(NAUTILUS_FILE (l->data),
-			 NAUTILUS_FILE_ATTRIBUTE_IS_DIRECTORY,
+			 NAUTILUS_FILE_ATTRIBUTE_INFO,
 			 is_directory_ready_callback,
 			 startup_data);
 	}
@@ -5319,7 +5320,8 @@ set_icon (const char* icon_uri, FMPropertiesWindow *properties_window)
 					gnome_desktop_item_save (ditem, NULL, TRUE, NULL);
 					gnome_desktop_item_unref (ditem);
 					nautilus_file_invalidate_attributes (file,
-									     NAUTILUS_FILE_ATTRIBUTE_CUSTOM_ICON);
+									     NAUTILUS_FILE_ATTRIBUTE_INFO |
+									     NAUTILUS_FILE_ATTRIBUTE_LINK_INFO);
 				}
 			} else {
 				real_icon_uri = make_relative_uri_from_full (icon_uri, file_uri);

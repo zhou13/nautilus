@@ -652,7 +652,7 @@ location_button_clicked_callback (GtkWidget *widget, NautilusSpatialWindow *wind
 		file = nautilus_file_get (uri_string);
 		g_object_ref (menu_item);
 		nautilus_file_call_when_ready (file,
-					       NAUTILUS_FILE_ATTRIBUTE_IS_DIRECTORY,
+					       NAUTILUS_FILE_ATTRIBUTE_INFO,
 					       got_file_info_for_location_menu_callback,
 					       menu_item);
 		g_free (uri_string);		

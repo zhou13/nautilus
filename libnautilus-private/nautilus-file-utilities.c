@@ -403,7 +403,7 @@ update_xdg_dir_cache (void)
 			cached_xdg_dirs[i].file = nautilus_file_get (uri);
 			nautilus_file_monitor_add (cached_xdg_dirs[i].file,
 						   &cached_xdg_dirs[i],
-						   NAUTILUS_FILE_ATTRIBUTE_FILE_TYPE);
+						   NAUTILUS_FILE_ATTRIBUTE_INFO);
 			g_signal_connect (cached_xdg_dirs[i].file,
 					  "changed", G_CALLBACK (xdg_dir_changed), &cached_xdg_dirs[i]);
 			g_free (uri);
