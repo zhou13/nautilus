@@ -263,7 +263,6 @@ nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 	NautilusFile *file;
 	NautilusDirectory *directory;
 	NautilusDesktopIconFile *icon_file;
-	char *name;
 	GList list;
 	
 	directory = nautilus_directory_get (EEL_DESKTOP_URI);
@@ -280,9 +279,7 @@ nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 	icon_file = NAUTILUS_DESKTOP_ICON_FILE (file);
 	icon_file->details->link = link;
 
-	name = nautilus_desktop_link_get_file_name (link);
-	file->details->relative_uri = gnome_vfs_escape_string (name);
-	g_free (name);
+	file->details->name = nautilus_desktop_link_get_file_name (link);
 
 	update_info_from_link (icon_file);
 	

@@ -60,7 +60,8 @@ typedef struct {
 struct NautilusFileDetails
 {
 	NautilusDirectory *directory;
-	char *relative_uri;
+	
+	char *name;
 
 	/* File info: */
 	GFileType type;

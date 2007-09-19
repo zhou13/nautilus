@@ -2051,14 +2051,11 @@ read_dot_hidden_file (NautilusDirectory *directory)
 		}
 
 		if (i > start) {
-			char *tmp, *tmp2;
+			char *hidden_filename;
 		
-			tmp = g_strndup (file_contents + start, i - start);
-			tmp2 = gnome_vfs_escape_string (tmp);
-			g_free (tmp);
-			
+			hidden_filename = g_strndup (file_contents + start, i - start);
 			g_hash_table_insert (directory->details->hidden_file_hash,
-					     tmp2, tmp2);
+					     hidden_filename, hidden_filename);
 		}
 
 		i++;
@@ -2101,10 +2098,10 @@ start_monitoring_file_list (NautilusDirectory *directory)
 	
 	/* Hack to work around kde trash dir */
 	if (kde_trash_dir_name != NULL && nautilus_directory_is_desktop_directory (directory)) {
-		char *escaped;
-		escaped = gnome_vfs_escape_string (kde_trash_dir_name);
+		char *fn;
+		fn = g_strdup (kde_trash_dir_name);
 		g_hash_table_insert (directory->details->hidden_file_hash,
-				     escaped, escaped);
+				     fn, fn);
 	}
 
 	

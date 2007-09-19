@@ -591,25 +591,25 @@ add_to_hash_table (NautilusDirectory *directory, NautilusFile *file, GList *node
 {
 	g_assert (node != NULL);
 	g_assert (g_hash_table_lookup (directory->details->file_hash,
-				       file->details->relative_uri) == NULL);
+				       file->details->name) == NULL);
 	g_hash_table_insert (directory->details->file_hash,
-			     file->details->relative_uri, node);
+			     file->details->name, node);
 }
 
 static GList *
 extract_from_hash_table (NautilusDirectory *directory, NautilusFile *file)
 {
-	char *relative_uri;
+	char *name;
 	GList *node;
 
-	relative_uri = file->details->relative_uri;
-	if (relative_uri == NULL) {
+	name = file->details->name;
+	if (name == NULL) {
 		return NULL;
 	}
 
 	/* Find the list node in the hash table. */
-	node = g_hash_table_lookup (directory->details->file_hash, relative_uri);
-	g_hash_table_remove (directory->details->file_hash, relative_uri);
+	node = g_hash_table_lookup (directory->details->file_hash, name);
+	g_hash_table_remove (directory->details->file_hash, name);
 
 	return node;
 }
@@ -621,7 +621,7 @@ nautilus_directory_add_file (NautilusDirectory *directory, NautilusFile *file)
 
 	g_assert (NAUTILUS_IS_DIRECTORY (directory));
 	g_assert (NAUTILUS_IS_FILE (file));
-	g_assert (file->details->relative_uri != NULL);
+	g_assert (file->details->name != NULL);
 
 	/* Add to list. */
 	node = g_list_prepend (directory->details->file_list, file);
@@ -646,7 +646,7 @@ nautilus_directory_remove_file (NautilusDirectory *directory, NautilusFile *file
 
 	g_assert (NAUTILUS_IS_DIRECTORY (directory));
 	g_assert (NAUTILUS_IS_FILE (file));
-	g_assert (file->details->relative_uri != NULL);
+	g_assert (file->details->name != NULL);
 
 	/* Find the list node in the hash table. */
 	node = extract_from_hash_table (directory, file);
@@ -717,17 +717,14 @@ NautilusFile *
 nautilus_directory_find_file_by_name (NautilusDirectory *directory,
 				      const char *name)
 {
-	char *relative_uri;
-	NautilusFile *file;
+	GList *node;
 
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	relative_uri = gnome_vfs_escape_string (name);
-	file = nautilus_directory_find_file_by_relative_uri
-		(directory, relative_uri);
-	g_free (relative_uri);
-	return file;
+	node = g_hash_table_lookup (directory->details->file_hash,
+				    name);
+	return node == NULL ? NULL : NAUTILUS_FILE (node->data);
 }
 
 NautilusFile *
@@ -735,12 +732,15 @@ nautilus_directory_find_file_by_relative_uri (NautilusDirectory *directory,
 					      const char *relative_uri)
 {
 	GList *node;
+	char *name;
 
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
 	g_return_val_if_fail (relative_uri != NULL, NULL);
 
+	name = gnome_vfs_unescape_string (relative_uri, "/");
 	node = g_hash_table_lookup (directory->details->file_hash,
-				    relative_uri);
+				    name);
+	g_free (name);
 	return node == NULL ? NULL : NAUTILUS_FILE (node->data);
 }
 

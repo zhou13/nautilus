@@ -257,7 +257,7 @@ nautilus_file_new_from_relative_uri (NautilusDirectory *directory,
 	nautilus_directory_ref (directory);
 	file->details->directory = directory;
 
-	file->details->relative_uri = g_strdup (relative_uri);
+	file->details->name = gnome_vfs_unescape_string (relative_uri, "/");
 
 #ifdef NAUTILUS_FILE_DEBUG_REF
 	DEBUG_REF_PRINTF("%10p ref'd", file);
@@ -556,7 +556,7 @@ finalize (GObject *object)
 	}
 	
 	nautilus_directory_unref (directory);
-	g_free (file->details->relative_uri);
+	g_free (file->details->name);
 	g_free (file->details->cached_display_name);
 	g_free (file->details->display_name_collation_key);
 	g_free (file->details->guessed_mime_type);
@@ -762,7 +762,7 @@ nautilus_file_is_desktop_directory (NautilusFile *file)
 	}
 
 	return nautilus_is_desktop_directory_file_escaped (dir_vfs_uri->text,
-							   file->details->relative_uri);
+							   file->details->name);
 }
 
 static gboolean
@@ -935,8 +935,8 @@ nautilus_file_get_gnome_vfs_uri (NautilusFile *file)
 		return vfs_uri;
 	}
 
-	return gnome_vfs_uri_append_string
-		(vfs_uri, file->details->relative_uri);
+	return gnome_vfs_uri_append_path
+		(vfs_uri, file->details->name);
 }
 
 static Operation *
@@ -1020,6 +1020,7 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 	NautilusDirectory *directory;
 	NautilusFile *existing_file;
 	char *old_relative_uri;
+	char *new_relative_uri;
 	char *old_uri;
 	char *new_uri;
 
@@ -1039,7 +1040,7 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		}
 		
 		old_uri = nautilus_file_get_uri (op->file);
-		old_relative_uri = g_strdup (op->file->details->relative_uri);
+		old_relative_uri = gnome_vfs_escape_path_string (op->file->details->name);
 
 		update_info_and_name (op->file, new_info, op->use_slow_mime);
 
@@ -1048,8 +1049,10 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		 * their metadata when they are renamed.
 		 */
 		if (!nautilus_file_is_self_owned (op->file)) {
+			new_relative_uri = gnome_vfs_escape_path_string (op->file->details->name);
 			nautilus_directory_rename_file_metadata
-				(directory, old_relative_uri, op->file->details->relative_uri);
+				(directory, old_relative_uri, new_relative_uri);
+			g_free (new_relative_uri);
 		}
 
 		g_free (old_relative_uri);
@@ -1376,7 +1379,6 @@ update_info_internal (NautilusFile *file,
 		      gboolean info_has_slow_mime)
 {
 	GList *node;
-	char *new_relative_uri;
 	gboolean changed;
 	gboolean is_symlink;
 	gboolean has_permissions;
@@ -1543,16 +1545,13 @@ update_info_internal (NautilusFile *file,
 	file->details->selinux_context = selinux_context;
 	
 	if (update_name) {
-		new_relative_uri = gnome_vfs_escape_string (info->name);
-		if (file->details->relative_uri != NULL
-		    && strcmp (file->details->relative_uri, new_relative_uri) == 0) {
-			g_free (new_relative_uri);
-		} else {
+		if (file->details->name == NULL ||
+		    strcmp (file->details->name, info->name) != 0) {
 			node = nautilus_directory_begin_file_name_change
 				(file->details->directory, file);
 			
-			g_free (file->details->relative_uri);
-			file->details->relative_uri = new_relative_uri;
+			g_free (file->details->name);
+			file->details->name = g_strdup (info->name);
 			nautilus_file_clear_cached_display_name (file);
 
 			/* Since the name changes the old guessed mime type is now
@@ -1599,7 +1598,6 @@ update_name_internal (NautilusFile *file,
 		      gboolean in_directory)
 {
 	GList *node;
-	char *new_relative_uri;
 
 	g_assert (name != NULL);
 
@@ -1611,23 +1609,20 @@ update_name_internal (NautilusFile *file,
 		return FALSE;
 	}
 	
-	new_relative_uri = gnome_vfs_escape_string (name);
-
 	node = NULL;
 	if (in_directory) {
 		node = nautilus_directory_begin_file_name_change
 			(file->details->directory, file);
 	}
 	
-	g_free (file->details->relative_uri);
-	file->details->relative_uri = new_relative_uri;
+	g_free (file->details->name);
+	file->details->name = g_strdup (name);
 	nautilus_file_clear_cached_display_name (file);
 	
 	if (in_directory) {
 		nautilus_directory_end_file_name_change
 			(file->details->directory, file, node);
 	}
-
 
 	return TRUE;
 }
@@ -2443,21 +2438,21 @@ gboolean
 nautilus_file_is_hidden_file (NautilusFile *file)
 {
 	return nautilus_file_name_matches_hidden_pattern
-		(file->details->relative_uri);
+		(file->details->name);
 }
 
 gboolean 
 nautilus_file_is_backup_file (NautilusFile *file)
 {
 	return nautilus_file_name_matches_backup_pattern
-		(file->details->relative_uri);
+		(file->details->name);
 }
 
 static gboolean
 is_file_hidden (NautilusFile *file)
 {
 	return g_hash_table_lookup (file->details->directory->details->hidden_file_hash,
-				    file->details->relative_uri) != NULL;
+				    file->details->name) != NULL;
 	
 }
 
@@ -2484,7 +2479,7 @@ nautilus_file_is_home (NautilusFile *file)
 	}
 
 	return nautilus_is_home_directory_file_escaped (dir_vfs_uri->text,
-							file->details->relative_uri);
+							file->details->name);
 }
 
 gboolean
@@ -2541,13 +2536,13 @@ nautilus_file_list_filter_hidden_and_backup (GList    *files,
  * but we use a hard-coded string for the metadata for the directory
  * itself.
  */
-static const char *
+static char *
 get_metadata_name (NautilusFile *file)
 {
 	if (nautilus_file_is_self_owned (file)) {
-		return FILE_NAME_FOR_DIRECTORY_METADATA;
+		return g_strdup (FILE_NAME_FOR_DIRECTORY_METADATA);
 	}
-	return file->details->relative_uri;
+	return gnome_vfs_escape_path_string (file->details->name);
 }
 
 char *
@@ -2555,6 +2550,8 @@ nautilus_file_get_metadata (NautilusFile *file,
 			    const char *key,
 			    const char *default_metadata)
 {
+	char *metadata_name, *res;
+	
 	g_return_val_if_fail (key != NULL, g_strdup (default_metadata));
 	g_return_val_if_fail (key[0] != '\0', g_strdup (default_metadata));
 	if (file == NULL) {
@@ -2562,11 +2559,14 @@ nautilus_file_get_metadata (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), g_strdup (default_metadata));
 
-	return nautilus_directory_get_file_metadata
+	metadata_name = get_metadata_name (file);
+	res = nautilus_directory_get_file_metadata
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 key,
 		 default_metadata);
+	g_free (metadata_name);
+	return res;
 }
 
 GList *
@@ -2574,6 +2574,9 @@ nautilus_file_get_metadata_list (NautilusFile *file,
 				 const char *list_key,
 				 const char *list_subkey)
 {
+	char *metadata_name;
+	GList *res;
+	
 	g_return_val_if_fail (list_key != NULL, NULL);
 	g_return_val_if_fail (list_key[0] != '\0', NULL);
 	g_return_val_if_fail (list_subkey != NULL, NULL);
@@ -2583,11 +2586,14 @@ nautilus_file_get_metadata_list (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
-	return nautilus_directory_get_file_metadata_list
+	metadata_name = get_metadata_name (file);
+	res = nautilus_directory_get_file_metadata_list
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 list_key,
 		 list_subkey);
+	g_free (metadata_name);
+	return res;
 }
 
 void
@@ -2596,16 +2602,20 @@ nautilus_file_set_metadata (NautilusFile *file,
 			    const char *default_metadata,
 			    const char *metadata)
 {
+	char *metadata_name;
+	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (key != NULL);
 	g_return_if_fail (key[0] != '\0');
 
+	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_file_metadata
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 key,
 		 default_metadata,
 		 metadata);
+	g_free (metadata_name);
 }
 
 void
@@ -2614,18 +2624,22 @@ nautilus_file_set_metadata_list (NautilusFile *file,
 				 const char *list_subkey,
 				 GList *list)
 {
+	char *metadata_name;
+	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (list_key != NULL);
 	g_return_if_fail (list_key[0] != '\0');
 	g_return_if_fail (list_subkey != NULL);
 	g_return_if_fail (list_subkey[0] != '\0');
 
+	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_file_metadata_list
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 list_key,
 		 list_subkey,
 		 list);
+	g_free (metadata_name);
 }
 
 
@@ -2634,6 +2648,9 @@ nautilus_file_get_boolean_metadata (NautilusFile *file,
 				    const char   *key,
 				    gboolean      default_metadata)
 {
+	char *metadata_name;
+	gboolean res;
+	
 	g_return_val_if_fail (key != NULL, default_metadata);
 	g_return_val_if_fail (key[0] != '\0', default_metadata);
 	if (file == NULL) {
@@ -2641,11 +2658,14 @@ nautilus_file_get_boolean_metadata (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), default_metadata);
 
-	return nautilus_directory_get_boolean_file_metadata
+	metadata_name = get_metadata_name (file);
+	res = nautilus_directory_get_boolean_file_metadata
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 key,
 		 default_metadata);
+	g_free (metadata_name);
+	return res;
 }
 
 int
@@ -2653,6 +2673,9 @@ nautilus_file_get_integer_metadata (NautilusFile *file,
 				    const char   *key,
 				    int           default_metadata)
 {
+	int res;
+	char *metadata_name;
+	
 	g_return_val_if_fail (key != NULL, default_metadata);
 	g_return_val_if_fail (key[0] != '\0', default_metadata);
 	if (file == NULL) {
@@ -2660,11 +2683,14 @@ nautilus_file_get_integer_metadata (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), default_metadata);
 
-	return nautilus_directory_get_integer_file_metadata
+	metadata_name = get_metadata_name (file);
+	res = nautilus_directory_get_integer_file_metadata
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 key,
 		 default_metadata);
+	g_free (metadata_name);
+	return res;
 }
 
 
@@ -2674,16 +2700,19 @@ nautilus_file_set_boolean_metadata (NautilusFile *file,
 				    gboolean      default_metadata,
 				    gboolean      metadata)
 {
+	char *metadata_name;
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (key != NULL);
 	g_return_if_fail (key[0] != '\0');
 
+	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_boolean_file_metadata
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 key,
 		 default_metadata,
 		 metadata);
+	g_free (metadata_name);
 }
 
 void
@@ -2692,16 +2721,20 @@ nautilus_file_set_integer_metadata (NautilusFile *file,
 				    int           default_metadata,
 				    int           metadata)
 {
+	char *metadata_name;
+	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (key != NULL);
 	g_return_if_fail (key[0] != '\0');
 
+	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_integer_file_metadata
 		(file->details->directory,
-		 get_metadata_name (file),
+		 metadata_name,
 		 key,
 		 default_metadata,
 		 metadata);
+	g_free (metadata_name);
 }
 
 void
@@ -2762,11 +2795,11 @@ nautilus_file_get_display_name_nocopy (NautilusFile *file)
 	} else {
 		name = nautilus_file_get_name (file);
 		if (name == NULL) {
-			/* Fall back to the escaped form if the unescaped form is no
+			/* Fall back if the unescaped form is no
 			 * good. This is dangerous for people who code with the name,
 			 * but convenient for people who just want to display it.
 			 */
-			name = g_strdup (file->details->relative_uri);
+			name = g_strdup ("<invalid>");
 		} else {
 			/* Support the G_BROKEN_FILENAMES feature of
 			 * glib by using g_filename_to_utf8 to convert
@@ -2829,7 +2862,7 @@ nautilus_file_get_display_name (NautilusFile *file)
 char *
 nautilus_file_get_name (NautilusFile *file)
 {
-	return gnome_vfs_unescape_string (file->details->relative_uri, "/");
+	return g_strdup (file->details->name);
 }
    
 void             
@@ -2958,6 +2991,7 @@ nautilus_file_get_uri (NautilusFile *file)
 {
 	GnomeVFSURI *vfs_uri;
 	char *uri;
+	char *relative_uri;
 
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
@@ -2972,9 +3006,12 @@ nautilus_file_get_uri (NautilusFile *file)
 		return uri;
 	}
 
-	return g_strconcat (file->details->directory->details->uri,
-			    file->details->relative_uri,
+	relative_uri = gnome_vfs_escape_path_string (file->details->name);
+	uri =  g_strconcat (file->details->directory->details->uri,
+			    relative_uri,
 			    NULL);
+	g_free (relative_uri);
+	return uri;
 }
 
 char *
@@ -4914,7 +4951,7 @@ get_description (NautilusFile *file)
 			g_warning (_("No description found for mime type \"%s\" (file is \"%s\"), "
 				     "please tell the gnome-vfs mailing list."),
 				   mime_type,
-				   file->details->relative_uri);
+				   file->details->name);
 		}
 		g_hash_table_insert (warned, g_strdup (mime_type), GINT_TO_POINTER (1));
 	}

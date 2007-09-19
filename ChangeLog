@@ -1,5 +1,17 @@
 2007-09-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file-utilities.[ch]:
+        * libnautilus-private/nautilus-file.c:
+	Store "name" instead of "relative_uri" in NautilusFile.
+	We want to avoid escaping/unescaping as much as possible and
+	limit that to when we go from/to a full uri.
+
+2007-09-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-private.h:
 	Remove declaration for removed function
 	

@@ -592,7 +592,7 @@ nautilus_get_searches_directory (void)
 /* These need to be reset to NULL when desktop_is_home_dir changes */
 static char *escaped_desktop_dir = NULL;
 static char *escaped_desktop_dir_dirname = NULL;
-static char *escaped_desktop_dir_filename = NULL;
+static char *desktop_dir_filename = NULL;
 static gboolean desktop_dir_changed_callback_installed = FALSE;
 
 
@@ -600,11 +600,11 @@ static void
 desktop_dir_changed (void)
 {
 	g_free (escaped_desktop_dir);
-	g_free (escaped_desktop_dir_filename);
+	g_free (desktop_dir_filename);
 	g_free (escaped_desktop_dir_dirname);
 	escaped_desktop_dir = NULL;
 	escaped_desktop_dir_dirname = NULL;
-	escaped_desktop_dir_filename = NULL;
+	desktop_dir_filename = NULL;
 }
 
 static void
@@ -626,7 +626,7 @@ update_desktop_dir (void)
 	g_free (uri);
 	
 	escaped_desktop_dir = g_strdup (vfs_uri->text);
-	escaped_desktop_dir_filename = gnome_vfs_uri_extract_short_path_name (vfs_uri);
+	desktop_dir_filename = gnome_vfs_uri_extract_short_name (vfs_uri);
 	escaped_desktop_dir_dirname = gnome_vfs_uri_extract_dirname (vfs_uri);
 	
 	gnome_vfs_uri_unref (vfs_uri);
@@ -634,10 +634,10 @@ update_desktop_dir (void)
 
 gboolean
 nautilus_is_home_directory_file_escaped (char *escaped_dirname,
-					 char *escaped_file)
+					 char *filename)
 {
 	static char *escaped_home_dir_dirname = NULL;
-	static char *escaped_home_dir_filename = NULL;
+	static char *home_dir_filename = NULL;
 	char *uri;
 	GnomeVFSURI *vfs_uri;
 	
@@ -646,19 +646,19 @@ nautilus_is_home_directory_file_escaped (char *escaped_dirname,
 		vfs_uri = gnome_vfs_uri_new (uri);
 		g_free (uri);
 
-		escaped_home_dir_filename = gnome_vfs_uri_extract_short_path_name (vfs_uri);
+		home_dir_filename = gnome_vfs_uri_extract_short_name (vfs_uri);
 		escaped_home_dir_dirname = gnome_vfs_uri_extract_dirname (vfs_uri);
 
 		gnome_vfs_uri_unref (vfs_uri);
 	}
 
 	return (strcmp (escaped_dirname, escaped_home_dir_dirname) == 0 &&
-		strcmp (escaped_file, escaped_home_dir_filename) == 0);
+		strcmp (filename, home_dir_filename) == 0);
 }
 					 
 gboolean
 nautilus_is_desktop_directory_file_escaped (char *escaped_dirname,
-					    char *escaped_file)
+					    char *file)
 {
 
 	if (!desktop_dir_changed_callback_installed) {
@@ -673,7 +673,7 @@ nautilus_is_desktop_directory_file_escaped (char *escaped_dirname,
 	}
 
 	return (strcmp (escaped_dirname, escaped_desktop_dir_dirname) == 0 &&
-		strcmp (escaped_file, escaped_desktop_dir_filename) == 0);
+		strcmp (file, desktop_dir_filename) == 0);
 }
 
 gboolean
