@@ -29,6 +29,7 @@
 #include "nautilus-mime-actions.h"
 #include "nautilus-global-preferences.h"
 #include "nautilus-icon-factory.h"
+#include "nautilus-vfs-utils.h"
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-vfs-extensions.h>
@@ -437,6 +438,7 @@ void nautilus_launch_show_file (NautilusFile *file,
         char *full_uri_for_display;
         char *uri_for_display;
 	GnomeVFSURI *vfs_uri;
+	GError *error;
 #ifdef HAVE_STARTUP_NOTIFICATION
 	SnLauncherContext *sn_context;
 	SnDisplay *sn_display;
@@ -591,7 +593,13 @@ void nautilus_launch_show_file (NautilusFile *file,
 		break;
 	default:
 
-		switch (nautilus_file_get_file_info_result (file)) {
+		error = nautilus_file_get_file_info_error (file);
+		if (error->domain != GNOME_VFS_ERROR) {
+			/* TODO: Better errors for special cases */
+			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup (error->message);
+		} else switch (error->code) {
 		case GNOME_VFS_ERROR_ACCESS_DENIED:
 			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 							 uri_for_display);

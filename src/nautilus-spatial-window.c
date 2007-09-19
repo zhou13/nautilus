@@ -773,7 +773,7 @@ nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 	}
 	if (uri != NULL) {
 		NautilusFile *file;
-		GnomeVFSResult vfs_result_code;
+		GError *error;
 		
 		name = nautilus_get_uri_shortname_for_display (uri);
 		gtk_label_set_label (GTK_LABEL (window->details->location_label),
@@ -782,8 +782,8 @@ nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 		gtk_widget_set_sensitive (window->details->location_button, TRUE);
 
 		file = nautilus_file_get (location);
-		vfs_result_code = nautilus_file_get_file_info_result (file);
-		if (vfs_result_code == GNOME_VFS_OK) {
+		error = nautilus_file_get_file_info_error (file);
+		if (error == NULL) {
 			char *icon_name;
 			GdkPixbuf *pixbuf;
 

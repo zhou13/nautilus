@@ -66,6 +66,7 @@
 #include <gtk/gtkenums.h>
 #include <gtk/gtkbindings.h>
 #include <glib/gi18n.h>
+#include <gio/gioerror.h>
 #include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-help.h>
@@ -104,6 +105,7 @@
 #include <libnautilus-private/nautilus-trash-directory.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libnautilus-private/nautilus-ui-utilities.h>
+#include <libnautilus-private/nautilus-vfs-utils.h>
 #include <libnautilus-private/nautilus-signaller.h>
 #include <unistd.h>
 
@@ -8400,6 +8402,19 @@ fm_directory_view_make_activation_parameters (GList *files,
 	return g_list_reverse (ret);
 }
 
+static gboolean
+file_was_cancelled (NautilusFile *file)
+{
+	GError *error;
+	
+	error = nautilus_file_get_file_info_error (file);
+	return
+		error != NULL &&
+		((error->domain == GNOME_VFS_ERROR && error->code == GNOME_VFS_ERROR_CANCELLED) ||
+		 (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_CANCELLED));
+	
+}
+
 static void
 activate_callback (GList *files, gpointer callback_data)
 {
@@ -8444,7 +8459,7 @@ activate_callback (GList *files, gpointer callback_data)
 		file = NAUTILUS_FILE (l->data);
 
 		if (!activate_check_mime_types (view, file, TRUE) ||
-		    nautilus_file_get_file_info_result (file) == GNOME_VFS_ERROR_CANCELLED) {
+		    file_was_cancelled (file)) {
 			continue;
 		}
 
@@ -8713,7 +8728,7 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 		file = NAUTILUS_FILE (l->data);
 		next = l->next;
 
-		if (nautilus_file_get_file_info_result (file) == GNOME_VFS_ERROR_CANCELLED) {
+		if (file_was_cancelled (file)) {
 			nautilus_file_unref (file);
 			parameters->files = g_list_delete_link (parameters->files, l);
 			continue;

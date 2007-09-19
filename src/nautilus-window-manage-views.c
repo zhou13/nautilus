@@ -68,6 +68,7 @@
 #include <libnautilus-private/nautilus-trash-directory.h>
 #include <libnautilus-private/nautilus-view-factory.h>
 #include <libnautilus-private/nautilus-window-info.h>
+#include <libnautilus-private/nautilus-vfs-utils.h>
 
 /* FIXME bugzilla.gnome.org 41243: 
  * We should use inheritance instead of these special cases
@@ -878,7 +879,7 @@ static void
 got_file_info_for_view_selection_callback (NautilusFile *file,
 					   gpointer callback_data)
 {
-        GnomeVFSResult vfs_result_code;
+        GError *error;
 	char *view_id;
 	char *mimetype;
 	NautilusWindow *window;
@@ -895,10 +896,11 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 	
 	view_id = NULL;
 	
-	vfs_result_code = nautilus_file_get_file_info_result (file);
-        if (vfs_result_code == GNOME_VFS_OK
-            || vfs_result_code == GNOME_VFS_ERROR_NOT_SUPPORTED
-            || vfs_result_code == GNOME_VFS_ERROR_INVALID_URI) {
+	error = nautilus_file_get_file_info_error (file);
+        if (error == NULL ||
+	    (error->domain == GNOME_VFS_ERROR && error->code == GNOME_VFS_ERROR_NOT_SUPPORTED) ||
+	    (error->domain == GNOME_VFS_ERROR && error->code ==  GNOME_VFS_ERROR_INVALID_URI) ||
+	    (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_NOT_SUPPORTED)) {
 		/* We got the information we need, now pick what view to use: */
 
 		mimetype = nautilus_file_get_mime_type (file);
@@ -1445,7 +1447,6 @@ static void
 display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 			       const char *location)
 {
-	GnomeVFSResult result_code;
 	char *full_uri_for_display;
 	char *uri_for_display;
 	char *error_message;
@@ -1454,8 +1455,9 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 	const char *host_name;
 	GtkDialog *dialog;
 	GnomeVFSURI *vfs_uri;
+	GError *error;
 
-	result_code = nautilus_file_get_file_info_result (file);
+	error = nautilus_file_get_file_info_error (file);
 	
 	/* Some sort of failure occurred. How 'bout we tell the user? */
 	full_uri_for_display = eel_format_uri_for_display (location);
@@ -1466,9 +1468,8 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 	uri_for_display = eel_str_middle_truncate
 		(full_uri_for_display, MAX_URI_IN_DIALOG_LENGTH);
 	g_free (full_uri_for_display);
-	        
-	switch (result_code) {
-	case GNOME_VFS_OK:
+
+	if (error == NULL) {
 		if (nautilus_file_is_directory (file)) {
 			error_message = g_strdup_printf
 				(_("Couldn't display \"%s\"."),
@@ -1482,93 +1483,100 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 			detail_message = g_strdup 
 				(_("The location is not a folder."));
 		}
-		break;
-	case GNOME_VFS_ERROR_NOT_FOUND:
-		error_message = g_strdup_printf
-			(_("Couldn't find \"%s\"."), 
-			 uri_for_display);
-		detail_message = g_strdup 
-			(_("Please check the spelling and try again."));
-		break;
-		
-	case GNOME_VFS_ERROR_INVALID_URI:
-		error_message = g_strdup_printf
-			(_("\"%s\" is not a valid location."),
-			 uri_for_display);
-		detail_message = g_strdup 
-			(_("Please check the spelling and try again."));
-		break;
-		
-        case GNOME_VFS_ERROR_NOT_SUPPORTED:
-		/* Can't create a vfs_uri and get the method from that, because 
-		 * gnome_vfs_uri_new might return NULL.
-		 */
-		scheme_string = eel_str_get_prefix (location, ":");
-		g_assert (scheme_string != NULL);  /* Shouldn't have gotten this error unless there's a : separator. */
-		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-						 uri_for_display);
-		detail_message = g_strdup_printf (_("Nautilus cannot handle %s: locations."),
-						  scheme_string);
-		g_free (scheme_string);
-		break;
-		
-	case GNOME_VFS_ERROR_LOGIN_FAILED:
-		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-						 uri_for_display);
-		detail_message = g_strdup (_("The attempt to log in failed."));		
-		break;
-		
-	case GNOME_VFS_ERROR_ACCESS_DENIED:
-		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-						 uri_for_display);
-		detail_message = g_strdup (_("Access was denied."));
-		break;
-		
-	case GNOME_VFS_ERROR_HOST_NOT_FOUND:
-		/* This case can be hit for user-typed strings like "foo" due to
-		 * the code that guesses web addresses when there's no initial "/".
-		 * But this case is also hit for legitimate web addresses when
-		 * the proxy is set up wrong.
-		 */
-		vfs_uri = gnome_vfs_uri_new (location);
-		host_name = gnome_vfs_uri_get_host_name (vfs_uri);
-		error_message = g_strdup_printf (_("Couldn't display \"%s\", because no host \"%s\" could be found."),
-						 uri_for_display,
-						 host_name ? host_name : "");
-		detail_message = g_strdup (_("Check that the spelling is correct and that your proxy settings are correct."));
-		gnome_vfs_uri_unref (vfs_uri);
-		break;
-		
-	case GNOME_VFS_ERROR_HOST_HAS_NO_ADDRESS:
-		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-						 uri_for_display);
-		detail_message = g_strdup (_("Check that your proxy settings are correct."));
-		break;
-		
-	case GNOME_VFS_ERROR_NO_MASTER_BROWSER:
-		error_message = g_strdup_printf
-			(_("Couldn't display \"%s\", because Nautilus cannot contact the SMB master browser."),
-			 uri_for_display);
-		detail_message = g_strdup
-			(_("Check that an SMB server is running in the local network."));
-		break;
-
-	case GNOME_VFS_ERROR_CANCELLED:
-		g_free (uri_for_display);
-		return;
-
-	case GNOME_VFS_ERROR_SERVICE_NOT_AVAILABLE:
-		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-						 uri_for_display);
-		detail_message = g_strdup (_("Check if the service is available."));
-		break;
-
-	default:
+	} else if (error->domain == GNOME_VFS_ERROR) {
+		switch ((GnomeVFSResult)error->code) {
+		case GNOME_VFS_ERROR_NOT_FOUND:
+			error_message = g_strdup_printf
+				(_("Couldn't find \"%s\"."), 
+				 uri_for_display);
+			detail_message = g_strdup 
+				(_("Please check the spelling and try again."));
+			break;
+			
+		case GNOME_VFS_ERROR_INVALID_URI:
+			error_message = g_strdup_printf
+				(_("\"%s\" is not a valid location."),
+				 uri_for_display);
+			detail_message = g_strdup 
+				(_("Please check the spelling and try again."));
+			break;
+			
+		case GNOME_VFS_ERROR_NOT_SUPPORTED:
+			/* Can't create a vfs_uri and get the method from that, because 
+			 * gnome_vfs_uri_new might return NULL.
+			 */
+			scheme_string = eel_str_get_prefix (location, ":");
+			g_assert (scheme_string != NULL);  /* Shouldn't have gotten this error unless there's a : separator. */
+			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup_printf (_("Nautilus cannot handle %s: locations."),
+							  scheme_string);
+			g_free (scheme_string);
+			break;
+			
+		case GNOME_VFS_ERROR_LOGIN_FAILED:
+			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup (_("The attempt to log in failed."));		
+			break;
+			
+		case GNOME_VFS_ERROR_ACCESS_DENIED:
+			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup (_("Access was denied."));
+			break;
+			
+		case GNOME_VFS_ERROR_HOST_NOT_FOUND:
+			/* This case can be hit for user-typed strings like "foo" due to
+			 * the code that guesses web addresses when there's no initial "/".
+			 * But this case is also hit for legitimate web addresses when
+			 * the proxy is set up wrong.
+			 */
+			vfs_uri = gnome_vfs_uri_new (location);
+			host_name = gnome_vfs_uri_get_host_name (vfs_uri);
+			error_message = g_strdup_printf (_("Couldn't display \"%s\", because no host \"%s\" could be found."),
+							 uri_for_display,
+							 host_name ? host_name : "");
+			detail_message = g_strdup (_("Check that the spelling is correct and that your proxy settings are correct."));
+			gnome_vfs_uri_unref (vfs_uri);
+			break;
+			
+		case GNOME_VFS_ERROR_HOST_HAS_NO_ADDRESS:
+			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup (_("Check that your proxy settings are correct."));
+			break;
+			
+		case GNOME_VFS_ERROR_NO_MASTER_BROWSER:
+			error_message = g_strdup_printf
+				(_("Couldn't display \"%s\", because Nautilus cannot contact the SMB master browser."),
+				 uri_for_display);
+			detail_message = g_strdup
+				(_("Check that an SMB server is running in the local network."));
+			break;
+			
+		case GNOME_VFS_ERROR_CANCELLED:
+			g_free (uri_for_display);
+			return;
+			
+		case GNOME_VFS_ERROR_SERVICE_NOT_AVAILABLE:
+			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup (_("Check if the service is available."));
+			break;
+			
+		default:
+			error_message = g_strdup_printf (_("Nautilus cannot display \"%s\"."),
+							 uri_for_display);
+			detail_message = g_strdup (_("Please select another viewer and try again."));
+		}
+	} else {
+		/* TODO: Better error reporting */
 		error_message = g_strdup_printf (_("Nautilus cannot display \"%s\"."),
 						 uri_for_display);
-		detail_message = g_strdup (_("Please select another viewer and try again."));
+		detail_message = g_strdup_printf (_("Error: %s\nPlease select another viewer and try again."), error->message);
 	}
-	
+		
 	dialog = eel_show_error_dialog (error_message, detail_message, NULL);
 	
 	g_free (uri_for_display);

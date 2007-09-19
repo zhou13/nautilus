@@ -29,6 +29,7 @@
 #include <libgnomevfs/gnome-vfs-types.h>
 #include <libgnomevfs/gnome-vfs-volume.h>
 #include <gio/gfileinfo.h>
+#include <gio/gioerror.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 
 /* NautilusFile is an object used to represent a single element of a
@@ -164,7 +165,7 @@ gboolean                nautilus_file_is_in_trash                       (Nautilu
 gboolean                nautilus_file_is_in_desktop                     (NautilusFile                   *file);
 gboolean		nautilus_file_is_home				(NautilusFile                   *file);
 gboolean                nautilus_file_is_desktop_directory              (NautilusFile                   *file);
-GnomeVFSResult          nautilus_file_get_file_info_result              (NautilusFile                   *file);
+GError *                nautilus_file_get_file_info_error               (NautilusFile                   *file);
 gboolean                nautilus_file_get_directory_item_count          (NautilusFile                   *file,
 									 guint                          *count,
 									 gboolean                       *count_unreadable);

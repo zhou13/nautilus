@@ -2874,7 +2874,8 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 		get_info_file->details->file_info_is_up_to_date = TRUE;
 		nautilus_file_clear_info (get_info_file);
 		get_info_file->details->get_info_failed = TRUE;
-		get_info_file->details->get_info_error = result->result;
+		get_info_file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR, result->result,
+									      gnome_vfs_result_to_string (result->result));
 	} else {
 		nautilus_file_update_info (get_info_file, result->file_info, has_slow_mime_type);
 	}
@@ -2945,7 +2946,9 @@ file_info_start (NautilusDirectory *directory,
 	if (vfs_uri == NULL) {
 		file->details->file_info_is_up_to_date = TRUE;
 		file->details->get_info_failed = TRUE;
-		file->details->get_info_error = GNOME_VFS_ERROR_INVALID_URI;
+		file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR,
+								     GNOME_VFS_ERROR_INVALID_URI,
+								     gnome_vfs_result_to_string (GNOME_VFS_ERROR_INVALID_URI));
 		file->details->got_slow_mime_type = need_slow_mime;
 
 		nautilus_directory_async_state_changed (directory);
@@ -2957,6 +2960,10 @@ file_info_start (NautilusDirectory *directory,
 	}
 	directory->details->get_info_file = file;
 	file->details->get_info_failed = FALSE;
+	if (file->details->get_info_error) {
+		g_error_free (file->details->get_info_error);
+		file->details->get_info_error = NULL;
+	}
 	fake_list.data = vfs_uri;
 	fake_list.prev = NULL;
 	fake_list.next = NULL;

@@ -91,8 +91,8 @@ struct NautilusFileDetails
 	
 	char* selinux_context;
 	
-	GnomeVFSResult get_info_error;
-
+	GError *get_info_error;
+	
 	guint directory_count;
 
 	guint deep_directory_count;

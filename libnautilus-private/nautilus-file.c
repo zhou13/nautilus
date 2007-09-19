@@ -194,6 +194,10 @@ void
 nautilus_file_clear_info (NautilusFile *file)
 {
 	file->details->got_file_info = FALSE;
+	if (file->details->get_info_error) {
+		g_error_free (file->details->get_info_error);
+		file->details->get_info_error = NULL;
+	}
 	file->details->is_symlink = FALSE;
 	file->details->type = G_FILE_TYPE_UNKNOWN;
 	file->details->uid = -1;
@@ -547,6 +551,10 @@ finalize (GObject *object)
 		}
 	}
 
+	if (file->details->get_info_error) {
+		g_error_free (file->details->get_info_error);
+	}
+	
 	nautilus_directory_unref (directory);
 	g_free (file->details->relative_uri);
 	g_free (file->details->cached_display_name);
@@ -5352,11 +5360,11 @@ nautilus_file_is_in_trash (NautilusFile *file)
 	return nautilus_directory_is_in_trash (file->details->directory);
 }
 
-GnomeVFSResult
-nautilus_file_get_file_info_result (NautilusFile *file)
+GError *
+nautilus_file_get_file_info_error (NautilusFile *file)
 {
 	if (!file->details->get_info_failed) {
-		return GNOME_VFS_OK;
+		return NULL;
 	}
 
 	return file->details->get_info_error;

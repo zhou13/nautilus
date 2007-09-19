@@ -1,5 +1,16 @@
 2007-09-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-program-choosing.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-spatial-window.c:
+        * src/nautilus-window-manage-views.c:
+	Use GError instead of GnomeVFSResult for get_info_error
+
+2007-09-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-directory-file.c:
         * libnautilus-private/nautilus-desktop-icon-file.c:
         * libnautilus-private/nautilus-file-private.h:
