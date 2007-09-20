@@ -915,25 +915,65 @@ nautilus_file_get_drive (NautilusFile *file)
 				  "nautilus_file_drive");
 }
 
-static GnomeVFSURI *
-nautilus_file_get_gnome_vfs_uri (NautilusFile *file)
+GFile *
+nautilus_file_get_location (NautilusFile *file)
 {
-	GFile *dir, *child;
-	GnomeVFSURI *vfs_uri;
-	char *uri;
+	GFile *dir;
+	
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
 	dir = file->details->directory->details->location;
-	if (dir == NULL) {
+	
+	if (nautilus_file_is_self_owned (file)) {
+		return g_object_ref (dir);
+	}
+	
+	return g_file_get_child (dir, file->details->name);
+}
+
+/* Return the actual uri associated with the passed-in file. */
+char *
+nautilus_file_get_uri (NautilusFile *file)
+{
+	char *uri;
+	GFile *loc;
+	
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
+
+	loc = nautilus_file_get_location (file);
+	uri = g_file_get_uri (loc);
+	g_object_unref (loc);
+	
+	return uri;
+}
+
+char *
+nautilus_file_get_uri_scheme (NautilusFile *file)
+{
+	char *uri;
+	char *scheme;
+	
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
+
+	if (file->details->directory == NULL || 
+	    file->details->directory->details->location == NULL) {
 		return NULL;
 	}
 
-	if (nautilus_file_is_self_owned (file)) {
-		child = g_object_ref (dir);
-	} else {
-		child = g_file_get_child (dir, file->details->name);
-	}
+	uri = nautilus_directory_get_uri (file->details->directory);
+	scheme = gnome_vfs_get_uri_scheme (uri);
+	g_free (uri);
+	return scheme;
+}
 
-	uri = g_file_get_uri (child);
+
+static GnomeVFSURI *
+nautilus_file_get_gnome_vfs_uri (NautilusFile *file)
+{
+	GnomeVFSURI *vfs_uri;
+	char *uri;
+
+	uri = nautilus_file_get_uri (file);
 	vfs_uri = gnome_vfs_uri_new (uri);
 	g_free (uri);
 	return vfs_uri;
@@ -2975,54 +3015,6 @@ nautilus_file_get_custom_icon (NautilusFile *file)
 	return custom_icon;
 }
 
-
-/* Return the actual uri associated with the passed-in file. */
-char *
-nautilus_file_get_uri (NautilusFile *file)
-{
-	GnomeVFSURI *vfs_uri;
-	char *uri;
-	GFile *dir, *child;
-	
-	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
-
-	if (nautilus_file_is_self_owned (file)) {
-		return g_file_get_uri (file->details->directory->details->location);
-	}
-
-	vfs_uri = nautilus_file_get_gnome_vfs_uri (file);
-	if (vfs_uri != NULL) {
-		uri = gnome_vfs_uri_to_string (vfs_uri, GNOME_VFS_URI_HIDE_NONE);
-		gnome_vfs_uri_unref (vfs_uri);
-		return uri;
-	}
-	
-	dir = file->details->directory->details->location;
-	child = g_file_get_child (dir, file->details->name);
-	uri = g_file_get_uri (child);
-	g_object_unref (child);
-	
-	return uri;
-}
-
-char *
-nautilus_file_get_uri_scheme (NautilusFile *file)
-{
-	char *uri;
-	char *scheme;
-	
-	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
-
-	if (file->details->directory == NULL || 
-	    file->details->directory->details->location == NULL) {
-		return NULL;
-	}
-
-	uri = nautilus_directory_get_uri (file->details->directory);
-	scheme = gnome_vfs_get_uri_scheme (uri);
-	g_free (uri);
-	return scheme;
-}
 
 gboolean
 nautilus_file_get_date (NautilusFile *file,

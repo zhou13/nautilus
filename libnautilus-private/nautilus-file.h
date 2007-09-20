@@ -29,6 +29,7 @@
 #include <libgnomevfs/gnome-vfs-types.h>
 #include <libgnomevfs/gnome-vfs-volume.h>
 #include <gio/gfileinfo.h>
+#include <gio/gfile.h>
 #include <gio/gioerror.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 
@@ -138,6 +139,7 @@ void                    nautilus_file_invalidate_all_attributes         (Nautilu
 gboolean                nautilus_file_contains_text                     (NautilusFile                   *file);
 char *                  nautilus_file_get_display_name                  (NautilusFile                   *file);
 char *                  nautilus_file_get_name                          (NautilusFile                   *file);
+GFile *                 nautilus_file_get_location                      (NautilusFile                   *file);
 char *                  nautilus_file_get_uri                           (NautilusFile                   *file);
 char *                  nautilus_file_get_uri_scheme                    (NautilusFile                   *file);
 NautilusFile *          nautilus_file_get_parent                        (NautilusFile                   *file);
