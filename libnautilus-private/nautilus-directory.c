@@ -951,7 +951,7 @@ collect_parent_directories (GHashTable *hash_table, NautilusDirectory *directory
 }
 
 void
-nautilus_directory_notify_files_added_by_location (GList *files)
+nautilus_directory_notify_files_added (GList *files)
 {
 	GHashTable *added_lists;
 	GList *p;
@@ -1075,17 +1075,17 @@ uri_pairs_to_file_pairs (GList *uri_pairs)
 
 
 void
-nautilus_directory_notify_files_added (GList *uris)
+nautilus_directory_notify_files_added_by_uri (GList *uris)
 {
 	GList *files;
 
 	files = uri_list_to_file_list (uris);
-	nautilus_directory_notify_files_added_by_location (files);
+	nautilus_directory_notify_files_added (files);
 	eel_g_object_list_free (files);
 }
 
 void
-nautilus_directory_notify_files_changed (GList *uris)
+nautilus_directory_notify_files_changed_by_uri (GList *uris)
 {
 	GHashTable *changed_lists;
 	GList *node;
@@ -1122,7 +1122,7 @@ nautilus_directory_notify_files_changed (GList *uris)
 }
 
 void
-nautilus_directory_notify_files_removed (GList *uris)
+nautilus_directory_notify_files_removed_by_uri (GList *uris)
 {
 	GHashTable *changed_lists;
 	GList *p;
@@ -1321,7 +1321,7 @@ nautilus_directory_moved (const char *old_uri,
 }
 
 void
-nautilus_directory_notify_files_moved_by_location (GList *file_pairs)
+nautilus_directory_notify_files_moved (GList *file_pairs)
 {
 	GList *p, *affected_files, *node;
 	GFilePair *pair;
@@ -1433,23 +1433,23 @@ nautilus_directory_notify_files_moved_by_location (GList *file_pairs)
 	g_hash_table_destroy (parent_directories);
 
 	/* Separate handling for brand new file objects. */
-	nautilus_directory_notify_files_added_by_location (new_files_list);
+	nautilus_directory_notify_files_added (new_files_list);
 	g_list_free (new_files_list);
 }
 
 void
-nautilus_directory_notify_files_moved (GList *uri_pairs)
+nautilus_directory_notify_files_moved_by_uri (GList *uri_pairs)
 {
 	GList *file_pairs;
 
 	file_pairs = uri_pairs_to_file_pairs (uri_pairs);
-	nautilus_directory_notify_files_moved_by_location (file_pairs);
+	nautilus_directory_notify_files_moved (file_pairs);
 	g_list_foreach (file_pairs, (GFunc)g_file_pair_free, NULL);
 	g_list_free (file_pairs);
 }
 
 void 
-nautilus_directory_schedule_metadata_copy (GList *uri_pairs)
+nautilus_directory_schedule_metadata_copy_by_uri (GList *uri_pairs)
 {
 	GList *p;
 	URIPair *pair;
@@ -1481,7 +1481,7 @@ nautilus_directory_schedule_metadata_copy (GList *uri_pairs)
 }
 
 void 
-nautilus_directory_schedule_metadata_move (GList *uri_pairs)
+nautilus_directory_schedule_metadata_move_by_uri (GList *uri_pairs)
 {
 	GList *p;
 	URIPair *pair;
@@ -1513,7 +1513,7 @@ nautilus_directory_schedule_metadata_move (GList *uri_pairs)
 }
 
 void 
-nautilus_directory_schedule_metadata_remove (GList *uris)
+nautilus_directory_schedule_metadata_remove_by_uri (GList *uris)
 {
 	GList *p;
 	const char *uri;
@@ -1536,7 +1536,7 @@ nautilus_directory_schedule_metadata_remove (GList *uris)
 }
 
 void
-nautilus_directory_schedule_position_set (GList *position_setting_list)
+nautilus_directory_schedule_position_set_by_uri (GList *position_setting_list)
 {
 	GList *p;
 	const NautilusFileChangesQueuePosition *item;

@@ -434,49 +434,49 @@ nautilus_file_changes_consume_changes (gboolean consume_all)
 			
 			if (deletions != NULL) {
 				deletions = g_list_reverse (deletions);
-				nautilus_directory_notify_files_removed (deletions);
+				nautilus_directory_notify_files_removed_by_uri (deletions);
 				eel_g_list_free_deep (deletions);
 				deletions = NULL;
 			}
 			if (moves != NULL) {
 				moves = g_list_reverse (moves);
-				nautilus_directory_notify_files_moved (moves);
+				nautilus_directory_notify_files_moved_by_uri (moves);
 				pairs_list_free (moves);
 				moves = NULL;
 			}
 			if (additions != NULL) {
 				additions = g_list_reverse (additions);
-				nautilus_directory_notify_files_added (additions);
+				nautilus_directory_notify_files_added_by_uri (additions);
 				eel_g_list_free_deep (additions);
 				additions = NULL;
 			}
 			if (changes != NULL) {
 				changes = g_list_reverse (changes);
-				nautilus_directory_notify_files_changed (changes);
+				nautilus_directory_notify_files_changed_by_uri (changes);
 				eel_g_list_free_deep (changes);
 				changes = NULL;
 			}
 			if (metadata_copy_requests != NULL) {
 				metadata_copy_requests = g_list_reverse (metadata_copy_requests);
-				nautilus_directory_schedule_metadata_copy (metadata_copy_requests);
+				nautilus_directory_schedule_metadata_copy_by_uri (metadata_copy_requests);
 				pairs_list_free (metadata_copy_requests);
 				metadata_copy_requests = NULL;
 			}
 			if (metadata_move_requests != NULL) {
 				metadata_move_requests = g_list_reverse (metadata_move_requests);
-				nautilus_directory_schedule_metadata_move (metadata_move_requests);
+				nautilus_directory_schedule_metadata_move_by_uri (metadata_move_requests);
 				pairs_list_free (metadata_move_requests);
 				metadata_move_requests = NULL;
 			}
 			if (metadata_remove_requests != NULL) {
 				metadata_remove_requests = g_list_reverse (metadata_remove_requests);
-				nautilus_directory_schedule_metadata_remove (metadata_remove_requests);
+				nautilus_directory_schedule_metadata_remove_by_uri (metadata_remove_requests);
 				eel_g_list_free_deep (metadata_remove_requests);
 				metadata_remove_requests = NULL;
 			}
 			if (position_set_requests != NULL) {
 				position_set_requests = g_list_reverse (position_set_requests);
-				nautilus_directory_schedule_position_set (position_set_requests);
+				nautilus_directory_schedule_position_set_by_uri (position_set_requests);
 				position_set_list_free (position_set_requests);
 				position_set_requests = NULL;
 			}

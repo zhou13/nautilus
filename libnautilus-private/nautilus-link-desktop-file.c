@@ -156,8 +156,8 @@ nautilus_link_desktop_file_local_create (const char        *directory_uri,
 	dummy_list.data = uri;
 	dummy_list.next = NULL;
 	dummy_list.prev = NULL;
-	nautilus_directory_notify_files_added (&dummy_list);
-	nautilus_directory_schedule_metadata_remove (&dummy_list);
+	nautilus_directory_notify_files_added_by_uri (&dummy_list);
+	nautilus_directory_schedule_metadata_remove_by_uri (&dummy_list);
 
 	if (point != NULL) {
 		item.uri = uri;
@@ -169,7 +169,7 @@ nautilus_link_desktop_file_local_create (const char        *directory_uri,
 		dummy_list.next = NULL;
 		dummy_list.prev = NULL;
 	
-		nautilus_directory_schedule_position_set (&dummy_list);
+		nautilus_directory_schedule_position_set_by_uri (&dummy_list);
 	}
 
 	gnome_desktop_item_unref (desktop_item);
@@ -389,8 +389,8 @@ nautilus_link_desktop_file_local_create_from_gnome_entry (GnomeDesktopItem  *ent
 	dummy_list.data = file_uri;
 	dummy_list.next = NULL;
 	dummy_list.prev = NULL;
-	nautilus_directory_notify_files_added (&dummy_list);
-	nautilus_directory_schedule_metadata_remove (&dummy_list);
+	nautilus_directory_notify_files_added_by_uri (&dummy_list);
+	nautilus_directory_schedule_metadata_remove_by_uri (&dummy_list);
 
 	if (position != NULL) {
 		item.uri = file_uri;
@@ -403,7 +403,7 @@ nautilus_link_desktop_file_local_create_from_gnome_entry (GnomeDesktopItem  *ent
 		dummy_list.next = NULL;
 		dummy_list.prev = NULL;
 	
-		nautilus_directory_schedule_position_set (&dummy_list);
+		nautilus_directory_schedule_position_set_by_uri (&dummy_list);
 	}
 	gnome_desktop_item_unref (new_entry);
 }
