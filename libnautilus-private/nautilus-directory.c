@@ -706,36 +706,20 @@ nautilus_directory_find_file_by_name (NautilusDirectory *directory,
 	return node == NULL ? NULL : NAUTILUS_FILE (node->data);
 }
 
+/* "." for the directory-as-file, otherwise the filename */
 NautilusFile *
-nautilus_directory_find_file_by_relative_uri (NautilusDirectory *directory,
-					      const char *relative_uri)
-{
-	GList *node;
-	char *name;
-
-	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
-	g_return_val_if_fail (relative_uri != NULL, NULL);
-
-	name = gnome_vfs_unescape_string (relative_uri, "/");
-	node = g_hash_table_lookup (directory->details->file_hash,
-				    name);
-	g_free (name);
-	return node == NULL ? NULL : NAUTILUS_FILE (node->data);
-}
-
-NautilusFile *
-nautilus_directory_find_file_by_internal_uri (NautilusDirectory *directory,
-					      const char *relative_uri)
+nautilus_directory_find_file_by_internal_filename (NautilusDirectory *directory,
+						   const char *internal_filename)
 {
 	NautilusFile *result;
 
-	if (eel_strcmp (relative_uri, ".") == 0) {
+	if (eel_strcmp (internal_filename, ".") == 0) {
 		result = nautilus_directory_get_existing_corresponding_file (directory);
 		if (result != NULL) {
 			nautilus_file_unref (result);
 		}
 	} else {
-		result = nautilus_directory_find_file_by_relative_uri (directory, relative_uri);
+		result = nautilus_directory_find_file_by_name (directory, internal_filename);
 	}
 
 	return result;
@@ -1450,7 +1434,6 @@ nautilus_directory_schedule_metadata_copy (GList *file_pairs)
 	GList *p;
 	GFilePair *pair;
 	NautilusDirectory *source_directory, *destination_directory;
-	char *source_relative_uri, *destination_relative_uri;
 	char *source_basename, *destination_basename;
 
 	for (p = file_pairs; p != NULL; p = p->next) {
@@ -1462,21 +1445,15 @@ nautilus_directory_schedule_metadata_copy (GList *file_pairs)
 		source_basename = g_file_get_basename (pair->from);
 		destination_basename = g_file_get_basename (pair->to);
 		
-		source_relative_uri = gnome_vfs_escape_string (source_basename);
-		destination_relative_uri = gnome_vfs_escape_string (destination_basename);
+		if (source_directory != NULL && destination_directory != NULL) {
+			nautilus_directory_copy_file_metadata (source_directory,
+							       source_basename,
+							       destination_directory,
+							       destination_basename);
+		}
 
 		g_free (source_basename);
 		g_free (destination_basename);
-		
-		if (source_directory != NULL && destination_directory != NULL) {
-			nautilus_directory_copy_file_metadata (source_directory,
-							       source_relative_uri,
-							       destination_directory,
-							       destination_relative_uri);
-		}
-
-		g_free (source_relative_uri);
-		g_free (destination_relative_uri);
 		
 		nautilus_directory_unref (source_directory);
 		nautilus_directory_unref (destination_directory);
@@ -1501,7 +1478,6 @@ nautilus_directory_schedule_metadata_move (GList *file_pairs)
 	GList *p;
 	GFilePair *pair;
 	NautilusDirectory *source_directory, *destination_directory;
-	char *source_relative_uri, *destination_relative_uri;
 	char *source_basename, *destination_basename;
 
 	for (p = file_pairs; p != NULL; p = p->next) {
@@ -1513,22 +1489,16 @@ nautilus_directory_schedule_metadata_move (GList *file_pairs)
 		source_basename = g_file_get_basename (pair->from);
 		destination_basename = g_file_get_basename (pair->to);
 		
-		source_relative_uri = gnome_vfs_escape_string (source_basename);
-		destination_relative_uri = gnome_vfs_escape_string (destination_basename);
+		nautilus_directory_copy_file_metadata (source_directory,
+						       source_basename,
+						       destination_directory,
+						       destination_basename);
+		nautilus_directory_remove_file_metadata (source_directory,
+							 source_basename);
 		
 		g_free (source_basename);
 		g_free (destination_basename);
 		
-		nautilus_directory_copy_file_metadata (source_directory,
-						       source_relative_uri,
-						       destination_directory,
-						       destination_relative_uri);
-		nautilus_directory_remove_file_metadata (source_directory,
-							 source_relative_uri);
-		
-		g_free (source_relative_uri);
-		g_free (destination_relative_uri);
-
 		nautilus_directory_unref (source_directory);
 		nautilus_directory_unref (destination_directory);
 	}
@@ -1550,7 +1520,7 @@ nautilus_directory_schedule_metadata_remove (GList *files)
 {
 	GList *p;
 	NautilusDirectory *directory;
-	char *relative_uri, *basename;
+	char *basename;
 	GFile *location;
 
 	for (p = files; p != NULL; p = p->next) {
@@ -1559,13 +1529,9 @@ nautilus_directory_schedule_metadata_remove (GList *files)
 		directory = get_parent_directory (location);
 
 		basename = g_file_get_basename (location);
-		relative_uri = gnome_vfs_escape_string (basename);
+		nautilus_directory_remove_file_metadata (directory, basename);
 		g_free (basename);
 
-		nautilus_directory_remove_file_metadata (directory,
-							 relative_uri);
-
-		g_free (relative_uri);
 		
 		nautilus_directory_unref (directory);
 	}

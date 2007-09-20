@@ -1,5 +1,17 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-metafile-monitor.c:
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-metafile.c:
+	Make the filename key for metadata be unescaped in memory.
+	Escape it only when reading/writing the metadata files.
+	This is to avoid escaping a lot since we're now storing the
+	filename unescaped in NautilusFile.
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-notify.h:
         * libnautilus-private/nautilus-directory.c:
 	Add GFile versions of metadata scheduling functions.

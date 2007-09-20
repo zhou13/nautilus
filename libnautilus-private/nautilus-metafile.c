@@ -996,6 +996,7 @@ get_file_node (NautilusMetafile *metafile,
 {
 	GHashTable *hash;
 	xmlNode *root, *node;
+	char *escaped_file_name;
 	
 	g_assert (NAUTILUS_IS_METAFILE (metafile));
 
@@ -1008,7 +1009,9 @@ get_file_node (NautilusMetafile *metafile,
 	if (create) {
 		root = create_metafile_root (metafile);
 		node = xmlNewChild (root, NULL, "file", NULL);
-		xmlSetProp (node, "name", file_name);
+		escaped_file_name = gnome_vfs_escape_string (file_name);
+		xmlSetProp (node, "name", escaped_file_name);
+		g_free (escaped_file_name);
 		g_hash_table_insert (hash, xmlMemStrdup (file_name), node);
 		return node;
 	}
@@ -1527,10 +1530,16 @@ static char *
 metafile_get_file_uri (NautilusMetafile *metafile,
 		       const char *file_name)
 {
+	char *escaped_file_name, *uri;
+	
 	g_return_val_if_fail (NAUTILUS_IS_METAFILE (metafile), NULL);
 	g_return_val_if_fail (file_name != NULL, NULL);
-
-	return g_build_filename (metafile->details->directory_uri, file_name, NULL);
+	
+	escaped_file_name = gnome_vfs_escape_path_string (file_name);
+	
+	uri = g_build_filename (metafile->details->directory_uri, escaped_file_name, NULL);
+	g_free (escaped_file_name);
+	return uri;
 }
 
 static void
@@ -1543,6 +1552,7 @@ rename_file_metadata (NautilusMetafile *metafile,
 	xmlNode *file_node;
 	GHashTable *hash;
 	char *old_file_uri, *new_file_uri;
+	char *escaped;
 
 	g_return_if_fail (NAUTILUS_IS_METAFILE (metafile));
 	g_return_if_fail (old_file_name != NULL);
@@ -1563,7 +1573,9 @@ rename_file_metadata (NautilusMetafile *metafile,
 			xmlFree (key);
 			g_hash_table_insert (hash,
 					     xmlMemStrdup (new_file_name), value);
-			xmlSetProp (file_node, "name", new_file_name);
+			escaped = gnome_vfs_escape_string (new_file_name);
+			xmlSetProp (file_node, "name", escaped);
+			g_free (escaped);
 			directory_request_write_metafile (metafile);
 		}
 	} else {
@@ -1671,6 +1683,7 @@ real_copy_file_metadata (NautilusMetafile *source_metafile,
 {
 	xmlNodePtr source_node, node, root;
 	GHashTable *hash, *changes;
+	char *escaped;
 
 	real_remove_file_metadata (destination_metafile, destination_file_name);
 	g_assert (get_file_node (destination_metafile, destination_file_name, FALSE) == NULL);
@@ -1680,7 +1693,9 @@ real_copy_file_metadata (NautilusMetafile *source_metafile,
 		node = xmlCopyNode (source_node, TRUE);
 		root = create_metafile_root (destination_metafile);
 		xmlAddChild (root, node);
-		xmlSetProp (node, "name", destination_file_name);
+		escaped = gnome_vfs_escape_string (destination_file_name);
+		xmlSetProp (node, "name", escaped);
+		g_free (escaped);
 		set_file_node_timestamp (node);
 		g_hash_table_insert (destination_metafile->details->node_hash,
 				     xmlMemStrdup (destination_file_name), node);
@@ -1807,6 +1822,7 @@ set_metafile_contents (NautilusMetafile *metafile,
 	GHashTable *hash;
 	xmlNodePtr node;
 	xmlChar *name;
+	char *unescaped_name;
 
 	g_return_if_fail (NAUTILUS_IS_METAFILE (metafile));
 	g_return_if_fail (metafile->details->xml == NULL);
@@ -1823,11 +1839,12 @@ set_metafile_contents (NautilusMetafile *metafile,
 	     node != NULL; node = node->next) {
 		if (strcmp (node->name, "file") == 0) {
 			name = xmlGetProp (node, "name");
-			if (g_hash_table_lookup (hash, name) != NULL) {
+			unescaped_name = gnome_vfs_unescape_string (name, "/");
+			if (g_hash_table_lookup (hash, unescaped_name) != NULL) {
 				xmlFree (name);
 				/* FIXME: Should we delete duplicate nodes as we discover them? */
 			} else {
-				g_hash_table_insert (hash, name, node);
+				g_hash_table_insert (hash, unescaped_name, node);
 			}
 		}
 	}

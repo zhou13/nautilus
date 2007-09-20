@@ -1016,8 +1016,7 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 	Operation *op;
 	NautilusDirectory *directory;
 	NautilusFile *existing_file;
-	char *old_relative_uri;
-	char *new_relative_uri;
+	char *old_name;
 	char *old_uri;
 	char *new_uri;
 
@@ -1037,28 +1036,25 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		}
 		
 		old_uri = nautilus_file_get_uri (op->file);
-		old_relative_uri = gnome_vfs_escape_path_string (op->file->details->name);
+		old_name = g_strdup (op->file->details->name);
 
 		update_info_and_name (op->file, new_info);
-
+		
 		/* Self-owned files store their metadata under the
 		 * hard-code name "."  so there's no need to rename
 		 * their metadata when they are renamed.
 		 */
 		if (!nautilus_file_is_self_owned (op->file)) {
-			new_relative_uri = gnome_vfs_escape_path_string (op->file->details->name);
 			nautilus_directory_rename_file_metadata
-				(directory, old_relative_uri, new_relative_uri);
-			g_free (new_relative_uri);
+				(directory, old_name, op->file->details->name);
 		}
 
-		g_free (old_relative_uri);
+		g_free (old_name);
 
 		new_uri = nautilus_file_get_uri (op->file);
 		nautilus_directory_moved (old_uri, new_uri);
 		g_free (new_uri);
 		g_free (old_uri);
-
 
 		/* the rename could have affected the display name if e.g.
 		 * we're in a vfolder where the name comes from a desktop file
@@ -2523,13 +2519,13 @@ nautilus_file_list_filter_hidden_and_backup (GList    *files,
  * but we use a hard-coded string for the metadata for the directory
  * itself.
  */
-static char *
+static const char *
 get_metadata_name (NautilusFile *file)
 {
 	if (nautilus_file_is_self_owned (file)) {
-		return g_strdup (FILE_NAME_FOR_DIRECTORY_METADATA);
+		return FILE_NAME_FOR_DIRECTORY_METADATA;
 	}
-	return gnome_vfs_escape_path_string (file->details->name);
+	return file->details->name;
 }
 
 char *
@@ -2537,8 +2533,6 @@ nautilus_file_get_metadata (NautilusFile *file,
 			    const char *key,
 			    const char *default_metadata)
 {
-	char *metadata_name, *res;
-	
 	g_return_val_if_fail (key != NULL, g_strdup (default_metadata));
 	g_return_val_if_fail (key[0] != '\0', g_strdup (default_metadata));
 	if (file == NULL) {
@@ -2546,14 +2540,11 @@ nautilus_file_get_metadata (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), g_strdup (default_metadata));
 
-	metadata_name = get_metadata_name (file);
-	res = nautilus_directory_get_file_metadata
+	return nautilus_directory_get_file_metadata
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 key,
 		 default_metadata);
-	g_free (metadata_name);
-	return res;
 }
 
 GList *
@@ -2561,9 +2552,6 @@ nautilus_file_get_metadata_list (NautilusFile *file,
 				 const char *list_key,
 				 const char *list_subkey)
 {
-	char *metadata_name;
-	GList *res;
-	
 	g_return_val_if_fail (list_key != NULL, NULL);
 	g_return_val_if_fail (list_key[0] != '\0', NULL);
 	g_return_val_if_fail (list_subkey != NULL, NULL);
@@ -2573,14 +2561,11 @@ nautilus_file_get_metadata_list (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
-	metadata_name = get_metadata_name (file);
-	res = nautilus_directory_get_file_metadata_list
+	return nautilus_directory_get_file_metadata_list
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 list_key,
 		 list_subkey);
-	g_free (metadata_name);
-	return res;
 }
 
 void
@@ -2589,20 +2574,16 @@ nautilus_file_set_metadata (NautilusFile *file,
 			    const char *default_metadata,
 			    const char *metadata)
 {
-	char *metadata_name;
-	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (key != NULL);
 	g_return_if_fail (key[0] != '\0');
 
-	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_file_metadata
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 key,
 		 default_metadata,
 		 metadata);
-	g_free (metadata_name);
 }
 
 void
@@ -2611,22 +2592,18 @@ nautilus_file_set_metadata_list (NautilusFile *file,
 				 const char *list_subkey,
 				 GList *list)
 {
-	char *metadata_name;
-	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (list_key != NULL);
 	g_return_if_fail (list_key[0] != '\0');
 	g_return_if_fail (list_subkey != NULL);
 	g_return_if_fail (list_subkey[0] != '\0');
 
-	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_file_metadata_list
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 list_key,
 		 list_subkey,
 		 list);
-	g_free (metadata_name);
 }
 
 
@@ -2635,9 +2612,6 @@ nautilus_file_get_boolean_metadata (NautilusFile *file,
 				    const char   *key,
 				    gboolean      default_metadata)
 {
-	char *metadata_name;
-	gboolean res;
-	
 	g_return_val_if_fail (key != NULL, default_metadata);
 	g_return_val_if_fail (key[0] != '\0', default_metadata);
 	if (file == NULL) {
@@ -2645,14 +2619,11 @@ nautilus_file_get_boolean_metadata (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), default_metadata);
 
-	metadata_name = get_metadata_name (file);
-	res = nautilus_directory_get_boolean_file_metadata
+	return nautilus_directory_get_boolean_file_metadata
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 key,
 		 default_metadata);
-	g_free (metadata_name);
-	return res;
 }
 
 int
@@ -2660,9 +2631,6 @@ nautilus_file_get_integer_metadata (NautilusFile *file,
 				    const char   *key,
 				    int           default_metadata)
 {
-	int res;
-	char *metadata_name;
-	
 	g_return_val_if_fail (key != NULL, default_metadata);
 	g_return_val_if_fail (key[0] != '\0', default_metadata);
 	if (file == NULL) {
@@ -2670,14 +2638,11 @@ nautilus_file_get_integer_metadata (NautilusFile *file,
 	}
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), default_metadata);
 
-	metadata_name = get_metadata_name (file);
-	res = nautilus_directory_get_integer_file_metadata
+	return nautilus_directory_get_integer_file_metadata
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 key,
 		 default_metadata);
-	g_free (metadata_name);
-	return res;
 }
 
 
@@ -2687,19 +2652,16 @@ nautilus_file_set_boolean_metadata (NautilusFile *file,
 				    gboolean      default_metadata,
 				    gboolean      metadata)
 {
-	char *metadata_name;
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (key != NULL);
 	g_return_if_fail (key[0] != '\0');
 
-	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_boolean_file_metadata
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 key,
 		 default_metadata,
 		 metadata);
-	g_free (metadata_name);
 }
 
 void
@@ -2708,20 +2670,16 @@ nautilus_file_set_integer_metadata (NautilusFile *file,
 				    int           default_metadata,
 				    int           metadata)
 {
-	char *metadata_name;
-	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (key != NULL);
 	g_return_if_fail (key[0] != '\0');
 
-	metadata_name = get_metadata_name (file);
 	nautilus_directory_set_integer_file_metadata
 		(file->details->directory,
-		 metadata_name,
+		 get_metadata_name (file),
 		 key,
 		 default_metadata,
 		 metadata);
-	g_free (metadata_name);
 }
 
 void

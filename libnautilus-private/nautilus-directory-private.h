@@ -205,11 +205,9 @@ void               nautilus_directory_set_up_request                  (Request  
 
 /* Interface to the file list. */
 NautilusFile *     nautilus_directory_find_file_by_name               (NautilusDirectory         *directory,
-								       const char                *relative_uri);
-NautilusFile *     nautilus_directory_find_file_by_relative_uri       (NautilusDirectory         *directory,
-								       const char                *relative_uri);
-NautilusFile *     nautilus_directory_find_file_by_internal_uri       (NautilusDirectory         *directory,
-								       const char                *relative_uri);
+								       const char                *filename);
+NautilusFile *     nautilus_directory_find_file_by_internal_filename  (NautilusDirectory         *directory,
+								       const char                *internal_filename);
 
 void               nautilus_directory_add_file                        (NautilusDirectory         *directory,
 								       NautilusFile              *file);
