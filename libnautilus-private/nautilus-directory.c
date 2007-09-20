@@ -365,7 +365,7 @@ nautilus_directory_make_uri_canonical (const char *uri)
  * Returns a referenced object, not a floating one. Unref when finished.
  * If two windows are viewing the same uri, the directory object is shared.
  */
-static NautilusDirectory *
+NautilusDirectory *
 nautilus_directory_get_for_location (GFile *location, gboolean create)
 {
 	NautilusDirectory *directory;

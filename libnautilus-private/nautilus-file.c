@@ -218,15 +218,15 @@ nautilus_file_clear_info (NautilusFile *file)
 }
 
 static NautilusFile *
-nautilus_file_new_from_relative_uri (NautilusDirectory *directory,
-				     const char *relative_uri,
-				     gboolean self_owned)
+nautilus_file_new_from_filename (NautilusDirectory *directory,
+				 const char *filename,
+				 gboolean self_owned)
 {
 	NautilusFile *file;
 
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
-	g_return_val_if_fail (relative_uri != NULL, NULL);
-	g_return_val_if_fail (relative_uri[0] != '\0', NULL);
+	g_return_val_if_fail (filename != NULL, NULL);
+	g_return_val_if_fail (filename[0] != '\0', NULL);
 
 	if (self_owned && NAUTILUS_IS_TRASH_DIRECTORY (directory)) {
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_TRASH_FILE, NULL));
@@ -246,7 +246,7 @@ nautilus_file_new_from_relative_uri (NautilusDirectory *directory,
 			 * that references a file like this. (See #349840) */
 			file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_VFS_FILE, NULL));
 		}
-	} else if (g_str_has_suffix (relative_uri, NAUTILUS_SAVED_SEARCH_EXTENSION)) {
+	} else if (g_str_has_suffix (filename, NAUTILUS_SAVED_SEARCH_EXTENSION)) {
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_SAVED_SEARCH_FILE, NULL));
 	} else {
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_VFS_FILE, NULL));
@@ -255,7 +255,7 @@ nautilus_file_new_from_relative_uri (NautilusDirectory *directory,
 	nautilus_directory_ref (directory);
 	file->details->directory = directory;
 
-	file->details->name = gnome_vfs_unescape_string (relative_uri, "/");
+	file->details->name = g_strdup (filename);
 
 #ifdef NAUTILUS_FILE_DEBUG_REF
 	DEBUG_REF_PRINTF("%10p ref'd", file);
@@ -375,6 +375,74 @@ nautilus_file_new_from_info (NautilusDirectory *directory,
 	return file;
 }
 
+static NautilusFile *
+nautilus_file_get_for_location_internal (GFile *location, gboolean create)
+{
+	gboolean self_owned;
+	NautilusDirectory *directory;
+	NautilusFile *file;
+	GFile *parent;
+	char *basename;
+
+	g_return_val_if_fail (location != NULL, NULL);
+
+	parent = g_file_get_parent (location);
+	
+	self_owned = FALSE;
+	if (parent == NULL) {
+		self_owned = TRUE;
+		parent = g_object_ref (location);
+	} 
+
+	/* Get object that represents the directory. */
+	directory = nautilus_directory_get_for_location (parent, create);
+
+	/* Get the name for the file. */
+	if (self_owned && directory != NULL) {
+		basename = nautilus_directory_get_name_for_self_as_new_file (directory);
+	} else {
+		basename = g_file_get_basename (location);
+	}
+	/* Check to see if it's a file that's already known. */
+	if (directory == NULL) {
+		file = NULL;
+	} else if (self_owned) {
+		file = directory->details->as_file;
+	} else {
+		file = nautilus_directory_find_file_by_name (directory, basename);
+	}
+
+	/* Ref or create the file. */
+	if (file != NULL) {
+		nautilus_file_ref (file);
+	} else if (create) {
+		file = nautilus_file_new_from_filename (directory, basename, self_owned);
+		if (self_owned) {
+			g_assert (directory->details->as_file == NULL);
+			directory->details->as_file = file;
+		} else {
+			nautilus_directory_add_file (directory, file);
+		}
+	}
+
+	g_free (basename);
+	nautilus_directory_unref (directory);
+
+	return file;
+}
+
+NautilusFile *
+nautilus_file_get_for_location (GFile *location)
+{
+	return nautilus_file_get_for_location_internal (location, TRUE);
+}
+
+NautilusFile *
+nautilus_file_get_existing_for_location (GFile *location)
+{
+	return nautilus_file_get_for_location_internal (location, FALSE);
+}
+
 /**
  * nautilus_file_get_internal:
  * @uri: URI of file to get.
@@ -386,117 +454,13 @@ nautilus_file_new_from_info (NautilusDirectory *directory,
 static NautilusFile *
 nautilus_file_get_internal (const char *uri, gboolean create)
 {
-	char *canonical_uri, *directory_uri, *relative_uri, *file_name;
-	const char *relative_uri_tmp;
-	gboolean self_owned;
-	GnomeVFSURI *vfs_uri, *directory_vfs_uri;
-	NautilusDirectory *directory;
+	GFile *location;
 	NautilusFile *file;
-
-	g_return_val_if_fail (uri != NULL, NULL);
-
-	/* Maybe we wouldn't need this if the gnome-vfs canonical
-	 * stuff was strong enough.
-	 */
-	canonical_uri = eel_make_uri_canonical (uri);
-
-	/* Make VFS version of URI. */
-	vfs_uri = gnome_vfs_uri_new (canonical_uri);
-	relative_uri = NULL;
-	if (vfs_uri != NULL) {
-		relative_uri = gnome_vfs_uri_extract_short_path_name (vfs_uri);
-
-		/* Couldn't parse a name out of the URI: the URI must be bogus,
-		 * so we'll treat it like the case where gnome_vfs_uri couldn't
-		 * even create a URI.
-		 */
-		if (eel_str_is_empty (relative_uri)) {
-			gnome_vfs_uri_unref (vfs_uri);
-			vfs_uri = NULL;
-			g_free (relative_uri);
-			relative_uri = NULL;
-		}
-	}
-
-	self_owned = FALSE;
-	directory_uri = NULL;
 	
-	/* Make VFS version of directory URI. */
-	if (vfs_uri == NULL) {
-		if (eel_uri_is_desktop (uri) &&
-		    !gnome_vfs_uris_match (uri, EEL_DESKTOP_URI)) {
-			directory_uri = g_strdup (EEL_DESKTOP_URI);
-		}
-	} else {
-		directory_vfs_uri = gnome_vfs_uri_get_parent (vfs_uri);
-		if (directory_vfs_uri != NULL) {
-			directory_uri = gnome_vfs_uri_to_string
-				(directory_vfs_uri,
-				 GNOME_VFS_URI_HIDE_NONE);
-			gnome_vfs_uri_unref (directory_vfs_uri);
-		} 
-		gnome_vfs_uri_unref (vfs_uri);
-	}
+	location = g_file_new_for_uri (uri);
+	file = nautilus_file_get_for_location_internal (location, create);
+	g_object_unref (location);
 	
-	if (directory_uri == NULL) {
-		self_owned = TRUE;
-		directory_uri = g_strdup (canonical_uri);
-	}
-
-	/* Get object that represents the directory. */
-	directory = nautilus_directory_get_internal (directory_uri, create);
-	g_free (directory_uri);
-
-	/* Get the name for the file. */
-	if (vfs_uri == NULL) {
-		if (self_owned && directory != NULL) {
-			file_name = nautilus_directory_get_name_for_self_as_new_file (directory);
-			relative_uri = gnome_vfs_escape_string (file_name);
-			g_free (file_name);
-		} else if (eel_uri_is_desktop (uri) ||
-			   eel_uri_is_search (uri)) {
-			/* Special case virtual methods like desktop and search
-			   files here. They have no vfs_uri. */
-			relative_uri_tmp = uri;
-			/* Skip "method:" */
-			while (*relative_uri_tmp != 0 && *relative_uri_tmp != ':') {
-				relative_uri_tmp++;
-			}
-			relative_uri_tmp++;
-			/* Skip initial slashes */
-			while (*relative_uri_tmp == '/') {
-				relative_uri_tmp++;
-			}
-			relative_uri = strdup (relative_uri_tmp);
-		} 
-	}
-
-	/* Check to see if it's a file that's already known. */
-	if (directory == NULL) {
-		file = NULL;
-	} else if (self_owned) {
-		file = directory->details->as_file;
-	} else {
-		file = nautilus_directory_find_file_by_relative_uri (directory, relative_uri);
-	}
-
-	/* Ref or create the file. */
-	if (file != NULL) {
-		nautilus_file_ref (file);
-	} else if (create) {
-		file = nautilus_file_new_from_relative_uri (directory, relative_uri, self_owned);
-		if (self_owned) {
-			g_assert (directory->details->as_file == NULL);
-			directory->details->as_file = file;
-		} else {
-			nautilus_directory_add_file (directory, file);
-		}
-	}
-
-	g_free (canonical_uri);
-	g_free (relative_uri);
-	nautilus_directory_unref (directory);
-
 	return file;
 }
 

@@ -1,5 +1,13 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file.[ch]:
+	Add nautilus_file_get_for_location and nautilus_file_get_existing_for_location.
+	and implement nautilus_file_get based on these.
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.[ch]:
         Add nautilus_file_get_location () and use it when
 	generating uris.

@@ -199,6 +199,8 @@ void               nautilus_directory_emit_load_error                 (NautilusD
 								       GError                    *error);
 NautilusDirectory *nautilus_directory_get_internal                    (const char                *uri,
 								       gboolean                   create);
+NautilusDirectory *nautilus_directory_get_for_location                (GFile                     *location,
+								       gboolean                   create);
 char *             nautilus_directory_get_name_for_self_as_new_file   (NautilusDirectory         *directory);
 void               nautilus_directory_set_up_request                  (Request                   *request,
 								       NautilusFileAttributes     file_attributes);
