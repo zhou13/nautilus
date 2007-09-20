@@ -222,7 +222,6 @@ gboolean           nautilus_directory_is_in_trash              (NautilusDirector
  */
 gboolean           nautilus_directory_is_not_empty             (NautilusDirectory         *directory);
 gboolean           nautilus_directory_file_list_length_reached (NautilusDirectory         *directory);
-char *             nautilus_directory_make_uri_canonical       (const char                *uri);
 
 /* Convenience functions for dealing with a list of NautilusDirectory objects that each have a ref.
  * These are just convenient names for functions that work on lists of GtkObject *.

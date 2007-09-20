@@ -247,6 +247,7 @@ nautilus_metafile_get (const char *directory_uri)
 {
 	NautilusMetafile *metafile;
 	char *canonical_uri;
+	GFile *file;
 	
 	g_return_val_if_fail (directory_uri != NULL, NULL);
 
@@ -259,8 +260,11 @@ nautilus_metafile_get (const char *directory_uri)
 		metafiles = eel_g_hash_table_new_free_at_exit
 			(g_str_hash, g_str_equal, __FILE__ ": metafiles");
 	}
-	
-	canonical_uri = nautilus_directory_make_uri_canonical (directory_uri);
+
+
+	file = g_file_new_for_uri (directory_uri);
+	canonical_uri = g_file_get_uri (file);
+	g_object_unref (file);
 	
 	metafile = g_hash_table_lookup (metafiles, canonical_uri);
 	

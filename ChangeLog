@@ -1,5 +1,11 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-metafile.c: 
+        * libnautilus-private/nautilus-directory.[ch]:
+	Remove unused function nautilus_directory_make_uri_canonical
+	
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-notify.h:
         * libnautilus-private/nautilus-directory.c:
 	Added nautilus_directory_notify_files_moved_by_location and

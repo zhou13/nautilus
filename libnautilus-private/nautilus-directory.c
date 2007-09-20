@@ -319,43 +319,6 @@ add_preferences_callbacks (void)
 				      NULL);
 }
 
-char *
-nautilus_directory_make_uri_canonical (const char *uri)
-{
-	char *canonical_maybe_trailing_slash;
-	char *canonical;
-	char *with_slashes;
-	size_t length;
-
-	canonical_maybe_trailing_slash = eel_make_uri_canonical (uri);
-
-	/* To NautilusDirectory, a uri with or without a trailing
-	 * / is equivalent. This is necessary to prevent separate
-	 * NautilusDirectories for the same location from being
-	 * created. (See bugzilla.gnome.org 43322 for an example.)
-	 */
-	canonical = eel_str_strip_trailing_chr (canonical_maybe_trailing_slash, '/');
-	if (strcmp (canonical, canonical_maybe_trailing_slash) != 0 &&
-	    strcmp (canonical, "favorites:") != 0) {
-		/* If some trailing '/' were stripped, there's the possibility,
-		 * that we stripped away all the '/' from a uri that has only
-		 * '/' characters. If you change this code, check to make sure
-		 * that "file:///" still works as a URI.
-		 */
-		length = strlen (canonical);
-		if (length == 0 || canonical[length - 1] == ':') {
-			with_slashes = g_strconcat (canonical, "///", NULL);
-			g_free (canonical);
-			canonical = with_slashes;
-		}
-	}
-
-	g_free (canonical_maybe_trailing_slash);
-	
-	return canonical;
-}
-
-
 /**
  * nautilus_directory_get:
  * @uri: URI of directory to get.
@@ -2054,27 +2017,6 @@ nautilus_self_check_directory (void)
 	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("a%a"), "a%25a");
 	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("%25"), "%2525");
 	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("%2F"), "%252F");
-
-	/* nautilus_directory_make_uri_canonical */
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical (""), "file:///");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("file:/"), "file:///");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("file:///"), "file:///");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("TRASH:XXX"), EEL_TRASH_URI);
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("trash:xxx"), EEL_TRASH_URI);
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("GNOME-TRASH:XXX"), EEL_TRASH_URI);
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("gnome-trash:xxx"), EEL_TRASH_URI);
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("file:///home/mathieu/"), "file:///home/mathieu");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("file:///home/mathieu"), "file:///home/mathieu");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("ftp://mathieu:password@le-hackeur.org"), "ftp://mathieu:password@le-hackeur.org");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("ftp://mathieu:password@le-hackeur.org/"), "ftp://mathieu:password@le-hackeur.org");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("http://le-hackeur.org"), "http://le-hackeur.org");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("http://le-hackeur.org/"), "http://le-hackeur.org");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("http://le-hackeur.org/dir"), "http://le-hackeur.org/dir");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("http://le-hackeur.org/dir/"), "http://le-hackeur.org/dir");
-	/* FIXME bugzilla.gnome.org 45068: the "nested" URI loses some characters here. Maybe that's OK because we escape them in practice? */
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("search://[file://]file_name contains stuff"), "search://[file/]file_name contains stuff");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("eazel-services:/~turtle"), "eazel-services:///~turtle");
-	EEL_CHECK_STRING_RESULT (nautilus_directory_make_uri_canonical ("eazel-services:///~turtle"), "eazel-services:///~turtle");
 }
 
 #endif /* !NAUTILUS_OMIT_SELF_CHECK */
