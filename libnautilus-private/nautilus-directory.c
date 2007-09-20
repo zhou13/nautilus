@@ -788,7 +788,7 @@ nautilus_directory_emit_load_error (NautilusDirectory *directory,
 
 /* Return a directory object for this one's parent. */
 static NautilusDirectory *
-get_parent_directory_for_location (GFile *location)
+get_parent_directory (GFile *location)
 {
 	NautilusDirectory *directory;
 	GFile *parent;
@@ -806,7 +806,7 @@ get_parent_directory_for_location (GFile *location)
  * return it, otherwise return NULL.
  */
 static NautilusDirectory *
-get_parent_directory_for_location_if_exists (GFile *location)
+get_parent_directory_if_exists (GFile *location)
 {
 	NautilusDirectory *directory;
 	GFile *parent;
@@ -822,13 +822,13 @@ get_parent_directory_for_location_if_exists (GFile *location)
 
 /* Return a directory object for this one's parent. */
 static NautilusDirectory *
-get_parent_directory (const char *uri)
+get_parent_directory_by_uri (const char *uri)
 {
 	NautilusDirectory *directory;
 	GFile *location;
 
 	location = g_file_new_for_uri (uri);
-	directory = get_parent_directory_for_location (location);
+	directory = get_parent_directory (location);
 	g_object_unref (location);
 	return directory;
 }
@@ -837,13 +837,13 @@ get_parent_directory (const char *uri)
  * return it, otherwise return NULL.
  */
 static NautilusDirectory *
-get_parent_directory_if_exists (const char *uri)
+get_parent_directory_by_uri_if_exists (const char *uri)
 {
 	NautilusDirectory *directory;
 	GFile *location;
 
 	location = g_file_new_for_uri (uri);
-	directory = get_parent_directory_for_location_if_exists (location);
+	directory = get_parent_directory_if_exists (location);
 	g_object_unref (location);
 	
 	return directory;
@@ -970,7 +970,7 @@ nautilus_directory_notify_files_added (GList *files)
 		location = p->data;
 
 		/* See if the directory is already known. */
-		directory = get_parent_directory_for_location_if_exists (location);
+		directory = get_parent_directory_if_exists (location);
 		if (directory == NULL) {
 			/* In case the directory is not being
 			 * monitored, but the corresponding file is,
@@ -1142,7 +1142,7 @@ nautilus_directory_notify_files_removed_by_uri (GList *uris)
 		uri = (const char *) p->data;
 
 		/* Update file count for parent directory if anyone might care. */
-		directory = get_parent_directory_if_exists (uri);
+		directory = get_parent_directory_by_uri_if_exists (uri);
 		if (directory != NULL) {
 			collect_parent_directories (parent_directories, directory);
 			nautilus_directory_unref (directory);
@@ -1390,7 +1390,7 @@ nautilus_directory_notify_files_moved (GList *file_pairs)
 				(old_directory, file, cancel_attributes);
 
 			/* Locate the new directory. */
-			new_directory = get_parent_directory_for_location (to_location);
+			new_directory = get_parent_directory (to_location);
 			collect_parent_directories (parent_directories, new_directory);
 			/* We can unref now -- new_directory is in the
 			 * parent directories list so it will be
@@ -1459,8 +1459,8 @@ nautilus_directory_schedule_metadata_copy_by_uri (GList *uri_pairs)
 	for (p = uri_pairs; p != NULL; p = p->next) {
 		pair = (URIPair *) p->data;
 
-		source_directory = get_parent_directory (pair->from_uri);
-		destination_directory = get_parent_directory (pair->to_uri);
+		source_directory = get_parent_directory_by_uri (pair->from_uri);
+		destination_directory = get_parent_directory_by_uri (pair->to_uri);
 		
 		source_relative_uri = g_path_get_basename (pair->from_uri);
 		destination_relative_uri = g_path_get_basename (pair->to_uri);
@@ -1491,8 +1491,8 @@ nautilus_directory_schedule_metadata_move_by_uri (GList *uri_pairs)
 	for (p = uri_pairs; p != NULL; p = p->next) {
 		pair = (URIPair *) p->data;
 
-		source_directory = get_parent_directory (pair->from_uri);
-		destination_directory = get_parent_directory (pair->to_uri);
+		source_directory = get_parent_directory_by_uri (pair->from_uri);
+		destination_directory = get_parent_directory_by_uri (pair->to_uri);
 		
 		source_relative_uri = g_path_get_basename (pair->from_uri);
 		destination_relative_uri = g_path_get_basename (pair->to_uri);
@@ -1523,7 +1523,7 @@ nautilus_directory_schedule_metadata_remove_by_uri (GList *uris)
 	for (p = uris; p != NULL; p = p->next) {
 		uri = (const char *) p->data;
 
-		directory = get_parent_directory (uri);
+		directory = get_parent_directory_by_uri (uri);
 		relative_uri = g_path_get_basename (uri);
 		
 		nautilus_directory_remove_file_metadata (directory,

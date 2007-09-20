@@ -1,5 +1,11 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory.c:
+	Add _by_uri suffix to uri versions of functions and
+	remove suffix for GFile versions
+	
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-notify.h:
         * libnautilus-private/nautilus-directory.c:
         * libnautilus-private/nautilus-file-changes-queue.c:
