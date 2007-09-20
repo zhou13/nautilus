@@ -329,7 +329,7 @@ add_preferences_callbacks (void)
  * If two windows are viewing the same uri, the directory object is shared.
  */
 NautilusDirectory *
-nautilus_directory_get_for_location (GFile *location, gboolean create)
+nautilus_directory_get_internal (GFile *location, gboolean create)
 {
 	NautilusDirectory *directory;
 	
@@ -364,7 +364,7 @@ nautilus_directory_get_for_location (GFile *location, gboolean create)
 }
 
 NautilusDirectory *
-nautilus_directory_get_internal (const char *uri, gboolean create)
+nautilus_directory_get (const char *uri)
 {
 	NautilusDirectory *directory;
 	GFile *location;
@@ -375,21 +375,26 @@ nautilus_directory_get_internal (const char *uri, gboolean create)
 
 	location = g_file_new_for_uri (uri);
 
-	directory = nautilus_directory_get_for_location (location, create);
+	directory = nautilus_directory_get_internal (location, TRUE);
 	g_object_unref (location);
 	return directory;
 }
 
 NautilusDirectory *
-nautilus_directory_get (const char *uri)
-{
-	return nautilus_directory_get_internal (uri, TRUE);
-}
-
-NautilusDirectory *
 nautilus_directory_get_existing (const char *uri)
 {
-	return nautilus_directory_get_internal (uri, FALSE);
+	NautilusDirectory *directory;
+	GFile *location;
+
+	if (uri == NULL) {
+    		return NULL;
+	}
+
+	location = g_file_new_for_uri (uri);
+
+	directory = nautilus_directory_get_internal (location, FALSE);
+	g_object_unref (location);
+	return directory;
 }
 
 NautilusDirectory *
@@ -795,7 +800,7 @@ get_parent_directory (GFile *location)
 
 	parent = g_file_get_parent (location);
 	if (parent) {
-		directory = nautilus_directory_get_for_location (parent, TRUE);
+		directory = nautilus_directory_get_internal (parent, TRUE);
 		g_object_unref (parent);
 		return directory;
 	}
@@ -813,7 +818,7 @@ get_parent_directory_if_exists (GFile *location)
 
 	parent = g_file_get_parent (location);
 	if (parent) {
-		directory = nautilus_directory_get_for_location (parent, FALSE);
+		directory = nautilus_directory_get_internal (parent, FALSE);
 		g_object_unref (parent);
 		return directory;
 	}

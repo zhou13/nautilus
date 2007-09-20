@@ -1,5 +1,12 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file.c:
+	Avoid for_location suffix when its not needed anymore
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory.c:
 	Add _by_uri suffix to uri versions of functions and
 	remove suffix for GFile versions

@@ -376,7 +376,7 @@ nautilus_file_new_from_info (NautilusDirectory *directory,
 }
 
 static NautilusFile *
-nautilus_file_get_for_location_internal (GFile *location, gboolean create)
+nautilus_file_get_internal (GFile *location, gboolean create)
 {
 	gboolean self_owned;
 	NautilusDirectory *directory;
@@ -395,7 +395,7 @@ nautilus_file_get_for_location_internal (GFile *location, gboolean create)
 	} 
 
 	/* Get object that represents the directory. */
-	directory = nautilus_directory_get_for_location (parent, create);
+	directory = nautilus_directory_get_internal (parent, create);
 
 	/* Get the name for the file. */
 	if (self_owned && directory != NULL) {
@@ -434,46 +434,39 @@ nautilus_file_get_for_location_internal (GFile *location, gboolean create)
 NautilusFile *
 nautilus_file_get_for_location (GFile *location)
 {
-	return nautilus_file_get_for_location_internal (location, TRUE);
+	return nautilus_file_get_internal (location, TRUE);
 }
 
 NautilusFile *
 nautilus_file_get_existing_for_location (GFile *location)
 {
-	return nautilus_file_get_for_location_internal (location, FALSE);
+	return nautilus_file_get_internal (location, FALSE);
 }
 
-/**
- * nautilus_file_get_internal:
- * @uri: URI of file to get.
- *
- * Get a file given a uri.
- * Returns a referenced object. Unref when finished.
- * If two windows are viewing the same uri, the file object is shared.
- */
-static NautilusFile *
-nautilus_file_get_internal (const char *uri, gboolean create)
+NautilusFile *
+nautilus_file_get_existing (const char *uri)
 {
 	GFile *location;
 	NautilusFile *file;
 	
 	location = g_file_new_for_uri (uri);
-	file = nautilus_file_get_for_location_internal (location, create);
+	file = nautilus_file_get_internal (location, FALSE);
 	g_object_unref (location);
 	
 	return file;
 }
 
 NautilusFile *
-nautilus_file_get_existing (const char *uri)
-{
-	return nautilus_file_get_internal (uri, FALSE);
-}
-
-NautilusFile *
 nautilus_file_get (const char *uri)
 {
-	return nautilus_file_get_internal (uri, TRUE);
+	GFile *location;
+	NautilusFile *file;
+	
+	location = g_file_new_for_uri (uri);
+	file = nautilus_file_get_internal (location, TRUE);
+	g_object_unref (location);
+	
+	return file;
 }
 
 gboolean
