@@ -1,5 +1,16 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-vfs-utils.c:
+	Fix typo in attribute name
+	
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+	Make NautilusFile info update use GFileInfo.
+	Update all call sites to convert to it.
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-vfs-utils.[ch]:
         Add gnome_vfs_file_info_to_gio
 

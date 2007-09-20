@@ -780,7 +780,8 @@ dequeue_pending_idle_callback (gpointer callback_data)
 	GList *node, *next;
 	NautilusFile *file;
 	GList *changed_files, *added_files;
-	GnomeVFSFileInfo *file_info;
+	GnomeVFSFileInfo *vfs_file_info;
+	GFileInfo *info;
 
 	directory = NAUTILUS_DIRECTORY (callback_data);
 
@@ -803,7 +804,7 @@ dequeue_pending_idle_callback (gpointer callback_data)
 
 	/* Build a list of NautilusFile objects. */
 	for (node = pending_file_info; node != NULL; node = node->next) {
-		file_info = node->data;
+		vfs_file_info = node->data;
 
 		/* Update the file count. */
 		/* FIXME bugzilla.gnome.org 45063: This could count a
@@ -812,23 +813,24 @@ dequeue_pending_idle_callback (gpointer callback_data)
 		 * moving this into the actual callback instead of
 		 * waiting for the idle function.
 		 */
-		if (!should_skip_file (directory, file_info)) {
+		if (!should_skip_file (directory, vfs_file_info)) {
 			directory->details->load_file_count += 1;
 
 			/* Add the MIME type to the set. */
-			if ((file_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) != 0
+			if ((vfs_file_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) != 0
 			    && directory->details->load_mime_list_hash != NULL) {
 				istr_set_insert (directory->details->load_mime_list_hash,
-						 file_info->mime_type);
+						 vfs_file_info->mime_type);
 			}
 		}
 		
 		/* check if the file already exists */
-		file = nautilus_directory_find_file_by_name (directory, file_info->name);
+		file = nautilus_directory_find_file_by_name (directory, vfs_file_info->name);
 		if (file != NULL) {
 			/* file already exists in dir, check if we still need to
 			 *  emit file_added or if it changed */
 			set_file_unconfirmed (file, FALSE);
+			info = gnome_vfs_file_info_to_gio (vfs_file_info);
 			if (!file->details->is_added) {
 				/* We consider this newly added even if its in the list.
 				 * This can happen if someone called nautilus_file_get()
@@ -837,14 +839,17 @@ dequeue_pending_idle_callback (gpointer callback_data)
 				nautilus_file_ref (file);
 				file->details->is_added = TRUE;
 				added_files = g_list_prepend (added_files, file);
-			} else if (nautilus_file_update_info (file, file_info)) {
+			} else if (nautilus_file_update_info (file, info)) {
 				/* File changed, notify about the change. */
 				nautilus_file_ref (file);
 				changed_files = g_list_prepend (changed_files, file);
 			}
+			g_object_unref (info);
 		} else {
 			/* new file, create a nautilus file object and add it to the list */
-			file = nautilus_file_new_from_info (directory, file_info);
+			info = gnome_vfs_file_info_to_gio (vfs_file_info);
+			file = nautilus_file_new_from_info (directory, info);
+			g_object_unref (info);
 			nautilus_directory_add_file (directory, file);			
 			file->details->is_added = TRUE;
 			added_files = g_list_prepend (added_files, file);
@@ -2811,6 +2816,7 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 	NautilusDirectory *directory;
 	NautilusFile *get_info_file;
 	GnomeVFSGetFileInfoResult *result;
+	GFileInfo *info;
 
 	directory = NAUTILUS_DIRECTORY (callback_data);
 	g_assert (handle == NULL || handle == directory->details->get_info_in_progress);
@@ -2842,7 +2848,9 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 		get_info_file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR, result->result,
 									      gnome_vfs_result_to_string (result->result));
 	} else {
-		nautilus_file_update_info (get_info_file, result->file_info);
+		info = gnome_vfs_file_info_to_gio (result->file_info);
+		nautilus_file_update_info (get_info_file, info);
+		g_object_unref (info);
 	}
 
 	nautilus_file_changed (get_info_file);

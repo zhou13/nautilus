@@ -185,7 +185,7 @@ struct NautilusFileDetails
 };
 
 NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory      *directory,
-							    GnomeVFSFileInfo       *info);
+							    GFileInfo              *info);
 void          nautilus_file_emit_changed                   (NautilusFile           *file);
 void          nautilus_file_mark_gone                      (NautilusFile           *file);
 char *        nautilus_extract_top_left_text               (const char             *text,
@@ -205,7 +205,7 @@ void          nautilus_file_clear_info                     (NautilusFile        
  * no change, update file and return TRUE if the file info contains
  * new state.  */
 gboolean      nautilus_file_update_info                    (NautilusFile           *file,
-							    GnomeVFSFileInfo       *info);
+							    GFileInfo              *info);
 gboolean      nautilus_file_update_name                    (NautilusFile           *file,
 							    const char             *name);
 

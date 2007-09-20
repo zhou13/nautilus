@@ -57,12 +57,12 @@ gnome_vfs_file_info_to_gio (GnomeVFSFileInfo *vfs_info)
 	}
 	
 	if (vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_DEVICE) {
-		g_file_info_set_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE,
+		g_file_info_set_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_DEVICE,
 						  vfs_info->device);
 	}
 	
 	if (vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_INODE) {
-		g_file_info_set_attribute_uint64 (info, G_FILE_ATTRIBUTE_UNIX_MODE,
+		g_file_info_set_attribute_uint64 (info, G_FILE_ATTRIBUTE_UNIX_INODE,
 						  vfs_info->inode);
 	}
 	

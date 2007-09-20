@@ -138,7 +138,7 @@ static char *   nautilus_file_get_owner_as_string            (NautilusFile      
 							      gboolean               include_real_name);
 static char *   nautilus_file_get_type_as_string             (NautilusFile          *file);
 static gboolean update_info_and_name                         (NautilusFile          *file,
-							      GnomeVFSFileInfo      *info);
+							      GFileInfo             *info);
 static char *   nautilus_file_get_display_name_nocopy        (NautilusFile          *file);
 static char *   nautilus_file_get_display_name_collation_key (NautilusFile          *file);
 
@@ -348,15 +348,17 @@ remove_from_link_hash_table (NautilusFile *file)
 
 NautilusFile *
 nautilus_file_new_from_info (NautilusDirectory *directory,
-			     GnomeVFSFileInfo *info)
+			     GFileInfo *info)
 {
 	NautilusFile *file;
+	const char *mime_type;
 
 	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
 	g_return_val_if_fail (info != NULL, NULL);
 
-	if (info->mime_type &&
-	    strcmp (info->mime_type, NAUTILUS_SAVED_SEARCH_MIMETYPE) == 0) {
+	mime_type = g_file_info_get_content_type (info);
+	if (mime_type &&
+	    strcmp (mime_type, NAUTILUS_SAVED_SEARCH_MIMETYPE) == 0) {
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_SAVED_SEARCH_FILE, NULL));
 	} else {
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_VFS_FILE, NULL));
@@ -1010,7 +1012,7 @@ has_local_path (NautilusFile *file)
 static void
 rename_callback (GnomeVFSAsyncHandle *handle,
 		 GnomeVFSResult result,
-		 GnomeVFSFileInfo *new_info,
+		 GnomeVFSFileInfo *new_vfs_info,
 		 gpointer callback_data)
 {
 	Operation *op;
@@ -1019,17 +1021,18 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 	char *old_name;
 	char *old_uri;
 	char *new_uri;
+	GFileInfo *new_info;
 
 	op = callback_data;
 	g_assert (handle == op->handle);
 
-	if (result == GNOME_VFS_OK && new_info != NULL) {
+	if (result == GNOME_VFS_OK && new_vfs_info != NULL) {
 		directory = op->file->details->directory;
 		
 		/* If there was another file by the same name in this
 		 * directory, mark it gone.
 		 */
-		existing_file = nautilus_directory_find_file_by_name (directory, new_info->name);
+		existing_file = nautilus_directory_find_file_by_name (directory, new_vfs_info->name);
 		if (existing_file != NULL) {
 			nautilus_file_mark_gone (existing_file);
 			nautilus_file_changed (existing_file);
@@ -1038,7 +1041,9 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		old_uri = nautilus_file_get_uri (op->file);
 		old_name = g_strdup (op->file->details->name);
 
+		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
 		update_info_and_name (op->file, new_info);
+		g_object_unref (new_info);
 		
 		/* Self-owned files store their metadata under the
 		 * hard-code name "."  so there's no need to rename
@@ -1365,7 +1370,7 @@ update_links_if_target (NautilusFile *target_file)
 
 static gboolean
 update_info_internal (NautilusFile *file,
-		      GnomeVFSFileInfo *info,
+		      GFileInfo *info,
 		      gboolean update_name)
 {
 	GList *node;
@@ -1377,7 +1382,8 @@ update_info_internal (NautilusFile *file,
 	int uid, gid;
 	goffset size;
 	time_t atime, mtime, ctime;
-	char *symlink_name, *mime_type, *selinux_context;
+	const char *symlink_name, *mime_type, *selinux_context, *name;
+	GFileType file_type;
 
 	if (file->details->is_gone) {
 		return FALSE;
@@ -1402,27 +1408,21 @@ update_info_internal (NautilusFile *file,
 		changed = TRUE;
 	}
 	file->details->got_file_info = TRUE;
-	
-	if (file->details->type != info->type) {
+
+	file_type = g_file_info_get_file_type (info);
+	if (file->details->type != file_type) {
 		changed = TRUE;
 	}
-	file->details->type = gnome_vfs_file_type_to_g_file_type (info->type);
+	file->details->type = file_type;
 
-	is_symlink =
-		(info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_FLAGS) &&
-		(info->flags & GNOME_VFS_FILE_FLAGS_SYMLINK);
+	is_symlink = g_file_info_get_is_symlink (info);
 	if (file->details->is_symlink != is_symlink) {
 		changed = TRUE;
 	}
 	file->details->is_symlink = is_symlink;
 		
-	
-	has_permissions = FALSE;
-	permissions = 0;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_PERMISSIONS) {
-		has_permissions = TRUE;
-		permissions = info->permissions & 07777;
-	}
+	has_permissions = g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_UNIX_MODE);
+	permissions = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE);;
 	if (file->details->has_permissions != has_permissions ||
 	    file->details->permissions != permissions) {
 		changed = TRUE;
@@ -1434,10 +1434,17 @@ update_info_internal (NautilusFile *file,
 	can_read = TRUE;
 	can_write = TRUE;
 	can_execute = TRUE;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_ACCESS) {
-		can_read = (info->permissions & GNOME_VFS_PERM_ACCESS_READABLE) != 0;
-		can_write = (info->permissions & GNOME_VFS_PERM_ACCESS_WRITABLE) != 0;
-		can_execute = (info->permissions & GNOME_VFS_PERM_ACCESS_EXECUTABLE) != 0;
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_READ)) {
+		can_read = g_file_info_get_attribute_boolean (info,
+							      G_FILE_ATTRIBUTE_ACCESS_CAN_READ);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_WRITE)) {
+		can_write = g_file_info_get_attribute_boolean (info,
+							       G_FILE_ATTRIBUTE_ACCESS_CAN_WRITE);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE)) {
+		can_execute = g_file_info_get_attribute_boolean (info,
+								G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE);
 	}
 	if (file->details->can_read != can_read ||
 	    file->details->can_write != can_write ||
@@ -1451,9 +1458,11 @@ update_info_internal (NautilusFile *file,
 
 	uid = -1;
 	gid = -1;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_IDS) {
-		uid = info->uid;
-		gid = info->gid;
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_UNIX_UID)) {
+		uid = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_UID);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_UNIX_GID)) {
+		gid = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_GID);
 	}
 	if (file->details->uid != uid ||
 	    file->details->gid != gid) {
@@ -1463,79 +1472,56 @@ update_info_internal (NautilusFile *file,
 	file->details->gid = gid;
 	
 	size = -1;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_SIZE) {
-		size = info->size;
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_STD_SIZE)) {
+		size = g_file_info_get_size (info);
 	}
 	if (file->details->size != size) {
 		changed = TRUE;
 	}
 	file->details->size = size;
 
-	atime = 0;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_ATIME) {
-		atime = info->atime;
-	}
-	if (file->details->atime != atime) {
+	atime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_ACCESS);
+	ctime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_CHANGED);
+	mtime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
+	if (file->details->atime != atime ||
+	    file->details->mtime != mtime ||
+	    file->details->ctime != ctime) {
 		changed = TRUE;
 	}
 	file->details->atime = atime;
-
-	mtime = 0;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MTIME) {
-		mtime = info->mtime;
-	}
-	if (file->details->mtime != mtime) {
-		changed = TRUE;
-	}
+	file->details->ctime = ctime;
 	file->details->mtime = mtime;
 
-	ctime = 0;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_CTIME) {
-		ctime = info->ctime;
-	}
-	if (file->details->ctime != ctime) {
-		changed = TRUE;
-	}
-	file->details->ctime = ctime;
-	
-	symlink_name = NULL;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_SYMLINK_NAME) {
-		symlink_name = g_strdup (info->symlink_name);
-	}
+	symlink_name = g_file_info_get_symlink_target (info);
 	if (eel_strcmp (file->details->symlink_name, symlink_name) != 0) {
 		changed = TRUE;
 	}
 	g_free (file->details->symlink_name);
-	file->details->symlink_name = symlink_name;
+	file->details->symlink_name = g_strdup (symlink_name);
 
-	mime_type = NULL;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) {
-		mime_type = g_strdup (info->mime_type);
-	}
+	mime_type = g_file_info_get_content_type (info);
 	if (eel_strcmp (file->details->mime_type, mime_type) != 0) {
 		changed = TRUE;
 	}
 	g_free (file->details->mime_type);
-	file->details->mime_type = mime_type;
+	file->details->mime_type = g_strdup (mime_type);
 	
-	selinux_context = NULL;
-	if (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) {
-		selinux_context = g_strdup (info->selinux_context);
-	}
+	selinux_context = g_file_info_get_attribute_string (info, "selinux:context");
 	if (eel_strcmp (file->details->selinux_context, selinux_context) != 0) {
 		changed = TRUE;
 	}
 	g_free (file->details->selinux_context);
-	file->details->selinux_context = selinux_context;
+	file->details->selinux_context = g_strdup (selinux_context);
 	
 	if (update_name) {
+		name = g_file_info_get_name (info);
 		if (file->details->name == NULL ||
-		    strcmp (file->details->name, info->name) != 0) {
+		    strcmp (file->details->name, name) != 0) {
 			node = nautilus_directory_begin_file_name_change
 				(file->details->directory, file);
 			
 			g_free (file->details->name);
-			file->details->name = g_strdup (info->name);
+			file->details->name = g_strdup (name);
 			nautilus_file_clear_cached_display_name (file);
 
 			nautilus_directory_end_file_name_change
@@ -1554,14 +1540,14 @@ update_info_internal (NautilusFile *file,
 
 static gboolean
 update_info_and_name (NautilusFile *file,
-		      GnomeVFSFileInfo *info)
+		      GFileInfo *info)
 {
 	return update_info_internal (file, info, TRUE);
 }
 
 gboolean
 nautilus_file_update_info (NautilusFile *file,
-			   GnomeVFSFileInfo *info)
+			   GFileInfo *info)
 {
 	return update_info_internal (file, info, FALSE);
 }
@@ -3539,16 +3525,19 @@ nautilus_file_get_permissions (NautilusFile *file)
 static void
 set_permissions_callback (GnomeVFSAsyncHandle *handle,
 			  GnomeVFSResult result,
-			  GnomeVFSFileInfo *new_info,
+			  GnomeVFSFileInfo *new_vfs_info,
 			  gpointer callback_data)
 {
 	Operation *op;
+	GFileInfo *new_info;
 
 	op = callback_data;
 	g_assert (handle == op->handle);
 
-	if (result == GNOME_VFS_OK && new_info != NULL) {
+	if (result == GNOME_VFS_OK && new_vfs_info != NULL) {
+		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
 		nautilus_file_update_info (op->file, new_info);
+		g_object_unref (new_info);
 	}
 	operation_complete (op, result);
 }
@@ -3869,16 +3858,19 @@ nautilus_file_can_set_owner (NautilusFile *file)
 static void
 set_owner_and_group_callback (GnomeVFSAsyncHandle *handle,
 			      GnomeVFSResult result,
-			      GnomeVFSFileInfo *new_info,
+			      GnomeVFSFileInfo *new_vfs_info,
 			      gpointer callback_data)
 {
 	Operation *op;
+	GFileInfo *new_info;
 
 	op = callback_data;
 	g_assert (handle == op->handle);
 
-	if (result == GNOME_VFS_OK && new_info != NULL) {
+	if (result == GNOME_VFS_OK && new_vfs_info != NULL) {
+		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
 		nautilus_file_update_info (op->file, new_info);
+		g_object_unref (new_info);
 	}
 	operation_complete (op, result);
 }
