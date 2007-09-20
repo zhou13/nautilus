@@ -15,4 +15,6 @@ GQuark          gnome_vfs_error_quark      (void);
 GFileType gnome_vfs_file_type_to_g_file_type (GnomeVFSFileType file_type);
 
 
+GFileInfo *gnome_vfs_file_info_to_gio (GnomeVFSFileInfo *info);
+
 #endif /* __NAUTILUS_VFS_UTILS_H__ */
