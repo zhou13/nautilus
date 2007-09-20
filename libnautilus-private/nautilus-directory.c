@@ -838,22 +838,6 @@ get_parent_directory_by_uri (const char *uri)
 	return directory;
 }
 
-/* If a directory object exists for this one's parent, then
- * return it, otherwise return NULL.
- */
-static NautilusDirectory *
-get_parent_directory_by_uri_if_exists (const char *uri)
-{
-	NautilusDirectory *directory;
-	GFile *location;
-
-	location = g_file_new_for_uri (uri);
-	directory = get_parent_directory_if_exists (location);
-	g_object_unref (location);
-	
-	return directory;
-}
-
 static void
 hash_table_list_prepend (GHashTable *table, gconstpointer key, gpointer data)
 {
@@ -1090,22 +1074,22 @@ nautilus_directory_notify_files_added_by_uri (GList *uris)
 }
 
 void
-nautilus_directory_notify_files_changed_by_uri (GList *uris)
+nautilus_directory_notify_files_changed (GList *files)
 {
 	GHashTable *changed_lists;
 	GList *node;
-	const char *uri;
+	GFile *location;
 	NautilusFile *file;
 
 	/* Make a list of changed files in each directory. */
 	changed_lists = g_hash_table_new (NULL, NULL);
 
 	/* Go through all the notifications. */
-	for (node = uris; node != NULL; node = node->next) {
-		uri = (const char *) node->data;
+	for (node = files; node != NULL; node = node->next) {
+		location = node->data;
 
 		/* Find the file. */
-		file = nautilus_file_get_existing (uri);
+		file = nautilus_file_get_existing_for_location (location);
 		if (file != NULL) {
 			/* Tell it to re-get info now, and later emit
 			 * a changed signal.
@@ -1127,14 +1111,24 @@ nautilus_directory_notify_files_changed_by_uri (GList *uris)
 }
 
 void
-nautilus_directory_notify_files_removed_by_uri (GList *uris)
+nautilus_directory_notify_files_changed_by_uri (GList *uris)
+{
+	GList *files;
+
+	files = uri_list_to_file_list (uris);
+	nautilus_directory_notify_files_changed (files);
+	eel_g_object_list_free (files);
+}
+
+void
+nautilus_directory_notify_files_removed (GList *files)
 {
 	GHashTable *changed_lists;
 	GList *p;
 	NautilusDirectory *directory;
 	GHashTable *parent_directories;
-	const char *uri;
 	NautilusFile *file;
+	GFile *location;
 
 	/* Make a list of changed files in each directory. */
 	changed_lists = g_hash_table_new (NULL, NULL);
@@ -1143,18 +1137,18 @@ nautilus_directory_notify_files_removed_by_uri (GList *uris)
 	parent_directories = g_hash_table_new (NULL, NULL);
 
 	/* Go through all the notifications. */
-	for (p = uris; p != NULL; p = p->next) {
-		uri = (const char *) p->data;
+	for (p = files; p != NULL; p = p->next) {
+		location = p->data;
 
 		/* Update file count for parent directory if anyone might care. */
-		directory = get_parent_directory_by_uri_if_exists (uri);
+		directory = get_parent_directory_if_exists (location);
 		if (directory != NULL) {
 			collect_parent_directories (parent_directories, directory);
 			nautilus_directory_unref (directory);
 		}
 
 		/* Find the file. */
-		file = nautilus_file_get_existing (uri);
+		file = nautilus_file_get_existing_for_location (location);
 		if (file != NULL && !nautilus_file_rename_in_progress (file)) {
 			/* Mark it gone and prepare to send the changed signal. */
 			nautilus_file_mark_gone (file);
@@ -1172,6 +1166,16 @@ nautilus_directory_notify_files_removed_by_uri (GList *uris)
 	/* Invalidate count for each parent directory. */
 	g_hash_table_foreach (parent_directories, invalidate_count_and_unref, NULL);
 	g_hash_table_destroy (parent_directories);
+}
+
+void
+nautilus_directory_notify_files_removed_by_uri (GList *uris)
+{
+	GList *files;
+
+	files = uri_list_to_file_list (uris);
+	nautilus_directory_notify_files_changed (files);
+	eel_g_object_list_free (files);
 }
 
 static void

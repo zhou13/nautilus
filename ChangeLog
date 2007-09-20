@@ -1,5 +1,13 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-notify.h:
+        * libnautilus-private/nautilus-directory.c:
+	Add GFile versions:
+         nautilus_directory_notify_files_changed
+         nautilus_directory_notify_files_removed
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-private.h:
         * libnautilus-private/nautilus-directory.c:
         * libnautilus-private/nautilus-file.c:

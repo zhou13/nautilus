@@ -43,14 +43,17 @@ typedef struct {
 } NautilusFileChangesQueuePosition;
 
 /* Almost-public change notification calls */
-void nautilus_directory_notify_files_added (GList *files);
-void nautilus_directory_notify_files_moved (GList *file_pairs);
+void nautilus_directory_notify_files_added   (GList *files);
+void nautilus_directory_notify_files_moved   (GList *file_pairs);
+void nautilus_directory_notify_files_changed (GList *files);
+void nautilus_directory_notify_files_removed (GList *files);
 
 /* Deprecated URI versions: to be converted */
 void nautilus_directory_notify_files_added_by_uri      (GList        *uris);
 void nautilus_directory_notify_files_changed_by_uri    (GList        *uris);
 void nautilus_directory_notify_files_moved_by_uri      (GList        *uri_pairs);
 void nautilus_directory_notify_files_removed_by_uri    (GList        *uris);
+
 void nautilus_directory_schedule_metadata_copy_by_uri   (GList        *uri_pairs);
 void nautilus_directory_schedule_metadata_move_by_uri   (GList        *uri_pairs);
 void nautilus_directory_schedule_metadata_remove_by_uri (GList        *uris);
