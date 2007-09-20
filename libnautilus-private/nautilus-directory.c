@@ -2019,16 +2019,6 @@ nautilus_self_check_directory (void)
 	nautilus_directory_unref (directory);
 
 	EEL_CHECK_INTEGER_RESULT (g_hash_table_size (directories), 0);
-
-	/* escape_slashes: code is now in gnome-vfs, but lets keep the tests here for now */
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes (""), "");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("a"), "a");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("/"), "%2F");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("%"), "%25");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("a/a"), "a%2Fa");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("a%a"), "a%25a");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("%25"), "%2525");
-	EEL_CHECK_STRING_RESULT (gnome_vfs_escape_slashes ("%2F"), "%252F");
 }
 
 #endif /* !NAUTILUS_OMIT_SELF_CHECK */
