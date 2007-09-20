@@ -31,6 +31,11 @@ typedef struct {
 } URIPair;
 
 typedef struct {
+	GFile *from;
+	GFile *to;
+} GFilePair;
+
+typedef struct {
 	char *uri;
 	gboolean set;
 	GdkPoint point;
@@ -41,6 +46,7 @@ typedef struct {
 void nautilus_directory_notify_files_added_by_location (GList *files);
 void nautilus_directory_notify_files_added       (GList        *uris);
 void nautilus_directory_notify_files_changed     (GList        *uris);
+void nautilus_directory_notify_files_moved_by_location (GList        *file_pairs);
 void nautilus_directory_notify_files_moved       (GList        *uri_pairs);
 void nautilus_directory_notify_files_removed     (GList        *uris);
 void nautilus_directory_schedule_metadata_copy   (GList        *uri_pairs);

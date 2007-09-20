@@ -2,6 +2,13 @@
 
         * libnautilus-private/nautilus-directory-notify.h:
         * libnautilus-private/nautilus-directory.c:
+	Added nautilus_directory_notify_files_moved_by_location and
+	made nautilus_directory_notify_files_moved use that.
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-notify.h:
+        * libnautilus-private/nautilus-directory.c:
         Add nautilus_directory_notify_files_added_by_location.
 	Use GFile instead of uris in more places
 

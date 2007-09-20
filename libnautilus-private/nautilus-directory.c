@@ -1082,6 +1082,35 @@ uri_list_to_file_list (GList *uris)
 	return g_list_reverse (file_list);
 }
 
+static void
+g_file_pair_free (GFilePair *pair)
+{
+	g_object_unref (pair->to);
+	g_object_unref (pair->from);
+	g_free (pair);
+}
+
+static GList *
+uri_pairs_to_file_pairs (GList *uri_pairs)
+{
+	GList *l, *file_pair_list;
+	GFilePair *file_pair;
+	URIPair *uri_pair;
+	
+	file_pair_list = NULL;
+
+	for (l = uri_pairs; l != NULL; l = l->next) {
+		uri_pair = l->data;
+		file_pair = g_new (GFilePair, 1);
+		file_pair->from = g_file_new_for_uri (uri_pair->from_uri);
+		file_pair->to = g_file_new_for_uri (uri_pair->to_uri);
+		
+		file_pair_list = g_list_prepend (file_pair_list, file_pair);
+	}
+	return g_list_reverse (file_pair_list);
+}
+
+
 void
 nautilus_directory_notify_files_added (GList *uris)
 {
@@ -1329,10 +1358,10 @@ nautilus_directory_moved (const char *old_uri,
 }
 
 void
-nautilus_directory_notify_files_moved (GList *uri_pairs)
+nautilus_directory_notify_files_moved_by_location (GList *file_pairs)
 {
 	GList *p, *affected_files, *node;
-	URIPair *pair;
+	GFilePair *pair;
 	NautilusFile *file;
 	NautilusDirectory *old_directory, *new_directory;
 	GHashTable *parent_directories;
@@ -1353,10 +1382,10 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 
 	cancel_attributes = nautilus_file_get_all_attributes ();
 
-	for (p = uri_pairs; p != NULL; p = p->next) {
+	for (p = file_pairs; p != NULL; p = p->next) {
 		pair = p->data;
-		from_location = g_file_new_for_uri (pair->from_uri);
-		to_location = g_file_new_for_uri (pair->to_uri);
+		from_location = pair->from;
+		to_location = pair->to;
 
 		/* Handle overwriting a file. */
 		file = nautilus_file_get_existing_for_location (to_location);
@@ -1387,7 +1416,7 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 		if (file == NULL) {
 			/* Handle this as if it was a new file. */
 			new_files_list = g_list_prepend (new_files_list,
-							 g_object_ref (to_location));
+							 to_location);
 		} else {
 			/* Handle notification in the old directory. */
 			old_directory = file->details->directory;
@@ -1425,9 +1454,6 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 			/* Unref each file once to balance out nautilus_file_get. */
 			unref_list = g_list_prepend (unref_list, file);
 		}
-
-		g_object_unref (from_location);
-		g_object_unref (to_location);
 	}
 
 	/* Now send out the changed and added signals for existing file objects. */
@@ -1445,7 +1471,18 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 
 	/* Separate handling for brand new file objects. */
 	nautilus_directory_notify_files_added_by_location (new_files_list);
-	eel_g_object_list_free (new_files_list);
+	g_list_free (new_files_list);
+}
+
+void
+nautilus_directory_notify_files_moved (GList *uri_pairs)
+{
+	GList *file_pairs;
+
+	file_pairs = uri_pairs_to_file_pairs (uri_pairs);
+	nautilus_directory_notify_files_moved_by_location (file_pairs);
+	g_list_foreach (file_pairs, (GFunc)g_file_pair_free, NULL);
+	g_list_free (file_pairs);
 }
 
 void 
