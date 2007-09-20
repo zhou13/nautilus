@@ -823,38 +823,50 @@ nautilus_directory_emit_load_error (NautilusDirectory *directory,
 			 error);
 }
 
-static char *
-uri_get_directory_part (const char *uri)
+/* Return a directory object for this one's parent. */
+static NautilusDirectory *
+get_parent_directory_for_location (GFile *location)
 {
-	GFile *parent, *location;
-	char *parent_uri;
+	NautilusDirectory *directory;
+	GFile *parent;
 
-	location = g_file_new_for_uri (uri);
 	parent = g_file_get_parent (location);
-	g_object_unref (location);
-
-	parent_uri = NULL;
 	if (parent) {
-		parent_uri = g_file_get_uri (parent);
+		directory = nautilus_directory_get_for_location (parent, TRUE);
 		g_object_unref (parent);
+		return directory;
 	}
-	return parent_uri;
+	return NULL;
 }
 
+/* If a directory object exists for this one's parent, then
+ * return it, otherwise return NULL.
+ */
+static NautilusDirectory *
+get_parent_directory_for_location_if_exists (GFile *location)
+{
+	NautilusDirectory *directory;
+	GFile *parent;
+
+	parent = g_file_get_parent (location);
+	if (parent) {
+		directory = nautilus_directory_get_for_location (parent, FALSE);
+		g_object_unref (parent);
+		return directory;
+	}
+	return NULL;
+}
 
 /* Return a directory object for this one's parent. */
 static NautilusDirectory *
 get_parent_directory (const char *uri)
 {
 	NautilusDirectory *directory;
-	GFile *parent, *location;
+	GFile *location;
 
 	location = g_file_new_for_uri (uri);
-	parent = g_file_get_parent (location);
+	directory = get_parent_directory_for_location (location);
 	g_object_unref (location);
-	
-	directory = nautilus_directory_get_for_location (parent, TRUE);
-	g_object_unref (parent);
 	return directory;
 }
 
@@ -865,14 +877,12 @@ static NautilusDirectory *
 get_parent_directory_if_exists (const char *uri)
 {
 	NautilusDirectory *directory;
-	GFile *parent, *location;
+	GFile *location;
 
 	location = g_file_new_for_uri (uri);
-	parent = g_file_get_parent (location);
+	directory = get_parent_directory_for_location_if_exists (location);
 	g_object_unref (location);
 	
-	directory = nautilus_directory_get_for_location (parent, FALSE);
-	g_object_unref (parent);
 	return directory;
 }
 
@@ -978,16 +988,14 @@ collect_parent_directories (GHashTable *hash_table, NautilusDirectory *directory
 }
 
 void
-nautilus_directory_notify_files_added (GList *uris)
+nautilus_directory_notify_files_added_by_location (GList *files)
 {
 	GHashTable *added_lists;
 	GList *p;
 	NautilusDirectory *directory;
 	GHashTable *parent_directories;
-	const char *uri;
-	char *directory_uri;
 	NautilusFile *file;
-	GFile *location;
+	GFile *location, *parent;
 
 	/* Make a list of added files in each directory. */
 	added_lists = g_hash_table_new (NULL, NULL);
@@ -995,20 +1003,24 @@ nautilus_directory_notify_files_added (GList *uris)
 	/* Make a list of parent directories that will need their counts updated. */
 	parent_directories = g_hash_table_new (NULL, NULL);
 
-	for (p = uris; p != NULL; p = p->next) {
-		uri = (const char *) p->data;
+	for (p = files; p != NULL; p = p->next) {
+		location = p->data;
 
 		/* See if the directory is already known. */
-		directory = get_parent_directory_if_exists (uri);
+		directory = get_parent_directory_for_location_if_exists (location);
 		if (directory == NULL) {
 			/* In case the directory is not being
 			 * monitored, but the corresponding file is,
 			 * we must invalidate it's item count.
 			 */
-			
-			directory_uri = uri_get_directory_part (uri);
-			file = nautilus_file_get_existing (directory_uri);
-			g_free (directory_uri);
+
+
+			file = NULL;
+			parent = g_file_get_parent (location);
+			if (parent) {
+				file = nautilus_file_get_existing_for_location (parent);
+				g_object_unref (parent);
+			}
 
 			if (file != NULL) {
 				nautilus_file_invalidate_count_and_mime_list (file);
@@ -1026,7 +1038,7 @@ nautilus_directory_notify_files_added (GList *uris)
 			continue;
 		}
 
-		file = nautilus_file_get_existing (uri);
+		file = nautilus_file_get_existing_for_location (location);
 		if (file) {
 			/* A file already exists, it was probably renamed.
 			 * If it was renamed this could be ignored, but 
@@ -1034,17 +1046,9 @@ nautilus_directory_notify_files_added (GList *uris)
 			nautilus_file_changed (file);
 			nautilus_file_unref (file);
 		} else {
-			/* Collect the GFiles to use. */
-			location = g_file_new_for_uri (uri);
-			if (location == NULL) {
-				nautilus_directory_unref (directory);
-				g_warning ("bad uri %s", uri);
-				continue;
-			}
-			
 			hash_table_list_prepend (added_lists, 
 						 directory, 
-						 location);
+						 g_object_ref (location));
 		}
 		nautilus_directory_unref (directory);
 	}
@@ -1058,6 +1062,34 @@ nautilus_directory_notify_files_added (GList *uris)
 	/* Invalidate count for each parent directory. */
 	g_hash_table_foreach (parent_directories, invalidate_count_and_unref, NULL);
 	g_hash_table_destroy (parent_directories);
+}
+
+static GList *
+uri_list_to_file_list (GList *uris)
+{
+	GList *l, *file_list;
+	const char *uri;
+	GFile *file;
+		
+	
+	file_list = NULL;
+
+	for (l = uris; l != NULL; l = l->next) {
+		uri = l->data;
+		file = g_file_new_for_uri (uri);
+		file_list = g_list_prepend (file_list, file);
+	}
+	return g_list_reverse (file_list);
+}
+
+void
+nautilus_directory_notify_files_added (GList *uris)
+{
+	GList *files;
+
+	files = uri_list_to_file_list (uris);
+	nautilus_directory_notify_files_added_by_location (files);
+	eel_g_object_list_free (files);
 }
 
 void
@@ -1183,104 +1215,84 @@ change_directory_location (NautilusDirectory *directory,
 }
 
 typedef struct {
-	char *uri_prefix;
+	GFile *container;
 	GList *directories;
 } CollectData;
 
 static void
-collect_directories_by_prefix (gpointer key, gpointer value, gpointer callback_data)
+collect_directories_by_container (gpointer key, gpointer value, gpointer callback_data)
 {
-	const char *uri, *uri_suffix;
 	NautilusDirectory *directory;
 	CollectData *collect_data;
+	GFile *location;
 
-	uri = (const char *) key;
+	location = (GFile *) key;
 	directory = NAUTILUS_DIRECTORY (value);
 	collect_data = (CollectData *) callback_data;
-	
-	if (eel_str_has_prefix (uri, collect_data->uri_prefix)) {
-		uri_suffix = &uri[strlen (collect_data->uri_prefix)];
-		switch (uri_suffix[0]) {
-		case '\0':
-		case '/':
-			nautilus_directory_ref (directory);
-			collect_data->directories =
-				g_list_prepend (collect_data->directories,
-						directory);
-			break;
-		}
+
+	if (g_file_contains_file (collect_data->container, location) ||
+	    g_file_equal (collect_data->container, location)) {
+		nautilus_directory_ref (directory);
+		collect_data->directories =
+			g_list_prepend (collect_data->directories,
+					directory);
 	}
 }
 
-static char *
-str_replace_prefix (const char *str,
-		    const char *old_prefix,
-		    const char *new_prefix)
-{
-	const char *old_suffix;
-
-	g_return_val_if_fail (eel_str_has_prefix (str, old_prefix),
-			      g_strdup (str));
-
-	old_suffix = &str [strlen (old_prefix)];
-	return g_strconcat (new_prefix, old_suffix, NULL);
-}
-
 static GList *
-nautilus_directory_moved_internal (const char *old_uri,
-				   const char *new_uri)
+nautilus_directory_moved_internal (GFile *old_location,
+				   GFile *new_location)
 {
-	char *canonical_old_uri, *canonical_new_uri;
 	CollectData collection;
 	NautilusDirectory *directory;
-	char *old_directory_uri;
-	char *new_directory_uri;
 	GList *node, *affected_files;
-	GFile *new_location;
+	GFile *new_directory_location;
+	char *relative_path;
 
-	canonical_old_uri = nautilus_directory_make_uri_canonical (old_uri);
-	canonical_new_uri = nautilus_directory_make_uri_canonical (new_uri);
-
-	collection.uri_prefix = canonical_old_uri;
+	collection.container = old_location;
 	collection.directories = NULL;
 
 	g_hash_table_foreach (directories,
-			      collect_directories_by_prefix,
+			      collect_directories_by_container,
 			      &collection);
 
 	affected_files = NULL;
 
 	for (node = collection.directories; node != NULL; node = node->next) {
 		directory = NAUTILUS_DIRECTORY (node->data);
+		new_directory_location = NULL;
 
-		old_directory_uri = nautilus_directory_get_uri (directory);
-		/* Change the URI in the directory object. */
-		new_directory_uri = str_replace_prefix (old_directory_uri,
-							canonical_old_uri,
-							canonical_new_uri);
-		new_location = g_file_new_for_uri (new_directory_uri);
-		change_directory_location (directory, new_location);
-		g_object_unref (new_location);
-		g_free (old_directory_uri);
-		g_free (new_directory_uri);
-
-		/* Collect affected files. */
-		if (directory->details->as_file != NULL) {
-			affected_files = g_list_prepend
-				(affected_files,
-				 nautilus_file_ref (directory->details->as_file));
+		if (g_file_equal (directory->details->location, old_location)) {
+			new_directory_location = g_object_ref (new_location);
+		} else {
+			relative_path = g_file_get_relative_path (old_location,
+								  directory->details->location);
+			if (relative_path != NULL) {
+				new_directory_location = g_file_resolve_relative_path (new_location, relative_path);
+				g_free (relative_path);
+				
+			}
 		}
-		affected_files = g_list_concat
-			(affected_files,
-			 nautilus_file_list_copy (directory->details->file_list));
+		
+		if (new_directory_location) {
+			change_directory_location (directory, new_directory_location);
+			g_object_unref (new_directory_location);
+		
+			/* Collect affected files. */
+			if (directory->details->as_file != NULL) {
+				affected_files = g_list_prepend
+					(affected_files,
+					 nautilus_file_ref (directory->details->as_file));
+			}
+			affected_files = g_list_concat
+				(affected_files,
+				 nautilus_file_list_copy (directory->details->file_list));
+		}
 		
 		nautilus_directory_unref (directory);
 	}
 
 	g_list_free (collection.directories);
-
-	g_free (canonical_old_uri);
-	g_free (canonical_new_uri);
 
 	return affected_files;
 }
@@ -1292,10 +1304,15 @@ nautilus_directory_moved (const char *old_uri,
 	GList *list, *node;
 	GHashTable *hash;
 	NautilusFile *file;
+	GFile *old_location;
+	GFile *new_location;
 
 	hash = g_hash_table_new (NULL, NULL);
 
-	list = nautilus_directory_moved_internal (old_uri, new_uri);
+	old_location = g_file_new_for_uri (old_uri);
+	new_location = g_file_new_for_uri (new_uri);
+	
+	list = nautilus_directory_moved_internal (old_location, new_location);
 	for (node = list; node != NULL; node = node->next) {
 		file = NAUTILUS_FILE (node->data);
 		hash_table_list_prepend (hash,
@@ -1303,6 +1320,9 @@ nautilus_directory_moved (const char *old_uri,
 					 nautilus_file_ref (file));
 	}
 	nautilus_file_list_free (list);
+	
+	g_object_unref (old_location);
+	g_object_unref (new_location);
 
 	g_hash_table_foreach (hash, call_files_changed_unref_free_list, NULL);
 	g_hash_table_destroy (hash);
@@ -1320,6 +1340,7 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 	GHashTable *added_lists, *changed_lists;
 	char *name;
 	NautilusFileAttributes cancel_attributes;
+	GFile *to_location, *from_location;
 	
 	/* Make a list of added and changed files in each directory. */
 	new_files_list = NULL;
@@ -1334,9 +1355,11 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 
 	for (p = uri_pairs; p != NULL; p = p->next) {
 		pair = p->data;
+		from_location = g_file_new_for_uri (pair->from_uri);
+		to_location = g_file_new_for_uri (pair->to_uri);
 
 		/* Handle overwriting a file. */
-		file = nautilus_file_get_existing (pair->to_uri);
+		file = nautilus_file_get_existing_for_location (to_location);
 		if (file != NULL) {
 			/* Mark it gone and prepare to send the changed signal. */
 			nautilus_file_mark_gone (file);
@@ -1349,8 +1372,8 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 		}
 
 		/* Update any directory objects that are affected. */
-		affected_files = nautilus_directory_moved_internal (pair->from_uri,
-								    pair->to_uri);
+		affected_files = nautilus_directory_moved_internal (from_location,
+								    to_location);
 		for (node = affected_files; node != NULL; node = node->next) {
 			file = NAUTILUS_FILE (node->data);
 			hash_table_list_prepend (changed_lists,
@@ -1360,11 +1383,11 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 		unref_list = g_list_concat (unref_list, affected_files);
 
 		/* Move an existing file. */
-		file = nautilus_file_get_existing (pair->from_uri);
+		file = nautilus_file_get_existing_for_location (from_location);
 		if (file == NULL) {
 			/* Handle this as if it was a new file. */
 			new_files_list = g_list_prepend (new_files_list,
-							 pair->to_uri);
+							 g_object_ref (to_location));
 		} else {
 			/* Handle notification in the old directory. */
 			old_directory = file->details->directory;
@@ -1375,7 +1398,7 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 				(old_directory, file, cancel_attributes);
 
 			/* Locate the new directory. */
-			new_directory = get_parent_directory (pair->to_uri);
+			new_directory = get_parent_directory_for_location (to_location);
 			collect_parent_directories (parent_directories, new_directory);
 			/* We can unref now -- new_directory is in the
 			 * parent directories list so it will be
@@ -1385,7 +1408,7 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 			nautilus_directory_unref (new_directory);
 
 			/* Update the file's name and directory. */
-			name = eel_uri_get_basename (pair->to_uri);
+			name = g_file_get_basename (to_location);
 			nautilus_file_update_name_and_directory 
 				(file, name, new_directory);
 			g_free (name);
@@ -1402,6 +1425,9 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 			/* Unref each file once to balance out nautilus_file_get. */
 			unref_list = g_list_prepend (unref_list, file);
 		}
+
+		g_object_unref (from_location);
+		g_object_unref (to_location);
 	}
 
 	/* Now send out the changed and added signals for existing file objects. */
@@ -1418,8 +1444,8 @@ nautilus_directory_notify_files_moved (GList *uri_pairs)
 	g_hash_table_destroy (parent_directories);
 
 	/* Separate handling for brand new file objects. */
-	nautilus_directory_notify_files_added (new_files_list);
-	g_list_free (new_files_list);
+	nautilus_directory_notify_files_added_by_location (new_files_list);
+	eel_g_object_list_free (new_files_list);
 }
 
 void 

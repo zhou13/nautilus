@@ -38,6 +38,7 @@ typedef struct {
 } NautilusFileChangesQueuePosition;
 
 /* Almost-public change notification calls */
+void nautilus_directory_notify_files_added_by_location (GList *files);
 void nautilus_directory_notify_files_added       (GList        *uris);
 void nautilus_directory_notify_files_changed     (GList        *uris);
 void nautilus_directory_notify_files_moved       (GList        *uri_pairs);

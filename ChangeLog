@@ -1,5 +1,12 @@
 2007-09-20  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-notify.h:
+        * libnautilus-private/nautilus-directory.c:
+        Add nautilus_directory_notify_files_added_by_location.
+	Use GFile instead of uris in more places
+
+2007-09-20  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-private.h:
         * libnautilus-private/nautilus-directory.c:
         * libnautilus-private/nautilus-file.[ch]:
