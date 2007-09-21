@@ -607,7 +607,6 @@ nautilus_directory_monitor_add_internal (NautilusDirectory *directory,
 {
 	Monitor *monitor;
 	GList *file_list;
-	char *uri;
 		
 	g_assert (NAUTILUS_IS_DIRECTORY (directory));
 
@@ -638,9 +637,7 @@ nautilus_directory_monitor_add_internal (NautilusDirectory *directory,
 	 * it allows us to avoid one file monitor per file in a directory.
 	 */
 	if (directory->details->monitor == NULL) {
-		uri = nautilus_directory_get_uri (directory);
-		directory->details->monitor = nautilus_monitor_directory (uri);
-		g_free (uri);
+		directory->details->monitor = nautilus_monitor_directory (directory->details->location);
 	}
 	
 	/* We could just call update_metadata_monitors here, but we can be smarter

@@ -1,6 +1,12 @@
 2007-09-21  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-monitor.[ch]:
+	Use gio to implement file monitoring.
+
+2007-09-21  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-directory-private.h:
 	Read info for new files 
 
