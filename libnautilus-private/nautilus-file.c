@@ -197,6 +197,8 @@ nautilus_file_clear_info (NautilusFile *file)
 		file->details->get_info_error = NULL;
 	}
 	file->details->is_symlink = FALSE;
+	file->details->is_hidden = FALSE;
+	file->details->is_backup = FALSE;
 	file->details->type = G_FILE_TYPE_UNKNOWN;
 	file->details->uid = -1;
 	file->details->gid = -1;
@@ -1375,7 +1377,7 @@ update_info_internal (NautilusFile *file,
 {
 	GList *node;
 	gboolean changed;
-	gboolean is_symlink;
+	gboolean is_symlink, is_hidden, is_backup;
 	gboolean has_permissions;
 	GnomeVFSFilePermissions permissions;
 	gboolean can_read, can_write, can_execute;
@@ -1420,6 +1422,18 @@ update_info_internal (NautilusFile *file,
 		changed = TRUE;
 	}
 	file->details->is_symlink = is_symlink;
+		
+	is_hidden = g_file_info_get_is_hidden (info);
+	if (file->details->is_hidden != is_hidden) {
+		changed = TRUE;
+	}
+	file->details->is_hidden = is_hidden;
+		
+	is_backup = g_file_info_get_is_backup (info);
+	if (file->details->is_backup != is_backup) {
+		changed = TRUE;
+	}
+	file->details->is_backup = is_backup;
 		
 	has_permissions = g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_UNIX_MODE);
 	permissions = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE);;
@@ -2397,15 +2411,13 @@ nautilus_file_compare_display_name (NautilusFile *file,
 gboolean
 nautilus_file_is_hidden_file (NautilusFile *file)
 {
-	return nautilus_file_name_matches_hidden_pattern
-		(file->details->name);
+	return file->details->is_hidden;
 }
 
 gboolean 
 nautilus_file_is_backup_file (NautilusFile *file)
 {
-	return nautilus_file_name_matches_backup_pattern
-		(file->details->name);
+	return file->details->is_backup;
 }
 
 static gboolean

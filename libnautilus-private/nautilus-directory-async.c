@@ -61,6 +61,9 @@
 #define DEBUG_START_STOP
 #endif
 
+/* TODO: Read less than this */
+#define DEFAULT_FILE_INFO_ATTRIBUTES "*"
+
 
 #define DIRECTORY_LOAD_ITEMS_PER_CALLBACK 100
 
@@ -76,6 +79,13 @@ struct TopLeftTextReadState {
 struct LinkInfoReadState {
 	NautilusFile *file;
 	EelReadFileHandle *handle;
+};
+
+
+struct DirectoryLoadState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+	GFileEnumerator *enumerator;
 };
 
 typedef struct {
@@ -677,25 +687,7 @@ show_backup_files_changed_callback (gpointer callback_data)
 }
 
 static gboolean
-is_dot_or_dot_dot (const char *name)
-{
-	if (name[0] != '.') {
-		return FALSE;
-	}
-	if (name[1] == '\0') {
-		return TRUE;
-	}
-	if (name[1] != '.') {
-		return FALSE;
-	}
-	if (name[2] == '\0') {
-		return TRUE;
-	}
-	return FALSE;
-}
-
-static gboolean
-should_skip_file (NautilusDirectory *directory, GnomeVFSFileInfo *info)
+should_skip_file (NautilusDirectory *directory, GFileInfo *info)
 {
 	static gboolean show_hidden_files_changed_callback_installed = FALSE;
 	static gboolean show_backup_files_changed_callback_installed = FALSE;
@@ -722,20 +714,15 @@ should_skip_file (NautilusDirectory *directory, GnomeVFSFileInfo *info)
 		show_backup_files_changed_callback (NULL);
 	}
 
-	if (info == NULL || info->name == NULL) {
+	if (!show_hidden_files &&
+	    (g_file_info_get_is_hidden (info) ||
+	     (directory != NULL &&
+	      g_hash_table_lookup (directory->details->hidden_file_hash,
+				   g_file_info_get_name (info)) != NULL))) {
 		return TRUE;
 	}
-
-	if (is_dot_or_dot_dot (info->name)) {
-		return TRUE;
-	}
-
-	if (!show_hidden_files && (nautilus_file_name_matches_hidden_pattern (info->name) ||
-				   (directory != NULL &&
-				    g_hash_table_lookup (directory->details->hidden_file_hash, info->name) != NULL))) {
-		return TRUE;
-	}
-	if (!show_backup_files && nautilus_file_name_matches_backup_pattern (info->name)) {
+	
+	if (!show_backup_files && g_file_info_get_is_backup (info)) {
 		return TRUE;
 	}
 
@@ -780,8 +767,8 @@ dequeue_pending_idle_callback (gpointer callback_data)
 	GList *node, *next;
 	NautilusFile *file;
 	GList *changed_files, *added_files;
-	GnomeVFSFileInfo *vfs_file_info;
-	GFileInfo *info;
+	GFileInfo *file_info;
+	const char *mimetype, *name;
 
 	directory = NAUTILUS_DIRECTORY (callback_data);
 
@@ -804,8 +791,10 @@ dequeue_pending_idle_callback (gpointer callback_data)
 
 	/* Build a list of NautilusFile objects. */
 	for (node = pending_file_info; node != NULL; node = node->next) {
-		vfs_file_info = node->data;
+		file_info = node->data;
 
+		name = g_file_info_get_name (file_info);
+		
 		/* Update the file count. */
 		/* FIXME bugzilla.gnome.org 45063: This could count a
 		 * file twice if we get it from both load_directory
@@ -813,24 +802,23 @@ dequeue_pending_idle_callback (gpointer callback_data)
 		 * moving this into the actual callback instead of
 		 * waiting for the idle function.
 		 */
-		if (!should_skip_file (directory, vfs_file_info)) {
+		if (!should_skip_file (directory, file_info)) {
 			directory->details->load_file_count += 1;
 
 			/* Add the MIME type to the set. */
-			if ((vfs_file_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) != 0
-			    && directory->details->load_mime_list_hash != NULL) {
+			mimetype = g_file_info_get_content_type (file_info);
+			if (mimetype != NULL && directory->details->load_mime_list_hash != NULL) {
 				istr_set_insert (directory->details->load_mime_list_hash,
-						 vfs_file_info->mime_type);
+						 mimetype);
 			}
 		}
 		
 		/* check if the file already exists */
-		file = nautilus_directory_find_file_by_name (directory, vfs_file_info->name);
+		file = nautilus_directory_find_file_by_name (directory, name);
 		if (file != NULL) {
 			/* file already exists in dir, check if we still need to
 			 *  emit file_added or if it changed */
 			set_file_unconfirmed (file, FALSE);
-			info = gnome_vfs_file_info_to_gio (vfs_file_info);
 			if (!file->details->is_added) {
 				/* We consider this newly added even if its in the list.
 				 * This can happen if someone called nautilus_file_get()
@@ -839,17 +827,14 @@ dequeue_pending_idle_callback (gpointer callback_data)
 				nautilus_file_ref (file);
 				file->details->is_added = TRUE;
 				added_files = g_list_prepend (added_files, file);
-			} else if (nautilus_file_update_info (file, info)) {
+			} else if (nautilus_file_update_info (file, file_info)) {
 				/* File changed, notify about the change. */
 				nautilus_file_ref (file);
 				changed_files = g_list_prepend (changed_files, file);
 			}
-			g_object_unref (info);
 		} else {
 			/* new file, create a nautilus file object and add it to the list */
-			info = gnome_vfs_file_info_to_gio (vfs_file_info);
-			file = nautilus_file_new_from_info (directory, info);
-			g_object_unref (info);
+			file = nautilus_file_new_from_info (directory, file_info);
 			nautilus_directory_add_file (directory, file);			
 			file->details->is_added = TRUE;
 			added_files = g_list_prepend (added_files, file);
@@ -906,7 +891,7 @@ dequeue_pending_idle_callback (gpointer callback_data)
 	}
 
  drain:
-	gnome_vfs_file_info_list_free (pending_file_info);
+	eel_g_object_list_free (pending_file_info);
 
 	/* Get the state machine running again. */
 	nautilus_directory_async_state_changed (directory);
@@ -926,15 +911,14 @@ nautilus_directory_schedule_dequeue_pending (NautilusDirectory *directory)
 
 static void
 directory_load_one (NautilusDirectory *directory,
-		    GnomeVFSFileInfo *info)
+		    GFileInfo *info)
 {
-	if (info == NULL || info->name == NULL ||
-	    is_dot_or_dot_dot (info->name)) {
+	if (info == NULL) {
 		return;
 	}
 
 	/* Arrange for the "loading" part of the work. */
-	gnome_vfs_file_info_ref (info);
+	g_object_ref (info);
 	directory->details->pending_file_info
 		= g_list_prepend (directory->details->pending_file_info, info);
 	nautilus_directory_schedule_dequeue_pending (directory);
@@ -944,7 +928,8 @@ static void
 directory_load_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->directory_load_in_progress != NULL) {
-		gnome_vfs_async_cancel (directory->details->directory_load_in_progress);
+		g_cancellable_cancel (directory->details->directory_load_in_progress->cancellable);
+		directory->details->directory_load_in_progress->directory = NULL;
 		directory->details->directory_load_in_progress = NULL;
 		async_job_end (directory, "file list");
 	}
@@ -967,7 +952,7 @@ file_list_cancel (NautilusDirectory *directory)
 	}
 
 	if (directory->details->pending_file_info != NULL) {
-		gnome_vfs_file_info_list_free (directory->details->pending_file_info);
+		eel_g_object_list_free  (directory->details->pending_file_info);
 		directory->details->pending_file_info = NULL;
 	}
 
@@ -978,10 +963,9 @@ file_list_cancel (NautilusDirectory *directory)
 
 static void
 directory_load_done (NautilusDirectory *directory,
-		     GnomeVFSResult result)
+		     GError *error)
 {
 	GList *node;
-	GError *error;
 
 	directory_load_cancel (directory);
 	directory->details->directory_loaded = TRUE;
@@ -991,7 +975,7 @@ directory_load_done (NautilusDirectory *directory,
 	 * length limit has been reached. In that case, don't treat it as
 	 * an error.
 	 */
-	if (result != GNOME_VFS_ERROR_EOF && result != GNOME_VFS_OK) {
+	if (error != NULL) {
 		/* The load did not complete successfully. This means
 		 * we don't know the status of the files in this directory.
 		 * We clear the unconfirmed bit on each file here so that
@@ -1003,11 +987,7 @@ directory_load_done (NautilusDirectory *directory,
 			set_file_unconfirmed (NAUTILUS_FILE (node->data), FALSE);
 		}
 
-		
-		error = g_error_new_literal (GNOME_VFS_ERROR, result, "");
-		nautilus_directory_emit_load_error (directory,
-						    error);
-		g_error_free (error);
+		nautilus_directory_emit_load_error (directory, error);
 	}
 
 	/* Call the idle function right away. */
@@ -1015,35 +995,6 @@ directory_load_done (NautilusDirectory *directory,
 		g_source_remove (directory->details->dequeue_pending_idle_id);
 	}
 	dequeue_pending_idle_callback (directory);
-}
-
-static void
-directory_load_callback (GnomeVFSAsyncHandle *handle,
-			 GnomeVFSResult result,
-			 GList *list,
-			 guint entries_read,
-			 gpointer callback_data)
-{
-	NautilusDirectory *directory;
-	GList *element;
-
-	directory = NAUTILUS_DIRECTORY (callback_data);
-
-	g_assert (directory->details->directory_load_in_progress != NULL);
-	g_assert (directory->details->directory_load_in_progress == handle);
-
-	nautilus_directory_ref (directory);
-
-	for (element = list; element != NULL; element = element->next) {
-		directory_load_one (directory, element->data);
-	}
-
-	if (nautilus_directory_file_list_length_reached (directory)
-	    || result != GNOME_VFS_OK) {
-		directory_load_done (directory, result);
-	}
-
-	nautilus_directory_unref (directory);
 }
 
 /* This checks if there's a request for the metafile contents. */
@@ -1402,12 +1353,17 @@ count_non_skipped_files (GList *list)
 {
 	guint count;
 	GList *node;
+	GnomeVFSFileInfo *vfs_info;
+	GFileInfo *info;
 
 	count = 0;
 	for (node = list; node != NULL; node = node->next) {
-		if (!should_skip_file (NULL, node->data)) {
+		vfs_info = node->data;
+		info = gnome_vfs_file_info_to_gio (vfs_info);
+		if (!should_skip_file (NULL, info)) {
 			count += 1;
 		}
+		g_object_unref (info);
 	}
 	return count;
 }
@@ -1469,6 +1425,7 @@ new_files_callback (GnomeVFSAsyncHandle *handle,
 	GList **handles, *node;
 	NautilusDirectory *directory;
 	GnomeVFSGetFileInfoResult *result;
+	GFileInfo *info;
 
 	directory = NAUTILUS_DIRECTORY (callback_data);
 	handles = &directory->details->get_file_infos_in_progress;
@@ -1484,7 +1441,9 @@ new_files_callback (GnomeVFSAsyncHandle *handle,
 		result = node->data;
 
 		if (result->result == GNOME_VFS_OK) {
-			directory_load_one (directory, result->file_info);
+			info = gnome_vfs_file_info_to_gio (result->file_info);
+			directory_load_one (directory, info);
+			g_object_unref (info);
 		}
 	}
 
@@ -2038,20 +1997,128 @@ read_dot_hidden_file (NautilusDirectory *directory)
 	g_free (file_contents);
 }
 
+static void
+directory_load_state_free (DirectoryLoadState *state)
+{
+	if (state->enumerator) {
+		if (!g_file_enumerator_is_closed (state->enumerator)) {
+			g_file_enumerator_close_async (state->enumerator,
+						       0, NULL, NULL, NULL);
+		}
+		g_object_unref (state->enumerator);
+	}
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
+more_files_callback (GObject *source_object,
+		     GAsyncResult *res,
+		     gpointer user_data)
+{
+	DirectoryLoadState *state;
+	NautilusDirectory *directory;
+	GError *error;
+	GList *files, *l;
+	GFileInfo *info;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		directory_load_state_free (state);
+		return;
+	}
+
+	directory = nautilus_directory_ref (state->directory);
+	
+	g_assert (directory->details->directory_load_in_progress != NULL);
+	g_assert (directory->details->directory_load_in_progress == state);
+
+	error = NULL;
+	files = g_file_enumerator_next_files_finish (state->enumerator,
+						     res, &error);
+
+	for (l = files; l != NULL; l = l->next) {
+		info = l->data;
+		directory_load_one (directory, info);
+		g_object_unref (info);
+	}
+
+	if (nautilus_directory_file_list_length_reached (directory) ||
+	    files == NULL) {
+		directory_load_done (directory, error);
+		directory_load_state_free (state);
+	} else {
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    0,
+						    state->cancellable,
+						    more_files_callback,
+						    state);
+	}
+
+	nautilus_directory_unref (directory);
+	
+	if (error) {
+		g_error_free (error);
+	}
+	
+	g_list_free (files);
+}
+
+static void
+enumerate_children_callback (GObject *source_object,
+			     GAsyncResult *res,
+			     gpointer user_data)
+{
+	DirectoryLoadState *state;
+	GFileEnumerator *enumerator;
+	GError *error;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		directory_load_state_free (state);
+		return;
+	}
+	
+	error = NULL;
+	enumerator = g_file_enumerate_children_finish  (G_FILE (source_object),
+							res, &error);
+
+	if (enumerator == NULL) {
+		directory_load_done (state->directory, error);
+		g_error_free (error);
+		directory_load_state_free (state);
+		return;
+	} else {
+		state->enumerator = enumerator;
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    0,
+						    state->cancellable,
+						    more_files_callback,
+						    state);
+	}
+}
+
+
 /* Start monitoring the file list if it isn't already. */
 static void
 start_monitoring_file_list (NautilusDirectory *directory)
 {
-	char *uri;
+	DirectoryLoadState *state;
 	
 	if (!directory->details->file_list_monitored) {
-		g_assert (directory->details->directory_load_in_progress == NULL);
+		g_assert (!directory->details->directory_load_in_progress);
 		directory->details->file_list_monitored = TRUE;
 		nautilus_file_list_ref (directory->details->file_list);
 	}
 
-	if (directory->details->directory_loaded
-	    || directory->details->directory_load_in_progress != NULL) {
+	if (directory->details->directory_loaded  ||
+	    directory->details->directory_load_in_progress != NULL) {
 		return;
 	}
 
@@ -2083,16 +2150,19 @@ start_monitoring_file_list (NautilusDirectory *directory)
 #ifdef DEBUG_LOAD_DIRECTORY
 	g_message ("load_directory called to monitor file list of %p", directory->details->location);
 #endif
-	uri = nautilus_directory_get_uri (directory);
-	gnome_vfs_async_load_directory
-		(&directory->details->directory_load_in_progress, /* handle */
-		 uri,                         /* uri */
-		 NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS,
-		 DIRECTORY_LOAD_ITEMS_PER_CALLBACK,               /* items_per_notification */
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 directory_load_callback,                         /* callback */
-		 directory);
-	g_free (uri);
+	state = g_new0 (DirectoryLoadState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+	
+	directory->details->directory_load_in_progress = state;
+	
+	g_file_enumerate_children_async (directory->details->location,
+					 DEFAULT_FILE_INFO_ATTRIBUTES,
+					 0, /* flags */
+					 0, /* prio */
+					 state->cancellable,
+					 enumerate_children_callback,
+					 state);
 }
 
 /* Stop monitoring the file list if it is being monitored. */
@@ -2320,23 +2390,28 @@ directory_count_start (NautilusDirectory *directory,
 
 static void
 deep_count_one (NautilusDirectory *directory,
-		GnomeVFSFileInfo *info)
+		GnomeVFSFileInfo *vfs_info)
 {
 	NautilusFile *file;
 	char *escaped_name, *uri;
+	GFileInfo *info;
 	
-	if (should_skip_file (NULL, info))
+	info = gnome_vfs_file_info_to_gio (vfs_info);
+	if (should_skip_file (NULL, info)) {
+		g_object_unref (info);
 		return;
+	}
+	g_object_unref (info);
 
 	file = directory->details->deep_count_file;
 
-	if ((info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_TYPE) != 0
-	    && info->type == GNOME_VFS_FILE_TYPE_DIRECTORY) {
+	if ((vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_TYPE) != 0
+	    && vfs_info->type == GNOME_VFS_FILE_TYPE_DIRECTORY) {
 		/* Count the directory. */
 		file->details->deep_directory_count += 1;
 
 		/* Record the fact that we have to descend into this directory. */
-		escaped_name = gnome_vfs_escape_string (info->name);
+		escaped_name = gnome_vfs_escape_string (vfs_info->name);
 		uri = g_build_filename (directory->details->deep_count_uri, escaped_name, NULL);
 		g_free (escaped_name);
 		directory->details->deep_count_subdirectories = g_list_prepend
@@ -2347,8 +2422,8 @@ deep_count_one (NautilusDirectory *directory,
 	}
 
 	/* Count the size. */
-	if ((info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_SIZE) != 0) {
-		file->details->deep_size += info->size;
+	if ((vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_SIZE) != 0) {
+		file->details->deep_size += vfs_info->size;
 	}
 }
 
@@ -2495,14 +2570,19 @@ deep_count_start (NautilusDirectory *directory,
 
 static void
 mime_list_one (NautilusDirectory *directory,
-	       GnomeVFSFileInfo *info)
+	       GnomeVFSFileInfo *vfs_info)
 {
+	GFileInfo *info;
+	
+	info = gnome_vfs_file_info_to_gio (vfs_info);
 	if (should_skip_file (NULL, info)) {
+		g_object_unref (info);
 		return;
 	}
-
-	if ((info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) != 0) {
-		istr_set_insert (directory->details->mime_list_hash, info->mime_type);
+	g_object_unref (info);
+		
+	if ((vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) != 0) {
+		istr_set_insert (directory->details->mime_list_hash, vfs_info->mime_type);
 	}
 }
 

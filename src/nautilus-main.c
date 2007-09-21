@@ -399,6 +399,8 @@ main (int argc, char *argv[])
 		{ NULL }
 	};
 
+	g_thread_init (NULL);
+
 	setlocale (LC_ALL, "");
 
 	if (g_getenv ("NAUTILUS_DEBUG") != NULL) {

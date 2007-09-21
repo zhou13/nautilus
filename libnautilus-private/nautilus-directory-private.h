@@ -40,6 +40,7 @@
 typedef struct LinkInfoReadState LinkInfoReadState;
 typedef struct TopLeftTextReadState TopLeftTextReadState;
 typedef struct FileMonitors FileMonitors;
+typedef struct DirectoryLoadState DirectoryLoadState;
 
 struct NautilusDirectoryDetails
 {
@@ -76,7 +77,7 @@ struct NautilusDirectoryDetails
 	gboolean file_list_monitored;
 	gboolean directory_loaded;
 	gboolean directory_loaded_sent_notification;
-	GnomeVFSAsyncHandle *directory_load_in_progress;
+	DirectoryLoadState *directory_load_in_progress;
 
 	GList *pending_file_info; /* list of GnomeVFSFileInfo's that are pending */
 	int confirmed_file_count;

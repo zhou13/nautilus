@@ -107,23 +107,6 @@ nautilus_compute_title_for_uri (const char *text_uri)
 }
 
 
-gboolean
-nautilus_file_name_matches_hidden_pattern (const char *name_or_relative_uri)
-{
-	g_return_val_if_fail (name_or_relative_uri != NULL, FALSE);
-
-	return name_or_relative_uri[0] == '.';
-}
-
-gboolean
-nautilus_file_name_matches_backup_pattern (const char *name_or_relative_uri)
-{
-	g_return_val_if_fail (name_or_relative_uri != NULL, FALSE);
-
-	return g_str_has_suffix (name_or_relative_uri, "~") &&
-	       !g_str_equal (name_or_relative_uri, "~");
-}
-
 /**
  * nautilus_get_user_directory:
  * 
