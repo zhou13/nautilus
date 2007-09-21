@@ -93,6 +93,12 @@ struct GetInfoState {
 	GCancellable *cancellable;
 };
 
+struct NewFilesState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+	int count;
+};
+
 typedef struct {
 	NautilusFile *file; /* Which file, NULL means all. */
 	union {
@@ -464,11 +470,17 @@ file_info_cancel (NautilusDirectory *directory)
 static void
 new_files_cancel (NautilusDirectory *directory)
 {
-	if (directory->details->get_file_infos_in_progress != NULL) {
-		g_list_foreach (directory->details->get_file_infos_in_progress,
-				(GFunc)gnome_vfs_async_cancel, NULL);
-		g_list_free (directory->details->get_file_infos_in_progress);
-		directory->details->get_file_infos_in_progress = NULL;
+	GList *l;
+	NewFilesState *state;
+	
+	if (directory->details->new_files_in_progress != NULL) {
+		for (l = directory->details->new_files_in_progress; l != NULL; l = l->next) {
+			state = l->data;
+			g_cancellable_cancel (state->cancellable);
+			state->directory = NULL;
+		}
+		g_list_free (directory->details->new_files_in_progress);
+		directory->details->new_files_in_progress = NULL;
 	}
 }
 
@@ -1424,34 +1436,49 @@ directory_count_callback (GnomeVFSAsyncHandle *handle,
 }
 
 static void
-new_files_callback (GnomeVFSAsyncHandle *handle,
-		    GList *results,
-		    gpointer callback_data)
+new_files_state_unref (NewFilesState *state)
 {
-	GList **handles, *node;
-	NautilusDirectory *directory;
-	GnomeVFSGetFileInfoResult *result;
-	GFileInfo *info;
+	state->count--;
 
-	directory = NAUTILUS_DIRECTORY (callback_data);
-	handles = &directory->details->get_file_infos_in_progress;
-	g_assert (handle == NULL || g_list_find (*handles, handle) != NULL);
-
-	nautilus_directory_ref (directory);
-	
-	/* Note that this call is done. */
-	*handles = g_list_remove (*handles, handle);
-
-	/* Queue up the new files. */
-	for (node = results; node != NULL; node = node->next) {
-		result = node->data;
-
-		if (result->result == GNOME_VFS_OK) {
-			info = gnome_vfs_file_info_to_gio (result->file_info);
-			directory_load_one (directory, info);
-			g_object_unref (info);
+	if (state->count == 0) {
+		if (state->directory) {
+			state->directory->details->new_files_in_progress =
+				g_list_remove (state->directory->details->new_files_in_progress,
+					       state);
 		}
+		
+		g_object_unref (state->cancellable);
+		g_free (state);
 	}
+}
+
+static void
+new_files_callback (GObject *source_object,
+		     GAsyncResult *res,
+		     gpointer user_data)
+{
+	NautilusDirectory *directory;
+	GFileInfo *info;
+	NewFilesState *state;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		new_files_state_unref (state);
+		return;
+	}
+	
+	directory = nautilus_directory_ref (state->directory);
+	
+	/* Queue up the new file. */
+	info = g_file_query_info_finish (G_FILE (source_object), res, NULL);
+	if (info != NULL) {
+		directory_load_one (directory, info);
+		g_object_unref (info);
+	}
+
+	new_files_state_unref (state);
 
 	nautilus_directory_unref (directory);
 }
@@ -1460,39 +1487,35 @@ void
 nautilus_directory_get_info_for_new_files (NautilusDirectory *directory,
 					   GList *location_list)
 {
-	GnomeVFSAsyncHandle *handle;
+	NewFilesState *state;
 	GFile *location;
-	char *uri;
-	GnomeVFSURI *vfs_uri;
-	GList *vfs_uri_list, *l;
+	GList *l;
 
-	vfs_uri_list = NULL;
+	if (location_list == NULL) {
+		return;
+	}
+	
+	state = g_new (NewFilesState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+	state->count = 0;
+	
 	for (l = location_list; l != NULL; l = l->next) {
 		location = l->data;
-
-		uri = g_file_get_uri (location);
-		vfs_uri = gnome_vfs_uri_new (uri);
-		if (vfs_uri) {
-			vfs_uri_list = g_list_prepend (vfs_uri_list, vfs_uri);
-		}
-		g_free (uri);
+		
+		state->count++;
+		
+		g_file_query_info_async (location,
+					 DEFAULT_FILE_INFO_ATTRIBUTES,
+					 0,
+					 G_PRIORITY_DEFAULT,
+					 state->cancellable,
+					 new_files_callback, state);
 	}
-
 	
-	
-	gnome_vfs_async_get_file_info
-		(&handle,
-		 vfs_uri_list,
-		 NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 new_files_callback,
-		 directory);
-
-	gnome_vfs_uri_list_free (vfs_uri_list);
-	
-	directory->details->get_file_infos_in_progress
-		= g_list_prepend (directory->details->get_file_infos_in_progress,
-				  handle);
+	directory->details->new_files_in_progress
+		= g_list_prepend (directory->details->new_files_in_progress,
+				  state);
 }
 
 void

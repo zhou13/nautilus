@@ -42,6 +42,7 @@ typedef struct TopLeftTextReadState TopLeftTextReadState;
 typedef struct FileMonitors FileMonitors;
 typedef struct DirectoryLoadState DirectoryLoadState;
 typedef struct GetInfoState GetInfoState;
+typedef struct NewFilesState NewFilesState;
 
 struct NautilusDirectoryDetails
 {
@@ -88,7 +89,7 @@ struct NautilusDirectoryDetails
 	int load_file_count;
 	GHashTable *load_mime_list_hash;
 
-	GList *get_file_infos_in_progress; /* list of GnomeVFSAsyncHandle * */
+	GList *new_files_in_progress; /* list of NewFilesState * */
 
 	NautilusFile *count_file;
 	GnomeVFSAsyncHandle *count_in_progress;
