@@ -27,7 +27,27 @@ gnome_vfs_file_type_to_g_file_type (GnomeVFSFileType file_type)
 		return G_FILE_TYPE_UNKNOWN;
 	}
 }
-  
+
+GnomeVFSFileType
+gnome_vfs_file_type_from_g_file_type (GFileType file_type)
+{
+	switch (file_type) {
+	default:
+	case G_FILE_TYPE_UNKNOWN:
+	case G_FILE_TYPE_SHORTCUT:
+	case G_FILE_TYPE_SPECIAL:
+	case G_FILE_TYPE_MOUNTABLE:
+		return GNOME_VFS_FILE_TYPE_UNKNOWN;
+	case G_FILE_TYPE_REGULAR:
+		return GNOME_VFS_FILE_TYPE_REGULAR;
+	case G_FILE_TYPE_DIRECTORY:
+		return GNOME_VFS_FILE_TYPE_DIRECTORY;
+	case G_FILE_TYPE_SYMBOLIC_LINK:
+		return GNOME_VFS_FILE_TYPE_SYMBOLIC_LINK;
+	}
+}
+
+
 GFileInfo *
 gnome_vfs_file_info_to_gio (GnomeVFSFileInfo *vfs_info)
 {

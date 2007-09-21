@@ -38,6 +38,7 @@
 #include "nautilus-lib-self-check-functions.h"
 #include "nautilus-link.h"
 #include "nautilus-thumbnails.h"
+#include "nautilus-vfs-utils.h"
 #include "nautilus-trash-monitor.h"
 #include <eel/eel-debug.h>
 #include <eel/eel-gdk-extensions.h>
@@ -993,7 +994,7 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 	file_uri = nautilus_file_get_uri (file);
 
 	mime_type = nautilus_file_get_mime_type (file);
-	
+
 	show_thumb = should_show_thumbnail (file, mime_type);	
 	
 	if (show_thumb) {
@@ -1007,9 +1008,19 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 		lookup_flags |= GNOME_ICON_LOOKUP_FLAGS_EMBEDDING_TEXT;
 	}
 
+	/* Set up enough fields to look up icon */
 	file_info = gnome_vfs_file_info_new ();
+	file_info->valid_fields =
+		GNOME_VFS_FILE_INFO_FIELDS_SIZE |
+		GNOME_VFS_FILE_INFO_FIELDS_MTIME |
+		GNOME_VFS_FILE_INFO_FIELDS_TYPE;
 	file_info->size = nautilus_file_get_size (file);
 	file_info->mtime = nautilus_file_get_mtime (file);
+	file_info->type = gnome_vfs_file_type_from_g_file_type (nautilus_file_get_file_type (file));
+	if (nautilus_file_can_get_permissions (file)) {
+		file_info->valid_fields |= GNOME_VFS_FILE_INFO_FIELDS_PERMISSIONS;
+		file_info->permissions = nautilus_file_get_permissions (file);
+	}
 	
 	icon_name = gnome_icon_lookup (factory->icon_theme,
 				       thumb_factory,

@@ -1,5 +1,16 @@
 2007-09-21  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.[ch]:
+	Fix up type for get_permissions return value (don't use gnome-vfs types).
+	
+        * libnautilus-private/nautilus-vfs-utils.[ch]:
+	Add gnome_vfs_file_type_from_g_file_type()
+	
+        * libnautilus-private/nautilus-icon-factory.c:
+	Set up more GnomeVFSInfo fields needed for gnome_icon_lookup.
+
+2007-09-21  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-monitor.[ch]:
 	Use gio to implement file monitoring.

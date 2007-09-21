@@ -3526,7 +3526,7 @@ nautilus_file_can_set_permissions (NautilusFile *file)
 	return TRUE;
 }
 
-GnomeVFSFilePermissions
+guint
 nautilus_file_get_permissions (NautilusFile *file)
 {
 	g_return_val_if_fail (nautilus_file_can_get_permissions (file), 0);

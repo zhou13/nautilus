@@ -194,7 +194,7 @@ gboolean                nautilus_file_get_directory_item_mime_types     (Nautilu
 /* Permissions. */
 gboolean                nautilus_file_can_get_permissions               (NautilusFile                   *file);
 gboolean                nautilus_file_can_set_permissions               (NautilusFile                   *file);
-GnomeVFSFilePermissions nautilus_file_get_permissions                   (NautilusFile                   *file);
+guint                   nautilus_file_get_permissions                   (NautilusFile                   *file);
 gboolean                nautilus_file_can_get_owner                     (NautilusFile                   *file);
 gboolean                nautilus_file_can_set_owner                     (NautilusFile                   *file);
 gboolean                nautilus_file_can_get_group                     (NautilusFile                   *file);

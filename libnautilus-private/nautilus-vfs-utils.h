@@ -13,7 +13,7 @@ GQuark          gnome_vfs_error_quark      (void);
 #define GNOME_VFS_ERROR gnome_vfs_error_quark()
 
 GFileType gnome_vfs_file_type_to_g_file_type (GnomeVFSFileType file_type);
-
+GnomeVFSFileType gnome_vfs_file_type_from_g_file_type (GFileType file_type);
 
 GFileInfo *gnome_vfs_file_info_to_gio (GnomeVFSFileInfo *info);
 
