@@ -2,6 +2,12 @@
 
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-directory-private.h:
+	Implement get_file_info using gio
+
+2007-09-21  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory-private.h:
 	Read directory list via gio instead of gnome-vfs
 	
         * libnautilus-private/nautilus-file-private.h:

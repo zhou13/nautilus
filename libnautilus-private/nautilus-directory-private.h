@@ -41,6 +41,7 @@ typedef struct LinkInfoReadState LinkInfoReadState;
 typedef struct TopLeftTextReadState TopLeftTextReadState;
 typedef struct FileMonitors FileMonitors;
 typedef struct DirectoryLoadState DirectoryLoadState;
+typedef struct GetInfoState GetInfoState;
 
 struct NautilusDirectoryDetails
 {
@@ -102,8 +103,7 @@ struct NautilusDirectoryDetails
 	GHashTable *mime_list_hash;
 
 	NautilusFile *get_info_file;
-	GnomeVFSAsyncHandle *get_info_in_progress;
-	gboolean get_info_has_slow_mime_type;
+	GetInfoState *get_info_in_progress;
 
 	int is_in_trash_state;
 

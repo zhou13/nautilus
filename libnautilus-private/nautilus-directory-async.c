@@ -88,6 +88,11 @@ struct DirectoryLoadState {
 	GFileEnumerator *enumerator;
 };
 
+struct GetInfoState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+};
+
 typedef struct {
 	NautilusFile *file; /* Which file, NULL means all. */
 	union {
@@ -447,9 +452,10 @@ static void
 file_info_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->get_info_in_progress != NULL) {
-		gnome_vfs_async_cancel (directory->details->get_info_in_progress);
-		directory->details->get_info_file = NULL;
+		g_cancellable_cancel (directory->details->get_info_in_progress->cancellable);
+		directory->details->get_info_in_progress->directory = NULL;
 		directory->details->get_info_in_progress = NULL;
+		directory->details->get_info_file = NULL;
 
 		async_job_end (directory, "file info");
 	}
@@ -2052,7 +2058,7 @@ more_files_callback (GObject *source_object,
 	} else {
 		g_file_enumerator_next_files_async (state->enumerator,
 						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
-						    0,
+						    G_PRIORITY_DEFAULT,
 						    state->cancellable,
 						    more_files_callback,
 						    state);
@@ -2097,7 +2103,7 @@ enumerate_children_callback (GObject *source_object,
 		state->enumerator = enumerator;
 		g_file_enumerator_next_files_async (state->enumerator,
 						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
-						    0,
+						    G_PRIORITY_DEFAULT,
 						    state->cancellable,
 						    more_files_callback,
 						    state);
@@ -2159,7 +2165,7 @@ start_monitoring_file_list (NautilusDirectory *directory)
 	g_file_enumerate_children_async (directory->details->location,
 					 DEFAULT_FILE_INFO_ATTRIBUTES,
 					 0, /* flags */
-					 0, /* prio */
+					 G_PRIORITY_DEFAULT, /* prio */
 					 state->cancellable,
 					 enumerate_children_callback,
 					 state);
@@ -2889,22 +2895,35 @@ top_left_start (NautilusDirectory *directory,
 }
 
 static void
-get_info_callback (GnomeVFSAsyncHandle *handle,
-		   GList *results,
-		   gpointer callback_data)
+get_info_state_free (GetInfoState *state)
+{
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
+query_info_callback (GObject *source_object,
+		     GAsyncResult *res,
+		     gpointer user_data)
 {
 	NautilusDirectory *directory;
 	NautilusFile *get_info_file;
-	GnomeVFSGetFileInfoResult *result;
 	GFileInfo *info;
+	GetInfoState *state;
+	GError *error;
 
-	directory = NAUTILUS_DIRECTORY (callback_data);
-	g_assert (handle == NULL || handle == directory->details->get_info_in_progress);
-	g_assert (eel_g_list_exactly_one_item (results));
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		get_info_state_free (state);
+		return;
+	}
+	
+	directory = nautilus_directory_ref (state->directory);
+
 	get_info_file = directory->details->get_info_file;
 	g_assert (NAUTILUS_IS_FILE (get_info_file));
-
-	nautilus_directory_ref (directory);
 
 	directory->details->get_info_file = NULL;
 	directory->details->get_info_in_progress = NULL;
@@ -2915,20 +2934,19 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 	 */
 	nautilus_file_ref (get_info_file);
 
-	result = results->data;
-
-	if (result->result != GNOME_VFS_OK) {
-		if (result->result == GNOME_VFS_ERROR_NOT_FOUND) {
+	error = NULL;
+	info = g_file_query_info_finish (G_FILE (source_object), res, &error);
+	
+	if (info == NULL) {
+		if (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_NOT_FOUND) {
 			/* mark file as gone */
 			nautilus_file_mark_gone (get_info_file);
 		}
 		get_info_file->details->file_info_is_up_to_date = TRUE;
 		nautilus_file_clear_info (get_info_file);
 		get_info_file->details->get_info_failed = TRUE;
-		get_info_file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR, result->result,
-									      gnome_vfs_result_to_string (result->result));
+		get_info_file->details->get_info_error = error;
 	} else {
-		info = gnome_vfs_file_info_to_gio (result->file_info);
 		nautilus_file_update_info (get_info_file, info);
 		g_object_unref (info);
 	}
@@ -2940,6 +2958,8 @@ get_info_callback (GnomeVFSAsyncHandle *handle,
 	nautilus_directory_async_state_changed (directory);
 
 	nautilus_directory_unref (directory);
+
+	get_info_state_free (state);
 }
 
 static void
@@ -2967,10 +2987,8 @@ file_info_start (NautilusDirectory *directory,
 		 NautilusFile *file,
 		 gboolean *doing_io)
 {
-	char *uri;
-	GnomeVFSURI *vfs_uri;
-	GList fake_list;
-	GnomeVFSFileInfoOptions options;
+	GFile *location;
+	GetInfoState *state;
 	
 	file_info_stop (directory);
 
@@ -2984,46 +3002,30 @@ file_info_start (NautilusDirectory *directory,
 	}
 	*doing_io = TRUE;
 
-	uri = nautilus_file_get_uri (file);
-	vfs_uri = gnome_vfs_uri_new (uri);
-	g_free (uri);
-	
-	/* If we can't even get info, fill in the info and go on.
-	 */
-
-	if (vfs_uri == NULL) {
-		file->details->file_info_is_up_to_date = TRUE;
-		file->details->get_info_failed = TRUE;
-		file->details->get_info_error = g_error_new_literal (GNOME_VFS_ERROR,
-								     GNOME_VFS_ERROR_INVALID_URI,
-								     gnome_vfs_result_to_string (GNOME_VFS_ERROR_INVALID_URI));
-
-		nautilus_directory_async_state_changed (directory);
-		return;
-	}
-
 	if (!async_job_start (directory, "file info")) {
 		return;
 	}
+
 	directory->details->get_info_file = file;
 	file->details->get_info_failed = FALSE;
 	if (file->details->get_info_error) {
 		g_error_free (file->details->get_info_error);
 		file->details->get_info_error = NULL;
 	}
-	fake_list.data = vfs_uri;
-	fake_list.prev = NULL;
-	fake_list.next = NULL;
 
-	options = NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS;
-	gnome_vfs_async_get_file_info
-		(&directory->details->get_info_in_progress,
-		 &fake_list,
-		 options,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 get_info_callback,
-		 directory);
-	gnome_vfs_uri_unref (vfs_uri);
+	state = g_new (GetInfoState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+
+	directory->details->get_info_in_progress = state;
+	
+	location = nautilus_file_get_location (file);
+	g_file_query_info_async (location,
+				 DEFAULT_FILE_INFO_ATTRIBUTES,
+				 0,
+				 G_PRIORITY_DEFAULT,
+				 state->cancellable, query_info_callback, state);
+	g_object_unref (location);
 }
 
 static void
