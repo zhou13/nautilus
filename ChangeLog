@@ -1,5 +1,11 @@
 2007-09-24  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+	Define NAUTILUS_FILE_DEFAULT_ATTRIBUTES
+
+2007-09-24  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-directory-file.c:
         * libnautilus-private/nautilus-desktop-icon-file.c:
         * libnautilus-private/nautilus-file.c:

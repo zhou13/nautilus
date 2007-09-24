@@ -61,10 +61,6 @@
 #define DEBUG_START_STOP
 #endif
 
-/* TODO: Read less than this */
-#define DEFAULT_FILE_INFO_ATTRIBUTES "*"
-
-
 #define DIRECTORY_LOAD_ITEMS_PER_CALLBACK 100
 
 /* Keep async. jobs down to this number for all directories. */
@@ -1503,7 +1499,7 @@ nautilus_directory_get_info_for_new_files (NautilusDirectory *directory,
 		state->count++;
 		
 		g_file_query_info_async (location,
-					 DEFAULT_FILE_INFO_ATTRIBUTES,
+					 NAUTILUS_FILE_DEFAULT_ATTRIBUTES,
 					 0,
 					 G_PRIORITY_DEFAULT,
 					 state->cancellable,
@@ -2183,7 +2179,7 @@ start_monitoring_file_list (NautilusDirectory *directory)
 	directory->details->directory_load_in_progress = state;
 	
 	g_file_enumerate_children_async (directory->details->location,
-					 DEFAULT_FILE_INFO_ATTRIBUTES,
+					 NAUTILUS_FILE_DEFAULT_ATTRIBUTES,
 					 0, /* flags */
 					 G_PRIORITY_DEFAULT, /* prio */
 					 state->cancellable,
@@ -3041,7 +3037,7 @@ file_info_start (NautilusDirectory *directory,
 	
 	location = nautilus_file_get_location (file);
 	g_file_query_info_async (location,
-				 DEFAULT_FILE_INFO_ATTRIBUTES,
+				 NAUTILUS_FILE_DEFAULT_ATTRIBUTES,
 				 0,
 				 G_PRIORITY_DEFAULT,
 				 state->cancellable, query_info_callback, state);
