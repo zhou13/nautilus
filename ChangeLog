@@ -1,5 +1,13 @@
 2007-09-24  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-file.h:
+	nautilus_file_get_for_location -> nautilus_file_get
+	same for get_existing
+
+2007-09-24  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-bookmark.c:
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-directory.c:

@@ -436,13 +436,13 @@ nautilus_file_get_internal (GFile *location, gboolean create)
 }
 
 NautilusFile *
-nautilus_file_get_for_location (GFile *location)
+nautilus_file_get (GFile *location)
 {
 	return nautilus_file_get_internal (location, TRUE);
 }
 
 NautilusFile *
-nautilus_file_get_existing_for_location (GFile *location)
+nautilus_file_get_existing (GFile *location)
 {
 	return nautilus_file_get_internal (location, FALSE);
 }

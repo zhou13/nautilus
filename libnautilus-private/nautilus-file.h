@@ -99,11 +99,11 @@ typedef void NautilusFileListHandle;
 GType                   nautilus_file_get_type                          (void);
 
 /* Getting at a single file. */
-NautilusFile *          nautilus_file_get_for_location                  (GFile                          *location);
+NautilusFile *          nautilus_file_get                               (GFile                          *location);
 NautilusFile *          nautilus_file_get_by_uri                        (const char                     *uri);
 
 /* Get a file only if the nautilus version already exists */
-NautilusFile *          nautilus_file_get_existing_for_location         (GFile                          *location);
+NautilusFile *          nautilus_file_get_existing                      (GFile                          *location);
 NautilusFile *          nautilus_file_get_existing_by_uri               (const char                     *uri);
 
 /* Covers for gtk_object_ref and gtk_object_unref that provide two conveniences:

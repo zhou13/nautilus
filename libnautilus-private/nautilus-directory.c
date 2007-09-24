@@ -941,7 +941,7 @@ nautilus_directory_notify_files_added (GList *files)
 			file = NULL;
 			parent = g_file_get_parent (location);
 			if (parent) {
-				file = nautilus_file_get_existing_for_location (parent);
+				file = nautilus_file_get_existing (parent);
 				g_object_unref (parent);
 			}
 
@@ -961,7 +961,7 @@ nautilus_directory_notify_files_added (GList *files)
 			continue;
 		}
 
-		file = nautilus_file_get_existing_for_location (location);
+		file = nautilus_file_get_existing (location);
 		if (file) {
 			/* A file already exists, it was probably renamed.
 			 * If it was renamed this could be ignored, but 
@@ -1060,7 +1060,7 @@ nautilus_directory_notify_files_changed (GList *files)
 		location = node->data;
 
 		/* Find the file. */
-		file = nautilus_file_get_existing_for_location (location);
+		file = nautilus_file_get_existing (location);
 		if (file != NULL) {
 			/* Tell it to re-get info now, and later emit
 			 * a changed signal.
@@ -1119,7 +1119,7 @@ nautilus_directory_notify_files_removed (GList *files)
 		}
 
 		/* Find the file. */
-		file = nautilus_file_get_existing_for_location (location);
+		file = nautilus_file_get_existing (location);
 		if (file != NULL && !nautilus_file_rename_in_progress (file)) {
 			/* Mark it gone and prepare to send the changed signal. */
 			nautilus_file_mark_gone (file);
@@ -1331,7 +1331,7 @@ nautilus_directory_notify_files_moved (GList *file_pairs)
 		to_location = pair->to;
 
 		/* Handle overwriting a file. */
-		file = nautilus_file_get_existing_for_location (to_location);
+		file = nautilus_file_get_existing (to_location);
 		if (file != NULL) {
 			/* Mark it gone and prepare to send the changed signal. */
 			nautilus_file_mark_gone (file);
@@ -1355,7 +1355,7 @@ nautilus_directory_notify_files_moved (GList *file_pairs)
 		unref_list = g_list_concat (unref_list, affected_files);
 
 		/* Move an existing file. */
-		file = nautilus_file_get_existing_for_location (from_location);
+		file = nautilus_file_get_existing (from_location);
 		if (file == NULL) {
 			/* Handle this as if it was a new file. */
 			new_files_list = g_list_prepend (new_files_list,
