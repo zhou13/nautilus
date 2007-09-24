@@ -642,7 +642,7 @@ thumbnail_thread_notify_file_changed (gpointer image_uri)
 
 	GDK_THREADS_ENTER ();
 
-	file = nautilus_file_get ((char *) image_uri);
+	file = nautilus_file_get_by_uri ((char *) image_uri);
 #ifdef DEBUG_THUMBNAILS
 	g_message ("(Thumbnail Thread) Notifying file changed file:%p uri: %s\n", file, (char*) image_uri);
 #endif

@@ -1066,7 +1066,7 @@ nautilus_information_panel_set_uri (NautilusInformationPanel *information_panel,
 	}
 
 
-	file = nautilus_file_get (information_panel->details->uri);
+	file = nautilus_file_get_by_uri (information_panel->details->uri);
 
 	nautilus_file_unref (information_panel->details->file);
 

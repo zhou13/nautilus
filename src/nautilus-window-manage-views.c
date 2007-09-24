@@ -778,7 +778,7 @@ begin_location_change (NautilusWindow *window,
 
 	/* Get the info needed for view selection */
 	
-        window->details->determine_view_file = nautilus_file_get (location);
+        window->details->determine_view_file = nautilus_file_get_by_uri (location);
 
 	g_assert (window->details->determine_view_file != NULL);
 
@@ -984,7 +984,7 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 			end_location_change (window);
 
 			/* We disconnected this, so we need to re-connect it */
-			viewed_file = nautilus_file_get (window->details->location);
+			viewed_file = nautilus_file_get_by_uri (window->details->location);
 			nautilus_window_set_viewed_file (window, viewed_file);
 			nautilus_file_monitor_add (viewed_file, &window->details->viewed_file, 0);
 			g_signal_connect_object (viewed_file, "changed",
@@ -1236,7 +1236,7 @@ update_for_new_location (NautilusWindow *window)
          * if it goes away.
          */
         cancel_viewed_file_changed_callback (window);
-        file = nautilus_file_get (window->details->location);
+        file = nautilus_file_get_by_uri (window->details->location);
         nautilus_window_set_viewed_file (window, file);
         window->details->viewed_file_seen = !nautilus_file_is_not_yet_confirmed (file);
         window->details->viewed_file_in_trash = nautilus_file_is_in_trash (file);
@@ -1619,7 +1619,7 @@ nautilus_window_set_content_view (NautilusWindow *window,
 
         end_location_change (window);
 
-	file = nautilus_file_get (window->details->location);
+	file = nautilus_file_get_by_uri (window->details->location);
 	nautilus_file_set_metadata 
 		(file, NAUTILUS_METADATA_KEY_DEFAULT_COMPONENT, NULL, id);
         nautilus_file_unref (file);

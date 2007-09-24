@@ -422,7 +422,7 @@ nautilus_directory_get_corresponding_file (NautilusDirectory *directory)
 	file = nautilus_directory_get_existing_corresponding_file (directory);
 	if (file == NULL) {
 		uri = nautilus_directory_get_uri (directory);
-		file = nautilus_file_get (uri);
+		file = nautilus_file_get_by_uri (uri);
 		g_free (uri);
 	}
 
@@ -445,7 +445,7 @@ nautilus_directory_get_existing_corresponding_file (NautilusDirectory *directory
 	}
 
 	uri = nautilus_directory_get_uri (directory);
-	file = nautilus_file_get_existing (uri);
+	file = nautilus_file_get_existing_by_uri (uri);
 	g_free (uri);
 	return file;
 }
@@ -1394,7 +1394,7 @@ nautilus_directory_notify_files_moved (GList *file_pairs)
 							 file);
 			}
 
-			/* Unref each file once to balance out nautilus_file_get. */
+			/* Unref each file once to balance out nautilus_file_get_by_uri. */
 			unref_list = g_list_prepend (unref_list, file);
 		}
 	}
@@ -1559,7 +1559,7 @@ nautilus_directory_schedule_position_set_by_uri (GList *position_setting_list)
 	for (p = position_setting_list; p != NULL; p = p->next) {
 		item = (NautilusFileChangesQueuePosition *) p->data;
 
-		file = nautilus_file_get (item->uri);
+		file = nautilus_file_get_by_uri (item->uri);
 		
 		if (item->set) {
 			position_string = g_strdup_printf ("%d,%d",
@@ -1926,7 +1926,7 @@ nautilus_self_check_directory (void)
 	NautilusFile *file;
 
 	directory = nautilus_directory_get ("file:///etc");
-	file = nautilus_file_get ("file:///etc/passwd");
+	file = nautilus_file_get_by_uri ("file:///etc/passwd");
 
 	EEL_CHECK_INTEGER_RESULT (g_hash_table_size (directories), 1);
 
@@ -2010,7 +2010,7 @@ nautilus_self_check_directory (void)
 
 	EEL_CHECK_INTEGER_RESULT (g_hash_table_size (directories), 1);
 
-	file = nautilus_file_get ("file:///etc/passwd");
+	file = nautilus_file_get_by_uri ("file:///etc/passwd");
 
 	EEL_CHECK_STRING_RESULT (nautilus_file_get_metadata (file, "test", "default"), "value");
 	

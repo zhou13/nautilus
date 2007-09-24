@@ -2598,7 +2598,7 @@ icon_view_scroll_to_file (NautilusView *view,
 	if (uri != NULL) {
 		/* Only if existing, since we don't want to add the file to
 		   the directory if it has been removed since then */
-		file = nautilus_file_get_existing (uri);
+		file = nautilus_file_get_existing_by_uri (uri);
 		if (file != NULL) {
 			nautilus_icon_container_scroll_to_icon (get_icon_container (icon_view),
 								NAUTILUS_ICON_CONTAINER_ICON_DATA (file));

@@ -461,7 +461,7 @@ nautilus_bookmark_connect_file (NautilusBookmark *bookmark)
 	}
 
 	if (!nautilus_bookmark_uri_known_not_to_exist (bookmark)) {
-		bookmark->details->file = nautilus_file_get (bookmark->details->uri);
+		bookmark->details->file = nautilus_file_get_by_uri (bookmark->details->uri);
 		g_assert (!nautilus_file_is_gone (bookmark->details->file));
 
 		g_signal_connect_object (bookmark->details->file, "changed",

@@ -143,7 +143,7 @@ fm_ditem_page_exec_drag_data_received (GtkWidget *widget, GdkDragContext *contex
 		return;
 	}
 
-	file = nautilus_file_get (uris[0]);
+	file = nautilus_file_get_by_uri (uris[0]);
 
 	g_return_if_fail (file != NULL);
 	

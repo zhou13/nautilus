@@ -882,7 +882,7 @@ find_parent_spatial_window (NautilusSpatialWindow *window)
 	if (location == NULL) {
 		return NULL;
 	}
-	file = nautilus_file_get (location);
+	file = nautilus_file_get_by_uri (location);
 	g_free (location);
 
 	if (!file) {

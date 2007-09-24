@@ -116,7 +116,7 @@ main (int argc, char **argv)
 	}
 
 	uri = argv[1];
-	file = nautilus_file_get (uri);
+	file = nautilus_file_get_by_uri (uri);
 
 	attributes = nautilus_mime_actions_get_full_file_attributes ();
 	nautilus_file_call_when_ready (file, attributes, ready_callback, NULL);

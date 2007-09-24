@@ -2772,7 +2772,7 @@ nautilus_file_operations_delete (const GList *item_uris,
 		item_uri = (const char *) p->data;
 
 		if (eel_uri_is_desktop (item_uri)) {
-			file = nautilus_file_get_existing (item_uri);
+			file = nautilus_file_get_existing_by_uri (item_uri);
 			if (file != NULL) {
 				if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
 					NautilusDesktopLink *link;

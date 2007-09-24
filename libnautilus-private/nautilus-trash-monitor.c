@@ -110,7 +110,7 @@ nautilus_trash_files_changed_callback (NautilusDirectory *directory, GList *file
 	trash_monitor->details->empty = !nautilus_directory_is_not_empty (directory);
 
 	if (old_empty_state != trash_monitor->details->empty) {
-		file = nautilus_file_get (EEL_TRASH_URI);
+		file = nautilus_file_get_by_uri (EEL_TRASH_URI);
 		nautilus_file_changed (file);
 		nautilus_file_unref (file);
 

@@ -1552,7 +1552,7 @@ fm_tree_model_add_root_uri (FMTreeModel *model, const char *root_uri, const char
 	TreeNode *node, *cnode;
 	FMTreeModelRoot *newroot;
 	
-	file = nautilus_file_get (root_uri);
+	file = nautilus_file_get_by_uri (root_uri);
 
 	newroot = tree_model_root_new (model);
 	node = create_node_for_file (newroot, file);
@@ -1605,7 +1605,7 @@ fm_tree_model_remove_root_uri (FMTreeModel *model, const char *uri)
 	FMTreeModelRoot *root;
 	NautilusFile *file;
 
-	file = nautilus_file_get (uri);
+	file = nautilus_file_get_by_uri (uri);
 	for (node = model->details->root_node; node != NULL; node = node->next) {
 		if (file == node->file) {
 			break;

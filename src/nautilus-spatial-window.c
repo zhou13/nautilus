@@ -649,7 +649,7 @@ location_button_clicked_callback (GtkWidget *widget, NautilusSpatialWindow *wind
 		}
 		
 		uri_string = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_NONE);
-		file = nautilus_file_get (uri_string);
+		file = nautilus_file_get_by_uri (uri_string);
 		g_object_ref (menu_item);
 		nautilus_file_call_when_ready (file,
 					       NAUTILUS_FILE_ATTRIBUTE_INFO,
@@ -781,7 +781,7 @@ nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 		g_free (name);
 		gtk_widget_set_sensitive (window->details->location_button, TRUE);
 
-		file = nautilus_file_get (location);
+		file = nautilus_file_get_by_uri (location);
 		error = nautilus_file_get_file_info_error (file);
 		if (error == NULL) {
 			char *icon_name;

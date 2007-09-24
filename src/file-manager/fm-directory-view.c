@@ -93,7 +93,7 @@
 #include <libnautilus-private/nautilus-file-dnd.h>
 #include <libnautilus-private/nautilus-file-operations.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
-#include <libnautilus-private/nautilus-file-private.h> /* for nautilus_file_get_existing */
+#include <libnautilus-private/nautilus-file-private.h> /* for nautilus_file_get_existing_by_uri */
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-link.h>
@@ -830,7 +830,7 @@ open_location (FMDirectoryView *directory_view,
 	 * eventually the open will cause the file to change, and we'll re-set
 	 * the monitor for the selected file then.
 	 */
-	file = nautilus_file_get (new_uri);
+	file = nautilus_file_get_by_uri (new_uri);
 	if (file == directory_view->details->file_monitored_for_open_with) {
 		monitor_file_for_open_with (directory_view, NULL);
 	}
@@ -1834,7 +1834,7 @@ file_list_from_uri_list (GList *uri_list)
 	for (node = uri_list; node != NULL; node = node->next) {
 		file_list = g_list_prepend
 			(file_list,
-			 nautilus_file_get (node->data));
+			 nautilus_file_get_by_uri (node->data));
 	}
 	return g_list_reverse (file_list);
 }
@@ -2579,7 +2579,7 @@ remove_not_really_moved_files (gpointer key,
 	
 	added_files = callback_data;
 	*added_files = g_list_prepend (*added_files,
-				       nautilus_file_get (key));
+				       nautilus_file_get_by_uri (key));
 	return TRUE;
 }
 
@@ -3802,7 +3802,7 @@ file_name_from_uri (const char *uri)
 	NautilusFile *file;
 	char *file_name;
 	
-	file = nautilus_file_get (uri);
+	file = nautilus_file_get_by_uri (uri);
 	file_name = nautilus_file_get_display_name (file);
 	nautilus_file_unref (file);
 
@@ -4138,7 +4138,7 @@ new_folder_done (const char *new_folder_uri, gpointer user_data)
 	screen = gtk_widget_get_screen (GTK_WIDGET (directory_view));
 	screen_string = g_strdup_printf ("%d", gdk_screen_get_number (screen));
 
-	file = nautilus_file_get (new_folder_uri);
+	file = nautilus_file_get_by_uri (new_folder_uri);
 	nautilus_file_set_metadata
 		(file, NAUTILUS_METADATA_KEY_SCREEN,
 		 NULL,
@@ -7128,7 +7128,7 @@ file_list_all_are_folders (GList *file_list)
 				return FALSE;
 			}
 
-			linked_file = nautilus_file_get_existing (activation_uri);
+			linked_file = nautilus_file_get_existing_by_uri (activation_uri);
 
 			/* We might not actually know the type of the linked file yet,
 			 * however we don't want to schedule a read, since that might do things
@@ -8590,7 +8590,7 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 		uri = nautilus_file_get_activation_uri (file);
 		if (!(eel_str_has_prefix (uri, NAUTILUS_DESKTOP_COMMAND_SPECIFIER) ||
 		      eel_str_has_prefix (uri, NAUTILUS_COMMAND_SPECIFIER))) {
-			actual_file = nautilus_file_get (uri);
+			actual_file = nautilus_file_get_by_uri (uri);
 		}
 		g_free (uri);
 		

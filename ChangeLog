@@ -1,3 +1,37 @@
+2007-09-24  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-bookmark.c:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file-operations.c:
+        * libnautilus-private/nautilus-file-utilities.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-file.h:
+        * libnautilus-private/nautilus-icon-dnd.c:
+        * libnautilus-private/nautilus-search-directory.c:
+        * libnautilus-private/nautilus-thumbnails.c:
+        * libnautilus-private/nautilus-trash-monitor.c:
+        * libnautilus-private/nautilus-tree-view-drag-dest.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-ditem-page.c:
+        * src/file-manager/fm-icon-view.c:
+        * src/file-manager/fm-list-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.c:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-application.c:
+        * src/nautilus-bookmark-list.c:
+        * src/nautilus-information-panel.c:
+        * src/nautilus-notes-viewer.c:
+        * src/nautilus-pathbar.c:
+        * src/nautilus-places-sidebar.c:
+        * src/nautilus-spatial-window.c:
+        * src/nautilus-window-manage-views.c:
+        * test/test-nautilus-mime-actions-set.c:
+        * test/test-nautilus-mime-actions.c:
+	Rename nautilus_file_get -> nautilus_file_get_by_uri.
+	Same with nautilus_file_get_existing.
+
 2007-09-21  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.[ch]:

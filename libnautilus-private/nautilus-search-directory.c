@@ -485,7 +485,7 @@ search_engine_hits_added (NautilusSearchEngine *engine, GList *hits,
 			continue;
 		}
 		
-		file = nautilus_file_get (uri);
+		file = nautilus_file_get_by_uri (uri);
 		
 		for (monitor_list = search->details->monitor_list; monitor_list; monitor_list = monitor_list->next) {
 			monitor = monitor_list->data;
@@ -523,7 +523,7 @@ search_engine_hits_subtracted (NautilusSearchEngine *engine, GList *hits,
 
 	for (hit_list = hits; hit_list != NULL; hit_list = hit_list->next) {
 		uri = hit_list->data;
-		file = nautilus_file_get (uri);
+		file = nautilus_file_get_by_uri (uri);
 
 		for (monitor_list = search->details->monitor_list; monitor_list; 
 		     monitor_list = monitor_list->next) {

@@ -83,7 +83,7 @@ nautilus_compute_title_for_uri (const char *text_uri)
 
 			return title;
 		}
-		file = nautilus_file_get (text_uri);
+		file = nautilus_file_get_by_uri (text_uri);
 		uri = gnome_vfs_uri_new (text_uri);
 		if (uri && strcmp (uri->method_string, "file") != 0) {
 			hostname = gnome_vfs_uri_get_host_name (uri);
@@ -383,7 +383,7 @@ update_xdg_dir_cache (void)
 		cached_xdg_dirs[i].file = NULL;
 		if (strcmp (cached_xdg_dirs[i].path, g_get_home_dir ()) != 0) {
 			uri = gnome_vfs_get_uri_from_local_path (cached_xdg_dirs[i].path);
-			cached_xdg_dirs[i].file = nautilus_file_get (uri);
+			cached_xdg_dirs[i].file = nautilus_file_get_by_uri (uri);
 			nautilus_file_monitor_add (cached_xdg_dirs[i].file,
 						   &cached_xdg_dirs[i],
 						   NAUTILUS_FILE_ATTRIBUTE_INFO);

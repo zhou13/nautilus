@@ -716,7 +716,7 @@ receive_dropped_keyword (NautilusIconContainer *container, const char *keyword, 
 			    "dropped emblem '%s' on icon container URI: %s",
 			    keyword, uri);
 
-	file = nautilus_file_get (uri);
+	file = nautilus_file_get_by_uri (uri);
 	g_free (uri);
 	
 	nautilus_drag_file_receive_dropped_keyword (file, keyword);
@@ -960,7 +960,7 @@ handle_local_move (NautilusIconContainer *container,
 			 * this screen
 			 */
 
-			file = nautilus_file_get (item->uri);
+			file = nautilus_file_get_by_uri (item->uri);
 
 			screen = gtk_widget_get_screen (GTK_WIDGET (container));
 			screen_string = g_strdup_printf ("%d",
@@ -1090,7 +1090,7 @@ nautilus_icon_container_find_drop_target (NautilusIconContainer *container,
 	if (drop_target_icon != NULL) {
 		icon_uri = nautilus_icon_container_get_icon_uri (container, drop_target_icon);
 		if (icon_uri != NULL) {
-			file = nautilus_file_get (icon_uri);
+			file = nautilus_file_get_by_uri (icon_uri);
 
 			if (!nautilus_drag_can_accept_info (file,
 							    container->details->dnd_info->drag_info.data_type,
@@ -1332,7 +1332,7 @@ nautilus_icon_dnd_update_drop_target (NautilusIconContainer *container,
 	/* Find if target icon accepts our drop. */
 	if (icon != NULL && (container->details->dnd_info->drag_info.data_type != NAUTILUS_ICON_DND_KEYWORD)) {
 		    uri = nautilus_icon_container_get_icon_uri (container, icon);
-		    file = nautilus_file_get (uri);
+		    file = nautilus_file_get_by_uri (uri);
 		    g_free (uri);
 		
 		    if (!nautilus_drag_can_accept_info (file,

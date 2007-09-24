@@ -448,7 +448,7 @@ nautilus_file_get_existing_for_location (GFile *location)
 }
 
 NautilusFile *
-nautilus_file_get_existing (const char *uri)
+nautilus_file_get_existing_by_uri (const char *uri)
 {
 	GFile *location;
 	NautilusFile *file;
@@ -461,7 +461,7 @@ nautilus_file_get_existing (const char *uri)
 }
 
 NautilusFile *
-nautilus_file_get (const char *uri)
+nautilus_file_get_by_uri (const char *uri)
 {
 	GFile *location;
 	NautilusFile *file;
@@ -6274,7 +6274,7 @@ nautilus_self_check_file (void)
 
         EEL_CHECK_INTEGER_RESULT (nautilus_directory_number_outstanding (), 0);
 
-	file_1 = nautilus_file_get ("file:///home/");
+	file_1 = nautilus_file_get_by_uri ("file:///home/");
 
 	EEL_CHECK_INTEGER_RESULT (G_OBJECT (file_1)->ref_count, 1);
 	EEL_CHECK_INTEGER_RESULT (G_OBJECT (file_1->details->directory)->ref_count, 1);
@@ -6284,8 +6284,8 @@ nautilus_self_check_file (void)
 
         EEL_CHECK_INTEGER_RESULT (nautilus_directory_number_outstanding (), 0);
 	
-	file_1 = nautilus_file_get ("file:///etc");
-	file_2 = nautilus_file_get ("file:///usr");
+	file_1 = nautilus_file_get_by_uri ("file:///etc");
+	file_2 = nautilus_file_get_by_uri ("file:///usr");
 
         list = NULL;
         list = g_list_prepend (list, file_1);
@@ -6307,19 +6307,19 @@ nautilus_self_check_file (void)
 	
 
         /* name checks */
-	file_1 = nautilus_file_get ("file:///home/");
+	file_1 = nautilus_file_get_by_uri ("file:///home/");
 
 	EEL_CHECK_STRING_RESULT (nautilus_file_get_name (file_1), "home");
 
-	EEL_CHECK_BOOLEAN_RESULT (nautilus_file_get ("file:///home/") == file_1, TRUE);
+	EEL_CHECK_BOOLEAN_RESULT (nautilus_file_get_by_uri ("file:///home/") == file_1, TRUE);
 	nautilus_file_unref (file_1);
 
-	EEL_CHECK_BOOLEAN_RESULT (nautilus_file_get ("file:///home") == file_1, TRUE);
+	EEL_CHECK_BOOLEAN_RESULT (nautilus_file_get_by_uri ("file:///home") == file_1, TRUE);
 	nautilus_file_unref (file_1);
 
 	nautilus_file_unref (file_1);
 
-	file_1 = nautilus_file_get ("file:///home");
+	file_1 = nautilus_file_get_by_uri ("file:///home");
 	EEL_CHECK_STRING_RESULT (nautilus_file_get_name (file_1), "home");
 	nautilus_file_unref (file_1);
 
@@ -6328,22 +6328,22 @@ nautilus_self_check_file (void)
 	 * It used to work, but when canonical uris changed from
 	 * foo: to foo:/// it broke. I don't expect it to matter
 	 * in real life */
-	file_1 = nautilus_file_get (":");
+	file_1 = nautilus_file_get_by_uri (":");
 	EEL_CHECK_STRING_RESULT (nautilus_file_get_name (file_1), ":");
 	nautilus_file_unref (file_1);
 #endif
 
-	file_1 = nautilus_file_get ("eazel:");
+	file_1 = nautilus_file_get_by_uri ("eazel:");
 	EEL_CHECK_STRING_RESULT (nautilus_file_get_name (file_1), "eazel");
 	nautilus_file_unref (file_1);
 
-	file_1 = nautilus_file_get (EEL_TRASH_URI);
+	file_1 = nautilus_file_get_by_uri (EEL_TRASH_URI);
 	EEL_CHECK_STRING_RESULT (nautilus_file_get_display_name (file_1), _("Trash"));
 	nautilus_file_unref (file_1);
 
 	/* sorting */
-	file_1 = nautilus_file_get ("file:///etc");
-	file_2 = nautilus_file_get ("file:///usr");
+	file_1 = nautilus_file_get_by_uri ("file:///etc");
+	file_2 = nautilus_file_get_by_uri ("file:///usr");
 
 	EEL_CHECK_INTEGER_RESULT (G_OBJECT (file_1)->ref_count, 1);
 	EEL_CHECK_INTEGER_RESULT (G_OBJECT (file_2)->ref_count, 1);

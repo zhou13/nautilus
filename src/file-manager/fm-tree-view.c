@@ -214,7 +214,7 @@ show_selection_idle_callback (gpointer callback_data)
 
 	view->details->show_selection_idle_id = 0;
 
-	file = nautilus_file_get (view->details->selection_location);
+	file = nautilus_file_get_by_uri (view->details->selection_location);
 	if (file == NULL) {
 		return FALSE;
 	}
@@ -291,7 +291,7 @@ row_loaded_callback (GtkTreeModel     *tree_model,
 	}
 
 	/* if iter is ancestor of wanted selection_location then update selection */
-	selection_file = nautilus_file_get (view->details->selection_location);
+	selection_file = nautilus_file_get_by_uri (view->details->selection_location);
 	while (selection_file != NULL) {
 		if (file == selection_file) {
 			nautilus_file_unref (file);
@@ -879,7 +879,7 @@ new_folder_done (const char *new_folder_uri, gpointer data)
 	/* show the properties window for the newly created
 	 * folder so the user can change its name
 	 */
-	list = g_list_prepend (NULL, nautilus_file_get (new_folder_uri));
+	list = g_list_prepend (NULL, nautilus_file_get_by_uri (new_folder_uri));
 
 	fm_properties_window_present (list, GTK_WIDGET (data));
 
@@ -1119,7 +1119,7 @@ file_name_from_uri (const char *uri)
 	NautilusFile *file;
 	char *file_name;
 	
-	file = nautilus_file_get (uri);
+	file = nautilus_file_get_by_uri (uri);
 	file_name = nautilus_file_get_display_name (file);
 	nautilus_file_unref (file);
 

@@ -89,7 +89,7 @@ new_bookmark_from_uri (const char *uri, const char *label)
 	}
 	
 	if (uri) {
-		file = nautilus_file_get (uri);
+		file = nautilus_file_get_by_uri (uri);
 		icon_name = NULL;
 		if (nautilus_icon_factory_is_icon_ready_for_file (file)) {
 			icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);

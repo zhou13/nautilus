@@ -2575,7 +2575,7 @@ list_view_scroll_to_file (NautilusView *view,
 	if (uri != NULL) {
 		/* Only if existing, since we don't want to add the file to
 		   the directory if it has been removed since then */
-		file = nautilus_file_get_existing (uri);
+		file = nautilus_file_get_existing_by_uri (uri);
 		if (file != NULL) {
 			fm_list_view_scroll_to_file (FM_LIST_VIEW (view), file);
 			nautilus_file_unref (file);

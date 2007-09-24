@@ -1018,7 +1018,7 @@ get_icon_name_for_file_path (const char *file_path)
 	NautilusFile *file;
 	char 	     *icon_name;
 
-	file = nautilus_file_get (file_path);
+	file = nautilus_file_get_by_uri (file_path);
 	if (!file) {
 		return g_strdup (DEFAULT_ICON);
 	}
@@ -1498,7 +1498,7 @@ get_display_name_for_folder (const char *file_path)
 
 	vfs_uri = gnome_vfs_uri_new (file_path);
  	if (vfs_uri == NULL) {
-		file = nautilus_file_get (file_path);
+		file = nautilus_file_get_by_uri (file_path);
 		name = nautilus_file_get_display_name (file);
 		nautilus_file_unref (file);
 		return name;
