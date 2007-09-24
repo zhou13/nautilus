@@ -1,6 +1,12 @@
 2007-09-24  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory-private.h:
+	Use gio to do directory counts
+
+2007-09-24  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-file-private.h:
 	Define NAUTILUS_FILE_DEFAULT_ATTRIBUTES
 

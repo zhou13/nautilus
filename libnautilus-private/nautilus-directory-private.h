@@ -41,6 +41,7 @@ typedef struct LinkInfoReadState LinkInfoReadState;
 typedef struct TopLeftTextReadState TopLeftTextReadState;
 typedef struct FileMonitors FileMonitors;
 typedef struct DirectoryLoadState DirectoryLoadState;
+typedef struct DirectoryCountState DirectoryCountState;
 typedef struct GetInfoState GetInfoState;
 typedef struct NewFilesState NewFilesState;
 
@@ -92,7 +93,7 @@ struct NautilusDirectoryDetails
 	GList *new_files_in_progress; /* list of NewFilesState * */
 
 	NautilusFile *count_file;
-	GnomeVFSAsyncHandle *count_in_progress;
+	DirectoryCountState *count_in_progress;
 
 	NautilusFile *deep_count_file;
 	GnomeVFSAsyncHandle *deep_count_in_progress;

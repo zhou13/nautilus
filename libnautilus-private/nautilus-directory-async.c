@@ -95,6 +95,14 @@ struct NewFilesState {
 	int count;
 };
 
+struct DirectoryCountState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+	GFileEnumerator *enumerator;
+	int file_count;
+};
+
+
 typedef struct {
 	NautilusFile *file; /* Which file, NULL means all. */
 	union {
@@ -381,9 +389,11 @@ static void
 directory_count_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->count_in_progress != NULL) {
-		gnome_vfs_async_cancel (directory->details->count_in_progress);
-		directory->details->count_file = NULL;
+		g_cancellable_cancel (directory->details->count_in_progress->cancellable);
+		directory->details->count_in_progress->directory = NULL;
 		directory->details->count_in_progress = NULL;
+		directory->details->count_file = NULL;
+		
 
 		async_job_end (directory, "directory count");
 	}
@@ -1359,75 +1369,6 @@ nautilus_directory_cancel_callback_internal (NautilusDirectory *directory,
 	} while (node != NULL);
 }
 
-static guint
-count_non_skipped_files (GList *list)
-{
-	guint count;
-	GList *node;
-	GnomeVFSFileInfo *vfs_info;
-	GFileInfo *info;
-
-	count = 0;
-	for (node = list; node != NULL; node = node->next) {
-		vfs_info = node->data;
-		info = gnome_vfs_file_info_to_gio (vfs_info);
-		if (!should_skip_file (NULL, info)) {
-			count += 1;
-		}
-		g_object_unref (info);
-	}
-	return count;
-}
-
-static void
-directory_count_callback (GnomeVFSAsyncHandle *handle,
-			  GnomeVFSResult result,
-			  GList *list,
-			  guint entries_read,
-			  gpointer callback_data)
-{
-	NautilusDirectory *directory;
-	NautilusFile *count_file;
-
-	directory = NAUTILUS_DIRECTORY (callback_data);
-
-	g_assert (directory->details->count_in_progress == handle);
-	count_file = directory->details->count_file;
-	g_assert (NAUTILUS_IS_FILE (count_file));
-
-	if (result == GNOME_VFS_OK) {
-		return;
-	}
-
-	nautilus_directory_ref (directory);
-
-	count_file->details->directory_count_is_up_to_date = TRUE;
-
-	/* Record either a failure or success. */
-	if (result != GNOME_VFS_ERROR_EOF) {
-		count_file->details->directory_count_failed = TRUE;
-		count_file->details->got_directory_count = FALSE;
-		count_file->details->directory_count = 0;
-	} else {
-		count_file->details->directory_count_failed = FALSE;
-		count_file->details->got_directory_count = TRUE;
-		count_file->details->directory_count = count_non_skipped_files (list);
-	}
-	directory->details->count_file = NULL;
-	directory->details->count_in_progress = NULL;
-
-	/* Send file-changed even if count failed, so interested parties can
-	 * distinguish between unknowable and not-yet-known cases.
-	 */
-	nautilus_file_changed (count_file);
-
-	/* Start up the next one. */
-	async_job_end (directory, "directory count");
-	nautilus_directory_async_state_changed (directory);
-
-	nautilus_directory_unref (directory);
-}
-
 static void
 new_files_state_unref (NewFilesState *state)
 {
@@ -2361,12 +2302,172 @@ directory_count_stop (NautilusDirectory *directory)
 	}
 }
 
+static guint
+count_non_skipped_files (GList *list)
+{
+	guint count;
+	GList *node;
+	GFileInfo *info;
+
+	count = 0;
+	for (node = list; node != NULL; node = node->next) {
+		info = node->data;
+		if (!should_skip_file (NULL, info)) {
+			count += 1;
+		}
+	}
+	return count;
+}
+
+static void
+count_children_done (NautilusDirectory *directory,
+		     gboolean succeeded,
+		     int count)
+{
+	NautilusFile *count_file;
+
+	count_file = directory->details->count_file;
+	g_print ("count_children for %p done (%d, %d)\n", count_file, succeeded, count);
+	
+	g_assert (NAUTILUS_IS_FILE (count_file));
+
+	nautilus_directory_ref (directory);
+
+	count_file->details->directory_count_is_up_to_date = TRUE;
+
+	/* Record either a failure or success. */
+	if (!succeeded) {
+		count_file->details->directory_count_failed = TRUE;
+		count_file->details->got_directory_count = FALSE;
+		count_file->details->directory_count = 0;
+	} else {
+		count_file->details->directory_count_failed = FALSE;
+		count_file->details->got_directory_count = TRUE;
+		count_file->details->directory_count = count;
+	}
+	directory->details->count_file = NULL;
+	directory->details->count_in_progress = NULL;
+
+	/* Send file-changed even if count failed, so interested parties can
+	 * distinguish between unknowable and not-yet-known cases.
+	 */
+	nautilus_file_changed (count_file);
+
+	/* Start up the next one. */
+	async_job_end (directory, "directory count");
+	nautilus_directory_async_state_changed (directory);
+
+	nautilus_directory_unref (directory);
+}
+
+static void
+directory_count_state_free (DirectoryCountState *state)
+{
+	if (state->enumerator) {
+		if (!g_file_enumerator_is_closed (state->enumerator)) {
+			g_file_enumerator_close_async (state->enumerator,
+						       0, NULL, NULL, NULL);
+		}
+		g_object_unref (state->enumerator);
+	}
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
+count_more_files_callback (GObject *source_object,
+			   GAsyncResult *res,
+			   gpointer user_data)
+{
+	DirectoryCountState *state;
+	NautilusDirectory *directory;
+	GError *error;
+	GList *files;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		directory_count_state_free (state);
+		return;
+	}
+
+	directory = nautilus_directory_ref (state->directory);
+	
+	g_assert (directory->details->count_in_progress != NULL);
+	g_assert (directory->details->count_in_progress == state);
+
+	error = NULL;
+	files = g_file_enumerator_next_files_finish (state->enumerator,
+						     res, &error);
+
+	state->file_count += count_non_skipped_files (files);
+	
+	if (files == NULL) {
+		count_children_done (directory, TRUE, state->file_count);
+		directory_count_state_free (state);
+	} else {
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    G_PRIORITY_DEFAULT,
+						    state->cancellable,
+						    count_more_files_callback,
+						    state);
+	}
+
+	eel_g_object_list_free (files);
+
+	nautilus_directory_unref (directory);
+	
+	if (error) {
+		g_error_free (error);
+	}
+}
+
+static void
+count_children_callback (GObject *source_object,
+			 GAsyncResult *res,
+			 gpointer user_data)
+{
+	DirectoryCountState *state;
+	GFileEnumerator *enumerator;
+	GError *error;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		directory_count_state_free (state);
+		return;
+	}
+	
+	error = NULL;
+	enumerator = g_file_enumerate_children_finish  (G_FILE (source_object),
+							res, &error);
+
+	if (enumerator == NULL) {
+		count_children_done (state->directory, FALSE, 0);
+		g_error_free (error);
+		directory_count_state_free (state);
+		return;
+	} else {
+		state->enumerator = enumerator;
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    G_PRIORITY_DEFAULT,
+						    state->cancellable,
+						    count_more_files_callback,
+						    state);
+	}
+}
+
 static void
 directory_count_start (NautilusDirectory *directory,
 		       NautilusFile *file,
 		       gboolean *doing_io)
 {
-	char *uri;
+	DirectoryCountState *state;
+	GFile *location;
 
 	if (directory->details->count_in_progress != NULL) {
 		*doing_io = TRUE;
@@ -2395,19 +2496,26 @@ directory_count_start (NautilusDirectory *directory,
 
 	/* Start counting. */
 	directory->details->count_file = file;
-	uri = nautilus_file_get_uri (file);
+
+	state = g_new0 (DirectoryCountState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+	
+	directory->details->count_in_progress = state;
+	
 #ifdef DEBUG_LOAD_DIRECTORY		
 	g_message ("load_directory called to get shallow file count for %s", uri);
-#endif	
-	gnome_vfs_async_load_directory
-		(&directory->details->count_in_progress,
-		 uri,
-		 GNOME_VFS_FILE_INFO_NAME_ONLY,
-		 G_MAXINT,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 directory_count_callback,
-		 directory);
-	g_free (uri);
+#endif
+	location = nautilus_file_get_location (file);
+	
+	g_file_enumerate_children_async (location,
+					 "std:name,std:is_hidden,std:is_backup",
+					 0, /* flags */
+					 G_PRIORITY_DEFAULT, /* prio */
+					 state->cancellable,
+					 count_children_callback,
+					 state);
+	g_object_unref (location);
 }
 
 static void
