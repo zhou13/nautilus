@@ -54,6 +54,8 @@ typedef struct NautilusFile NautilusFile;
 	(GTK_CHECK_TYPE ((obj), NAUTILUS_TYPE_FILE))
 #define NAUTILUS_IS_FILE_CLASS(klass) \
 	(GTK_CHECK_CLASS_TYPE ((klass), NAUTILUS_TYPE_FILE))
+#define NAUTILUS_FILE_GET_CLASS(obj) \
+	(G_TYPE_INSTANCE_GET_CLASS ((obj), NAUTILUS_TYPE_FILE, NautilusFileClass))
 
 typedef enum {
 	NAUTILUS_FILE_SORT_NONE,
@@ -383,6 +385,12 @@ typedef enum {
 
 typedef struct {
 	GObjectClass parent_slot;
+
+	/* Subclasses can set this to something other than G_FILE_TYPE_UNKNOWN and
+	   it will be used as the default file type. This is useful when creating
+	   a "virtual" NautilusFile subclass that you can't actually get real
+	   information about. For exaple NautilusDesktopDirectoryFile. */
+	GFileType default_file_type; 
 	
 	/* Called when the file notices any change. */
 	void                  (* changed)                (NautilusFile *file);

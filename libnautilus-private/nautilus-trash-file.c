@@ -724,9 +724,6 @@ nautilus_trash_file_init (gpointer object, gpointer klass)
 		add_real_file_given_directory (trash_file, node->data);
 	}
 	g_list_free (real_directories);
-
-
-	NAUTILUS_FILE (trash_file)->details->type = G_FILE_TYPE_DIRECTORY;
 }
 
 static void
@@ -768,6 +765,8 @@ nautilus_trash_file_class_init (gpointer klass)
 	
 	object_class->finalize = trash_finalize;
 
+	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
+	
 	file_class->monitor_add = trash_file_monitor_add;
 	file_class->monitor_remove = trash_file_monitor_remove;
 	file_class->call_when_ready = trash_file_call_when_ready;

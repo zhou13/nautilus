@@ -39,11 +39,9 @@ EEL_CLASS_BOILERPLATE (NautilusSavedSearchFile,
 static void
 nautilus_saved_search_file_init (gpointer object, gpointer klass)
 {
-	NautilusVFSFile *file;
+	NautilusFile *file;
 
-	file = NAUTILUS_VFS_FILE (object);
-
-	NAUTILUS_FILE (file)->details->type = G_FILE_TYPE_DIRECTORY;
+	file = NAUTILUS_FILE (object);
 }
 
 static void
@@ -53,5 +51,6 @@ nautilus_saved_search_file_class_init (gpointer klass)
 
 	file_class = NAUTILUS_FILE_CLASS (klass);
 
+	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
 }
   

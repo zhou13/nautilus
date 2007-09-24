@@ -183,9 +183,29 @@ nautilus_file_instance_init (NautilusFile *file)
 	file->details = G_TYPE_INSTANCE_GET_PRIVATE ((file), NAUTILUS_TYPE_FILE, NautilusFileDetails);
 
 	nautilus_file_clear_info (file);
-	
-	
 	nautilus_file_invalidate_extension_info_internal (file);
+}
+
+static GObject*
+nautilus_file_constructor (GType                  type,
+			   guint                  n_construct_properties,
+			   GObjectConstructParam *construct_params)
+{
+  GObject *object;
+  NautilusFile *file;
+
+  object = (* G_OBJECT_CLASS (parent_class)->constructor) (type,
+							   n_construct_properties,
+							   construct_params);
+
+  file = NAUTILUS_FILE (object);
+
+  /* Set to default type after full construction */
+  if (NAUTILUS_FILE_GET_CLASS (file)->default_file_type != G_FILE_TYPE_UNKNOWN) {
+	  file->details->type = NAUTILUS_FILE_GET_CLASS (file)->default_file_type;
+  }
+  
+  return object;
 }
 
 void
@@ -196,10 +216,13 @@ nautilus_file_clear_info (NautilusFile *file)
 		g_error_free (file->details->get_info_error);
 		file->details->get_info_error = NULL;
 	}
+	/* Reset to default type, which might be other than unknown for
+	   special kinds of files like the desktop or a search directory */
+	file->details->type = NAUTILUS_FILE_GET_CLASS (file)->default_file_type;
+	
 	file->details->is_symlink = FALSE;
 	file->details->is_hidden = FALSE;
 	file->details->is_backup = FALSE;
-	file->details->type = G_FILE_TYPE_UNKNOWN;
 	file->details->uid = -1;
 	file->details->gid = -1;
 	file->details->can_read = TRUE;
@@ -361,6 +384,7 @@ nautilus_file_new_from_info (NautilusDirectory *directory,
 	mime_type = g_file_info_get_content_type (info);
 	if (mime_type &&
 	    strcmp (mime_type, NAUTILUS_SAVED_SEARCH_MIMETYPE) == 0) {
+		g_file_info_set_file_type (info, G_FILE_TYPE_DIRECTORY);
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_SAVED_SEARCH_FILE, NULL));
 	} else {
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_VFS_FILE, NULL));
@@ -6157,6 +6181,7 @@ nautilus_file_class_init (NautilusFileClass *class)
 	parent_class = g_type_class_peek_parent (class);
 
 	G_OBJECT_CLASS (class)->finalize = finalize;
+	G_OBJECT_CLASS (class)->constructor = nautilus_file_constructor;
 
 	signals[CHANGED] =
 		g_signal_new ("changed",

@@ -209,6 +209,8 @@ nautilus_search_directory_file_class_init (gpointer klass)
 	object_class = G_OBJECT_CLASS (klass);
 	file_class = NAUTILUS_FILE_CLASS (klass);
 
+	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
+	
 	file_class->monitor_add = search_directory_file_monitor_add;
 	file_class->monitor_remove = search_directory_file_monitor_remove;
 	file_class->call_when_ready = search_directory_file_call_when_ready;

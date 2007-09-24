@@ -1,5 +1,19 @@
 2007-09-24  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-desktop-directory-file.c:
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-file.h:
+        * libnautilus-private/nautilus-saved-search-file.c:
+        * libnautilus-private/nautilus-search-directory-file.c:
+        * libnautilus-private/nautilus-trash-file.c:
+	There was some problems removing the virtual call for
+	get_file_type, as this broke getting the type for "virtual"
+	directory types like trash and the desktop. Re-introduce this,
+	but set the type directly instead of via an indirect jump.
+
+2007-09-24  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory.c:
         * libnautilus-private/nautilus-file.c:
         * libnautilus-private/nautilus-file.h:

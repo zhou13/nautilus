@@ -69,7 +69,7 @@ typedef struct {
 
 
 static void nautilus_desktop_directory_file_init       (gpointer   object,
-						  gpointer   klass);
+							gpointer   klass);
 static void nautilus_desktop_directory_file_class_init (gpointer   klass);
 
 EEL_CLASS_BOILERPLATE (NautilusDesktopDirectoryFile,
@@ -468,8 +468,6 @@ nautilus_desktop_directory_file_init (gpointer object, gpointer klass)
 	desktop_file->details->monitors = g_hash_table_new_full (NULL, NULL,
 								 NULL, monitor_destroy);
 
-	NAUTILUS_FILE (desktop_file)->details->type = G_FILE_TYPE_DIRECTORY;
-	
 	real_dir = nautilus_desktop_directory_get_real_directory (desktop_directory);
 	real_dir_file = nautilus_directory_get_corresponding_file (real_dir);
 	nautilus_directory_unref (real_dir);
@@ -533,6 +531,8 @@ nautilus_desktop_directory_file_class_init (gpointer klass)
 	
 	object_class->finalize = desktop_finalize;
 
+	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
+	
 	file_class->monitor_add = desktop_directory_file_monitor_add;
 	file_class->monitor_remove = desktop_directory_file_monitor_remove;
 	file_class->call_when_ready = desktop_directory_file_call_when_ready;

@@ -165,7 +165,6 @@ nautilus_desktop_icon_file_init (gpointer object, gpointer klass)
 	desktop_file = NAUTILUS_DESKTOP_ICON_FILE (object);
 
 	desktop_file->details = g_new0 (NautilusDesktopIconFileDetails, 1);
-	NAUTILUS_FILE (desktop_file)->details->type = G_FILE_TYPE_REGULAR;
 }	
 
 static void
@@ -327,6 +326,8 @@ nautilus_desktop_icon_file_class_init (gpointer klass)
 	
 	object_class->finalize = desktop_icon_file_finalize;
 
+	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
+	
 	file_class->monitor_add = desktop_icon_file_monitor_add;
 	file_class->monitor_remove = desktop_icon_file_monitor_remove;
 	file_class->call_when_ready = desktop_icon_file_call_when_ready;
