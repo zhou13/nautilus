@@ -1031,8 +1031,6 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 				       lookup_flags,
 				       &lookup_result);
 
-	gnome_vfs_file_info_unref (file_info);
-
 	/* Create thumbnails if we can, and if the looked up icon isn't a thumbnail
 	   or an absolute pathname (custom icon or image as itself) */
 	if (show_thumb &&
@@ -1046,6 +1044,9 @@ nautilus_icon_factory_get_icon_for_file (NautilusFile *file, gboolean embedd_tex
 		g_free (icon_name);
 		icon_name = g_strdup (ICON_NAME_THUMBNAIL_LOADING);
 	}
+	
+	gnome_vfs_file_info_unref (file_info);
+
 	
         g_free (file_uri);
         g_free (custom_icon);

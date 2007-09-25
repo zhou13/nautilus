@@ -317,7 +317,8 @@ modify_link_hash_table (NautilusFile *file,
 		 &original_key, (gpointer *)&list_ptr);
 	if (!found) {
 		list_ptr = g_new0 (GList *, 1);
-		g_hash_table_insert (symbolic_links, g_strdup (target_uri), list_ptr);
+		original_key = g_strdup (target_uri);
+		g_hash_table_insert (symbolic_links, original_key, list_ptr);
 	}
 	(* modify_function) (list_ptr, file);
 	if (*list_ptr == NULL) {

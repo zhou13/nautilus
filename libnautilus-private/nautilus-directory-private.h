@@ -87,10 +87,6 @@ struct NautilusDirectoryDetails
 	int confirmed_file_count;
         guint dequeue_pending_idle_id;
 
-	NautilusFile *load_directory_file;
-	int load_file_count;
-	GHashTable *load_mime_list_hash;
-
 	GList *new_files_in_progress; /* list of NewFilesState * */
 
 	NautilusFile *count_file;
