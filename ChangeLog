@@ -1,5 +1,11 @@
 2007-09-25  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory-private.h:
+	Implement deep count using gio
+
+2007-09-25  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-metafile.c (set_metafile_contents):
 	Don't crash on files that have slashes in them.
 

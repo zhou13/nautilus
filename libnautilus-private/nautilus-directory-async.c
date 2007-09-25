@@ -102,6 +102,15 @@ struct DirectoryCountState {
 	int file_count;
 };
 
+struct DeepCountState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+	GFileEnumerator *enumerator;
+	GFile *deep_count_location;
+	GList *deep_count_subdirectories;
+};
+
+
 
 typedef struct {
 	NautilusFile *file; /* Which file, NULL means all. */
@@ -147,25 +156,25 @@ static GHashTable *async_jobs;
 static char *kde_trash_dir_name = NULL;
 
 /* Forward declarations for functions that need them. */
-static void     deep_count_load             (NautilusDirectory      *directory,
-					     const char             *uri);
-static gboolean request_is_satisfied        (NautilusDirectory      *directory,
-					     NautilusFile           *file,
-					     Request                *request);
-static void     cancel_loading_attributes   (NautilusDirectory      *directory,
-					     NautilusFileAttributes  file_attributes);
-static void     add_all_files_to_work_queue (NautilusDirectory      *directory);
-static void     link_info_done              (NautilusDirectory      *directory,
-					     NautilusFile           *file,
-					     const char             *uri,
-					     const char             *name, 
-					     const char             *icon,
-					     gulong                  drive_id,
-					     gulong                  volume_id);
-static void     move_file_to_low_priority_queue    (NautilusDirectory *directory,
-						    NautilusFile      *file);
-static void     move_file_to_extension_queue    (NautilusDirectory *directory,
-						 NautilusFile      *file);
+static void     deep_count_load                               (DeepCountState         *state,
+							       GFile                  *location);
+static gboolean request_is_satisfied                          (NautilusDirectory      *directory,
+							       NautilusFile           *file,
+							       Request                *request);
+static void     cancel_loading_attributes                     (NautilusDirectory      *directory,
+							       NautilusFileAttributes  file_attributes);
+static void     add_all_files_to_work_queue                   (NautilusDirectory      *directory);
+static void     link_info_done                                (NautilusDirectory      *directory,
+							       NautilusFile           *file,
+							       const char             *uri,
+							       const char             *name,
+							       const char             *icon,
+							       gulong                  drive_id,
+							       gulong                  volume_id);
+static void     move_file_to_low_priority_queue               (NautilusDirectory      *directory,
+							       NautilusFile           *file);
+static void     move_file_to_extension_queue                  (NautilusDirectory      *directory,
+							       NautilusFile           *file);
 static void     nautilus_directory_invalidate_file_attributes (NautilusDirectory      *directory,
 							       NautilusFileAttributes  file_attributes);
 
@@ -404,17 +413,14 @@ deep_count_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->deep_count_in_progress != NULL) {
 		g_assert (NAUTILUS_IS_FILE (directory->details->deep_count_file));
-
-		gnome_vfs_async_cancel (directory->details->deep_count_in_progress);
+		
+		g_cancellable_cancel (directory->details->deep_count_in_progress->cancellable);
 
 		directory->details->deep_count_file->details->deep_counts_status = NAUTILUS_REQUEST_NOT_STARTED;
 
-		directory->details->deep_count_file = NULL;
+		directory->details->deep_count_in_progress->directory = NULL;
 		directory->details->deep_count_in_progress = NULL;
-		g_free (directory->details->deep_count_uri);
-		directory->details->deep_count_uri = NULL;
-		eel_g_list_free_deep (directory->details->deep_count_subdirectories);
-		directory->details->deep_count_subdirectories = NULL;
+		directory->details->deep_count_file = NULL;
 
 		async_job_end (directory, "deep count");
 	}
@@ -2518,92 +2524,87 @@ directory_count_start (NautilusDirectory *directory,
 }
 
 static void
-deep_count_one (NautilusDirectory *directory,
-		GnomeVFSFileInfo *vfs_info)
+deep_count_one (DeepCountState *state,
+		GFileInfo *info)
 {
 	NautilusFile *file;
-	char *escaped_name, *uri;
-	GFileInfo *info;
-	
-	info = gnome_vfs_file_info_to_gio (vfs_info);
+	GFile *subdir;
+
 	if (should_skip_file (NULL, info)) {
-		g_object_unref (info);
 		return;
 	}
-	g_object_unref (info);
 
-	file = directory->details->deep_count_file;
+	file = state->directory->details->deep_count_file;
 
-	if ((vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_TYPE) != 0
-	    && vfs_info->type == GNOME_VFS_FILE_TYPE_DIRECTORY) {
+	if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
 		/* Count the directory. */
 		file->details->deep_directory_count += 1;
 
 		/* Record the fact that we have to descend into this directory. */
-		escaped_name = gnome_vfs_escape_string (vfs_info->name);
-		uri = g_build_filename (directory->details->deep_count_uri, escaped_name, NULL);
-		g_free (escaped_name);
-		directory->details->deep_count_subdirectories = g_list_prepend
-			(directory->details->deep_count_subdirectories, uri);
+
+		subdir = g_file_get_child (state->deep_count_location, g_file_info_get_name (info));
+		state->deep_count_subdirectories = g_list_prepend
+			(state->deep_count_subdirectories, subdir);
 	} else {
 		/* Even non-regular files count as files. */
 		file->details->deep_file_count += 1;
 	}
 
 	/* Count the size. */
-	if ((vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_SIZE) != 0) {
-		file->details->deep_size += vfs_info->size;
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_STD_SIZE)) {
+		file->details->deep_size += g_file_info_get_size (info);
 	}
 }
 
 static void
-deep_count_callback (GnomeVFSAsyncHandle *handle,
-		     GnomeVFSResult result,
-		     GList *list,
-		     guint entries_read,
-		     gpointer callback_data)
+deep_count_state_free (DeepCountState *state)
 {
-	NautilusDirectory *directory;
+	if (state->enumerator) {
+		if (!g_file_enumerator_is_closed (state->enumerator)) {
+			g_file_enumerator_close_async (state->enumerator,
+						       0, NULL, NULL, NULL);
+		}
+		g_object_unref (state->enumerator);
+	}
+	g_object_unref (state->cancellable);
+	if (state->deep_count_location) {
+		g_object_unref (state->deep_count_location);
+	}
+	eel_g_object_list_free (state->deep_count_subdirectories);
+	g_free (state);
+}
+
+static void
+deep_count_next_dir (DeepCountState *state)
+{
+	GFile *location;
 	NautilusFile *file;
-	GList *element;
-	char *uri;
+	NautilusDirectory *directory;
 	gboolean done;
 
-	directory = NAUTILUS_DIRECTORY (callback_data);
-	g_assert (directory->details->deep_count_in_progress == handle);
-	file = directory->details->deep_count_file;
-	g_assert (NAUTILUS_IS_FILE (file));
-
-	nautilus_directory_ref (directory);
-
-	for (element = list; element != NULL; element = element->next) {
-		deep_count_one (directory, element->data);
-	}
+	directory = state->directory;
+	
+	g_object_unref (state->deep_count_location);
+	state->deep_count_location = NULL;
 
 	done = FALSE;
-	if (result != GNOME_VFS_OK) {
-		if (result != GNOME_VFS_ERROR_EOF) {
-			file->details->deep_unreadable_count += 1;
-		}
-		
+	file = directory->details->deep_count_file;
+	
+	if (state->deep_count_subdirectories != NULL) {
+		/* Work on a new directory. */
+		location = state->deep_count_subdirectories->data;
+		state->deep_count_subdirectories = g_list_remove
+			(state->deep_count_subdirectories, location);
+		deep_count_load (state, location);
+		g_object_unref (location);
+	} else {
+		file->details->deep_counts_status = NAUTILUS_REQUEST_DONE;
+		directory->details->deep_count_file = NULL;
 		directory->details->deep_count_in_progress = NULL;
-		g_free (directory->details->deep_count_uri);
-		directory->details->deep_count_uri = NULL;
-
-		if (directory->details->deep_count_subdirectories != NULL) {
-			/* Work on a new directory. */
-			uri = directory->details->deep_count_subdirectories->data;
-			directory->details->deep_count_subdirectories = g_list_remove
-				(directory->details->deep_count_subdirectories, uri);
-			deep_count_load (directory, uri);
-			g_free (uri);
-		} else {
-			file->details->deep_counts_status = NAUTILUS_REQUEST_DONE;
-			directory->details->deep_count_file = NULL;
-			done = TRUE;
-		}
+		deep_count_state_free (state);
+		done = TRUE;
 	}
-
+	
 	nautilus_file_updated_deep_count_in_progress (file);
 
 	if (done) {
@@ -2611,26 +2612,115 @@ deep_count_callback (GnomeVFSAsyncHandle *handle,
 		async_job_end (directory, "deep count");
 		nautilus_directory_async_state_changed (directory);
 	}
+}
+
+static void
+deep_count_more_files_callback (GObject *source_object,
+				GAsyncResult *res,
+				gpointer user_data)
+{
+	DeepCountState *state;
+	NautilusDirectory *directory;
+	GList *files, *l;
+	GFileInfo *info;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		deep_count_state_free (state);
+		return;
+	}
+
+	directory = nautilus_directory_ref (state->directory);
+	
+	g_assert (directory->details->deep_count_in_progress != NULL);
+	g_assert (directory->details->deep_count_in_progress == state);
+
+	files = g_file_enumerator_next_files_finish (state->enumerator,
+						     res, NULL);
+
+	for (l = files; l != NULL; l = l->next)	{
+		info = l->data;
+		deep_count_one (state, info);
+		g_object_unref (info);
+	}
+	
+	if (files == NULL) {
+		g_file_enumerator_close_async (state->enumerator, 0, NULL, NULL, NULL);
+		g_object_unref (state->enumerator);
+		state->enumerator = NULL;
+		
+		deep_count_next_dir (state);
+	} else {
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    G_PRIORITY_LOW,
+						    state->cancellable,
+						    deep_count_more_files_callback,
+						    state);
+	}
+
+	g_list_free (files);
 
 	nautilus_directory_unref (directory);
 }
 
 static void
-deep_count_load (NautilusDirectory *directory, const char *uri)
+deep_count_callback (GObject *source_object,
+		     GAsyncResult *res,
+		     gpointer user_data)
 {
-	g_assert (directory->details->deep_count_uri == NULL);
-	directory->details->deep_count_uri = g_strdup (uri);
+	DeepCountState *state;
+	GFileEnumerator *enumerator;
+	NautilusFile *file;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		deep_count_state_free (state);
+		return;
+	}
+
+	file = state->directory->details->deep_count_file;
+
+	enumerator = g_file_enumerate_children_finish  (G_FILE (source_object),	res, NULL);
+	
+	if (enumerator == NULL) {
+		file->details->deep_unreadable_count += 1;
+		
+		deep_count_next_dir (state);
+	} else {
+		state->enumerator = enumerator;
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    G_PRIORITY_LOW,
+						    state->cancellable,
+						    deep_count_more_files_callback,
+						    state);
+	}
+}
+
+
+static void
+deep_count_load (DeepCountState *state, GFile *location)
+{
+	NautilusDirectory *directory;
+
+	directory = state->directory;
+	state->deep_count_location = g_object_ref (location);
+
 #ifdef DEBUG_LOAD_DIRECTORY		
-	g_message ("load_directory called to get deep file count for %s", uri);
+	g_message ("load_directory called to get deep file count for %p", location);
 #endif	
-	gnome_vfs_async_load_directory
-		(&directory->details->deep_count_in_progress,
-		 uri,
-		 GNOME_VFS_FILE_INFO_DEFAULT,
-		 G_MAXINT,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 deep_count_callback,
-		 directory);
+	g_file_enumerate_children_async (state->deep_count_location,
+					 "std:name,std:is_hidden,std:is_backup,std:type,std:size",
+					 0, /* flags */
+					 G_PRIORITY_LOW, /* prio */
+					 state->cancellable,
+					 deep_count_callback,
+					 state);
 }
 
 static void
@@ -2660,8 +2750,9 @@ deep_count_start (NautilusDirectory *directory,
 		  NautilusFile *file,
 		  gboolean *doing_io)
 {
-	char *uri;
-
+	GFile *location;
+	DeepCountState *state;
+	
 	if (directory->details->deep_count_in_progress != NULL) {
 		*doing_io = TRUE;
 		return;
@@ -2692,9 +2783,16 @@ deep_count_start (NautilusDirectory *directory,
 	file->details->deep_unreadable_count = 0;
 	file->details->deep_size = 0;
 	directory->details->deep_count_file = file;
-	uri = nautilus_file_get_uri (file);
-	deep_count_load (directory, uri);
-	g_free (uri);
+
+	state = g_new0 (DeepCountState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+
+	directory->details->deep_count_in_progress = state;
+	
+	location = nautilus_file_get_location (file);
+	deep_count_load (state, location);
+	g_object_unref (location);
 }
 
 static void
