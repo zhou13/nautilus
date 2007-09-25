@@ -2327,7 +2327,6 @@ count_children_done (NautilusDirectory *directory,
 	NautilusFile *count_file;
 
 	count_file = directory->details->count_file;
-	g_print ("count_children for %p done (%d, %d)\n", count_file, succeeded, count);
 	
 	g_assert (NAUTILUS_IS_FILE (count_file));
 
