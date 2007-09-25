@@ -1840,7 +1840,8 @@ set_metafile_contents (NautilusMetafile *metafile,
 		if (strcmp (node->name, "file") == 0) {
 			name = xmlGetProp (node, "name");
 			unescaped_name = gnome_vfs_unescape_string (name, "/");
-			if (g_hash_table_lookup (hash, unescaped_name) != NULL) {
+			if (unescaped_name == NULL ||
+			    g_hash_table_lookup (hash, unescaped_name) != NULL) {
 				xmlFree (name);
 				/* FIXME: Should we delete duplicate nodes as we discover them? */
 			} else {
