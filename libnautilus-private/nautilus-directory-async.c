@@ -73,8 +73,9 @@ struct TopLeftTextReadState {
 };
 
 struct LinkInfoReadState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
 	NautilusFile *file;
-	EelReadFileHandle *handle;
 };
 
 struct DirectoryLoadState {
@@ -467,8 +468,8 @@ static void
 link_info_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->link_info_read_state != NULL) {
-		eel_read_file_cancel (directory->details->link_info_read_state->handle);
-		g_free (directory->details->link_info_read_state);
+		g_cancellable_cancel (directory->details->link_info_read_state->cancellable);
+		directory->details->link_info_read_state->directory = NULL;
 		directory->details->link_info_read_state = NULL;
 		async_job_end (directory, "link info");
 	}
@@ -1386,8 +1387,8 @@ new_files_state_unref (NewFilesState *state)
 
 static void
 new_files_callback (GObject *source_object,
-		     GAsyncResult *res,
-		     gpointer user_data)
+		    GAsyncResult *res,
+		    gpointer user_data)
 {
 	NautilusDirectory *directory;
 	GFileInfo *info;
@@ -1519,8 +1520,8 @@ nautilus_async_destroying_file (NautilusFile *file)
 		directory->details->top_left_read_state->file = NULL;
 		changed = TRUE;
 	}
-	if (directory->details->link_info_read_state != NULL
-	    && directory->details->link_info_read_state->file == file) {
+	if (directory->details->link_info_read_state != NULL &&
+	    directory->details->link_info_read_state->file == file) {
 		directory->details->link_info_read_state->file = NULL;
 		changed = TRUE;
 	}
@@ -3358,73 +3359,11 @@ link_info_done (NautilusDirectory *directory,
 static gboolean
 should_read_link_info_sync (NautilusFile *file)
 {
-	return (nautilus_file_is_local (file) &&
-		!nautilus_file_is_directory (file));
-}
-
-static void
-link_info_read_done (NautilusDirectory *directory,
-		     const char *uri,
-		     const char *name,
-		     const char *icon,
-		     gulong drive_id,
-		     gulong volume_id)
-{
-	NautilusFile *file;
-
-	file = directory->details->link_info_read_state->file;
-	g_free (directory->details->link_info_read_state);
-	directory->details->link_info_read_state = NULL;
-
-	nautilus_file_ref (file);
-	link_info_done (directory, file, uri, name, icon, drive_id, volume_id);
-	nautilus_file_changed (file);
-
-	if (!should_read_link_info_sync (file)) {
-		async_job_end (directory, "link info");
-	}
-
-	nautilus_file_unref (file);
-}
-
-
-static void
-link_info_nautilus_link_read_callback (GnomeVFSResult result,
-				       goffset bytes_read,
-				       char *file_contents,
-				       gpointer callback_data)
-{
-	NautilusDirectory *directory;
-	char *buffer, *uri, *name, *icon;
-	gulong drive_id, volume_id;
-
-	directory = NAUTILUS_DIRECTORY (callback_data);
-
-	nautilus_directory_ref (directory);
-
-	/* Handle the case where we read the Nautilus link. */
-	if (result != GNOME_VFS_OK) {
-		/* FIXME bugzilla.gnome.org 42433: We should report this error to the user. */
-		g_free (file_contents);
-		uri = NULL;
-		name = NULL;
-		icon = NULL;
-		volume_id = drive_id = 0;
-	} else {
-		/* The libxml parser requires a zero-terminated array. */
-		buffer = g_realloc (file_contents, bytes_read + 1);
-		buffer[bytes_read] = '\0';
-		nautilus_link_get_link_info_given_file_contents (buffer, bytes_read,
-								 &uri, &name, &icon, &drive_id, &volume_id);
-		g_free (buffer);
-	}
-
-	link_info_read_done (directory, uri, name, icon, drive_id, volume_id);
-	g_free (uri);
-	g_free (name);
-	g_free (icon);
-
-	nautilus_directory_unref (directory);
+#ifdef READ_LOCAL_LINKS_SYNC
+	return (nautilus_file_is_local (file) && !nautilus_file_is_directory (file));
+#else
+	return FALSE;
+#endif
 }
 
 static void
@@ -3450,17 +3389,98 @@ link_info_stop (NautilusDirectory *directory)
 	}
 }
 
+static void
+link_info_got_data (NautilusDirectory *directory,
+		    NautilusFile *file,
+		    gboolean result,
+		    goffset bytes_read,
+		    char *file_contents)
+{
+	char *uri, *name, *icon;
+	gulong drive_id, volume_id;
+
+	nautilus_directory_ref (directory);
+
+	/* Handle the case where we read the Nautilus link. */
+	if (result) {
+		nautilus_link_get_link_info_given_file_contents (file_contents, bytes_read,
+								 &uri, &name, &icon, &drive_id, &volume_id);
+	} else {
+		/* FIXME bugzilla.gnome.org 42433: We should report this error to the user. */
+		uri = NULL;
+		name = NULL;
+		icon = NULL;
+		volume_id = drive_id = 0;
+	}
+
+	nautilus_file_ref (file);
+	link_info_done (directory, file, uri, name, icon, drive_id, volume_id);
+	nautilus_file_changed (file);
+	nautilus_file_unref (file);
+	
+	g_free (uri);
+	g_free (name);
+	g_free (icon);
+
+	nautilus_directory_unref (directory);
+}
+
+static void
+link_info_read_state_free (LinkInfoReadState *state)
+{
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
+link_info_nautilus_link_read_callback (GObject *source_object,
+				       GAsyncResult *res,
+				       gpointer user_data)
+{
+	LinkInfoReadState *state;
+	gsize file_size;
+	char *file_contents;
+	gboolean result;
+	NautilusDirectory *directory;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		link_info_read_state_free (state);
+		return;
+	}
+
+	directory = nautilus_directory_ref (state->directory);
+
+	result = g_file_load_contents_finish (G_FILE (source_object),
+					      res,
+					      &file_contents, &file_size,
+					      NULL, NULL);
+
+	state->directory->details->link_info_read_state = NULL;
+	async_job_end (state->directory, "link info");
+	
+	link_info_got_data (state->directory, state->file, result, file_size, file_contents);
+
+	g_free (file_contents);
+	
+	link_info_read_state_free (state);
+	
+	nautilus_directory_unref (directory);
+}
 
 static void
 link_info_start (NautilusDirectory *directory,
 		 NautilusFile *file,
 		 gboolean *doing_io)
 {
-	char *uri;
+	GFile *location;
 	gboolean nautilus_style_link;
-	int file_size;
+	gsize file_size;
 	char *file_contents;
-	GnomeVFSResult result;
+	gboolean result;
+	LinkInfoReadState *state;
 	
 	if (directory->details->link_info_read_state != NULL) {
 		*doing_io = TRUE;
@@ -3476,36 +3496,34 @@ link_info_start (NautilusDirectory *directory,
 
 	/* Figure out if it is a link. */
 	nautilus_style_link = nautilus_file_is_nautilus_link (file);
-	uri = nautilus_file_get_uri (file);
+	location = nautilus_file_get_location (file);
 	
 	/* If it's not a link we are done. If it is, we need to read it. */
 	if (!nautilus_style_link) {
 		link_info_done (directory, file, NULL, NULL, NULL, 0, 0);
 	} else if (should_read_link_info_sync (file)) {
-		directory->details->link_info_read_state = g_new0 (LinkInfoReadState, 1);
-		directory->details->link_info_read_state->file = file;
-
-		result = eel_read_entire_file (uri, &file_size, &file_contents);
-		link_info_nautilus_link_read_callback (result, file_size, file_contents, directory);
-
-		/* We don't have to free file_contents here
-		 * because it's done in the callback function
-		 */
+		result = g_file_load_contents (location, NULL, &file_contents, &file_size, NULL, NULL);
+		link_info_got_data (directory, file, result, file_size, file_contents);
+		g_free (file_contents);
 	} else {
 		if (!async_job_start (directory, "link info")) {
-			g_free (uri);
+			g_object_unref (location);
 			return;
 		}
 
-		directory->details->link_info_read_state = g_new0 (LinkInfoReadState, 1);
-		directory->details->link_info_read_state->file = file;
-		directory->details->link_info_read_state->handle = eel_read_entire_file_async
-			(uri,
-			 GNOME_VFS_PRIORITY_DEFAULT,
-			 link_info_nautilus_link_read_callback,
-			 directory);
+		state = g_new0 (LinkInfoReadState, 1);
+		state->directory = directory;
+		state->file = file;
+		state->cancellable = g_cancellable_new ();
+		
+		directory->details->link_info_read_state = state;
+
+		g_file_load_contents_async (location,
+					    state->cancellable,
+					    link_info_nautilus_link_read_callback,
+					    state);
 	}
-	g_free (uri);
+	g_object_unref (location);
 }
 
 static void
@@ -3837,7 +3855,7 @@ cancel_file_info_for_file (NautilusDirectory *directory,
 
 static void
 cancel_link_info_for_file (NautilusDirectory *directory,
-				NautilusFile      *file)
+			   NautilusFile      *file)
 {
 	if (directory->details->link_info_read_state != NULL &&
 	    directory->details->link_info_read_state->file == file) {
