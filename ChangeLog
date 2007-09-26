@@ -1,5 +1,22 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-utilities.[ch]:
+	Make string args const char * where possible.
+
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+	Read display_name and edit_name from gio.
+	Kill old cached_display_name creation.
+	Use eel_ref_str for name, display_name, edit_name and make sure to
+	share them when possible.
+	Old use of display_name as the link info only is moved so that
+	its shared with the normal name, with got_custom_display_name showing
+	where its from.
+
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.c:
 	Use new refcounted string implementation for mime_type.

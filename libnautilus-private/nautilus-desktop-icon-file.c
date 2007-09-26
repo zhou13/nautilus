@@ -173,6 +173,7 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	NautilusFile *file;
 	NautilusDesktopLink *link;
 	GnomeVFSVolume *volume;
+	char *display_name;
 	
 	file = NAUTILUS_FILE (icon_file);
 	
@@ -202,8 +203,11 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	
 	file->details->file_info_is_up_to_date = TRUE;
 
-	g_free (file->details->display_name);
-	file->details->display_name = nautilus_desktop_link_get_display_name (link);
+	display_name = nautilus_desktop_link_get_display_name (link);
+	nautilus_file_set_display_name (file,
+					display_name, NULL, TRUE);
+	g_free (display_name);
+	
 	g_free (file->details->custom_icon);
 	file->details->custom_icon = nautilus_desktop_link_get_icon (link);
 	g_free (file->details->activation_uri);
@@ -223,7 +227,6 @@ nautilus_desktop_icon_file_update (NautilusDesktopIconFile *icon_file)
 	
 	update_info_from_link (icon_file);
 	file = NAUTILUS_FILE (icon_file);
-	nautilus_file_clear_cached_display_name (file);
 	nautilus_file_changed (file);
 }
 

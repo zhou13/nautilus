@@ -618,7 +618,7 @@ update_desktop_dir (void)
 
 gboolean
 nautilus_is_home_directory_file (GFile *dir,
-				 char *filename)
+				 const char *filename)
 {
 	char *dirname;
 	static GFile *home_dir_dir = NULL;
@@ -637,7 +637,7 @@ nautilus_is_home_directory_file (GFile *dir,
 					 
 gboolean
 nautilus_is_desktop_directory_file (GFile *dir,
-				    char *file)
+				    const char *file)
 {
 
 	if (!desktop_dir_changed_callback_installed) {

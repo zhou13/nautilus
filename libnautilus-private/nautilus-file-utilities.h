@@ -44,10 +44,10 @@ char *   nautilus_get_desktop_directory              (void);
 char *   nautilus_get_desktop_directory_uri          (void);
 char *   nautilus_get_home_directory_uri             (void);
 gboolean nautilus_is_desktop_directory_file          (GFile *dir,
-						      char *filename);
+						      const char *filename);
 gboolean nautilus_is_desktop_directory               (GFile *dir);
 gboolean nautilus_is_home_directory_file             (GFile *dir,
-						      char *filename);
+						      const char *filename);
 char *   nautilus_get_gmc_desktop_directory          (void);
 char *   nautilus_get_pixmap_directory               (void);
 

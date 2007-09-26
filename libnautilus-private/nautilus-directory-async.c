@@ -3353,14 +3353,13 @@ link_info_done (NautilusDirectory *directory,
 	
 	file->details->link_info_is_up_to_date = TRUE;
 
+	nautilus_file_set_display_name (file, name, name, TRUE);
+	
 	file->details->got_link_info = TRUE;
 	g_free (file->details->activation_uri);
-	g_free (file->details->display_name);
 	g_free (file->details->custom_icon);
 	file->details->activation_uri = g_strdup (uri);
-	file->details->display_name = g_strdup (name);
 	file->details->custom_icon = g_strdup (icon);
- 	nautilus_file_clear_cached_display_name (file);
 
 	volume = NULL;
 	if (volume_id != 0) {

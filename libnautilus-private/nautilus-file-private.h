@@ -65,20 +65,14 @@ struct NautilusFileDetails
 {
 	NautilusDirectory *directory;
 	
-	char *name;
+	eel_ref_str name;
 
 	/* File info: */
 	GFileType type;
 	
-	/* Cached version of the display name, guaranteed UTF8 safe.
-	 * This is used a lot for sorting views.
-	 */
-	char *cached_display_name;
-	/* We cache the result of g_utf8_collate_key() on
-	 * cached_display_name in order to do quick sorting on
-	 * the display name
-	 */
+	eel_ref_str display_name;
 	char *display_name_collation_key;
+	eel_ref_str edit_name;
 
 	goffset size; /* -1 is unknown */
 	
@@ -109,7 +103,6 @@ struct NautilusFileDetails
 	char *top_left_text;
 
 	/* Info you might get from a link (.desktop, .directory or nautilus link) */
-	char *display_name;
 	char *custom_icon;
 	char *activation_uri;
 
@@ -170,6 +163,7 @@ struct NautilusFileDetails
 
 	eel_boolean_bit got_link_info                 : 1;
 	eel_boolean_bit link_info_is_up_to_date       : 1;
+	eel_boolean_bit got_custom_display_name       : 1;
 
 	eel_boolean_bit is_thumbnailing               : 1;
 
@@ -203,7 +197,6 @@ gboolean      nautilus_file_get_date                       (NautilusFile        
 							    NautilusDateType        date_type,
 							    time_t                 *date);
 void          nautilus_file_updated_deep_count_in_progress (NautilusFile           *file);
-void          nautilus_file_clear_cached_display_name      (NautilusFile           *file);
 
 
 void          nautilus_file_clear_info                     (NautilusFile           *file);
@@ -218,6 +211,11 @@ gboolean      nautilus_file_update_name                    (NautilusFile        
 gboolean      nautilus_file_update_name_and_directory      (NautilusFile           *file,
 							    const char             *name,
 							    NautilusDirectory      *directory);
+
+gboolean      nautilus_file_set_display_name               (NautilusFile           *file,
+							    const char             *display_name,
+							    const char             *edit_name,
+							    gboolean                custom);
 
 /* Return true if the top lefts of files in this directory should be
  * fetched, according to the preference settings.

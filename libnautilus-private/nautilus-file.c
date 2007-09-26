@@ -139,8 +139,8 @@ static char *   nautilus_file_get_owner_as_string            (NautilusFile      
 static char *   nautilus_file_get_type_as_string             (NautilusFile          *file);
 static gboolean update_info_and_name                         (NautilusFile          *file,
 							      GFileInfo             *info);
-static char *   nautilus_file_get_display_name_nocopy        (NautilusFile          *file);
-static char *   nautilus_file_get_display_name_collation_key (NautilusFile          *file);
+static const char * nautilus_file_peek_display_name (NautilusFile *file);
+static const char * nautilus_file_peek_display_name_collation_key (NautilusFile *file);
 
 GType
 nautilus_file_get_type (void)
@@ -208,6 +208,65 @@ nautilus_file_constructor (GType                  type,
   return object;
 }
 
+gboolean
+nautilus_file_set_display_name (NautilusFile *file,
+				const char *display_name,
+				const char *edit_name,
+				gboolean custom)
+{
+	gboolean changed;
+	
+	if (!custom && file->details->got_custom_display_name) {
+		return FALSE;
+	}
+
+	if (custom && display_name == NULL) {
+		/* We're re-setting a custom display name, invalidate it if
+		   we already set it so that the old one is re-read */
+		if (file->details->got_custom_display_name) {
+			file->details->got_custom_display_name = FALSE;
+			nautilus_file_invalidate_attributes (file,
+							     NAUTILUS_FILE_ATTRIBUTE_INFO);
+		}
+		return FALSE;
+	}
+
+	if (edit_name == NULL) {
+		edit_name = display_name;
+	}
+	    
+	changed = FALSE;
+	
+	if (eel_strcmp (eel_ref_str_peek (file->details->display_name), display_name) != 0) {
+		changed = TRUE;
+		
+		eel_ref_str_unref (file->details->display_name);
+		
+		if (eel_strcmp (eel_ref_str_peek (file->details->name), display_name) == 0) {
+			file->details->display_name = eel_ref_str_ref (file->details->name);
+		} else {
+			file->details->display_name = eel_ref_str_new (display_name);
+		}
+		
+		g_free (file->details->display_name_collation_key);
+		file->details->display_name_collation_key = g_utf8_collate_key_for_filename (display_name, -1);
+	}
+
+	if (eel_strcmp (eel_ref_str_peek (file->details->edit_name), edit_name) != 0) {
+		changed = TRUE;
+		
+		eel_ref_str_unref (file->details->edit_name);
+		if (eel_strcmp (eel_ref_str_peek (file->details->display_name), edit_name) == 0) {
+			file->details->edit_name = eel_ref_str_ref (file->details->display_name);
+		} else {
+			file->details->edit_name = eel_ref_str_new (edit_name);
+		}
+	}
+	
+	file->details->got_custom_display_name = custom;
+	return changed;
+}
+
 void
 nautilus_file_clear_info (NautilusFile *file)
 {
@@ -219,6 +278,15 @@ nautilus_file_clear_info (NautilusFile *file)
 	/* Reset to default type, which might be other than unknown for
 	   special kinds of files like the desktop or a search directory */
 	file->details->type = NAUTILUS_FILE_GET_CLASS (file)->default_file_type;
+
+	if (!file->details->got_custom_display_name) {
+		eel_ref_str_unref (file->details->display_name);
+		file->details->display_name = NULL;
+		g_free (file->details->display_name_collation_key);
+		file->details->display_name_collation_key = NULL;
+		eel_ref_str_unref (file->details->edit_name);
+		file->details->edit_name = NULL;
+	}
 	
 	file->details->is_symlink = FALSE;
 	file->details->is_hidden = FALSE;
@@ -280,7 +348,7 @@ nautilus_file_new_from_filename (NautilusDirectory *directory,
 	nautilus_directory_ref (directory);
 	file->details->directory = directory;
 
-	file->details->name = g_strdup (filename);
+	file->details->name = eel_ref_str_new (filename);
 
 #ifdef NAUTILUS_FILE_DEBUG_REF
 	DEBUG_REF_PRINTF("%10p ref'd", file);
@@ -540,14 +608,14 @@ finalize (GObject *object)
 	}
 	
 	nautilus_directory_unref (directory);
-	g_free (file->details->name);
-	g_free (file->details->cached_display_name);
+	eel_ref_str_unref (file->details->name);
+	eel_ref_str_unref (file->details->display_name);
 	g_free (file->details->display_name_collation_key);
+	eel_ref_str_unref (file->details->edit_name);
 	g_free (file->details->symlink_name);
 	eel_ref_str_unref (file->details->mime_type);
 	g_free (file->details->selinux_context);
 	g_free (file->details->top_left_text);
-	g_free (file->details->display_name);
 	g_free (file->details->custom_icon);
 	g_free (file->details->activation_uri);
 	g_free (file->details->compare_by_emblem_cache);
@@ -743,7 +811,7 @@ nautilus_file_is_desktop_directory (NautilusFile *file)
 		return FALSE;
 	}
 
-	return nautilus_is_desktop_directory_file (dir, file->details->name);
+	return nautilus_is_desktop_directory_file (dir, eel_ref_str_peek (file->details->name));
 }
 
 static gboolean
@@ -914,7 +982,7 @@ nautilus_file_get_location (NautilusFile *file)
 		return g_object_ref (dir);
 	}
 	
-	return g_file_get_child (dir, file->details->name);
+	return g_file_get_child (dir, eel_ref_str_peek (file->details->name));
 }
 
 /* Return the actual uri associated with the passed-in file. */
@@ -1066,7 +1134,7 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		}
 		
 		old_uri = nautilus_file_get_uri (op->file);
-		old_name = g_strdup (op->file->details->name);
+		old_name = g_strdup (eel_ref_str_peek (op->file->details->name));
 
 		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
 		update_info_and_name (op->file, new_info);
@@ -1078,7 +1146,7 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		 */
 		if (!nautilus_file_is_self_owned (op->file)) {
 			nautilus_directory_rename_file_metadata
-				(directory, old_name, op->file->details->name);
+				(directory, old_name, eel_ref_str_peek (op->file->details->name));
 		}
 
 		g_free (old_name);
@@ -1436,6 +1504,11 @@ update_info_internal (NautilusFile *file,
 	}
 	file->details->got_file_info = TRUE;
 
+	changed |= nautilus_file_set_display_name (file,
+						  g_file_info_get_display_name (info),
+						  g_file_info_get_edit_name (info),
+						  FALSE);
+	
 	file_type = g_file_info_get_file_type (info);
 	if (file->details->type != file_type) {
 		changed = TRUE;
@@ -1555,13 +1628,17 @@ update_info_internal (NautilusFile *file,
 	if (update_name) {
 		name = g_file_info_get_name (info);
 		if (file->details->name == NULL ||
-		    strcmp (file->details->name, name) != 0) {
+		    strcmp (eel_ref_str_peek (file->details->name), name) != 0) {
 			node = nautilus_directory_begin_file_name_change
 				(file->details->directory, file);
 			
-			g_free (file->details->name);
-			file->details->name = g_strdup (name);
-			nautilus_file_clear_cached_display_name (file);
+			eel_ref_str_unref (file->details->name);
+			if (eel_strcmp (eel_ref_str_peek (file->details->display_name),
+					name) == 0) {
+				file->details->name = eel_ref_str_ref (file->details->display_name);
+			} else {
+				file->details->name = eel_ref_str_new (name);
+			}
 
 			nautilus_directory_end_file_name_change
 				(file->details->directory, file, node);
@@ -1614,9 +1691,8 @@ update_name_internal (NautilusFile *file,
 			(file->details->directory, file);
 	}
 	
-	g_free (file->details->name);
-	file->details->name = g_strdup (name);
-	nautilus_file_clear_cached_display_name (file);
+	eel_ref_str_unref (file->details->name);
+	file->details->name = eel_ref_str_new (name);
 	
 	if (in_directory) {
 		nautilus_directory_end_file_name_change
@@ -1912,13 +1988,13 @@ compare_by_size (NautilusFile *file_1, NautilusFile *file_2)
 static int
 compare_by_display_name (NautilusFile *file_1, NautilusFile *file_2)
 {
-	char *name_1, *name_2;
-	char *key_1, *key_2;
+	const char *name_1, *name_2;
+	const char *key_1, *key_2;
 	gboolean sort_last_1, sort_last_2;
 	int compare;
 
-	name_1 = nautilus_file_get_display_name_nocopy (file_1);
-	name_2 = nautilus_file_get_display_name_nocopy (file_2);
+	name_1 = nautilus_file_peek_display_name (file_1);
+	name_2 = nautilus_file_peek_display_name (file_2);
 
 	sort_last_1 = name_1[0] == SORT_LAST_CHAR1 || name_1[0] == SORT_LAST_CHAR2;
 	sort_last_2 = name_2[0] == SORT_LAST_CHAR1 || name_2[0] == SORT_LAST_CHAR2;
@@ -1928,8 +2004,8 @@ compare_by_display_name (NautilusFile *file_1, NautilusFile *file_2)
 	} else if (!sort_last_1 && sort_last_2) {
 		compare = -1;
 	} else {
-		key_1 = nautilus_file_get_display_name_collation_key (file_1);
-		key_2 = nautilus_file_get_display_name_collation_key (file_2);
+		key_1 = nautilus_file_peek_display_name_collation_key (file_1);
+		key_2 = nautilus_file_peek_display_name_collation_key (file_2);
 		compare = strcmp (key_1, key_2);
 	}
 
@@ -2421,14 +2497,13 @@ int
 nautilus_file_compare_display_name (NautilusFile *file,
 				    const char *pattern)
 {
-	char *name;
+	const char *name;
 	int result;
 
 	g_return_val_if_fail (pattern != NULL, -1);
 
-	name = nautilus_file_get_display_name (file);
+	name = nautilus_file_peek_display_name (file);
 	result = eel_strcoll (name, pattern);
-	g_free (name);
 	return result;
 }
 
@@ -2450,7 +2525,7 @@ is_file_hidden (NautilusFile *file)
 {
 	return file->details->directory->details->hidden_file_hash != NULL &&
 		g_hash_table_lookup (file->details->directory->details->hidden_file_hash,
-				     file->details->name) != NULL;
+				     eel_ref_str_peek (file->details->name)) != NULL;
 	
 }
 
@@ -2475,7 +2550,7 @@ nautilus_file_is_home (NautilusFile *file)
 	}
 
 	return nautilus_is_home_directory_file (dir,
-						file->details->name);
+						eel_ref_str_peek (file->details->name));
 }
 
 gboolean
@@ -2549,7 +2624,7 @@ get_metadata_name (NautilusFile *file)
 	if (nautilus_file_is_self_owned (file)) {
 		return FILE_NAME_FOR_DIRECTORY_METADATA;
 	}
-	return file->details->name;
+	return eel_ref_str_peek (file->details->name);
 }
 
 char *
@@ -2706,133 +2781,40 @@ nautilus_file_set_integer_metadata (NautilusFile *file,
 		 metadata);
 }
 
-void
-nautilus_file_clear_cached_display_name (NautilusFile *file)
+static const char *
+nautilus_file_peek_display_name_collation_key (NautilusFile *file)
 {
-	g_return_if_fail (NAUTILUS_IS_FILE (file));
+	const char *res;
 	
-	g_free (file->details->cached_display_name);
-	file->details->cached_display_name = NULL;
-	g_free (file->details->display_name_collation_key);
-	file->details->display_name_collation_key = NULL;
+	res = eel_ref_str_peek (file->details->display_name_collation_key);
+	if (res == NULL)
+		res = "";
+	
+	return res;
 }
 
-static char *
-nautilus_file_get_display_name_collation_key (NautilusFile *file)
+static const char *
+nautilus_file_peek_display_name (NautilusFile *file)
 {
-	char *display_name;
+	const char *res;
 	
-	if (file == NULL) {
-		return NULL;
-	}
+	res = eel_ref_str_peek (file->details->display_name);
+	if (res == NULL)
+		res = "";
 	
-	if (file->details->display_name_collation_key != NULL) {
-		return file->details->display_name_collation_key;
-	}
-
-	display_name = nautilus_file_get_display_name_nocopy (file);
-#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 7
-	file->details->display_name_collation_key = g_utf8_collate_key_for_filename (display_name, -1);
-#else
-	file->details->display_name_collation_key = g_utf8_collate_key (display_name, -1);
-#endif
-
-	return file->details->display_name_collation_key;
-}
-
-static char *
-nautilus_file_get_display_name_nocopy (NautilusFile *file)
-{
-	char *name, *utf8_name, *short_name;
-	gboolean validated;
-	GnomeVFSURI *vfs_uri;
-	const char *method;
-	char *uri, *local_file;
-
-	if (file == NULL) {
-		return NULL;
-	}
-
-	if (file->details->cached_display_name != NULL) {
-		return file->details->cached_display_name;
-	}
-
-	validated = FALSE;
-	
- 	if (file->details->got_link_info && file->details->display_name != NULL) {
- 		name = g_strdup (file->details->display_name);
-	} else {
-		name = nautilus_file_get_name (file);
-		if (name == NULL) {
-			/* Fall back if the unescaped form is no
-			 * good. This is dangerous for people who code with the name,
-			 * but convenient for people who just want to display it.
-			 */
-			name = g_strdup ("<invalid>");
-		} else {
-			/* Support the G_BROKEN_FILENAMES feature of
-			 * glib by using g_filename_to_utf8 to convert
-			 * local filenames to UTF-8. Also do the same
-			 * thing with any local filename that does not
-			 * validate as good UTF-8.
-			 */
-			/* Keep in sync with nautilus_get_uri_shortname_for_display */
-			if (has_local_path (file)) {
-				g_free (name);
-				uri = nautilus_file_get_uri (file);
-				local_file = gnome_vfs_get_local_path_from_uri (uri);
-				if (local_file == NULL) { /* Happens for e.g. file:///# */
-					local_file = g_strdup ("/");
-				}
-				name = g_filename_display_basename (local_file);
-				g_free (local_file);
-				g_free (uri);
-				validated = TRUE;
-			} else if (strcmp (name, "/") == 0) {
-				/* Special-case the display name for roots that are not local files */
-				g_free (name);
-				uri = nautilus_directory_get_uri (file->details->directory);
-				vfs_uri = gnome_vfs_uri_new (uri);
-				g_free (uri);
-				method = nautilus_get_vfs_method_display_name (vfs_uri->method_string);
-				if (method == NULL) {
-					method = vfs_uri->method_string;
-				}
-
-				short_name = gnome_vfs_uri_extract_short_name (vfs_uri);
-				if (short_name == NULL ||
-				    strcmp (short_name, GNOME_VFS_URI_PATH_STR) == 0) {
-					name = g_strdup (method);
-				} else {
-					name = g_strdup_printf ("%s: %s", method, short_name);
-				}
-				g_free (short_name);
-				
-				gnome_vfs_uri_unref (vfs_uri);
-			}
-		}
-	}
-
-	if (!validated && !g_utf8_validate (name, -1, NULL)) {
-		utf8_name = eel_make_valid_utf8 (name);
-		g_free (name);
-		name = utf8_name;
-	}
-	
-	file->details->cached_display_name = name;
-	return name;
+	return res;
 }
 
 char *
 nautilus_file_get_display_name (NautilusFile *file)
 {
-	return g_strdup (nautilus_file_get_display_name_nocopy (file));
+	return g_strdup (nautilus_file_peek_display_name (file));
 }
 
 char *
 nautilus_file_get_name (NautilusFile *file)
 {
-	return g_strdup (file->details->name);
+	return g_strdup (eel_ref_str_peek (file->details->name));
 }
    
 void             
@@ -4876,7 +4858,7 @@ get_description (NautilusFile *file)
 			g_warning (_("No description found for mime type \"%s\" (file is \"%s\"), "
 				     "please tell the gnome-vfs mailing list."),
 				   mime_type,
-				   file->details->name);
+				   eel_ref_str_peek (file->details->name));
 		}
 		g_hash_table_insert (warned, g_strdup (mime_type), GINT_TO_POINTER (1));
 	}
