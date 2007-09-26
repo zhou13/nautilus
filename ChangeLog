@@ -1,6 +1,13 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file.c:
+	Initialize hidden_file_hash lazily
+
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
 	Read link info using gio
 
 2007-09-26  Alexander Larsson  <alexl@redhat.com>

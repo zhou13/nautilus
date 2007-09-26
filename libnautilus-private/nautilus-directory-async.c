@@ -752,7 +752,7 @@ should_skip_file (NautilusDirectory *directory, GFileInfo *info)
 
 	if (!show_hidden_files &&
 	    (g_file_info_get_is_hidden (info) ||
-	     (directory != NULL &&
+	     (directory != NULL && directory->details->hidden_file_hash != NULL &&
 	      g_hash_table_lookup (directory->details->hidden_file_hash,
 				   g_file_info_get_name (info)) != NULL))) {
 		return TRUE;
@@ -977,7 +977,9 @@ file_list_cancel (NautilusDirectory *directory)
 		directory->details->pending_file_info = NULL;
 	}
 
-	g_hash_table_foreach_remove (directory->details->hidden_file_hash, remove_callback, NULL);
+	if (directory->details->hidden_file_hash) {
+		g_hash_table_foreach_remove (directory->details->hidden_file_hash, remove_callback, NULL);
+	}
 }
 
 static void
@@ -1913,6 +1915,11 @@ read_dot_hidden_file (NautilusDirectory *directory)
 
 	g_object_unref (child);
 
+	if (directory->details->hidden_file_hash == NULL) {
+		directory->details->hidden_file_hash =
+			g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+	}
+	
 	/* Now parse the data */
 	i = 0;
 	while (i < file_size) {
@@ -2090,6 +2097,12 @@ start_monitoring_file_list (NautilusDirectory *directory)
 	/* Hack to work around kde trash dir */
 	if (kde_trash_dir_name != NULL && nautilus_directory_is_desktop_directory (directory)) {
 		char *fn;
+
+		if (directory->details->hidden_file_hash == NULL) {
+			directory->details->hidden_file_hash =
+				g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+		}
+		
 		fn = g_strdup (kde_trash_dir_name);
 		g_hash_table_insert (directory->details->hidden_file_hash,
 				     fn, fn);

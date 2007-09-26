@@ -2448,8 +2448,9 @@ nautilus_file_is_backup_file (NautilusFile *file)
 static gboolean
 is_file_hidden (NautilusFile *file)
 {
-	return g_hash_table_lookup (file->details->directory->details->hidden_file_hash,
-				    file->details->name) != NULL;
+	return file->details->directory->details->hidden_file_hash != NULL &&
+		g_hash_table_lookup (file->details->directory->details->hidden_file_hash,
+				     file->details->name) != NULL;
 	
 }
 
