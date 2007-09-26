@@ -2812,6 +2812,18 @@ nautilus_file_get_display_name (NautilusFile *file)
 }
 
 char *
+nautilus_file_get_edit_name (NautilusFile *file)
+{
+	const char *res;
+	
+	res = eel_ref_str_peek (file->details->edit_name);
+	if (res == NULL)
+		res = "";
+	
+	return g_strdup (res);
+}
+
+char *
 nautilus_file_get_name (NautilusFile *file)
 {
 	return g_strdup (eel_ref_str_peek (file->details->name));
