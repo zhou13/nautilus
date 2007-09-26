@@ -1,5 +1,12 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-icon-factory.c:
+        * libnautilus-private/nautilus-thumbnails.c:
+	Use g_file_load_contents_async instead of
+	eel_read_entire_file_async.
+
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-metafile.c:
 	Use g_file_load_contents_async instead of
 	eel_read_entire_file_async.

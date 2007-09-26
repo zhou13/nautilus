@@ -379,6 +379,10 @@ async_thumbnail_load_func (NautilusThumbnailAsyncLoadHandle *handle,
 	factory->async_thumbnail_load_handles = 
 		g_list_remove (factory->async_thumbnail_load_handles, handle);
 
+	if (pixbuf == NULL) {
+		goto out; /* Cancelled or error reading thumbnail */
+	}
+	
 	if (stat (path, &statbuf) != 0 ||
 	    !S_ISREG (statbuf.st_mode)) {
 		g_message ("NautilusIconFactory: Failed to determine mtime for %s. Aborting thumbnailing request.", path);

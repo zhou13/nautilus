@@ -70,7 +70,7 @@ typedef struct {
 } NautilusThumbnailInfo;
 
 struct NautilusThumbnailAsyncLoadHandle {
-	EelReadFileHandle *eel_read_handle;
+	GCancellable *cancellable;
 	char *file_path;
 	guint base_size;
 	guint nominal_size;
@@ -443,26 +443,30 @@ nautilus_thumbnail_load_image (const char *path,
 }
 
 static void
-async_thumbnail_read_image (GnomeVFSResult result,
-			    goffset file_size,
-			    char *file_contents,
+async_thumbnail_read_image (GObject *source_object,
+			    GAsyncResult *res,
 			    gpointer callback_data)
 {
+	NautilusThumbnailAsyncLoadHandle *handle = callback_data;
 	GdkPixbuf *pixbuf;
 	double scale_x, scale_y;
-
-	NautilusThumbnailAsyncLoadHandle *handle = callback_data;
+	gsize file_size;
+	char *file_contents;
 
 	pixbuf = NULL;
 	scale_x = scale_y = 1.0;
 
-	if (result == GNOME_VFS_OK) {
+	if (g_file_load_contents_finish (G_FILE (source_object),
+					 res,
+					 &file_contents, &file_size,
+					 NULL, NULL)) {
 		pixbuf = get_pixbuf_from_data (file_contents, file_size,
 					       handle->file_path,
 					       handle->base_size,
 					       handle->nominal_size,
 					       handle->force_nominal,
 					       &scale_x, &scale_y);
+		g_free (file_contents);
 	}
 
 	handle->load_func (handle,
@@ -472,6 +476,7 @@ async_thumbnail_read_image (GnomeVFSResult result,
 
 	gdk_pixbuf_unref (pixbuf);
 
+	g_object_unref (handle->cancellable);
 	g_free (handle->file_path);
 	g_free (handle);
 }
@@ -485,18 +490,11 @@ nautilus_thumbnail_load_image_async (const char *path,
 				     gpointer load_func_user_data)
 {
 	NautilusThumbnailAsyncLoadHandle *handle;
-	char *uri;
+	GFile *location;
 
-	uri = gnome_vfs_get_uri_from_local_path (path);
-	if (uri == NULL) {
-		return NULL;
-	}
 
 	handle = g_new (NautilusThumbnailAsyncLoadHandle, 1);
-	handle->eel_read_handle =
-		eel_read_entire_file_async (uri, GNOME_VFS_PRIORITY_DEFAULT,
-					    (EelReadFileCallback) async_thumbnail_read_image,
-					   handle);
+	handle->cancellable = g_cancellable_new ();
 	handle->file_path = g_strdup (path);
 	handle->base_size = base_size;
 	handle->nominal_size = nominal_size;
@@ -504,8 +502,13 @@ nautilus_thumbnail_load_image_async (const char *path,
 	handle->load_func = load_func;
 	handle->load_func_user_data = load_func_user_data;
 
-	g_free (uri);
 
+	location = g_file_new_for_path (path);
+	g_file_load_contents_async (location, handle->cancellable,
+				    async_thumbnail_read_image,
+				    handle);
+	g_object_unref (location);
+	
 	return handle;
 }
 
@@ -514,9 +517,7 @@ nautilus_thumbnail_load_image_cancel (NautilusThumbnailAsyncLoadHandle *handle)
 {
 	g_assert (handle != NULL);
 
-	eel_read_file_cancel (handle->eel_read_handle);
-	g_free (handle->file_path);
-	g_free (handle);
+	g_cancellable_cancel  (handle->cancellable);
 }
 
 void
