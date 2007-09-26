@@ -236,7 +236,7 @@ nautilus_file_clear_info (NautilusFile *file)
 	file->details->ctime = 0;
 	g_free (file->details->symlink_name);
 	file->details->symlink_name = NULL;
-	g_free (file->details->mime_type);
+	eel_ref_str_unref (file->details->mime_type);
 	file->details->mime_type = NULL;
 	g_free (file->details->selinux_context);
 	file->details->selinux_context = NULL;
@@ -544,7 +544,7 @@ finalize (GObject *object)
 	g_free (file->details->cached_display_name);
 	g_free (file->details->display_name_collation_key);
 	g_free (file->details->symlink_name);
-	g_free (file->details->mime_type);
+	eel_ref_str_unref (file->details->mime_type);
 	g_free (file->details->selinux_context);
 	g_free (file->details->top_left_text);
 	g_free (file->details->display_name);
@@ -1539,11 +1539,11 @@ update_info_internal (NautilusFile *file,
 	file->details->symlink_name = g_strdup (symlink_name);
 
 	mime_type = g_file_info_get_content_type (info);
-	if (eel_strcmp (file->details->mime_type, mime_type) != 0) {
+	if (eel_strcmp (eel_ref_str_peek (file->details->mime_type), mime_type) != 0) {
 		changed = TRUE;
 	}
-	g_free (file->details->mime_type);
-	file->details->mime_type = g_strdup (mime_type);
+	eel_ref_str_unref (file->details->mime_type);
+	file->details->mime_type = eel_ref_str_get_unique (mime_type);
 	
 	selinux_context = g_file_info_get_attribute_string (info, "selinux:context");
 	if (eel_strcmp (file->details->selinux_context, selinux_context) != 0) {
@@ -2112,8 +2112,8 @@ compare_by_type (NautilusFile *file_1, NautilusFile *file_2)
 
 	if (file_1->details->mime_type != NULL &&
 	    file_2->details->mime_type != NULL &&
-	    strcmp (file_1->details->mime_type,
-		    file_2->details->mime_type) == 0) {
+	    strcmp (eel_ref_str_peek (file_1->details->mime_type),
+		    eel_ref_str_peek (file_2->details->mime_type)) == 0) {
 		return 0;
 	}
 
@@ -3263,7 +3263,7 @@ nautilus_file_should_show_directory_item_count (NautilusFile *file)
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
 	
 	if (file->details->mime_type &&
-	    strcmp (file->details->mime_type, "x-directory/smb-share") == 0) {
+	    strcmp (eel_ref_str_peek (file->details->mime_type), "x-directory/smb-share") == 0) {
 		return FALSE;
 	}
 	
@@ -4844,7 +4844,7 @@ get_description (NautilusFile *file)
 
 	g_assert (NAUTILUS_IS_FILE (file));
 
-	mime_type = file->details->mime_type;
+	mime_type = eel_ref_str_peek (file->details->mime_type);
 	if (eel_str_is_empty (mime_type)) {
 		return NULL;
 	}
@@ -4949,7 +4949,7 @@ nautilus_file_get_mime_type (NautilusFile *file)
 	if (file != NULL) {
 		g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 		if (file->details->mime_type != NULL) {
-			return g_strdup (file->details->mime_type);
+			return g_strdup (eel_ref_str_peek (file->details->mime_type));
 		}
 	}
 	return g_strdup (GNOME_VFS_MIME_TYPE_UNKNOWN);
@@ -4976,7 +4976,7 @@ nautilus_file_is_mime_type (NautilusFile *file, const char *mime_type)
 	if (file->details->mime_type == NULL) {
 		return FALSE;
 	}
-	return (gnome_vfs_mime_type_get_equivalence (file->details->mime_type,
+	return (gnome_vfs_mime_type_get_equivalence (eel_ref_str_peek (file->details->mime_type),
 						     mime_type) != GNOME_VFS_MIME_UNRELATED);
 }
 

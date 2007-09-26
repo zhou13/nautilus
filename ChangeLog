@@ -1,5 +1,13 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+	Use new refcounted string implementation for mime_type.
+	This way we don't have to store duplicate strings for
+	each file.
+
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-directory.c (nautilus_directory_finalize):
 	directory->details->pending_file_info now has GFileInfo objects, not
 	GnomeVFSFileInfo objects. Free them in the correct way.

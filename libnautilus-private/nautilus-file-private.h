@@ -29,6 +29,7 @@
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-monitor.h>
 #include <eel/eel-glib-extensions.h>
+#include <eel/eel-string.h>
 
 #define NAUTILUS_FILE_LARGE_TOP_LEFT_TEXT_MAXIMUM_CHARACTERS_PER_LINE 80
 #define NAUTILUS_FILE_LARGE_TOP_LEFT_TEXT_MAXIMUM_LINES               24
@@ -91,7 +92,7 @@ struct NautilusFileDetails
 	
 	char *symlink_name;
 	
-	char *mime_type;
+	eel_ref_str mime_type;
 	
 	char* selinux_context;
 	
