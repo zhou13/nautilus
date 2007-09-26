@@ -86,6 +86,13 @@ struct DirectoryLoadState {
 	int load_file_count;
 };
 
+struct MimeListState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+	GFileEnumerator *enumerator;
+	GHashTable *mime_list_hash;
+};
+
 struct GetInfoState {
 	NautilusDirectory *directory;
 	GCancellable *cancellable;
@@ -434,12 +441,11 @@ mime_list_cancel (NautilusDirectory *directory)
 	if (directory->details->mime_list_in_progress != NULL) {
 		g_assert (NAUTILUS_IS_FILE (directory->details->mime_list_file));
 
-		gnome_vfs_async_cancel (directory->details->mime_list_in_progress);
-		istr_set_destroy (directory->details->mime_list_hash);
-
-		directory->details->mime_list_file = NULL;
+		g_cancellable_cancel (directory->details->mime_list_in_progress->cancellable);
+		
+		directory->details->mime_list_in_progress->directory = NULL;
 		directory->details->mime_list_in_progress = NULL;
-		directory->details->mime_list_hash = NULL;
+		directory->details->mime_list_file = NULL;
 
 		async_job_end (directory, "MIME list");
 	}
@@ -2766,98 +2772,6 @@ deep_count_start (NautilusDirectory *directory,
 }
 
 static void
-mime_list_one (NautilusDirectory *directory,
-	       GnomeVFSFileInfo *vfs_info)
-{
-	GFileInfo *info;
-	
-	info = gnome_vfs_file_info_to_gio (vfs_info);
-	if (should_skip_file (NULL, info)) {
-		g_object_unref (info);
-		return;
-	}
-	g_object_unref (info);
-		
-	if ((vfs_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MIME_TYPE) != 0) {
-		istr_set_insert (directory->details->mime_list_hash, vfs_info->mime_type);
-	}
-}
-
-static void
-mime_list_callback (GnomeVFSAsyncHandle *handle,
-		    GnomeVFSResult result,
-		    GList *list,
-		    guint entries_read,
-		    gpointer callback_data)
-{
-	NautilusDirectory *directory;
-	NautilusFile *file;
-	GList *element;
-
-	directory = NAUTILUS_DIRECTORY (callback_data);
-	g_assert (directory->details->mime_list_in_progress == handle);
-	file = directory->details->mime_list_file;
-	g_assert (NAUTILUS_IS_FILE (file));
-
-	for (element = list; element != NULL; element = element->next) {
-		mime_list_one (directory, element->data);
-	}
-
-	if (result == GNOME_VFS_OK) {
-		return;
-	}
-
-	nautilus_directory_ref (directory);
-
-	file->details->mime_list_is_up_to_date = TRUE;
-
-	/* Record either a failure or success. */
-	eel_g_list_free_deep (file->details->mime_list);
-	if (result != GNOME_VFS_ERROR_EOF) {
-		file->details->mime_list_failed = TRUE;
-		file->details->mime_list = NULL;
-	} else {
-		file->details->got_mime_list = TRUE;
-		file->details->mime_list = istr_set_get_as_list
-			(directory->details->mime_list_hash);
-	}
-	istr_set_destroy (directory->details->mime_list_hash);
-
-	directory->details->mime_list_in_progress = NULL;
-	directory->details->mime_list_file = NULL;
-	directory->details->mime_list_hash = NULL;
-
-	/* Send file-changed even if getting the item type list
-	 * failed, so interested parties can distinguish between
-	 * unknowable and not-yet-known cases.
-	 */
-	nautilus_file_changed (file);
-
-	/* Start up the next one. */
-	async_job_end (directory, "MIME list");
-	nautilus_directory_async_state_changed (directory);
-
-	nautilus_directory_unref (directory);
-}
-
-static void
-mime_list_load (NautilusDirectory *directory, const char *uri)
-{
-	directory->details->mime_list_hash = istr_set_new ();
-#ifdef DEBUG_LOAD_DIRECTORY		
-	g_message ("load_directory called to get MIME list of %s", uri);
-#endif	
-	gnome_vfs_async_load_directory
-		(&directory->details->mime_list_in_progress,
-		 uri,
-		 GNOME_VFS_FILE_INFO_GET_MIME_TYPE,
-		 DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 mime_list_callback,
-		 directory);
-}
-
-static void
 mime_list_stop (NautilusDirectory *directory)
 {
 	NautilusFile *file;
@@ -2880,11 +2794,172 @@ mime_list_stop (NautilusDirectory *directory)
 }
 
 static void
+mime_list_state_free (MimeListState *state)
+{
+	if (state->enumerator) {
+		if (!g_file_enumerator_is_closed (state->enumerator)) {
+			g_file_enumerator_close_async (state->enumerator,
+						       0, NULL, NULL, NULL);
+		}
+		g_object_unref (state->enumerator);
+	}
+	g_object_unref (state->cancellable);
+	istr_set_destroy (state->mime_list_hash);
+	g_free (state);
+}
+
+
+static void
+mime_list_done (MimeListState *state, gboolean success)
+{
+	NautilusFile *file;
+	NautilusDirectory *directory;
+
+	directory = state->directory;
+	g_assert (directory != NULL);
+	
+	file = directory->details->mime_list_file;
+	
+	file->details->mime_list_is_up_to_date = TRUE;
+	eel_g_list_free_deep (file->details->mime_list);
+	if (success) {
+		file->details->mime_list_failed = TRUE;
+		file->details->mime_list = NULL;
+	} else {
+		file->details->got_mime_list = TRUE;
+		file->details->mime_list = istr_set_get_as_list	(state->mime_list_hash);
+	}
+	directory->details->mime_list_in_progress = NULL;
+	directory->details->mime_list_file = NULL;
+
+	/* Send file-changed even if getting the item type list
+	 * failed, so interested parties can distinguish between
+	 * unknowable and not-yet-known cases.
+	 */
+	nautilus_file_changed (file);
+
+	/* Start up the next one. */
+	async_job_end (directory, "MIME list");
+	nautilus_directory_async_state_changed (directory);
+	
+}
+
+static void
+mime_list_one (MimeListState *state,
+	       GFileInfo *info)
+{
+	const char *mime_type;
+	
+	if (should_skip_file (NULL, info)) {
+		g_object_unref (info);
+		return;
+	}
+
+	mime_type = g_file_info_get_content_type (info);
+	if (mime_type != NULL) {
+		istr_set_insert (state->mime_list_hash, mime_type);
+	}
+}
+
+static void
+mime_list_callback (GObject *source_object,
+		    GAsyncResult *res,
+		    gpointer user_data)
+{
+	MimeListState *state;
+	NautilusDirectory *directory;
+	GError *error;
+	GList *files, *l;
+	GFileInfo *info;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		mime_list_state_free (state);
+		return;
+	}
+
+	directory = nautilus_directory_ref (state->directory);
+	
+	g_assert (directory->details->mime_list_in_progress != NULL);
+	g_assert (directory->details->mime_list_in_progress == state);
+
+	error = NULL;
+	files = g_file_enumerator_next_files_finish (state->enumerator,
+						     res, &error);
+
+	for (l = files; l != NULL; l = l->next) {
+		info = l->data;
+		mime_list_one (state, info);
+		g_object_unref (info);
+	}
+
+	if (files == NULL) {
+		mime_list_done (state, error != NULL);
+		mime_list_state_free (state);
+	} else {
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    G_PRIORITY_DEFAULT,
+						    state->cancellable,
+						    mime_list_callback,
+						    state);
+	}
+
+	g_list_free (files);
+
+	nautilus_directory_unref (directory);
+	
+	if (error) {
+		g_error_free (error);
+	}
+}
+
+static void
+list_mime_enum_callback (GObject *source_object,
+			 GAsyncResult *res,
+			 gpointer user_data)
+{
+	MimeListState *state;
+	GFileEnumerator *enumerator;
+	GError *error;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		mime_list_state_free (state);
+		return;
+	}
+	
+	error = NULL;
+	enumerator = g_file_enumerate_children_finish  (G_FILE (source_object),
+							res, &error);
+
+	if (enumerator == NULL) {
+		mime_list_done (state, FALSE);
+		g_error_free (error);
+		mime_list_state_free (state);
+		return;
+	} else {
+		state->enumerator = enumerator;
+		g_file_enumerator_next_files_async (state->enumerator,
+						    DIRECTORY_LOAD_ITEMS_PER_CALLBACK,
+						    G_PRIORITY_DEFAULT,
+						    state->cancellable,
+						    mime_list_callback,
+						    state);
+	}
+}
+
+static void
 mime_list_start (NautilusDirectory *directory,
 		 NautilusFile *file,
 		 gboolean *doing_io)
 {
-	char *uri;
+	MimeListState *state;
+	GFile *location;
 
 	mime_list_stop (directory);
 
@@ -2915,10 +2990,28 @@ mime_list_start (NautilusDirectory *directory,
 		return;
 	}
 
+
+	state = g_new0 (MimeListState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+	state->mime_list_hash = istr_set_new ();
+
 	directory->details->mime_list_file = file;
-	uri = nautilus_file_get_uri (file);
-	mime_list_load (directory, uri);
-	g_free (uri);
+	directory->details->mime_list_in_progress = state;
+
+#ifdef DEBUG_LOAD_DIRECTORY		
+	g_message ("load_directory called to get MIME list of %s", uri);
+#endif	
+	
+	location = nautilus_file_get_location (file);
+	g_file_enumerate_children_async (location,
+					 G_FILE_ATTRIBUTE_STD_CONTENT_TYPE,
+					 0, /* flags */
+					 G_PRIORITY_LOW, /* prio */
+					 state->cancellable,
+					 list_mime_enum_callback,
+					 state);
+	g_object_unref (location);
 }
 
 static int

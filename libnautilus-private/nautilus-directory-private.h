@@ -45,6 +45,7 @@ typedef struct DirectoryCountState DirectoryCountState;
 typedef struct DeepCountState DeepCountState;
 typedef struct GetInfoState GetInfoState;
 typedef struct NewFilesState NewFilesState;
+typedef struct MimeListState MimeListState;
 
 struct NautilusDirectoryDetails
 {
@@ -96,8 +97,7 @@ struct NautilusDirectoryDetails
 	DeepCountState *deep_count_in_progress;
 
 	NautilusFile *mime_list_file;
-	GnomeVFSAsyncHandle *mime_list_in_progress;
-	GHashTable *mime_list_hash;
+	MimeListState *mime_list_in_progress;
 
 	NautilusFile *get_info_file;
 	GetInfoState *get_info_in_progress;
