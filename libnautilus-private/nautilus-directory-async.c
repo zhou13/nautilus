@@ -1867,14 +1867,12 @@ mark_all_files_unconfirmed (NautilusDirectory *directory)
 static void
 read_dot_hidden_file (NautilusDirectory *directory)
 {
-	char *dot_hidden_uri;
-	GnomeVFSURI *dot_hidden_vfs_uri;
-	GnomeVFSResult result;
-	int i, file_size;
+	gsize file_size;
 	char *file_contents;
-	GnomeVFSFileInfo *file_info;
-	gboolean file_ok;
 	GFile *child;
+	GFileInfo *info;
+	GFileType type;
+	int i;
 
 
 	/* FIXME: We only support .hidden on file: uri's for the moment.
@@ -1887,45 +1885,26 @@ read_dot_hidden_file (NautilusDirectory *directory)
 	}
 	
 	child = g_file_get_child (directory->details->location, ".hidden");
-	dot_hidden_uri = g_file_get_uri (child);
-	dot_hidden_vfs_uri = gnome_vfs_uri_new (dot_hidden_uri);
-	g_free (dot_hidden_uri);
+
+	type = G_FILE_TYPE_UNKNOWN;
+	
+	info = g_file_query_info (child, G_FILE_ATTRIBUTE_STD_TYPE, 0, NULL, NULL);
+	if (info != NULL) {
+		type = g_file_info_get_file_type (info);
+		g_object_unref (info);
+	}
+	
+	if (type != G_FILE_TYPE_REGULAR) {
+		g_object_unref (child);
+		return;
+	}
+
+	if (!g_file_load_contents (child, NULL, &file_contents, &file_size, NULL, NULL)) {
+		g_object_unref (child);
+		return;
+	}
+
 	g_object_unref (child);
-
-	file_info = gnome_vfs_file_info_new ();
-	if (!file_info) {
-		gnome_vfs_uri_unref (dot_hidden_vfs_uri);
-		return;
-	}
-	
-	if (gnome_vfs_get_file_info_uri (
-		dot_hidden_vfs_uri,
-		file_info, 
-		GNOME_VFS_FILE_INFO_FOLLOW_LINKS) != GNOME_VFS_OK) {
-		gnome_vfs_uri_unref (dot_hidden_vfs_uri);
-		gnome_vfs_file_info_unref (file_info);
-		return;
-	}
-
-	file_ok = (file_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_TYPE) &&
-		(file_info->type == GNOME_VFS_FILE_TYPE_REGULAR);
-
-	gnome_vfs_file_info_unref (file_info);
-		
-	if (!file_ok) {
-		gnome_vfs_uri_unref (dot_hidden_vfs_uri);
-		return;
-	}
-	
-	dot_hidden_uri = gnome_vfs_uri_to_string (dot_hidden_vfs_uri, GNOME_VFS_URI_HIDE_NONE);
-	gnome_vfs_uri_unref (dot_hidden_vfs_uri);
-	
-	result = eel_read_entire_file (dot_hidden_uri, &file_size, &file_contents);	
-	g_free (dot_hidden_uri);
-
-	if (result != GNOME_VFS_OK) {
-		return;
-	}
 
 	/* Now parse the data */
 	i = 0;
