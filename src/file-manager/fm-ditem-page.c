@@ -360,30 +360,38 @@ create_page (GnomeDesktopItem *item, GtkWidget *box)
 
 
 static void
-ditem_read_cb (GnomeVFSResult result,
-	       goffset file_size,
-	       char *file_contents,
+ditem_read_cb (GObject *source_object,
+	       GAsyncResult *res,
 	       gpointer user_data)
 {
 	GnomeDesktopItem *item;
 	GtkWidget *box;
+	gsize file_size;
+	char *file_contents;
 
 	box = GTK_WIDGET (user_data);
-	item = gnome_desktop_item_new_from_string (g_object_get_data (G_OBJECT (box),
-								      "uri"),
-						   file_contents,
-						   file_size,
-						   0, NULL);
-
-	if (item == NULL) {
-		return;
+	
+	if (g_file_load_contents_finish (G_FILE (source_object),
+					 res,
+					 &file_contents, &file_size,
+					 NULL, NULL)) {
+		item = gnome_desktop_item_new_from_string (g_object_get_data (G_OBJECT (box),
+									      "uri"),
+							   file_contents,
+							   file_size,
+							   0, NULL);
+		g_free (file_contents);
+		if (item == NULL) {
+			return;
+		}
+		
+		/* for some reason, this isn't done automatically */
+		gnome_desktop_item_set_location (item, g_object_get_data (G_OBJECT (box), "uri"));
+		
+		create_page (item, box);
+		gnome_desktop_item_unref (item);
 	}
-
-	/* for some reason, this isn't done automatically */
-	gnome_desktop_item_set_location (item, g_object_get_data (G_OBJECT (box), "uri"));
-
-	create_page (item, box);
-	gnome_desktop_item_unref (item);
+	g_object_unref (box);
 }
 
 static void
@@ -391,8 +399,12 @@ fm_ditem_page_create_begin (FMDitemPage *page,
 			    const char *uri,
 			    GtkWidget *box)
 {
+	GFile *location;
+
+	location = g_file_new_for_uri (uri);
 	g_object_set_data_full (G_OBJECT (box), "uri", g_strdup (uri), g_free);
-	eel_read_entire_file_async (uri, 0, ditem_read_cb, box);
+	g_file_load_contents_async (location, NULL, ditem_read_cb, g_object_ref (box));
+	g_object_unref (location);
 }
 
 static GList *
