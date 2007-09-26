@@ -225,7 +225,7 @@ nautilus_directory_finalize (GObject *object)
 	g_assert (directory->details->directory_load_in_progress == NULL);
 	g_assert (directory->details->count_in_progress == NULL);
 	g_assert (directory->details->dequeue_pending_idle_id == 0);
-	gnome_vfs_file_info_list_unref (directory->details->pending_file_info);
+	eel_g_object_list_free (directory->details->pending_file_info);
 
 	EEL_CALL_PARENT (G_OBJECT_CLASS, finalize, (object));
 }

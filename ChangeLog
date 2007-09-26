@@ -1,5 +1,11 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-directory.c (nautilus_directory_finalize):
+	directory->details->pending_file_info now has GFileInfo objects, not
+	GnomeVFSFileInfo objects. Free them in the correct way.
+
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-async.c:
 	Remove old irrelevant comment
 	
