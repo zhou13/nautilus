@@ -67,9 +67,10 @@
 #define MAX_ASYNC_JOBS 10
 
 struct TopLeftTextReadState {
-	gboolean large;
+	NautilusDirectory *directory;
 	NautilusFile *file;
-	EelReadFileHandle *handle;
+	gboolean large;
+	GCancellable *cancellable;
 };
 
 struct LinkInfoReadState {
@@ -456,10 +457,10 @@ static void
 top_left_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->top_left_read_state != NULL) {
-		eel_read_file_cancel (directory->details->top_left_read_state->handle);
-		g_free (directory->details->top_left_read_state);
+		g_cancellable_cancel (directory->details->top_left_read_state->cancellable);
+		directory->details->top_left_read_state->directory = NULL;
 		directory->details->top_left_read_state = NULL;
-
+		
 		async_job_end (directory, "top left");
 	}
 }
@@ -3028,86 +3029,6 @@ mime_list_start (NautilusDirectory *directory,
 	g_object_unref (location);
 }
 
-static int
-count_lines (const char *text, int length)
-{
-	int count, i;
-
-	count = 0;
-	for (i = 0; i < length; i++) {
-		count += *text++ == '\n';
-	}
-	return count;
-}
-
-static void
-top_left_read_done (NautilusDirectory *directory)
-{
-	g_assert (directory->details->top_left_read_state->handle == NULL);
-	g_assert (NAUTILUS_IS_FILE (directory->details->top_left_read_state->file));
-
-	g_free (directory->details->top_left_read_state);
-	directory->details->top_left_read_state = NULL;
-
-	async_job_end (directory, "top left");
-	nautilus_directory_async_state_changed (directory);
-}
-
-static void
-top_left_read_callback (GnomeVFSResult result,
-			goffset bytes_read,
-			char *file_contents,
-			gpointer callback_data)
-{
-	NautilusDirectory *directory;
-	NautilusFileDetails *file_details;
-
-	directory = NAUTILUS_DIRECTORY (callback_data);
-
-	directory->details->top_left_read_state->handle = NULL;
-
-	file_details = directory->details->top_left_read_state->file->details;
-
-	file_details->top_left_text_is_up_to_date = TRUE;
-	g_free (file_details->top_left_text);
-	if (result == GNOME_VFS_OK) {
-		file_details->top_left_text = nautilus_extract_top_left_text (file_contents, directory->details->top_left_read_state->large, bytes_read);
-		file_details->got_top_left_text = TRUE;
-		file_details->got_large_top_left_text = directory->details->top_left_read_state->large;
-	} else {
-		file_details->top_left_text = NULL;
-		file_details->got_top_left_text = FALSE;
-		file_details->got_large_top_left_text = FALSE;
-	}
-
-	g_free (file_contents);
-
-	nautilus_file_changed (directory->details->top_left_read_state->file);
-
-	top_left_read_done (directory);
-}
-
-static gboolean
-top_left_read_more_callback (goffset bytes_read,
-			     const char *file_contents,
-			     gpointer callback_data)
-{
-	NautilusDirectory *directory;
-
-	directory = NAUTILUS_DIRECTORY (callback_data);
-
-
-	/* Stop reading when we have enough. */
-	if (directory->details->top_left_read_state->large) {
-		return bytes_read < NAUTILUS_FILE_LARGE_TOP_LEFT_TEXT_MAXIMUM_BYTES
-			&& count_lines (file_contents, bytes_read) <= NAUTILUS_FILE_LARGE_TOP_LEFT_TEXT_MAXIMUM_LINES;
-	} else {
-		return bytes_read < NAUTILUS_FILE_TOP_LEFT_TEXT_MAXIMUM_BYTES
-			&& count_lines (file_contents, bytes_read) <= NAUTILUS_FILE_TOP_LEFT_TEXT_MAXIMUM_LINES;
-	}
-		
-}
-
 static void
 top_left_stop (NautilusDirectory *directory)
 {
@@ -3134,12 +3055,103 @@ top_left_stop (NautilusDirectory *directory)
 }
 
 static void
+top_left_read_state_free (TopLeftTextReadState *state)
+{
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
+top_left_read_callback (GObject *source_object,
+			GAsyncResult *res,
+			gpointer callback_data)
+{
+	TopLeftTextReadState *state;
+	NautilusDirectory *directory;
+	NautilusFileDetails *file_details;
+	gsize file_size;
+	char *file_contents;
+
+	state = callback_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		top_left_read_state_free (state);
+		return;
+	}
+	
+	directory = nautilus_directory_ref (state->directory);
+	
+	file_details = state->file->details;
+
+	file_details->top_left_text_is_up_to_date = TRUE;
+	g_free (file_details->top_left_text);
+
+	if (g_file_load_partial_contents_finish (G_FILE (source_object),
+						 res,
+						 &file_contents, &file_size,
+						 NULL, NULL)) {
+		file_details->top_left_text = nautilus_extract_top_left_text (file_contents, state->large, file_size);
+		file_details->got_top_left_text = TRUE;
+		file_details->got_large_top_left_text = state->large;
+		g_free (file_contents);
+	} else {
+		file_details->top_left_text = NULL;
+		file_details->got_top_left_text = FALSE;
+		file_details->got_large_top_left_text = FALSE;
+	}
+
+	nautilus_file_changed (state->file);
+
+	directory->details->top_left_read_state = NULL;
+	async_job_end (directory, "top left");
+
+	top_left_read_state_free (state);
+	
+	nautilus_directory_async_state_changed (directory);
+
+	nautilus_directory_unref (directory);
+}
+
+static int
+count_lines (const char *text, int length)
+{
+	int count, i;
+
+	count = 0;
+	for (i = 0; i < length; i++) {
+		count += *text++ == '\n';
+	}
+	return count;
+}
+
+static gboolean
+top_left_read_more_callback (const char *file_contents,
+			     goffset bytes_read,
+			     gpointer callback_data)
+{
+	TopLeftTextReadState *state;
+
+	state = callback_data;
+
+	/* Stop reading when we have enough. */
+	if (state->large) {
+		return bytes_read < NAUTILUS_FILE_LARGE_TOP_LEFT_TEXT_MAXIMUM_BYTES &&
+			count_lines (file_contents, bytes_read) <= NAUTILUS_FILE_LARGE_TOP_LEFT_TEXT_MAXIMUM_LINES;
+	} else {
+		return bytes_read < NAUTILUS_FILE_TOP_LEFT_TEXT_MAXIMUM_BYTES &&
+			count_lines (file_contents, bytes_read) <= NAUTILUS_FILE_TOP_LEFT_TEXT_MAXIMUM_LINES;
+	}
+}
+
+static void
 top_left_start (NautilusDirectory *directory,
 		NautilusFile *file,
 		gboolean *doing_io)
 {
-	char *uri;
+	GFile *location;
 	gboolean needs_large;
+	TopLeftTextReadState *state;
 
 	if (directory->details->top_left_read_state != NULL) {
  		*doing_io = TRUE;
@@ -3179,17 +3191,21 @@ top_left_start (NautilusDirectory *directory,
 	}
 
 	/* Start reading. */
-	directory->details->top_left_read_state = g_new0 (TopLeftTextReadState, 1);
-	directory->details->top_left_read_state->large = needs_large;
-	directory->details->top_left_read_state->file = file;
-	uri = nautilus_file_get_uri (file);
-	directory->details->top_left_read_state->handle = eel_read_file_async
-		(uri,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 top_left_read_callback,
-		 top_left_read_more_callback,
-		 directory);
-	g_free (uri);
+	state = g_new0 (TopLeftTextReadState, 1);
+	state->directory = directory;
+	state->cancellable = g_cancellable_new ();
+	state->large = needs_large;
+	state->file = file;
+
+	directory->details->top_left_read_state = state;
+
+	location = nautilus_file_get_location (file);
+	g_file_load_partial_contents_async (location,
+					    state->cancellable,
+					    top_left_read_more_callback,
+					    top_left_read_callback,
+					    state);
+	g_object_unref (location);
 }
 
 static void
