@@ -110,8 +110,8 @@ BONOBO_CLASS_BOILERPLATE_FULL (NautilusMetafile, nautilus_metafile,
 			       BonoboObject, BONOBO_OBJECT_TYPE)
 
 typedef struct MetafileReadState {
-	EelReadFileHandle *handle;
-	GnomeVFSAsyncHandle *get_file_info_handle;
+	NautilusMetafile *metafile;
+	GCancellable *cancellable;
 } MetafileReadState;
 
 typedef struct MetafileWriteState {
@@ -1855,21 +1855,23 @@ static void
 metafile_read_cancel (NautilusMetafile *metafile)
 {
 	if (metafile->details->read_state != NULL) {
-		if (metafile->details->read_state->handle != NULL) {
-			eel_read_file_cancel (metafile->details->read_state->handle);
-		}
-		if (metafile->details->read_state->get_file_info_handle != NULL) {
-			gnome_vfs_async_cancel (metafile->details->read_state->get_file_info_handle);
-		}
-		g_free (metafile->details->read_state);
+		g_cancellable_cancel (metafile->details->read_state->cancellable);
+		metafile->details->read_state->metafile = NULL;
 		metafile->details->read_state = NULL;
 	}
 }
 
 static void
+metafile_read_state_free (MetafileReadState *state)
+{
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
 metafile_read_mark_done (NautilusMetafile *metafile)
 {
-	g_free (metafile->details->read_state);
+	metafile_read_state_free (metafile->details->read_state);
 	metafile->details->read_state = NULL;	
 
 	metafile->details->is_read = TRUE;
@@ -1884,8 +1886,34 @@ metafile_read_mark_done (NautilusMetafile *metafile)
 }
 
 static void
-metafile_read_done (NautilusMetafile *metafile)
+metafile_read_done_callback (GObject *source_object,
+			     GAsyncResult *res,
+			     gpointer user_data)
 {
+	MetafileReadState *state;
+	NautilusMetafile *metafile;
+	gsize file_size;
+	char *file_contents;
+
+	state = user_data;
+ 
+	if (state->metafile == NULL) {
+		/* Operation was cancelled. Bail out */
+		metafile_read_state_free (state);
+		return;
+	}
+	
+	metafile = state->metafile;
+	g_assert (metafile->details->xml == NULL);
+
+	if (g_file_load_contents_finish (G_FILE (source_object),
+					 res,
+					 &file_contents, &file_size,
+					 NULL, NULL)) {
+		set_metafile_contents (metafile, xmlParseMemory (file_contents, file_size));
+		g_free (file_contents);
+	}
+
 	metafile_read_mark_done (metafile);
 
 	nautilus_metadata_process_ready_copies ();
@@ -1893,57 +1921,23 @@ metafile_read_done (NautilusMetafile *metafile)
 }
 
 static void
-metafile_read_failed (NautilusMetafile *metafile)
-{
-	g_assert (NAUTILUS_IS_METAFILE (metafile));
-
-	metafile->details->read_state->handle = NULL;
-
-	metafile_read_done (metafile);
-}
-
-static void
-metafile_read_done_callback (GnomeVFSResult result,
-			     goffset file_size,
-			     char *file_contents,
-			     gpointer callback_data)
-{
-	NautilusMetafile *metafile;
-	int size;
-	char *buffer;
-
-	metafile = NAUTILUS_METAFILE (callback_data);
-	g_assert (metafile->details->xml == NULL);
-
-	if (result != GNOME_VFS_OK) {
-		g_assert (file_contents == NULL);
-		metafile_read_failed (metafile);
-		return;
-	}
-
-	size = file_size;
-	if ((goffset) size != file_size) {
-		g_free (file_contents);
-		metafile_read_failed (metafile);
-		return;
-	}
-	
-	/* The libxml parser requires a zero-terminated array. */
-	buffer = g_realloc (file_contents, size + 1);
-	buffer[size] = '\0';
-	set_metafile_contents (metafile, xmlParseMemory (buffer, size));
-	g_free (buffer);
-
-	metafile_read_done (metafile);
-}
-
-static void
 metafile_read_restart (NautilusMetafile *metafile)
 {
-	metafile->details->read_state->handle = eel_read_entire_file_async
-		(metafile->details->private_uri,
-		 GNOME_VFS_PRIORITY_DEFAULT,
-		 metafile_read_done_callback, metafile);
+	GFile *location;
+	MetafileReadState *state;
+
+	state = g_new0 (MetafileReadState, 1);
+	state->metafile = metafile;
+	state->cancellable = g_cancellable_new ();
+
+	metafile->details->read_state = state;
+
+	location = g_file_new_for_uri (metafile->details->private_uri);
+
+	g_file_load_contents_async (location, state->cancellable,
+				    metafile_read_done_callback, state);
+	
+	g_object_unref (location);
 }
 
 static gboolean
@@ -1995,7 +1989,6 @@ metafile_read_start (NautilusMetafile *metafile)
 	if (!allow_metafile (metafile)) {
 		metafile_read_mark_done (metafile);
 	} else {
-		metafile->details->read_state = g_new0 (MetafileReadState, 1);
 		metafile_read_restart (metafile);
 	}
 }
