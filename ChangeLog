@@ -1,5 +1,12 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+	Read can_delete and can_rename from gio.
+	Use can_rename in nautilus_file_can_rename.
+
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.[ch]:
 	Add nautilus_file_get_edit_name()
 

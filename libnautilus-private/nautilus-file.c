@@ -296,6 +296,8 @@ nautilus_file_clear_info (NautilusFile *file)
 	file->details->can_read = TRUE;
 	file->details->can_write = TRUE;
 	file->details->can_execute = TRUE;
+	file->details->can_delete = TRUE;
+	file->details->can_rename = TRUE;
 	file->details->has_permissions = FALSE;
 	file->details->permissions = 0;
 	file->details->size = -1;
@@ -848,9 +850,7 @@ can_rename_desktop_file (NautilusFile *file)
 gboolean
 nautilus_file_can_rename (NautilusFile *file)
 {
-	NautilusFile *parent;
 	gboolean can_rename;
-	char *uri;
 	
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
 
@@ -870,7 +870,6 @@ nautilus_file_can_rename (NautilusFile *file)
 	}
 	
 	can_rename = TRUE;
-	uri = nautilus_file_get_uri (file);
 
 	/* Certain types of links can't be renamed */
 	if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
@@ -883,33 +882,12 @@ nautilus_file_can_rename (NautilusFile *file)
 			g_object_unref (link);
 		}
 	}
-	
-	/* Nautilus trash directories cannot be renamed */
-	if (eel_uri_is_trash_folder (uri)) {
-		can_rename = FALSE;
-	}
-
-	g_free (uri);
 
 	if (!can_rename) {
 		return FALSE;
 	}
-	
-	/* User must have write permissions for the parent directory. */
-	parent = nautilus_file_get_parent (file);
 
-	/* No parent directory for some reason (at root level?).
-	 * Can't tell whether this file is renameable, so return TRUE.
-	 */
-	if (parent == NULL) {
-		return TRUE;
-	}
-	
-	can_rename = nautilus_file_can_write (parent);
-
-	nautilus_file_unref (parent);
-
-	return can_rename;
+	return file->details->can_rename;
 }
 
 gboolean
@@ -1473,7 +1451,7 @@ update_info_internal (NautilusFile *file,
 	gboolean is_symlink, is_hidden, is_backup;
 	gboolean has_permissions;
 	GnomeVFSFilePermissions permissions;
-	gboolean can_read, can_write, can_execute;
+	gboolean can_read, can_write, can_execute, can_delete, can_rename;
 	int uid, gid;
 	goffset size;
 	time_t atime, mtime, ctime;
@@ -1546,6 +1524,8 @@ update_info_internal (NautilusFile *file,
 	can_read = TRUE;
 	can_write = TRUE;
 	can_execute = TRUE;
+	can_delete = TRUE;
+	can_rename = TRUE;
 	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_READ)) {
 		can_read = g_file_info_get_attribute_boolean (info,
 							      G_FILE_ATTRIBUTE_ACCESS_CAN_READ);
@@ -1558,15 +1538,27 @@ update_info_internal (NautilusFile *file,
 		can_execute = g_file_info_get_attribute_boolean (info,
 								G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE);
 	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_DELETE)) {
+		can_delete = g_file_info_get_attribute_boolean (info,
+								G_FILE_ATTRIBUTE_ACCESS_CAN_DELETE);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_RENAME)) {
+		can_rename = g_file_info_get_attribute_boolean (info,
+								G_FILE_ATTRIBUTE_ACCESS_CAN_RENAME);
+	}
 	if (file->details->can_read != can_read ||
 	    file->details->can_write != can_write ||
-	    file->details->can_execute != can_execute) {
+	    file->details->can_execute != can_execute ||
+	    file->details->can_delete != can_delete ||
+	    file->details->can_rename != can_rename) {
 		changed = TRUE;
 	}
 	
 	file->details->can_read = can_read;
 	file->details->can_write = can_write;
 	file->details->can_execute = can_execute;
+	file->details->can_delete = can_delete;
+	file->details->can_rename = can_rename;
 
 	uid = -1;
 	gid = -1;

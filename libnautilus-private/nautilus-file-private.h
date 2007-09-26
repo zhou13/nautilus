@@ -182,6 +182,8 @@ struct NautilusFileDetails
 	eel_boolean_bit can_read                      : 1;
 	eel_boolean_bit can_write                     : 1;
 	eel_boolean_bit can_execute                   : 1;
+	eel_boolean_bit can_delete                    : 1;
+	eel_boolean_bit can_rename                    : 1;
 };
 
 NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory      *directory,
