@@ -1,6 +1,11 @@
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-directory-async.c:
+	Remove old irrelevant comment
+	
+2007-09-26  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
 	Read top left text with gio
 
 2007-09-26  Alexander Larsson  <alexl@redhat.com>

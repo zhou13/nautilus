@@ -992,10 +992,6 @@ directory_load_done (NautilusDirectory *directory,
 	directory->details->directory_loaded = TRUE;
 	directory->details->directory_loaded_sent_notification = FALSE;
 
-	/* Note that GNOME_VFS_OK can make it this far when the file-list
-	 * length limit has been reached. In that case, don't treat it as
-	 * an error.
-	 */
 	if (error != NULL) {
 		/* The load did not complete successfully. This means
 		 * we don't know the status of the files in this directory.
