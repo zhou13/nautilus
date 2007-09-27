@@ -1,6 +1,12 @@
 2007-09-27  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:
+        Implement nautilus_file_set_owner and nautilus_file_set_group
+	using set_attributes
+
+2007-09-27  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
         Implement nautilus_file_set_permissions using
 	nautilus_file_set_attributes.
 

@@ -3935,64 +3935,6 @@ nautilus_file_can_set_owner (NautilusFile *file)
 	return geteuid() == 0;
 }
 
-static void
-set_owner_and_group_callback (GnomeVFSAsyncHandle *handle,
-			      GnomeVFSResult result,
-			      GnomeVFSFileInfo *new_vfs_info,
-			      gpointer callback_data)
-{
-	Operation *op;
-	GFileInfo *new_info;
-	GError *error;
-	
-	op = callback_data;
-	g_assert (handle == op->handle);
-
-	if (result == GNOME_VFS_OK && new_vfs_info != NULL) {
-		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
-		nautilus_file_update_info (op->file, new_info);
-		g_object_unref (new_info);
-	}
-	error = gnome_vfs_result_to_error (result);
-	operation_complete (op, error);
-	if (error) {
-		g_error_free (error);
-	}
-}
-
-static void
-set_owner_and_group (NautilusFile *file, 
-		     uid_t owner,
-		     uid_t group,
-		     NautilusFileOperationCallback callback,
-		     gpointer callback_data)
-{
-	Operation *op;
-	GnomeVFSURI *uri;
-	GnomeVFSFileInfo *partial_file_info;
-	GnomeVFSFileInfoOptions options;
-	
-	/* Set up a owner-change operation. */
-	op = operation_new (file, callback, callback_data);
-
-	options = NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS;
-
-	/* Change the file-on-disk owner. */
-	partial_file_info = gnome_vfs_file_info_new ();
-	partial_file_info->uid = owner;
-	partial_file_info->gid = group;
-
-	uri = nautilus_file_get_gnome_vfs_uri (file);
-	gnome_vfs_async_set_file_info (&op->handle,
-				       uri, partial_file_info, 
-				       GNOME_VFS_SET_FILE_INFO_OWNER,
-				       options,
-				       GNOME_VFS_PRIORITY_DEFAULT,
-				       set_owner_and_group_callback, op);
-	gnome_vfs_file_info_unref (partial_file_info);
-	gnome_vfs_uri_unref (uri);
-}
-
 /**
  * nautilus_file_set_owner:
  * 
@@ -4014,6 +3956,7 @@ nautilus_file_set_owner (NautilusFile *file,
 			 gpointer callback_data)
 {
 	GError *error;
+	GFileInfo *info;
 	uid_t new_id;
 
 	if (!nautilus_file_can_set_owner (file)) {
@@ -4057,15 +4000,10 @@ nautilus_file_set_owner (NautilusFile *file,
 		return;
 	}
 
-	/* FIXME bugzilla.gnome.org 42427: 
-	 * We can't assume that the gid is already good/read,
-	 * can we? Maybe we have to precede the set_file_info with a
-	 * get_file_info to fix this?
-	 */
-	set_owner_and_group (file,
-			     new_id,
-			     file->details->gid,
-			     callback, callback_data);
+	info = g_file_info_new ();
+	g_file_info_set_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_UID, new_id);
+	nautilus_file_set_attributes (file, info, callback, callback_data);
+	g_object_unref (info);
 }
 
 /**
@@ -4300,6 +4238,7 @@ nautilus_file_set_group (NautilusFile *file,
 			 gpointer callback_data)
 {
 	GError *error;
+	GFileInfo *info;
 	uid_t new_id;
 
 	if (!nautilus_file_can_set_group (file)) {
@@ -4339,14 +4278,11 @@ nautilus_file_set_group (NautilusFile *file,
 		return;
 	}
 
-	/* FIXME bugzilla.gnome.org 42427: We can't assume that the gid is already good/read,
-	 * can we? Maybe we have to precede the set_file_info with a
-	 * get_file_info to fix this?
-	 */
-	set_owner_and_group (file,
-			     file->details->uid,
-			     new_id,
-			     callback, callback_data);
+
+	info = g_file_info_new ();
+	g_file_info_set_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_GID, new_id);
+	nautilus_file_set_attributes (file, info, callback, callback_data);
+	g_object_unref (info);
 }
 
 /**
