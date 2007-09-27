@@ -1,6 +1,14 @@
 2007-09-27  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-properties-window.c:
+	Use g_file_size_format_for_display instead of
+	gnome_vfs_format_file_size_for_display
+	
+2007-09-27  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
 	Remove unused GnomeVFSHandle stuff
 	
 2007-09-27  Alexander Larsson  <alexl@redhat.com>

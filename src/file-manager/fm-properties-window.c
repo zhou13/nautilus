@@ -2319,7 +2319,7 @@ directory_contents_value_field_update (FMPropertiesWindow *window)
 		}
 	} else {
 		char *size_str;
-		size_str = gnome_vfs_format_file_size_for_display (total_size);
+		size_str = g_file_size_format_for_display (total_size);
 		text = g_strdup_printf (ngettext("%d item, with size %s",
 						 "%d items, totalling %s",
 						 total_count),
@@ -2905,9 +2905,9 @@ create_pie_widget (FMPropertiesWindow *window)
 	gchar			*uri;
 	gchar			*path;
 	
-	capacity = gnome_vfs_format_file_size_for_display (window->details->volume_capacity);
-	free 	 = gnome_vfs_format_file_size_for_display (window->details->volume_free);
-	used 	 = gnome_vfs_format_file_size_for_display (window->details->volume_capacity - window->details->volume_free);	
+	capacity = g_file_size_format_for_display (window->details->volume_capacity);
+	free 	 = g_file_size_format_for_display (window->details->volume_free);
+	used 	 = g_file_size_format_for_display (window->details->volume_capacity - window->details->volume_free);	
 	
 	file = get_original_file (window);
 	
