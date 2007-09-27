@@ -87,7 +87,7 @@ typedef void (*NautilusFileCallback)          (NautilusFile  *file,
 typedef void (*NautilusFileListCallback)      (GList         *file_list,
 				               gpointer       callback_data);
 typedef void (*NautilusFileOperationCallback) (NautilusFile  *file,
-					       GnomeVFSResult result,
+					       GError        *error,
 					       gpointer       callback_data);
 typedef int (*NautilusWidthMeasureCallback)   (const char    *string,
 					       void	     *context);

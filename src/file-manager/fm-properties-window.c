@@ -776,7 +776,7 @@ name_field_restore_original_name (NautilusEntry *name_field)
 }
 
 static void
-rename_callback (NautilusFile *file, GnomeVFSResult result, gpointer callback_data)
+rename_callback (NautilusFile *file, GError *error, gpointer callback_data)
 {
 	FMPropertiesWindow *window;
 	char *new_name;
@@ -784,11 +784,11 @@ rename_callback (NautilusFile *file, GnomeVFSResult result, gpointer callback_da
 	window = FM_PROPERTIES_WINDOW (callback_data);
 
 	/* Complain to user if rename failed. */
-	if (result != GNOME_VFS_OK) {
+	if (error != NULL) {
 		new_name = window->details->pending_name;
 		fm_report_error_renaming_file (file, 
 					       window->details->pending_name, 
-					       result,
+					       error,
 					       GTK_WINDOW (window));
 		if (window->details->name_field != NULL) {
 			name_field_restore_original_name (NAUTILUS_ENTRY (window->details->name_field));
@@ -1534,7 +1534,7 @@ attach_ellipsizing_value_field (FMPropertiesWindow *window,
 
 static void
 group_change_callback (NautilusFile *file,
-		       GnomeVFSResult result,
+		       GError *error,
 		       FMPropertiesWindow *window)
 {
 	char *group;
@@ -1547,7 +1547,7 @@ group_change_callback (NautilusFile *file,
 
 	/* Report the error if it's an error. */
 	eel_timed_wait_stop ((EelCancelCallback) cancel_group_change_callback, window);
-	fm_report_error_setting_group (file, result, GTK_WINDOW (window));
+	fm_report_error_setting_group (file, error, GTK_WINDOW (window));
 
 	nautilus_file_unref (file);
 	g_free (group);
@@ -1951,7 +1951,7 @@ attach_group_combo_box (GtkTable *table,
 
 static void
 owner_change_callback (NautilusFile *file,
-		       GnomeVFSResult result,
+		       GError *error,
 		       FMPropertiesWindow *window)
 {
 	char *owner;
@@ -1964,7 +1964,7 @@ owner_change_callback (NautilusFile *file,
 
 	/* Report the error if it's an error. */
 	eel_timed_wait_stop ((EelCancelCallback) cancel_owner_change_callback, window);
-	fm_report_error_setting_owner (file, result, GTK_WINDOW (window));
+	fm_report_error_setting_owner (file, error, GTK_WINDOW (window));
 
 	nautilus_file_unref (file);
 	g_free (owner);
@@ -3298,7 +3298,7 @@ end_long_operation (FMPropertiesWindow *window)
 }
 
 static void
-permission_change_callback (NautilusFile *file, GnomeVFSResult result, gpointer callback_data)
+permission_change_callback (NautilusFile *file, GError *error, gpointer callback_data)
 {
 	FMPropertiesWindow *window;
 	g_assert (callback_data != NULL);
@@ -3307,7 +3307,7 @@ permission_change_callback (NautilusFile *file, GnomeVFSResult result, gpointer 
 	end_long_operation (window);
 	
 	/* Report the error if it's an error. */
-	fm_report_error_setting_permissions (file, result, NULL);
+	fm_report_error_setting_permissions (file, error, NULL);
 
 	g_object_unref (window);
 }

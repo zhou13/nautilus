@@ -1,3 +1,19 @@
+2007-09-27  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-vfs-utils.[ch]:
+	Add gnome_vfs_result_to_error call
+	
+        * libnautilus-private/nautilus-file.[ch]:
+	Convert renaming to use gio.
+	Pass GError instead of GnomeVFSResult in
+	NautilusFileOperationCallback
+	
+        * src/file-manager/fm-error-reporting.c:
+        * src/file-manager/fm-error-reporting.h:
+        * src/file-manager/fm-list-view.c:
+        * src/file-manager/fm-properties-window.c:
+	Update to the NautilusFileOperationCallback API change
+
 2007-09-26  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-private.h:

@@ -35,16 +35,16 @@ void fm_report_error_loading_directory	 (NautilusFile   *file,
 					  GtkWindow	 *parent_window);
 void fm_report_error_renaming_file       (NautilusFile   *file,
 					  const char     *new_name,
-					  GnomeVFSResult  error_code,
+					  GError         *error,
 					  GtkWindow	 *parent_window);
 void fm_report_error_setting_permissions (NautilusFile   *file,
-					  GnomeVFSResult  error_code,			    
+					  GError         *error,
 					  GtkWindow	 *parent_window);
 void fm_report_error_setting_owner       (NautilusFile   *file,
-					  GnomeVFSResult  error_code,  
+					  GError         *error,  
 					  GtkWindow	 *parent_window);
 void fm_report_error_setting_group       (NautilusFile   *file,
-					  GnomeVFSResult  error_code,
+					  GError         *error,
 					  GtkWindow	 *parent_window);
 
 /* FIXME bugzilla.gnome.org 42394: Should this file be renamed or should this function be moved? */

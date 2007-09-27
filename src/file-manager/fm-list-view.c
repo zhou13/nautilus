@@ -155,7 +155,7 @@ static void   fm_list_view_scroll_to_file                  (FMListView        *v
 							    NautilusFile      *file);
 static void   fm_list_view_iface_init                      (NautilusViewIface *iface);
 static void   fm_list_view_rename_callback                 (NautilusFile      *file,
-							    GnomeVFSResult     result,
+							    GError            *error,
 							    gpointer           callback_data);
 
 
@@ -1605,7 +1605,7 @@ fm_list_view_clear (FMDirectoryView *view)
 }
 
 static void
-fm_list_view_rename_callback (NautilusFile *file, GnomeVFSResult result, gpointer callback_data)
+fm_list_view_rename_callback (NautilusFile *file, GError *error, gpointer callback_data)
 {
 	FMListView *view;
 	
@@ -1614,7 +1614,7 @@ fm_list_view_rename_callback (NautilusFile *file, GnomeVFSResult result, gpointe
 	if (view->details->renaming_file) {
 		view->details->rename_done = TRUE;
 		
-		if (result != GNOME_VFS_OK) {
+		if (error != NULL) {
 			/* If the rename failed (or was cancelled), kill renaming_file.
 			 * We won't get a change event for the rename, so otherwise
 			 * it would stay around forever.

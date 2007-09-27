@@ -17,4 +17,6 @@ GnomeVFSFileType gnome_vfs_file_type_from_g_file_type (GFileType file_type);
 
 GFileInfo *gnome_vfs_file_info_to_gio (GnomeVFSFileInfo *info);
 
+GError *gnome_vfs_result_to_error (GnomeVFSResult result);
+
 #endif /* __NAUTILUS_VFS_UTILS_H__ */

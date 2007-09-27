@@ -155,3 +155,14 @@ gnome_vfs_file_info_to_gio (GnomeVFSFileInfo *vfs_info)
 
 	return info;
 }
+
+GError *
+gnome_vfs_result_to_error (GnomeVFSResult result)
+{
+	if (result == GNOME_VFS_OK) {
+		return NULL;
+	}
+
+	return g_error_new_literal (GNOME_VFS_ERROR, result,
+				    gnome_vfs_result_to_string (result));
+}

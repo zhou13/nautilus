@@ -110,6 +110,7 @@ typedef enum {
 typedef struct {
 	NautilusFile *file;
 	GnomeVFSAsyncHandle *handle;
+	GCancellable *cancellable;
 	NautilusFileOperationCallback callback;
 	gpointer callback_data;
 	gboolean is_rename;
@@ -1024,6 +1025,7 @@ operation_new (NautilusFile *file,
 	op->file = file;
 	op->callback = callback;
 	op->callback_data = callback_data;
+	op->cancellable = g_cancellable_new ();
 
 	op->file->details->operations_in_progress = g_list_prepend
 		(op->file->details->operations_in_progress, op);
@@ -1044,12 +1046,12 @@ operation_free (Operation *op)
 {
 	operation_remove (op);
 	nautilus_file_unref (op->file);
+	g_object_unref (op->cancellable);
 	g_free (op);
 }
 
 static void
-operation_complete (Operation *op,
-		    GnomeVFSResult result)
+operation_complete (Operation *op, GError *error)
 {
 	/* Claim that something changed even if the operation failed.
 	 * This makes it easier for some clients who see the "reverting"
@@ -1057,36 +1059,36 @@ operation_complete (Operation *op,
 	 */
 	operation_remove (op);
 	nautilus_file_changed (op->file);
-	(* op->callback) (op->file, result, op->callback_data);
+	(* op->callback) (op->file, error, op->callback_data);
 	operation_free (op);
 }
 
 static void
 operation_cancel (Operation *op)
 {
+	GError *error;
+	gboolean call_cancel_manually;
+
+	call_cancel_manually = FALSE;
+	
 	/* Cancel the operation if it's still in progress. */
-	g_assert (op->handle != NULL);
-	gnome_vfs_async_cancel (op->handle);
+	if (op->handle) {
+		gnome_vfs_async_cancel (op->handle);
+		call_cancel_manually = TRUE;
+	}
+	g_cancellable_cancel (op->cancellable);
 
-	/* Claim that something changed even though the operation was
-	 * canceled in case some work was partly done, but don't call
-	 * the callback.
-	 */
-	nautilus_file_changed (op->file);
-	operation_free (op);
-}
-
-static gboolean
-has_local_path (NautilusFile *file)
-{
-	return g_file_is_native (file->details->directory->details->location);
+	if (call_cancel_manually) {
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation was cancelled");
+		operation_complete (op, error);
+		g_error_free (error);
+	}
 }
 
 static void
-rename_callback (GnomeVFSAsyncHandle *handle,
-		 GnomeVFSResult result,
-		 GnomeVFSFileInfo *new_vfs_info,
-		 gpointer callback_data)
+rename_get_info_callback (GObject *source_object,
+			  GAsyncResult *res,
+			  gpointer callback_data)
 {
 	Operation *op;
 	NautilusDirectory *directory;
@@ -1094,18 +1096,23 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 	char *old_name;
 	char *old_uri;
 	char *new_uri;
+	const char *new_name;
 	GFileInfo *new_info;
-
+	GError *error;
+	
 	op = callback_data;
-	g_assert (handle == op->handle);
 
-	if (result == GNOME_VFS_OK && new_vfs_info != NULL) {
+	error = NULL;
+	new_info = g_file_query_info_finish (G_FILE (source_object), res, &error);
+	if (new_info != NULL) {
 		directory = op->file->details->directory;
+
+		new_name = g_file_info_get_name (new_info);
 		
 		/* If there was another file by the same name in this
 		 * directory, mark it gone.
 		 */
-		existing_file = nautilus_directory_find_file_by_name (directory, new_vfs_info->name);
+		existing_file = nautilus_directory_find_file_by_name (directory, new_name);
 		if (existing_file != NULL) {
 			nautilus_file_mark_gone (existing_file);
 			nautilus_file_changed (existing_file);
@@ -1113,10 +1120,8 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 		
 		old_uri = nautilus_file_get_uri (op->file);
 		old_name = g_strdup (eel_ref_str_peek (op->file->details->name));
-
-		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
+		
 		update_info_and_name (op->file, new_info);
-		g_object_unref (new_info);
 		
 		/* Self-owned files store their metadata under the
 		 * hard-code name "."  so there's no need to rename
@@ -1126,66 +1131,98 @@ rename_callback (GnomeVFSAsyncHandle *handle,
 			nautilus_directory_rename_file_metadata
 				(directory, old_name, eel_ref_str_peek (op->file->details->name));
 		}
-
+		
 		g_free (old_name);
-
+		
 		new_uri = nautilus_file_get_uri (op->file);
 		nautilus_directory_moved (old_uri, new_uri);
 		g_free (new_uri);
 		g_free (old_uri);
-
+		
 		/* the rename could have affected the display name if e.g.
 		 * we're in a vfolder where the name comes from a desktop file
 		 * and a rename affects the contents of the desktop file.
 		 */
-		if (op->file->details->display_name != NULL) {
+		if (op->file->details->got_custom_display_name) {
 			nautilus_file_invalidate_attributes (op->file,
 							     NAUTILUS_FILE_ATTRIBUTE_INFO |
 							     NAUTILUS_FILE_ATTRIBUTE_LINK_INFO);
 		}
 	}
-	operation_complete (op, result);
+	operation_complete (op, error);
+	if (error) {
+		g_error_free (error);
+	}
+}
+
+static void
+rename_callback (GObject *source_object,
+		 GAsyncResult *res,
+		 gpointer callback_data)
+{
+	Operation *op;
+	GFile *new_file;
+	GError *error;
+
+	op = callback_data;
+
+	error = NULL;
+	new_file = g_file_set_display_name_finish (G_FILE (source_object),
+						   res, &error);
+
+	if (new_file == NULL)
+		g_print ("rename Error: %s\n", error->message);
+	
+	if (new_file != NULL) {
+		g_file_query_info_async (new_file,
+					 NAUTILUS_FILE_DEFAULT_ATTRIBUTES,
+					 0,
+					 G_PRIORITY_DEFAULT,
+					 op->cancellable,
+					 rename_get_info_callback, op);
+	} else {
+		operation_complete (op, error);
+		g_error_free (error);
+	}
 }
 
 static gboolean
 name_is (NautilusFile *file, const char *new_name)
 {
-	char *old_name;
-	gboolean equal;
-
-	old_name = nautilus_file_get_name (file);
-	equal = strcmp (new_name, old_name) == 0;
-	g_free (old_name);
-	return equal;
+	const char *old_name;
+	old_name = eel_ref_str_peek (file->details->name);
+	return strcmp (new_name, old_name) == 0;
 }
 
-static void
-rename_guts (NautilusFile *file,
-	     const char *new_name,
-	     NautilusFileOperationCallback callback,
-	     gpointer callback_data)
+void
+nautilus_file_rename (NautilusFile *file,
+		      const char *new_name,
+		      NautilusFileOperationCallback callback,
+		      gpointer callback_data)
 {
 	Operation *op;
-	GnomeVFSFileInfo *partial_file_info;
-	GnomeVFSURI *vfs_uri;
-	char *uri, *old_name;
+	char *uri;
+	char *old_name;
 	gboolean success;
 	gboolean is_renameable_desktop_file;
 	GnomeVFSFileInfoOptions options;
+	GFile *location;
+	GError *error;
 	
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 	g_return_if_fail (new_name != NULL);
 	g_return_if_fail (callback != NULL);
 
-	uri = nautilus_file_get_uri (file);
 	is_renameable_desktop_file =
 		is_desktop_file (file) && can_rename_desktop_file (file);
 	
 	/* Return an error for incoming names containing path separators.
 	 * But not for .desktop files as '/' are allowed for them */
 	if (strstr (new_name, "/") != NULL && !is_renameable_desktop_file) {
-		(* callback) (file, GNOME_VFS_ERROR_NOT_PERMITTED, callback_data);
-		g_free (uri);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+				     _("Slashes are not allowed in filenames"));
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;
 	}
 	
@@ -1200,8 +1237,10 @@ rename_guts (NautilusFile *file,
 		 * back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_NOT_FOUND, callback_data);
-		g_free (uri);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+				     _("File not found"));
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;
 	}
 
@@ -1210,8 +1249,7 @@ rename_guts (NautilusFile *file,
 	 * (2) We don't want to send file-changed signal if nothing changed.
 	 */
 	if (name_is (file, new_name)) {
-		(* callback) (file, GNOME_VFS_OK, callback_data);
-		g_free (uri);
+		(* callback) (file, NULL, callback_data);
 		return;
 	}
 
@@ -1225,8 +1263,11 @@ rename_guts (NautilusFile *file,
 		 * back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_NOT_SUPPORTED, callback_data);
-		g_free (uri);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+				     _("Toplevel files cannot be renamed"));
+		
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;
 	}
 
@@ -1238,13 +1279,15 @@ rename_guts (NautilusFile *file,
 		
 		if (link != NULL &&
 		    nautilus_desktop_link_rename (link, new_name)) {
-			(* callback) (file, GNOME_VFS_OK, callback_data);
+			(* callback) (file, NULL, callback_data);
 		} else {
-			(* callback) (file, GNOME_VFS_ERROR_GENERIC, callback_data);
+			error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+					     _("Unable to rename desktop icon"));
+			(* callback) (file, error, callback_data);
+			g_error_free (error);
 		}
 		
 		g_object_unref (link);
-		g_free (uri);
 		return;
 	}
 	
@@ -1253,6 +1296,7 @@ rename_guts (NautilusFile *file,
 		 * This helps for the vfolder method where this can happen and
 		 * we want to minimize actual changes
 		 */
+		uri = nautilus_file_get_uri (file);
 		old_name = nautilus_link_desktop_file_local_get_text (uri);
 		if (old_name != NULL && strcmp (new_name, old_name) == 0) {
 			success = TRUE;
@@ -1266,14 +1310,16 @@ rename_guts (NautilusFile *file,
 			nautilus_file_invalidate_attributes (file,
 							     NAUTILUS_FILE_ATTRIBUTE_INFO |
 							     NAUTILUS_FILE_ATTRIBUTE_LINK_INFO);
-			(* callback) (file, GNOME_VFS_OK, callback_data);
+			(* callback) (file, NULL, callback_data);
 			return;
 		} else {
-			(* callback) (file, GNOME_VFS_ERROR_GENERIC, callback_data);
+			error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+					     _("Unable to rename desktop file"));
+			(* callback) (file, error, callback_data);
+			g_error_free (error);
 			return;
 		}
 	}
-	g_free (uri);
 
 	/* Set up a renaming operation. */
 	op = operation_new (file, callback, callback_data);
@@ -1282,47 +1328,15 @@ rename_guts (NautilusFile *file,
 	options = NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS;
 
 	/* Do the renaming. */
-	partial_file_info = gnome_vfs_file_info_new ();
-	partial_file_info->name = g_strdup (new_name);
-	vfs_uri = nautilus_file_get_gnome_vfs_uri (file);
-	gnome_vfs_async_set_file_info (&op->handle,
-				       vfs_uri, partial_file_info, 
-				       GNOME_VFS_SET_FILE_INFO_NAME,
-				       options,
-				       GNOME_VFS_PRIORITY_DEFAULT,
-				       rename_callback, op);
-	gnome_vfs_file_info_unref (partial_file_info);
-	gnome_vfs_uri_unref (vfs_uri);
-}
 
-void
-nautilus_file_rename (NautilusFile *file,
-		      const char *new_name,
-		      NautilusFileOperationCallback callback,
-		      gpointer callback_data)
-{
-	char *locale_name;
-	gboolean utf8_filenames;
-	const char *filename_charset;
-	
-	utf8_filenames = eel_get_filename_charset (&filename_charset);
-
-	/* Note: Desktop file renaming wants utf8, even with G_BROKEN_FILENAMES */
-	if (has_local_path (file) && !utf8_filenames &&
-	    !is_desktop_file (file)) {
-		locale_name = g_filename_from_utf8 (new_name, -1, NULL, NULL, NULL);
-		if (locale_name == NULL) {
-			(* callback) (file, GNOME_VFS_ERROR_NOT_PERMITTED, callback_data);
-			return;
-		}
-		
-		rename_guts (file, locale_name, callback, callback_data);
-		g_free (locale_name);
-		return;
-	}
-	
-	rename_guts (file, new_name, callback, callback_data);
-	return;
+	location = nautilus_file_get_location (file);
+	g_file_set_display_name_async (location,
+				       new_name,
+				       G_PRIORITY_DEFAULT,
+				       NULL,
+				       rename_callback,
+				       op);
+	g_object_unref (location);
 }
 
 gboolean
@@ -1353,8 +1367,7 @@ nautilus_file_cancel (NautilusFile *file,
 		op = node->data;
 
 		g_assert (op->file == file);
-		if (op->callback == callback
-		    && op->callback_data == callback_data) {
+		if (op->callback == callback && op->callback_data == callback_data) {
 			operation_cancel (op);
 		}
 	}
@@ -3554,6 +3567,7 @@ set_permissions_callback (GnomeVFSAsyncHandle *handle,
 {
 	Operation *op;
 	GFileInfo *new_info;
+	GError *error;
 
 	op = callback_data;
 	g_assert (handle == op->handle);
@@ -3563,7 +3577,12 @@ set_permissions_callback (GnomeVFSAsyncHandle *handle,
 		nautilus_file_update_info (op->file, new_info);
 		g_object_unref (new_info);
 	}
-	operation_complete (op, result);
+
+	error = gnome_vfs_result_to_error (result);
+	operation_complete (op, error);
+	if (error) {
+		g_error_free (error);
+	}
 }
 
 /**
@@ -3586,6 +3605,7 @@ nautilus_file_set_permissions (NautilusFile *file,
 	GnomeVFSURI *vfs_uri;
 	GnomeVFSFileInfo *partial_file_info;
 	GnomeVFSFileInfoOptions options;
+	GError *error;
 
 	if (!nautilus_file_can_set_permissions (file)) {
 		/* Claim that something changed even if the permission change failed.
@@ -3593,7 +3613,10 @@ nautilus_file_set_permissions (NautilusFile *file,
 		 * to the old permissions as "changing back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_ACCESS_DENIED, callback_data);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
+				     _("Not allowed to set permissions"));
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;
 	}
 			       
@@ -3602,7 +3625,7 @@ nautilus_file_set_permissions (NautilusFile *file,
 	 * nothing changed.
 	 */
 	if (new_permissions == file->details->permissions) {
-		(* callback) (file, GNOME_VFS_OK, callback_data);
+		(* callback) (file, NULL, callback_data);
 		return;
 	}
 
@@ -3887,7 +3910,8 @@ set_owner_and_group_callback (GnomeVFSAsyncHandle *handle,
 {
 	Operation *op;
 	GFileInfo *new_info;
-
+	GError *error;
+	
 	op = callback_data;
 	g_assert (handle == op->handle);
 
@@ -3896,7 +3920,11 @@ set_owner_and_group_callback (GnomeVFSAsyncHandle *handle,
 		nautilus_file_update_info (op->file, new_info);
 		g_object_unref (new_info);
 	}
-	operation_complete (op, result);
+	error = gnome_vfs_result_to_error (result);
+	operation_complete (op, error);
+	if (error) {
+		g_error_free (error);
+	}
 }
 
 static void
@@ -3952,6 +3980,7 @@ nautilus_file_set_owner (NautilusFile *file,
 			 NautilusFileOperationCallback callback,
 			 gpointer callback_data)
 {
+	GError *error;
 	uid_t new_id;
 
 	if (!nautilus_file_can_set_owner (file)) {
@@ -3961,7 +3990,10 @@ nautilus_file_set_owner (NautilusFile *file,
 		 * "changing back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_ACCESS_DENIED, callback_data);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
+				     _("Not allowed to set owner"));
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;
 	}
 
@@ -3976,7 +4008,10 @@ nautilus_file_set_owner (NautilusFile *file,
 		 * "changing back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_BAD_PARAMETERS, callback_data);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+				     _("Specified owner '%s' doesn't exist"), user_name_or_id);
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;		
 	}
 
@@ -3985,7 +4020,7 @@ nautilus_file_set_owner (NautilusFile *file,
 	 * changed.
 	 */
 	if (new_id == (uid_t) file->details->uid) {
-		(* callback) (file, GNOME_VFS_OK, callback_data);
+		(* callback) (file, NULL, callback_data);
 		return;
 	}
 
@@ -4231,6 +4266,7 @@ nautilus_file_set_group (NautilusFile *file,
 			 NautilusFileOperationCallback callback,
 			 gpointer callback_data)
 {
+	GError *error;
 	uid_t new_id;
 
 	if (!nautilus_file_can_set_group (file)) {
@@ -4240,7 +4276,10 @@ nautilus_file_set_group (NautilusFile *file,
 		 * "changing back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_ACCESS_DENIED, callback_data);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
+				     _("Not allowed to set group"));
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;
 	}
 
@@ -4255,7 +4294,10 @@ nautilus_file_set_group (NautilusFile *file,
 		 * "changing back".
 		 */
 		nautilus_file_changed (file);
-		(* callback) (file, GNOME_VFS_ERROR_BAD_PARAMETERS, callback_data);
+		error = g_error_new (G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+				     _("Specified group '%s' doesn't exist"), group_name_or_id);
+		(* callback) (file, error, callback_data);
+		g_error_free (error);
 		return;		
 	}
 
