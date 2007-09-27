@@ -194,6 +194,11 @@ char *                  nautilus_file_peek_top_left_text                (Nautilu
 gboolean                nautilus_file_get_directory_item_mime_types     (NautilusFile                   *file,
 									 GList                         **mime_list);
 
+void                    nautilus_file_set_attributes                    (NautilusFile                   *file, 
+									 GFileInfo                      *attributes,
+									 NautilusFileOperationCallback   callback,
+									 gpointer                        callback_data);
+
 /* Permissions. */
 gboolean                nautilus_file_can_get_permissions               (NautilusFile                   *file);
 gboolean                nautilus_file_can_set_permissions               (NautilusFile                   *file);

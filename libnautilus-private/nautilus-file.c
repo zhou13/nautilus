@@ -1019,10 +1019,8 @@ operation_new (NautilusFile *file,
 {
 	Operation *op;
 
-	nautilus_file_ref (file);
-
 	op = g_new0 (Operation, 1);
-	op->file = file;
+	op->file = nautilus_file_ref (file);
 	op->callback = callback;
 	op->callback_data = callback_data;
 	op->cancellable = g_cancellable_new ();
@@ -1148,6 +1146,8 @@ rename_get_info_callback (GObject *source_object,
 							     NAUTILUS_FILE_ATTRIBUTE_INFO |
 							     NAUTILUS_FILE_ATTRIBUTE_LINK_INFO);
 		}
+		
+		g_object_unref (new_info);
 	}
 	operation_complete (op, error);
 	if (error) {
@@ -1205,7 +1205,6 @@ nautilus_file_rename (NautilusFile *file,
 	char *old_name;
 	gboolean success;
 	gboolean is_renameable_desktop_file;
-	GnomeVFSFileInfoOptions options;
 	GFile *location;
 	GError *error;
 	
@@ -1325,15 +1324,13 @@ nautilus_file_rename (NautilusFile *file,
 	op = operation_new (file, callback, callback_data);
 	op->is_rename = TRUE;
 
-	options = NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS;
-
 	/* Do the renaming. */
 
 	location = nautilus_file_get_location (file);
 	g_file_set_display_name_async (location,
 				       new_name,
 				       G_PRIORITY_DEFAULT,
-				       NULL,
+				       op->cancellable,
 				       rename_callback,
 				       op);
 	g_object_unref (location);
@@ -3492,6 +3489,83 @@ time_t
 nautilus_file_get_mtime (NautilusFile *file)
 {
 	return file->details->mtime;
+}
+
+
+static void
+set_attributes_get_info_callback (GObject *source_object,
+				  GAsyncResult *res,
+				  gpointer callback_data)
+{
+	Operation *op;
+	GFileInfo *new_info;
+	GError *error;
+	
+	op = callback_data;
+
+	error = NULL;
+	new_info = g_file_query_info_finish (G_FILE (source_object), res, &error);
+	if (new_info != NULL) {
+		nautilus_file_update_info (op->file, new_info);
+		g_object_unref (new_info);
+	}
+	operation_complete (op, error);
+	if (error) {
+		g_error_free (error);
+	}
+}
+
+
+static void
+set_attributes_callback (GObject *source_object,
+			 GAsyncResult *result,
+			 gpointer callback_data)
+{
+	Operation *op;
+	GError *error;
+	gboolean res;
+
+	op = callback_data;
+
+	error = NULL;
+	res = g_file_set_attributes_finish (G_FILE (source_object),
+					    result,
+					    NULL,
+					    &error);
+
+	if (res) {
+		g_file_query_info_async (G_FILE (source_object),
+					 NAUTILUS_FILE_DEFAULT_ATTRIBUTES,
+					 0,
+					 G_PRIORITY_DEFAULT,
+					 op->cancellable,
+					 set_attributes_get_info_callback, op);
+	} else {
+		operation_complete (op, error);
+		g_error_free (error);
+	}
+}
+
+void
+nautilus_file_set_attributes (NautilusFile *file, 
+			      GFileInfo *attributes,
+			      NautilusFileOperationCallback callback,
+			      gpointer callback_data)
+{
+	Operation *op;
+	GFile *location;
+	
+	op = operation_new (file, callback, callback_data);
+
+	location = nautilus_file_get_location (file);
+	g_file_set_attributes_async (location,
+				     attributes,
+				     0, 
+				     G_PRIORITY_DEFAULT,
+				     op->cancellable,
+				     set_attributes_callback,
+				     op);
+	g_object_unref (location);
 }
 
 
