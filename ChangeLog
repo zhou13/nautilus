@@ -1,9 +1,14 @@
 2007-09-27  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:
+	Remove unused GnomeVFSHandle stuff
+	
+2007-09-27  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
 	Forgot to change GnomeVFSResult to GError in
 	one spot.
-	
+
 007-09-27  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:

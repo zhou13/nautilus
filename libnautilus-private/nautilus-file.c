@@ -109,7 +109,6 @@ typedef enum {
 
 typedef struct {
 	NautilusFile *file;
-	GnomeVFSAsyncHandle *handle;
 	GCancellable *cancellable;
 	NautilusFileOperationCallback callback;
 	gpointer callback_data;
@@ -1064,23 +1063,8 @@ operation_complete (Operation *op, GError *error)
 static void
 operation_cancel (Operation *op)
 {
-	GError *error;
-	gboolean call_cancel_manually;
-
-	call_cancel_manually = FALSE;
-	
 	/* Cancel the operation if it's still in progress. */
-	if (op->handle) {
-		gnome_vfs_async_cancel (op->handle);
-		call_cancel_manually = TRUE;
-	}
 	g_cancellable_cancel (op->cancellable);
-
-	if (call_cancel_manually) {
-		error = g_error_new (G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation was cancelled");
-		operation_complete (op, error);
-		g_error_free (error);
-	}
 }
 
 static void
