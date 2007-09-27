@@ -4274,7 +4274,7 @@ nautilus_file_set_group (NautilusFile *file,
 	}
 
 	if (new_id == (gid_t) file->details->gid) {
-		(* callback) (file, GNOME_VFS_OK, callback_data);
+		(* callback) (file, NULL, callback_data);
 		return;
 	}
 
