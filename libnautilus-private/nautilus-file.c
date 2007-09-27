@@ -3633,32 +3633,6 @@ nautilus_file_get_permissions (NautilusFile *file)
 	return file->details->permissions;
 }
 
-static void
-set_permissions_callback (GnomeVFSAsyncHandle *handle,
-			  GnomeVFSResult result,
-			  GnomeVFSFileInfo *new_vfs_info,
-			  gpointer callback_data)
-{
-	Operation *op;
-	GFileInfo *new_info;
-	GError *error;
-
-	op = callback_data;
-	g_assert (handle == op->handle);
-
-	if (result == GNOME_VFS_OK && new_vfs_info != NULL) {
-		new_info = gnome_vfs_file_info_to_gio (new_vfs_info);
-		nautilus_file_update_info (op->file, new_info);
-		g_object_unref (new_info);
-	}
-
-	error = gnome_vfs_result_to_error (result);
-	operation_complete (op, error);
-	if (error) {
-		g_error_free (error);
-	}
-}
-
 /**
  * nautilus_file_set_permissions:
  * 
@@ -3675,10 +3649,7 @@ nautilus_file_set_permissions (NautilusFile *file,
 			       NautilusFileOperationCallback callback,
 			       gpointer callback_data)
 {
-	Operation *op;
-	GnomeVFSURI *vfs_uri;
-	GnomeVFSFileInfo *partial_file_info;
-	GnomeVFSFileInfoOptions options;
+	GFileInfo *info;
 	GError *error;
 
 	if (!nautilus_file_can_set_permissions (file)) {
@@ -3703,22 +3674,10 @@ nautilus_file_set_permissions (NautilusFile *file,
 		return;
 	}
 
-	/* Set up a permission change operation. */
-	op = operation_new (file, callback, callback_data);
-
-	options = NAUTILUS_FILE_DEFAULT_FILE_INFO_OPTIONS;
-	/* Change the file-on-disk permissions. */
-	partial_file_info = gnome_vfs_file_info_new ();
-	partial_file_info->permissions = new_permissions;
-	vfs_uri = nautilus_file_get_gnome_vfs_uri (file);
-	gnome_vfs_async_set_file_info (&op->handle,
-				       vfs_uri, partial_file_info, 
-				       GNOME_VFS_SET_FILE_INFO_PERMISSIONS,
-				       options,
-				       GNOME_VFS_PRIORITY_DEFAULT,
-				       set_permissions_callback, op);
-	gnome_vfs_file_info_unref (partial_file_info);
-	gnome_vfs_uri_unref (vfs_uri);
+	info = g_file_info_new ();
+	g_file_info_set_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE, new_permissions);
+	nautilus_file_set_attributes (file, info, callback, callback_data);
+	g_object_unref (info);
 }
 
 /**

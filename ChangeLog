@@ -1,5 +1,11 @@
 2007-09-27  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+        Implement nautilus_file_set_permissions using
+	nautilus_file_set_attributes.
+
+2007-09-27  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.[ch]:
         Add nautilus_file_set_attributes
 
