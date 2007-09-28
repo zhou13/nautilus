@@ -27,6 +27,7 @@
 #include <string.h>
 #include <libnautilus-private/nautilus-marshal.h>
 #include <glib/gi18n.h>
+#include <gio/gcontenttype.h>
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-mime-extensions.h>
@@ -786,7 +787,7 @@ type_add_rows_from_query (NautilusQueryEditor    *editor,
 	for (l = mime_types; l != NULL; l = l->next) {
 		mime_type = l->data;
 
-		desc = gnome_vfs_mime_get_value (mime_type, "description");
+		desc = g_content_type_get_description (mime_type);
 		if (desc == NULL) {
 			desc = mime_type;
 		}

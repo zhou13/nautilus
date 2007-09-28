@@ -30,6 +30,7 @@
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <eel/eel-string.h>
+#include <gio/gcontenttype.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-thumbnails.h>
@@ -106,7 +107,7 @@ fm_icon_container_get_icon_description (NautilusIconContainer *container,
 	}
 
 	mime_type = nautilus_file_get_mime_type (file);
-	description = gnome_vfs_mime_get_description (mime_type);
+	description = g_content_type_get_description (mime_type);
 	g_free (mime_type);
 	return g_strdup (description);
 }

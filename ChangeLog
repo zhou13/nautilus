@@ -1,5 +1,13 @@
 2007-09-28  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-link.c:
+        * src/file-manager/fm-icon-container.c:
+        * src/nautilus-query-editor.c:
+	Use gio mimetype functions instead of gnome-vfs ones.
+
+2007-09-28  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-mime-actions.[ch]:
         * libnautilus-private/nautilus-program-choosing.[ch]:
         * libnautilus-private/nautilus-recent.[ch]:

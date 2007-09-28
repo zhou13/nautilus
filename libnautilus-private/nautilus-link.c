@@ -41,6 +41,7 @@
 #include <eel/eel-xml-extensions.h>
 #include <libxml/parser.h>
 #include <glib/gi18n.h>
+#include <gio/gcontenttype.h>
 #include <libgnome/gnome-util.h>
 #include <libgnomevfs/gnome-vfs-ops.h>
 #include <libgnomevfs/gnome-vfs-mime-utils.h>
@@ -99,8 +100,13 @@ is_local_file_a_link (const char *uri, GnomeVFSFileInfo *opt_info)
 static gboolean
 is_link_data (const char *file_contents, int file_size)
 {
-	return is_link_mime_type
-		(gnome_vfs_get_mime_type_for_data (file_contents, file_size));
+	char *mimetype;
+	gboolean res;
+
+	mimetype = g_content_type_guess (NULL, file_contents, file_size, NULL);
+	res =  is_link_mime_type (mimetype);
+	g_free (mimetype);
+	return res;
 }
 
 gboolean

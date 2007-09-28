@@ -58,6 +58,7 @@
 #include <grp.h>
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
+#include <gio/gcontenttype.h>
 #include <libgnome/gnome-macros.h>
 #include <libgnomevfs/gnome-vfs-file-info.h>
 #include <libgnomevfs/gnome-vfs-mime-handlers.h>
@@ -4830,12 +4831,12 @@ get_description (NautilusFile *file)
 		return NULL;
 	}
 
-	if (g_ascii_strcasecmp (mime_type, GNOME_VFS_MIME_TYPE_UNKNOWN) == 0
+	if (g_content_type_is_unknown (mime_type) == 0
 	    && nautilus_file_is_executable (file)) {
 		return _("program");
 	}
 
-	description = gnome_vfs_mime_get_description (mime_type);
+	description = g_content_type_get_description (mime_type);
 	if (!eel_str_is_empty (description)) {
 		return description;
 	}
@@ -4933,7 +4934,7 @@ nautilus_file_get_mime_type (NautilusFile *file)
 			return g_strdup (eel_ref_str_peek (file->details->mime_type));
 		}
 	}
-	return g_strdup (GNOME_VFS_MIME_TYPE_UNKNOWN);
+	return g_strdup ("application/octet-stream");
 }
 
 /**
@@ -4957,8 +4958,8 @@ nautilus_file_is_mime_type (NautilusFile *file, const char *mime_type)
 	if (file->details->mime_type == NULL) {
 		return FALSE;
 	}
-	return (gnome_vfs_mime_type_get_equivalence (eel_ref_str_peek (file->details->mime_type),
-						     mime_type) != GNOME_VFS_MIME_UNRELATED);
+	return g_content_type_is_a (eel_ref_str_peek (file->details->mime_type),
+				    mime_type);
 }
 
 /**
