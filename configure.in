@@ -97,7 +97,7 @@ PKG_CHECK_MODULES(ALL, [
 	gnome-desktop-2.0	>= gnome_desktop_minver
 	gnome-vfs-2.0		>= gnome_vfs_minver
 	gnome-vfs-module-2.0	>= gnome_vfs_minver
-	gio-standalone		
+	gio-2.0		
 	ORBit-2.0		>= orbit_minver
 	pango			>= pango_minver
 	gtk+-2.0		>= gtk_minver

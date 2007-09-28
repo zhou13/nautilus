@@ -1,5 +1,10 @@
 2007-09-28  Alexander Larsson  <alexl@redhat.com>
 
+	* configure.in:
+	Update for new gio pkgconfig name
+
+2007-09-28  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.c:
         * src/file-manager/fm-directory-view.c:
         * src/file-manager/fm-properties-window.c:
