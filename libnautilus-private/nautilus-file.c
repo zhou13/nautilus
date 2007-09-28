@@ -4433,7 +4433,7 @@ nautilus_file_get_size_as_string (NautilusFile *file)
 	if (file->details->size == -1) {
 		return NULL;
 	}
-	return g_file_size_format_for_display (file->details->size);
+	return g_format_file_size_for_display (file->details->size);
 }
 
 /**
@@ -4473,7 +4473,7 @@ nautilus_file_get_size_as_string_with_real_size (NautilusFile *file)
 		return NULL;
 	}
 
-	formated = g_file_size_format_for_display (file->details->size);
+	formated = g_format_file_size_for_display (file->details->size);
 	/* FIXME: We should use GNOME_VFS_SIZE_FORMAT_STR instead of the explicit format here. */
 	formated_plus_real = g_strdup_printf (_("%s (%lld bytes)"), formated,
 					      (long long) file->details->size);
@@ -4538,7 +4538,7 @@ nautilus_file_get_deep_count_as_string_internal (NautilusFile *file,
 	 * directly if desired.
 	 */
 	if (report_size) {
-		return g_file_size_format_for_display (total_size);
+		return g_format_file_size_for_display (total_size);
 	}
 
 	return format_item_count_for_display (report_directory_count
@@ -5134,7 +5134,7 @@ nautilus_file_get_volume_free_space (NautilusFile *file)
 	gnome_vfs_uri_unref (vfs_uri);
 
 	if (result == GNOME_VFS_OK) {
-		return g_file_size_format_for_display (free_space);
+		return g_format_file_size_for_display (free_space);
 	} else {
 		return NULL;
 	}
