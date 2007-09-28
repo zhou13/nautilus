@@ -28,23 +28,23 @@
 #include "nautilus-file-attributes.h"
 #include "nautilus-file.h"
 #include "nautilus-metadata.h"
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
+#include <eel/eel-glib-extensions.h>
 #include <string.h>
 
 static GList*
 filter_nautilus_handler (GList *apps)
 {
 	GList *l, *next;
-	GnomeVFSMimeApplication *application;
+	GAppInfo *application;
 
 	l = apps;
 	while (l != NULL) {
-		application = (GnomeVFSMimeApplication *) l->data;
+		application = (GAppInfo *) l->data;
 		next = l->next;
 
-		if (strcmp (gnome_vfs_mime_application_get_desktop_id (application),
-			   "nautilus-folder-handler.desktop") == 0) {
-			gnome_vfs_mime_application_free (application);
+		if (strcmp (g_app_info_get_id (application),
+			    "nautilus-folder-handler.desktop") == 0) {
+			g_object_unref (application);
 			apps = g_list_delete_link (apps, l); 
 		}
 
@@ -53,6 +53,25 @@ filter_nautilus_handler (GList *apps)
 
 	return apps;
 }
+
+static GList*
+filter_non_uri_apps (GList *apps)
+{
+	GList *l, *next;
+	GAppInfo *app;
+
+	for (l = apps; l != NULL; l = next) {
+		app = l->data;
+		next = l->next;
+		
+		if (!g_app_info_supports_uris (app)) {
+			apps = g_list_delete_link (apps, l);
+			g_object_unref (app);
+		}
+	}
+	return apps;
+}
+
 
 static gboolean
 nautilus_mime_actions_check_if_minimum_attributes_ready (NautilusFile *file)
@@ -100,21 +119,38 @@ nautilus_mime_actions_get_full_file_attributes (void)
 	return nautilus_mime_actions_get_minimum_file_attributes ();
 }
 
-GnomeVFSMimeApplication *
+static gboolean
+file_has_local_path (NautilusFile *file)
+{
+	GFile *location;
+	char *path;
+	gboolean res;
+
+	
+	location = nautilus_file_get_location (file);
+	path = g_file_get_path (location);
+
+	res = path != NULL;
+	
+	g_free (path);
+	g_object_unref (location);
+
+	return res;
+}
+
+GAppInfo *
 nautilus_mime_get_default_application_for_file (NautilusFile *file)
 {
-	GnomeVFSMimeApplication *app;
-	char *uri, *mime_type;
+	GAppInfo *app;
+	char *mime_type;
 
 	if (!nautilus_mime_actions_check_if_open_with_attributes_ready (file)) {
 		return NULL;
 	}
-	
-	uri = nautilus_file_get_uri (file);
+
 	mime_type = nautilus_file_get_mime_type (file);
-	app = gnome_vfs_mime_get_default_application_for_uri (uri, mime_type);
+	app = g_app_info_get_default_for_type (mime_type, file_has_local_path (file));
 	
-	g_free (uri);
 	g_free (mime_type);
 	
 	return app;
@@ -156,28 +192,40 @@ file_compare_by_parent_uri (NautilusFile *file_a,
 }
 
 static int
-application_compare_by_name (const GnomeVFSMimeApplication *app_a,
-			     const GnomeVFSMimeApplication *app_b)
+application_compare_by_name (const GAppInfo *app_a,
+			     const GAppInfo *app_b)
 {
-	return g_utf8_collate (app_a->name, app_b->name);
+	return g_utf8_collate (g_app_info_get_name ((GAppInfo *)app_a),
+			       g_app_info_get_name ((GAppInfo *)app_b));
+}
+
+static int
+application_compare_by_id (const GAppInfo *app_a,
+			   const GAppInfo *app_b)
+{
+	return g_utf8_collate (g_app_info_get_id ((GAppInfo *)app_a),
+			       g_app_info_get_id ((GAppInfo *)app_b));
 }
 
 static GList *
 get_open_with_mime_applications (NautilusFile *file)
 {
-	char *mime_type, *uri;
-	GList *result;
+	char *mime_type;
+	GList *apps;
 
 	mime_type = nautilus_file_get_mime_type (file);
-	uri = nautilus_file_get_uri (file);
 
-	result = gnome_vfs_mime_get_all_applications_for_uri (uri, mime_type);
-	result = g_list_sort (result, (GCompareFunc) application_compare_by_name);
+	apps = g_app_info_get_all_for_type (mime_type);
+	if (!file_has_local_path (file)) {
+		/* Filter out non-uri supporting apps */
+		apps = filter_non_uri_apps (apps);
+	}
+		
+	apps = g_list_sort (apps, (GCompareFunc) application_compare_by_name);
 
 	g_free (mime_type);
-	g_free (uri);
 	
-	return result;
+	return apps;
 }
 
 /* Get a list of applications for the Open With menu.  This is 
@@ -208,7 +256,7 @@ nautilus_mime_get_applications_for_file (NautilusFile *file)
 		return NULL;
 	}
 	mime_type = nautilus_file_get_mime_type (file);
-	result = gnome_vfs_mime_get_all_applications (mime_type);
+	result = g_app_info_get_all_for_type (mime_type);
 	result = g_list_sort (result, (GCompareFunc) application_compare_by_name);
 	g_free (mime_type);
 
@@ -219,34 +267,36 @@ gboolean
 nautilus_mime_has_any_applications_for_file (NautilusFile *file)
 {
 	GList *apps;
-	char *uri, *mime_type;
+	char *mime_type;
 	gboolean result;
 
-	uri = nautilus_file_get_uri (file);
 	mime_type = nautilus_file_get_mime_type (file);
 	
-	apps = gnome_vfs_mime_get_all_applications_for_uri (uri, mime_type);
+	apps = g_app_info_get_all_for_type (mime_type);
+	if (!file_has_local_path (file)) {
+		/* Filter out non-uri supporting apps */
+		apps = filter_non_uri_apps (apps);
+	}
 	apps = filter_nautilus_handler (apps);
 		
 	if (apps) {
 		result = TRUE;
-		gnome_vfs_mime_application_list_free (apps);
+		eel_g_object_list_free (apps);
 	} else {
 		result = FALSE;
 	}
 	
 	g_free (mime_type);
-	g_free (uri);
 
 	return result;
 }
 
-GnomeVFSMimeApplication *
+GAppInfo *
 nautilus_mime_get_default_application_for_files (GList *files)
 {
 	GList *l, *sorted_files;
 	NautilusFile *file;
-	GnomeVFSMimeApplication *app, *one_app;
+	GAppInfo *app, *one_app;
 
 	g_assert (files != NULL);
 
@@ -263,9 +313,13 @@ nautilus_mime_get_default_application_for_files (GList *files)
 		}
 
 		one_app = nautilus_mime_get_default_application_for_file (file);
-		if (one_app == NULL || (app != NULL && !gnome_vfs_mime_application_equal (app, one_app))) {
-			gnome_vfs_mime_application_free (app);
-			gnome_vfs_mime_application_free (one_app);
+		if (one_app == NULL || (app != NULL && !g_app_info_equal (app, one_app))) {
+			if (app) {
+				g_object_unref (app);
+			}
+			if (one_app) {
+				g_object_unref (one_app);
+			}
 			app = NULL;
 			break;
 		}
@@ -273,7 +327,7 @@ nautilus_mime_get_default_application_for_files (GList *files)
 		if (app == NULL) {
 			app = one_app;
 		} else {
-			gnome_vfs_mime_application_free (one_app);
+			g_object_unref (one_app);
 		}
 	}
 
@@ -292,7 +346,7 @@ intersect_application_lists (GList *a,
 {
 	GList *l, *m;
 	GList *ret;
-	GnomeVFSMimeApplication *a_app, *b_app;
+	GAppInfo *a_app, *b_app;
 	int cmp;
 
 	ret = NULL;
@@ -301,26 +355,27 @@ intersect_application_lists (GList *a,
 	m = b;
 
 	while (l != NULL && m != NULL) {
-		a_app = (GnomeVFSMimeApplication *) l->data;
-		b_app = (GnomeVFSMimeApplication *) m->data;
+		a_app = (GAppInfo *) l->data;
+		b_app = (GAppInfo *) m->data;
 
-		cmp = strcmp (a_app->id, b_app->id);
+		cmp = strcmp (g_app_info_get_id (a_app),
+			      g_app_info_get_id (b_app));
 		if (cmp > 0) {
-			gnome_vfs_mime_application_free (b_app);
+			g_object_unref (b_app);
 			m = m->next;
 		} else if (cmp < 0) {
-			gnome_vfs_mime_application_free (a_app);
+			g_object_unref (a_app);
 			l = l->next;
 		} else {
-			gnome_vfs_mime_application_free (b_app);
+			g_object_unref (b_app);
 			ret = g_list_prepend (ret, a_app);
 			l = l->next;
 			m = m->next;
 		}
 	}
 
-	g_list_foreach (l, (GFunc) gnome_vfs_mime_application_free, NULL);
-	g_list_foreach (m, (GFunc) gnome_vfs_mime_application_free, NULL);
+	g_list_foreach (l, (GFunc) g_object_unref, NULL);
+	g_list_foreach (m, (GFunc) g_object_unref, NULL);
 
 	g_list_free (a);
 	g_list_free (b);
@@ -350,6 +405,8 @@ nautilus_mime_get_open_with_applications_for_files (GList *files)
 		}
 
 		one_ret = nautilus_mime_get_open_with_applications_for_file (file);
+		one_ret = g_list_sort (one_ret, (GCompareFunc) application_compare_by_id);
+		
 		if (ret != NULL) {
 			ret = intersect_application_lists (ret, one_ret);
 		} else {
@@ -362,6 +419,8 @@ nautilus_mime_get_open_with_applications_for_files (GList *files)
 	}
 
 	g_list_free (sorted_files);
+	
+	ret = g_list_sort (ret, (GCompareFunc) application_compare_by_name);
 
 	return ret;
 }
@@ -387,6 +446,7 @@ nautilus_mime_get_applications_for_files (GList *files)
 		}
 
 		one_ret = nautilus_mime_get_applications_for_file (file);
+		one_ret = g_list_sort (one_ret, (GCompareFunc) application_compare_by_id);
 		if (ret != NULL) {
 			ret = intersect_application_lists (ret, one_ret);
 		} else {
@@ -400,6 +460,8 @@ nautilus_mime_get_applications_for_files (GList *files)
 
 	g_list_free (sorted_files);
 
+	ret = g_list_sort (ret, (GCompareFunc) application_compare_by_name);
+	
 	return ret;
 }
 

@@ -25,18 +25,18 @@
 #ifndef NAUTILUS_MIME_ACTIONS_H
 #define NAUTILUS_MIME_ACTIONS_H
 
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
+#include <gio/gappinfo.h>
 
 #include <libnautilus-private/nautilus-file.h>
 
 NautilusFileAttributes   nautilus_mime_actions_get_minimum_file_attributes	(void);
 NautilusFileAttributes   nautilus_mime_actions_get_full_file_attributes		(void);
 
-GnomeVFSMimeApplication *nautilus_mime_get_default_application_for_file		(NautilusFile *file);
+GAppInfo *               nautilus_mime_get_default_application_for_file		(NautilusFile *file);
 GList *                  nautilus_mime_get_open_with_applications_for_file	(NautilusFile *file);
 GList *			 nautilus_mime_get_applications_for_file		(NautilusFile *file);
 
-GnomeVFSMimeApplication *nautilus_mime_get_default_application_for_files	(GList        *files);
+GAppInfo *               nautilus_mime_get_default_application_for_files	(GList        *files);
 GList *                  nautilus_mime_get_open_with_applications_for_files	(GList        *files);
 GList *			 nautilus_mime_get_applications_for_files		(GList        *file);
 

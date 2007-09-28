@@ -1,3 +1,15 @@
+2007-09-28  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-mime-actions.[ch]:
+        * libnautilus-private/nautilus-program-choosing.[ch]:
+        * libnautilus-private/nautilus-recent.[ch]:
+	Use GAppInfo instead of GnomeVFSMimeApplication
+	
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-information-panel.c:
+        * test/test-nautilus-mime-actions.c:
+	Update due to the api changes in the GAppInfo move.
+
 2007-09-27  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:

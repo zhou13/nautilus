@@ -39,6 +39,8 @@
 #include <gtk/gtk.h>
 #include <libgnome/gnome-config.h>
 #include <glib/gi18n.h>
+#include <gio/gfileicon.h>
+#include <gio/gthemedicon.h>
 #include <libgnome/gnome-util.h>
 #include <libgnome/gnome-desktop-item.h>
 #include <libgnome/gnome-url.h>
@@ -63,6 +65,27 @@
 #endif
 
 extern char **environ;
+
+static char *
+gicon_to_string (GIcon *icon)
+{
+	GFile *file;
+	char **names;
+	
+	if (G_IS_FILE_ICON (icon)) {
+		file = g_file_icon_get_file (G_FILE_ICON (icon));
+		if (file) {
+			return g_file_get_path (file);
+		}
+	} else if (G_IS_THEMED_ICON (icon)) {
+		names = g_themed_icon_get_names (G_THEMED_ICON (icon));
+		if (names) {
+			return names[0];
+		}
+	}
+	
+	return NULL;
+}
 
 /* Cut and paste from gdkspawn-x11.c */
 static gchar **
@@ -117,7 +140,7 @@ my_gdk_spawn_make_environment_for_screen (GdkScreen  *screen,
  * @parent_window: A window to use as the parent for any error dialogs.
  *  */
 static void
-application_cannot_open_location (GnomeVFSMimeApplication *application,
+application_cannot_open_location (GAppInfo *application,
 				  NautilusFile *file,
 				  const char *uri_scheme,
 				  GtkWindow *parent_window)
@@ -137,8 +160,8 @@ application_cannot_open_location (GnomeVFSMimeApplication *application,
 			prompt = _("Open Failed, would you like to choose another application?");
 			message = g_strdup_printf (_("\"%s\" can't open \"%s\" because \"%s\" can't access files at \"%s\" "
 						     "locations."),
-						   application->name, file_name, 
-						   application->name, uri_scheme);
+						   g_app_info_get_name (application), file_name, 
+						   g_app_info_get_name (application), uri_scheme);
 		} else {
 			prompt = _("Open Failed, would you like to choose another action?");
 			message = g_strdup_printf (_("The default action can't open \"%s\" because it can't access files at \"%s\" "
@@ -167,8 +190,8 @@ application_cannot_open_location (GnomeVFSMimeApplication *application,
 	} else {
 		if (application != NULL) {
 			prompt = g_strdup_printf (_("\"%s\" can't open \"%s\" because \"%s\" can't access files at \"%s\" "
-						    "locations."), application->name, file_name, 
-						    application->name, uri_scheme);
+						    "locations."), g_app_info_get_name (application), file_name, 
+						    g_app_info_get_name (application), uri_scheme);
 			message = _("No other applications are available to view this file.  "
 				    "If you copy this file onto your computer, you may be able to open "
 				    "it.");
@@ -426,11 +449,12 @@ slowly_and_stupidly_obtain_timestamp (Display *xdisplay)
  * @file: the file whose uri will be shown.
  * @parent_window: window to use as parent for error dialog.
  */
-void nautilus_launch_show_file (NautilusFile *file,
-                                GtkWindow    *parent_window)
+void
+nautilus_launch_show_file (NautilusFile *file,
+			   GtkWindow    *parent_window)
 {
 	GnomeVFSResult result;
-	GnomeVFSMimeApplication *application;
+	GAppInfo *application;
 	GdkScreen *screen;
 	char **envp;
 	char *uri, *uri_scheme;
@@ -468,7 +492,7 @@ void nautilus_launch_show_file (NautilusFile *file,
 	
 	/* Only initiate notification if application supports it. */
 	if (application) {
-		startup_notify = gnome_vfs_mime_application_supports_startup_notification (application);
+		startup_notify = g_app_info_supports_xdg_startup_notify (application);
 	} else {
 		startup_notify = FALSE;
 	}
@@ -509,7 +533,7 @@ void nautilus_launch_show_file (NautilusFile *file,
 
 			timestamp = slowly_and_stupidly_obtain_timestamp (GDK_WINDOW_XDISPLAY (GTK_WIDGET (parent_window)->window));
 
-			binary_name = gnome_vfs_mime_application_get_binary_name (application);
+			binary_name = g_app_info_get_executable (application);
 		
 			sn_launcher_context_set_binary_name (sn_context,
 							     binary_name);
@@ -527,7 +551,8 @@ void nautilus_launch_show_file (NautilusFile *file,
 		sn_context = NULL;
 	}
 #endif /* HAVE_STARTUP_NOTIFICATION */
-	
+
+	/* TODO-gio: We don't have url handlers yet... */
 	result = gnome_vfs_url_show_with_env (uri, envp);
 
 #ifdef HAVE_STARTUP_NOTIFICATION
@@ -657,7 +682,7 @@ void nautilus_launch_show_file (NautilusFile *file,
 	g_free (uri_for_display);
 	
 	if (application != NULL) 
-		gnome_vfs_mime_application_free (application);
+		g_object_unref (application);
 
 	g_strfreev (envp);
 	g_free (uri);
@@ -674,17 +699,19 @@ void nautilus_launch_show_file (NautilusFile *file,
  * @parent_window: A window to use as the parent for any error dialogs.
  */
 void
-nautilus_launch_application (GnomeVFSMimeApplication *application, 
+nautilus_launch_application (GAppInfo *application, 
 			     GList *files,
 			     GtkWindow *parent_window)
 {
 	GdkScreen       *screen;
 	char		*uri;
 	char            *uri_scheme;
-	GList           *uris, *l;
+	GList           *locations, *l;
+	GFile *location;
 	NautilusFile    *file;
 	char           **envp;
-	GnomeVFSResult   result;
+	gboolean        result;
+	GError *error;
 #ifdef HAVE_STARTUP_NOTIFICATION
 	SnLauncherContext *sn_context;
 	SnDisplay *sn_display;
@@ -692,23 +719,25 @@ nautilus_launch_application (GnomeVFSMimeApplication *application,
 
 	g_assert (files != NULL);
 
-	uris = NULL;
+	locations = NULL;
 	for (l = files; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
 
-		uri = NULL;
+		location = NULL;
 
 		if (nautilus_file_is_nautilus_link (file)) {
 			uri = nautilus_file_get_activation_uri (file);
+			location = g_file_new_for_uri (uri);
+			g_free (uri);
 		}
 		
-		if (uri == NULL) {
-			uri = nautilus_file_get_uri (file);
+		if (location == NULL) {
+			location = nautilus_file_get_location (file);
 		}
 
-		uris = g_list_prepend (uris, uri);
+		locations = g_list_prepend (locations, location);
 	}
-	uris = g_list_reverse (uris);
+	locations = g_list_reverse (locations);
 
 	screen = gtk_window_get_screen (parent_window);
 	envp = my_gdk_spawn_make_environment_for_screen (screen, NULL);
@@ -720,10 +749,11 @@ nautilus_launch_application (GnomeVFSMimeApplication *application,
 
 	
 	/* Only initiate notification if application supports it. */
-	if (gnome_vfs_mime_application_supports_startup_notification (application))
+	if (g_app_info_supports_xdg_startup_notify (application))
 	{ 
 		char *name;
 		char *description;
+		GIcon *gicon;
 		char *icon;
 		int   files_count;
 
@@ -758,7 +788,8 @@ nautilus_launch_application (GnomeVFSMimeApplication *application,
 		icon = nautilus_icon_factory_get_icon_for_file (file, FALSE);
 
 		if (icon == NULL) {
-			icon = g_strdup (gnome_vfs_mime_application_get_icon (application));
+			gicon = g_app_info_get_icon (application);
+			icon = gicon_to_string (gicon);
 		}
 
 		if (icon != NULL) {
@@ -773,7 +804,7 @@ nautilus_launch_application (GnomeVFSMimeApplication *application,
 
 			timestamp = slowly_and_stupidly_obtain_timestamp (GDK_WINDOW_XDISPLAY (GTK_WIDGET (parent_window)->window));
 			
-			binary_name = gnome_vfs_mime_application_get_binary_name (application);
+			binary_name = g_app_info_get_executable (application);
 		
 			sn_launcher_context_set_binary_name (sn_context,
 							     binary_name);
@@ -791,12 +822,16 @@ nautilus_launch_application (GnomeVFSMimeApplication *application,
 		sn_context = NULL;
 	}
 #endif /* HAVE_STARTUP_NOTIFICATION */
-	
-	result = gnome_vfs_mime_application_launch_with_env (application, uris, envp);
+
+	error = NULL;
+	result = g_app_info_launch (application,
+				    locations,
+				    envp,
+				    &error);
 
 #ifdef HAVE_STARTUP_NOTIFICATION
 	if (sn_context != NULL) {
-		if (result != GNOME_VFS_OK) {
+		if (!result) {
 			sn_launcher_context_complete (sn_context); /* end sequence */
 		} else {
 			add_startup_timeout (screen ? screen :
@@ -809,30 +844,26 @@ nautilus_launch_application (GnomeVFSMimeApplication *application,
 	sn_display_unref (sn_display);
 #endif /* HAVE_STARTUP_NOTIFICATION */
 
-	switch (result) {
-	case GNOME_VFS_OK:
-		break;
-
-	case GNOME_VFS_ERROR_NOT_SUPPORTED:
-		uri_scheme = nautilus_file_get_uri_scheme (NAUTILUS_FILE (files->data));
-		application_cannot_open_location (application,
-						  file,
-						  uri_scheme,
-						  parent_window);
-		g_free (uri_scheme);
-		
-		break;
-
-	default:
+	if (!result) {
+		if (error->domain == G_IO_ERROR &&
+		    error->code == G_IO_ERROR_NOT_SUPPORTED) {
+			uri_scheme = nautilus_file_get_uri_scheme (NAUTILUS_FILE (files->data));
+			application_cannot_open_location (application,
+							  file,
+							  uri_scheme,
+							  parent_window);
+			g_free (uri_scheme);
+		} else {
 #ifdef NEW_MIME_COMPLETE
-		nautilus_program_chooser_show_invalid_message
-			(GNOME_VFS_MIME_ACTION_TYPE_APPLICATION, file, parent_window);
-			 
+			nautilus_program_chooser_show_invalid_message
+				(GNOME_VFS_MIME_ACTION_TYPE_APPLICATION, file, parent_window);
+#else
+			g_warning ("Can't open app: %s\n", error->message);
 #endif
-		break;
+		}
 	}
 
-	eel_g_list_free_deep (uris);
+	eel_g_object_list_free (locations);
 	g_strfreev (envp);
 }
 
@@ -931,7 +962,7 @@ nautilus_launch_desktop_file (GdkScreen   *screen,
 	count = 0;
 	total = g_list_length ((GList *) parameter_uris);
 	for (p = parameter_uris; p != NULL; p = p->next) {
-		local_path = gnome_vfs_get_local_path_from_uri ((const char *) p->data);
+		local_path = g_filename_from_uri ((const char *) p->data, NULL, NULL);
 		if (local_path != NULL) {
 			g_free (local_path);
 			count++;

@@ -62,17 +62,15 @@ format_supported_uri_schemes_for_display (GList *supported_uri_schemes)
 }
 
 static void
-print_application (GnomeVFSMimeApplication *application)
+print_application (GAppInfo *application)
 {
         if (application == NULL) {
 	        puts ("(none)");
 	} else {
-	        printf ("name: %s\ncommand: %s\ncan_open_multiple_files: %s\nexpects_uris: %s\nsupported_uri_schemes: %s\nrequires_terminal: %s\n", 
-			application->name, application->command, 
-			(application->can_open_multiple_files ? "TRUE" : "FALSE"),
-			(application->expects_uris ? "TRUE" : "FALSE"),
-			format_supported_uri_schemes_for_display (application->supported_uri_schemes),
-			(application->requires_terminal ? "TRUE" : "FALSE"));
+	        printf ("name: %s\ncommand: %s\nexpects_uris: %s\n", 
+			g_application_get_name (application),
+			g_application_get_executable (application), 
+			(g_app_info_supports_uris (application) ? "TRUE" : "FALSE"));
 	}
 }
 
@@ -102,7 +100,7 @@ int
 main (int argc, char **argv)
 {
         const char *uri;  
-	GnomeVFSMimeApplication *default_application;
+	GAppInfo *default_application;
 	GList *all_applications;
 	NautilusFile *file;
 	NautilusFileAttributes attributes;

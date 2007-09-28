@@ -795,25 +795,18 @@ nautilus_information_panel_get_window (NautilusInformationPanel *information_pan
 }
 
 static void
-command_button_callback (GtkWidget *button, char *id_str)
+command_button_callback (GtkWidget *button, GAppInfo *application)
 {
 	NautilusInformationPanel *information_panel;
-	GnomeVFSMimeApplication *application;
 	GList files;
 	
 	information_panel = NAUTILUS_INFORMATION_PANEL (g_object_get_data (G_OBJECT (button), "user_data"));
 
-	application = gnome_vfs_mime_application_new_from_desktop_id (id_str);
-
-	if (application != NULL) {
-		files.next = NULL;
-		files.prev = NULL;
-		files.data = information_panel->details->file;
-		nautilus_launch_application (application, &files,
-					     nautilus_information_panel_get_window (information_panel));	
-
-		gnome_vfs_mime_application_free (application);
-	}
+	files.next = NULL;
+	files.prev = NULL;
+	files.data = information_panel->details->file;
+	nautilus_launch_application (application, &files,
+				     nautilus_information_panel_get_window (information_panel));	
 }
 
 /* interpret commands for buttons specified by metadata. Handle some built-in ones explicitly, or fork
@@ -832,10 +825,10 @@ metadata_button_callback (GtkWidget *button, const char *command_str)
 static void
 add_command_buttons (NautilusInformationPanel *information_panel, GList *application_list)
 {
-	char *id_string, *temp_str;
+	char *temp_str;
 	GList *p;
 	GtkWidget *temp_button, *label;
-	GnomeVFSMimeApplication *application;
+	GAppInfo *application;
 
 	/* There's always at least the "Open with..." button */
 	information_panel->details->has_buttons = TRUE;
@@ -843,7 +836,7 @@ add_command_buttons (NautilusInformationPanel *information_panel, GList *applica
 	for (p = application_list; p != NULL; p = p->next) {
 	        application = p->data;	        
 
-		temp_str = g_strdup_printf (_("Open with %s"), application->name);
+		temp_str = g_strdup_printf (_("Open with %s"), g_app_info_get_name (application));
 	        temp_button = gtk_button_new_with_label (temp_str);
 		label = GTK_BIN (temp_button)->child;
 		gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_START);
@@ -853,13 +846,11 @@ add_command_buttons (NautilusInformationPanel *information_panel, GList *applica
 				    FALSE, FALSE, 
 				    0);
 
-		id_string = g_strdup (gnome_vfs_mime_application_get_desktop_id (application));
-
 		g_signal_connect_data (temp_button,
 				       "clicked",
 				       G_CALLBACK (command_button_callback),
-				       id_string,
-				       (GClosureNotify)g_free,
+				       g_object_ref (application),
+				       (GClosureNotify)g_object_unref,
 				       0);
 
                 g_object_set_data (G_OBJECT (temp_button), "user_data", information_panel);
@@ -953,7 +944,7 @@ nautilus_information_panel_update_buttons (NautilusInformationPanel *information
 		short_application_list = 
 			nautilus_mime_get_applications_for_file (information_panel->details->file);
 		add_command_buttons (information_panel, short_application_list);
-		gnome_vfs_mime_application_list_free (short_application_list);
+		eel_g_object_list_free (short_application_list);
 	}
 
 	gtk_widget_show (GTK_WIDGET (information_panel->details->button_box_centerer));

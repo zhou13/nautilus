@@ -67,6 +67,7 @@
 #include <gtk/gtkbindings.h>
 #include <glib/gi18n.h>
 #include <gio/gioerror.h>
+#include <gio/gcontenttype.h>
 #include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-help.h>
@@ -451,7 +452,7 @@ EEL_IMPLEMENT_MUST_OVERRIDE_SIGNAL (fm_directory_view, zoom_to_level)
 EEL_IMPLEMENT_MUST_OVERRIDE_SIGNAL (fm_directory_view, get_zoom_level)
 
 typedef struct {
-	GnomeVFSMimeApplication *application;
+	GAppInfo *application;
 	GList *files;
 	FMDirectoryView *directory_view;
 } ApplicationLaunchParameters;
@@ -543,14 +544,14 @@ file_and_directory_hash  (gconstpointer  v)
 
 
 static ApplicationLaunchParameters *
-application_launch_parameters_new (GnomeVFSMimeApplication *application,
+application_launch_parameters_new (GAppInfo *application,
 			      	   GList *files,
 			           FMDirectoryView *directory_view)
 {
 	ApplicationLaunchParameters *result;
 
 	result = g_new0 (ApplicationLaunchParameters, 1);
-	result->application = gnome_vfs_mime_application_copy (application);
+	result->application = g_object_ref (application);
 	result->files = nautilus_file_list_copy (files);
 
 	if (directory_view != NULL) {
@@ -564,7 +565,7 @@ application_launch_parameters_new (GnomeVFSMimeApplication *application,
 static void
 application_launch_parameters_free (ApplicationLaunchParameters *parameters)
 {
-	gnome_vfs_mime_application_free (parameters->application);
+	g_object_unref (parameters->application);
 	nautilus_file_list_free (parameters->files);
 
 	if (parameters->directory_view != NULL) {
@@ -764,7 +765,7 @@ action_open_alternate_callback (GtkAction *action,
 }
 
 static void
-fm_directory_view_launch_application (GnomeVFSMimeApplication *application,
+fm_directory_view_launch_application (GAppInfo *application,
 				      GList *files,
 				      FMDirectoryView *directory_view)
 {
@@ -792,7 +793,7 @@ fm_directory_view_launch_application (GnomeVFSMimeApplication *application,
 
 #ifdef NEW_MIME_COMPLETE
 static void
-fm_directory_view_chose_application_callback (GnomeVFSMimeApplication *application, 
+fm_directory_view_chose_application_callback (GAppInfo *application, 
 					      gpointer callback_data)
 {
 	ApplicationLaunchParameters *launch_parameters;
@@ -845,21 +846,21 @@ open_location (FMDirectoryView *directory_view,
 
 static void
 application_selected_cb (EelOpenWithDialog *dialog,
-			 GnomeVFSMimeApplication *app,
+			 GAppInfo *app,
 			 gpointer user_data)
 {
 	FMDirectoryView *view;
 	NautilusFile *file;
-	GList uris;
+	GList files;
 
 	view = FM_DIRECTORY_VIEW (user_data);
 	
 	file = g_object_get_data (G_OBJECT (dialog), "directory-view:file");
 
-	uris.next = NULL;
-	uris.prev = NULL;
-	uris.data = file;
-	fm_directory_view_launch_application (app, &uris, view);
+	files.next = NULL;
+	files.prev = NULL;
+	files.data = file;
+	fm_directory_view_launch_application (app, &files, view);
 }
 
 static void
@@ -4471,7 +4472,7 @@ add_submenu (GtkUIManager *ui_manager,
 
 static void
 add_application_to_open_with_menu (FMDirectoryView *view,
-				   GnomeVFSMimeApplication *application, 
+				   GAppInfo *application, 
 				   GList *files,
 				   int index,
 				   const char *menu_placeholder,
@@ -4486,7 +4487,7 @@ add_application_to_open_with_menu (FMDirectoryView *view,
 
 	launch_parameters = application_launch_parameters_new 
 		(application, files, view);
-	escaped_app = eel_str_double_underscores (application->name);
+	escaped_app = eel_str_double_underscores (g_app_info_get_name (application));
 	label = g_strdup_printf (_("Open with \"%s\""), escaped_app);
 	tip = g_strdup_printf (ngettext ("Use \"%s\" to open the selected item",
 					 "Use \"%s\" to open the selected items",
@@ -4644,7 +4645,7 @@ get_activation_action (NautilusFile *file)
 		
 		action = ACTIVATION_ACTION_LAUNCH;
 		
-		executable_path = gnome_vfs_get_local_path_from_uri (activation_uri);
+		executable_path = g_filename_from_uri (activation_uri, NULL, NULL);
 		if (!executable_path) {
 			action = ACTIVATION_ACTION_DO_NOTHING;
 		} else if (nautilus_file_contains_text (file)) {
@@ -4677,7 +4678,7 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 	gboolean open_with_chooser_visible;
 	GtkUIManager *ui_manager;
 	GtkAction *action;
-	GnomeVFSMimeApplication *default_app;
+	GAppInfo *default_app;
 	ActivationAction activation_action;
 
 	/* Clear any previous inserted items in the applications and viewers placeholders */
@@ -4720,13 +4721,13 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 	num_applications = g_list_length (applications);
 	
 	for (node = applications, index = 0; node != NULL; node = node->next, index++) {
-		GnomeVFSMimeApplication *application;
+		GAppInfo *application;
 		char *menu_path;
 		char *popup_path;
 		
 		application = node->data;
 
-		if (default_app != NULL && gnome_vfs_mime_application_equal (default_app, application)) {
+		if (default_app != NULL && g_app_info_equal (default_app, application)) {
 			continue;
 		}
 
@@ -4752,8 +4753,10 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 						   index, 
 						   menu_path, popup_path);
 	}
-	gnome_vfs_mime_application_list_free (applications);
-	gnome_vfs_mime_application_free (default_app);
+	eel_g_object_list_free (applications);
+	if (default_app != NULL) {
+		g_object_unref (default_app);
+	}
 
 	submenu_visible = (num_applications > 3);
 
@@ -7560,7 +7563,7 @@ real_update_menus (FMDirectoryView *view)
 	gboolean show_save_search_as;
 	ActivationAction activation_action;
 	GtkAction *action;
-	GnomeVFSMimeApplication *app;
+	GAppInfo *app;
 
 	selection = fm_directory_view_get_selection (view);
 	selection_count = g_list_length (selection);
@@ -7623,11 +7626,11 @@ real_update_menus (FMDirectoryView *view)
 
 	if (app != NULL) {
 		char *escaped_app;
-		escaped_app = eel_str_double_underscores (app->name);
+		escaped_app = eel_str_double_underscores (g_app_info_get_name (app));
 		label_with_underscore = g_strdup_printf (_("_Open with \"%s\""),
 							 escaped_app);
 		g_free (escaped_app);
-		gnome_vfs_mime_application_free (app);
+		g_object_unref (app);
 	}
 
 	g_object_set (action, "label", 
@@ -8004,14 +8007,14 @@ file_is_launchable (NautilusFile *file)
 	gboolean type_can_be_executable;
 
 	mime_type = nautilus_file_get_mime_type (file);
-	type_can_be_executable = gnome_vfs_mime_can_be_executable (mime_type);
+	type_can_be_executable = g_content_type_can_be_executable (mime_type);
 	g_free (mime_type);
 
-	return type_can_be_executable 
-		&& nautilus_file_can_get_permissions (file)
-		&& nautilus_file_can_execute (file)
-		&& nautilus_file_is_executable (file) 
-		&& !nautilus_file_is_directory (file);
+	return type_can_be_executable &&
+		nautilus_file_can_get_permissions (file) &&
+		nautilus_file_can_execute (file) &&
+		nautilus_file_is_executable (file) &&
+		!nautilus_file_is_directory (file);
 }
 
 static void
@@ -8128,7 +8131,7 @@ stop_activate (ActivateParameters *parameters)
 }
 
 static void
-list_to_parameters_foreach (GnomeVFSMimeApplication *application,
+list_to_parameters_foreach (GAppInfo *application,
 			    GList *files,
 			    GList **ret)
 {
@@ -8142,9 +8145,9 @@ list_to_parameters_foreach (GnomeVFSMimeApplication *application,
 }
 
 static unsigned int
-mime_application_hash (GnomeVFSMimeApplication *app)
+mime_application_hash (GAppInfo *app)
 {
-	return g_str_hash (app->id);
+	return g_str_hash (g_app_info_get_id (app));
 }
 
 /**
@@ -8165,7 +8168,7 @@ fm_directory_view_make_activation_parameters (GList *files,
 {
 	GList *ret, *l, *app_files;
 	NautilusFile *file;
-	GnomeVFSMimeApplication *app, *old_app;
+	GAppInfo *app, *old_app;
 	GHashTable *app_table;
 
 	ret = NULL;
@@ -8173,8 +8176,8 @@ fm_directory_view_make_activation_parameters (GList *files,
 
 	app_table = g_hash_table_new_full
 		((GHashFunc) mime_application_hash,
-		 (GEqualFunc) gnome_vfs_mime_application_equal,
-		 (GDestroyNotify) gnome_vfs_mime_application_free,
+		 (GEqualFunc) g_app_info_equal,
+		 (GDestroyNotify) g_object_unref,
 		 (GDestroyNotify) g_list_free);
 
 	for (l = files; l != NULL; l = l->next) {
@@ -8191,7 +8194,7 @@ fm_directory_view_make_activation_parameters (GList *files,
 
 				app_files = g_list_prepend (app_files, file);
 
-				gnome_vfs_mime_application_free (app);
+				g_object_unref (app);
 				app = old_app;
 			} else {
 				app_files = g_list_prepend (NULL, file);
@@ -8353,7 +8356,7 @@ activate_callback (GList *files, gpointer callback_data)
 		file = NAUTILUS_FILE (l->data);
 
 		uri = nautilus_file_get_activation_uri (file);
-		executable_path = gnome_vfs_get_local_path_from_uri (uri);
+		executable_path = g_filename_from_uri (uri, NULL, NULL);
 		quoted_path = g_shell_quote (executable_path);
 		name = nautilus_file_get_name (file);
 
@@ -8374,7 +8377,7 @@ activate_callback (GList *files, gpointer callback_data)
 		file = NAUTILUS_FILE (l->data);
 
 		uri = nautilus_file_get_activation_uri (file);
-		executable_path = gnome_vfs_get_local_path_from_uri (uri);
+		executable_path = g_filename_from_uri (uri, NULL, NULL);
 		quoted_path = g_shell_quote (executable_path);
 		name = nautilus_file_get_name (file);
 
