@@ -26,13 +26,13 @@
 #include "fm-properties-window.h"
 
 #include "fm-error-reporting.h"
+#include "libnautilus-private/nautilus-mime-application-chooser.h"
 #include <eel/eel-accessibility.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-labeled-image.h>
-#include <eel/eel-mime-application-chooser.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
@@ -4814,7 +4814,7 @@ create_open_with_page (FMPropertiesWindow *window)
 	
 	mime_type = nautilus_file_get_mime_type (get_target_file (window));
 	
-	vbox = eel_mime_application_chooser_new (uri, mime_type);
+	vbox = nautilus_mime_application_chooser_new (uri, mime_type);
 	gtk_widget_show (vbox);
 	
 	g_free (uri);

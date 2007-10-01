@@ -36,6 +36,8 @@
 #include "fm-actions.h"
 #include "fm-error-reporting.h"
 #include "fm-properties-window.h"
+#include "libnautilus-private/nautilus-open-with-dialog.h"
+
 #include <libgnome/gnome-url.h>
 #include <eel/eel-alert-dialog.h>
 #include <eel/eel-background.h>
@@ -43,7 +45,6 @@
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-gtk-macros.h>
-#include <eel/eel-open-with-dialog.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
@@ -845,7 +846,7 @@ open_location (FMDirectoryView *directory_view,
 }
 
 static void
-application_selected_cb (EelOpenWithDialog *dialog,
+application_selected_cb (NautilusOpenWithDialog *dialog,
 			 GAppInfo *app,
 			 gpointer user_data)
 {
@@ -878,7 +879,7 @@ choose_program (FMDirectoryView *view,
 	uri = nautilus_file_get_uri (file);
 	mime_type = nautilus_file_get_mime_type (file);
 
-	dialog = eel_open_with_dialog_new (uri, mime_type);
+	dialog = nautilus_open_with_dialog_new (uri, mime_type);
 	g_object_set_data_full (G_OBJECT (dialog), 
 				"directory-view:file",
 				g_object_ref (file),

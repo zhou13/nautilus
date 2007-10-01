@@ -151,10 +151,14 @@ libnautilus_private_la_SOURCES = \
 	nautilus-metafile.h \
 	nautilus-mime-actions.c \
 	nautilus-mime-actions.h \
+	nautilus-mime-application-chooser.c \
+	nautilus-mime-application-chooser.h \
 	nautilus-module.c \
 	nautilus-module.h \
 	nautilus-monitor.c \
 	nautilus-monitor.h \
+	nautilus-open-with-dialog.c \
+	nautilus-open-with-dialog.h \
 	nautilus-program-choosing.c \
 	nautilus-program-choosing.h \
 	nautilus-recent.c \
