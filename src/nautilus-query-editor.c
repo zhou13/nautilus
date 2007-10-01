@@ -30,7 +30,6 @@
 #include <gio/gcontenttype.h>
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-glib-extensions.h>
-#include <eel/eel-mime-extensions.h>
 #include <gdk/gdkkeysyms.h>
 #include <gtk/gtkbindings.h>
 #include <gtk/gtkbutton.h>
@@ -522,20 +521,27 @@ type_combo_changed (GtkComboBox *combo_box, NautilusQueryEditorRow *row)
 		GtkWidget *toplevel;
 		GtkTreeSelection *selection;
 
-		mime_infos = eel_mime_get_available_mime_types ();
+		mime_infos = g_content_types_get_registered ();
 
 		store = gtk_list_store_new (2, G_TYPE_STRING, G_TYPE_STRING);
 		for (l = mime_infos; l != NULL; l = l->next) {
 			GtkTreeIter iter;
-			EelMimeTypeInfo *info = l->data;
+			char *mime_type = l->data;
+			char *description;
 
+			description = g_content_type_get_description (mime_type);
+			if (description == NULL) {
+				description = g_strdup (mime_type);
+			}
+			
 			gtk_list_store_append (store, &iter);
 			gtk_list_store_set (store, &iter,
-					    0, info->description,
-					    1, info->mime_type,
+					    0, description,
+					    1, mime_type,
 					    -1);
 			
-			eel_mime_type_info_free (info);
+			g_free (mime_type);
+			g_free (description);
 		}
 		g_list_free (mime_infos);
 		

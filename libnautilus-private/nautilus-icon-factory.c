@@ -38,6 +38,7 @@
 #include "nautilus-lib-self-check-functions.h"
 #include "nautilus-link.h"
 #include "nautilus-thumbnails.h"
+#include "nautilus-signaller.h"
 #include "nautilus-vfs-utils.h"
 #include "nautilus-trash-monitor.h"
 #include <eel/eel-debug.h>
@@ -249,8 +250,8 @@ get_icon_factory (void)
 					      show_thumbnails_changed_callback,
 					      NULL);
 
-		g_signal_connect (gnome_vfs_mime_monitor_get (),
-				  "data_changed",
+		g_signal_connect (nautilus_signaller_get_current (),
+				  "mime_data_changed",
 				  G_CALLBACK (mime_type_data_changed_callback),
 				  NULL);
 

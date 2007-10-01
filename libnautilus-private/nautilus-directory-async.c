@@ -30,6 +30,7 @@
 #include "nautilus-file-attributes.h"
 #include "nautilus-file-private.h"
 #include "nautilus-file-utilities.h"
+#include "nautilus-signaller.h"
 #include "nautilus-global-preferences.h"
 #include "nautilus-link.h"
 #include "nautilus-vfs-utils.h"
@@ -670,10 +671,10 @@ nautilus_directory_monitor_add_internal (NautilusDirectory *directory,
 	}
 
 	if (monitor->request.file_info && directory->details->mime_db_monitor == 0) {
-		directory->details->mime_db_monitor = g_signal_connect_object (
-			gnome_vfs_mime_monitor_get (),
-			"data_changed",
-			G_CALLBACK (mime_db_changed_callback), directory, 0);			  
+		directory->details->mime_db_monitor =
+			g_signal_connect_object (nautilus_signaller_get_current (),
+						 "mime_data_changed",
+						 G_CALLBACK (mime_db_changed_callback), directory, 0);
 	}
 
 	/* Put the monitor file or all the files on the work queue. */

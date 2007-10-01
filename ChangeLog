@@ -1,5 +1,15 @@
 2007-10-01  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-icon-factory.c:
+        * libnautilus-private/nautilus-signaller.c:
+	Replace gnome-vfs mime monitor with NautilusSignaller signal.
+	
+        * src/nautilus-query-editor.c:
+	Use gio to list all mime types
+
+2007-10-01  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-theme.[ch]:
 	Delete leftover files
 
