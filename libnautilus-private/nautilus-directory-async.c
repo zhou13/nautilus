@@ -615,7 +615,7 @@ mime_db_changed_callback (GObject *ignore, NautilusDirectory *dir)
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
 		NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_MIME_TYPES;
 
-	nautilus_directory_invalidate_file_attributes (dir, attrs);
+	nautilus_directory_force_reload_internal (dir, attrs);
 }
 
 void

@@ -1,5 +1,12 @@
 2007-10-02  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-async.c:
+        (mime_db_changed_callback):
+	Use the right call to invalidate attributes, so that
+	they get re-read correctly.
+
+2007-10-02  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-factory.c:
         (mime_type_data_changed_callback):
         * libnautilus-private/nautilus-directory-async.c:
