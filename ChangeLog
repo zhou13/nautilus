@@ -1,5 +1,12 @@
 2007-10-02  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-customization-data.c:
+        * libnautilus-private/nautilus-customization-data.h:
+        * src/nautilus-property-browser.c:
+	Use gio to read info
+
+2007-10-02  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-icon-dnd.c (selection_is_image_file):
 	Use gio to get mime type
 

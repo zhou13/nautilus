@@ -1770,7 +1770,7 @@ make_properties_from_directories (NautilusPropertyBrowser *property_browser)
 		while (nautilus_customization_data_get_next_element_for_display (customization_data,
 										 &object_name,
 										 &object_pixbuf,
-										 &object_label) == GNOME_VFS_OK) {
+										 &object_label)) {
 			
 			property_image = labeled_image_new (object_label, object_pixbuf, object_name, PANGO_SCALE_LARGE);
 			
