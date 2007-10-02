@@ -110,7 +110,7 @@ fm_ditem_page_url_drag_data_received (GtkWidget *widget, GdkDragContext *context
 		return;
 	}
 
-	path = gnome_vfs_get_local_path_from_uri (uris[0]);
+	path = g_filename_from_uri (uris[0], NULL, NULL);
 	if (path != NULL) {
 		gtk_entry_set_text (entry, path);
 		g_free (path);

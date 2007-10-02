@@ -1862,7 +1862,7 @@ play_file (gpointer callback_data)
 	icon_view = FM_ICON_VIEW (callback_data);
 		
 	file_uri = nautilus_file_get_uri (icon_view->details->audio_preview_file);
-	file_path = gnome_vfs_get_local_path_from_uri (file_uri);
+	file_path = g_filename_from_uri (file_uri, NULL, NULL);
 	mime_type = nautilus_file_get_mime_type (icon_view->details->audio_preview_file);
 
 	is_mp3 = eel_strcasecmp (mime_type, "audio/mpeg") == 0;

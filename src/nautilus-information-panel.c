@@ -441,7 +441,7 @@ uri_is_local_image (const char *uri)
 	GdkPixbuf *pixbuf;
 	char *image_path;
 	
-	image_path = gnome_vfs_get_local_path_from_uri (uri);
+	image_path = g_filename_from_uri (uri, NULL, NULL);
 	if (image_path == NULL) {
 		return FALSE;
 	}

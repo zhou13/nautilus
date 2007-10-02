@@ -473,7 +473,7 @@ uri_is_local_image (const char *uri)
 	GdkPixbuf *pixbuf;
 	char *image_path;
 	
-	image_path = gnome_vfs_get_local_path_from_uri (uri);
+	image_path = g_filename_from_uri (uri, NULL, NULL);
 	if (image_path == NULL) {
 		return FALSE;
 	}
@@ -5297,7 +5297,7 @@ set_icon (const char* icon_uri, FMPropertiesWindow *properties_window)
 	g_assert (icon_uri != NULL);
 	g_assert (FM_IS_PROPERTIES_WINDOW (properties_window));
 
-	icon_path = gnome_vfs_get_local_path_from_uri (icon_uri);
+	icon_path = g_filename_from_uri (icon_uri, NULL, NULL);
 	/* we don't allow remote URIs */
 	if (icon_path != NULL) {
 		GList *l;
@@ -5437,7 +5437,7 @@ select_image_button_callback (GtkWidget *widget,
 		if (nautilus_file_is_directory (file)) {
 			uri = nautilus_file_get_uri (file);
 
-			image_path = gnome_vfs_get_local_path_from_uri (uri);
+			image_path = g_filename_from_uri (uri, NULL, NULL);
 			if (image_path != NULL) {
 				gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog), image_path);
 				g_free (image_path);

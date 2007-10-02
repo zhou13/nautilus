@@ -125,7 +125,7 @@ nautilus_file_background_read_desktop_settings (char **color,
         if (prefs->wallpaper_enabled) {
                 if (prefs->wallpaper_filename != NULL &&
                     prefs->wallpaper_filename [0] != '\0') {
-                        *image = gnome_vfs_get_uri_from_local_path (prefs->wallpaper_filename);
+                        *image = g_filename_to_uri (prefs->wallpaper_filename, NULL, NULL);
                 } else {
                         *image = NULL;
                 }
@@ -218,7 +218,7 @@ nautilus_file_background_write_desktop_settings (char *color, char *image, EelBa
 
         original_filename = prefs->wallpaper_filename;
 	if (image != NULL) {
-		prefs->wallpaper_filename = gnome_vfs_get_local_path_from_uri (image);
+		prefs->wallpaper_filename = g_filename_from_uri (image, NULL, NULL);
                 prefs->wallpaper_enabled = TRUE;
 		switch (placement) {
 			case EEL_BACKGROUND_TILED:

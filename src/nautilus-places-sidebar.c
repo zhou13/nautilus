@@ -254,7 +254,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 		g_free (mount_uri);
 	}
 
-	mount_uri = gnome_vfs_get_uri_from_local_path (desktop_path);
+	mount_uri = g_filename_to_uri (desktop_path, NULL, NULL);
 	last_iter = add_place (sidebar, PLACES_BUILT_IN,
 			       _("Desktop"), "gnome-fs-desktop",
 			       mount_uri, NULL, NULL, 0);

@@ -803,7 +803,7 @@ nautilus_search_directory_new_from_saved_search (const char *uri)
 
 	search->details->saved_search_uri = g_strdup (uri);
 	
-	file = gnome_vfs_get_local_path_from_uri (uri);
+	file = g_filename_from_uri (uri, NULL, NULL);
 	if (file != NULL) {
 		query = nautilus_query_load (file);
 		if (query != NULL) {
@@ -845,7 +845,7 @@ nautilus_search_directory_save_to_file (NautilusSearchDirectory *search,
 {
 	char *file;
 	
-	file = gnome_vfs_get_local_path_from_uri (save_file_uri);
+	file = g_filename_from_uri (save_file_uri, NULL, NULL);
 	if (file == NULL) {
 		return;
 	}

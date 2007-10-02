@@ -480,7 +480,7 @@ add_one_compatible_uri (const char *uri, int x, int y, int w, int h, gpointer da
 		g_string_append (result, uri);
 		g_string_append (result, "\r\n");
 	} else {
-		local_path = gnome_vfs_get_local_path_from_uri (uri);
+		local_path = g_filename_from_uri (uri, NULL, NULL);
 
 		/* Check for characters that confuse the old
 		 * gnome_uri_list_extract_filenames implementation, and just leave

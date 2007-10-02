@@ -484,7 +484,7 @@ load_location (NautilusImagePropertiesPage *page,
 		/* So it will only work with local files. Future version might remove this limitation */
 		XmpFilePtr xf;
 		gchar* localname;
-		localname = gnome_vfs_get_local_path_from_uri (location);
+		localname = g_filename_from_uri (location, NULL, NULL);
 		if(localname) {
 			xf = xmp_files_open_new(localname, 0);
 			page->details->xmp = xmp_files_get_new_xmp(xf); /* only load when loading */

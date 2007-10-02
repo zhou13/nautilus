@@ -1998,7 +1998,7 @@ nautilus_file_operations_copy_move (const GList *item_uris,
 
 			text_uri = gnome_vfs_uri_to_string (source_uri, GNOME_VFS_URI_HIDE_NONE);
 
-			path = gnome_vfs_get_local_path_from_uri (text_uri);
+			path = g_filename_from_uri (text_uri, NULL, NULL);
 
 			volume = NULL;
 			if (path != NULL) {
@@ -2733,7 +2733,7 @@ nautilus_file_operations_new_file (GtkWidget *parent_view,
 
 	target_filename = g_filename_from_utf8 (_("new file"), -1, NULL, NULL, NULL);
 
-	source_file_uri = gnome_vfs_get_uri_from_local_path (source_file_str);
+	source_file_uri = g_filename_to_uri (source_file_str, NULL, NULL);
 
 	new_data = g_new (struct NewFileData, 1);
 	new_data->tmp_file = g_strdup (source_file_str);

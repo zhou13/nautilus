@@ -293,7 +293,7 @@ location_row_add_to_query (NautilusQueryEditorRow *row,
 	char *folder, *uri;
 	
 	folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (row->type_widget));
-	uri = gnome_vfs_get_uri_from_local_path (folder);
+	uri = g_filename_to_uri (folder, NULL, NULL);
 	g_free (folder);
 
 	nautilus_query_set_location (query, uri);
@@ -317,7 +317,7 @@ location_add_rows_from_query (NautilusQueryEditor    *editor,
 	if (uri == NULL) {
 		return;
 	}
-	folder = gnome_vfs_get_local_path_from_uri (uri);
+	folder = g_filename_from_uri (uri, NULL, NULL);
 	g_free (uri);
 	if (folder == NULL) {
 		return;

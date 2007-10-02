@@ -253,10 +253,10 @@ xdg_dir_changed (NautilusFile *file,
 	char *path;
 	
 	file_uri = nautilus_file_get_uri (file);
-	dir_uri = gnome_vfs_get_uri_from_local_path (dir->path);
+	dir_uri = g_filename_to_uri (dir->path, NULL, NULL);
 	if (file_uri && dir_uri &&
 	    !gnome_vfs_uris_match (dir_uri, file_uri)) {
-		path = gnome_vfs_get_local_path_from_uri (file_uri);
+		path = g_filename_from_uri (file_uri, NULL, NULL);
 
 		if (path) {
 			char *argv[5];
@@ -382,7 +382,7 @@ update_xdg_dir_cache (void)
 	for (i = 0 ; cached_xdg_dirs[i].type != NULL; i++) {
 		cached_xdg_dirs[i].file = NULL;
 		if (strcmp (cached_xdg_dirs[i].path, g_get_home_dir ()) != 0) {
-			uri = gnome_vfs_get_uri_from_local_path (cached_xdg_dirs[i].path);
+			uri = g_filename_to_uri (cached_xdg_dirs[i].path, NULL, NULL);
 			cached_xdg_dirs[i].file = nautilus_file_get_by_uri (uri);
 			nautilus_file_monitor_add (cached_xdg_dirs[i].file,
 						   &cached_xdg_dirs[i],
@@ -396,7 +396,7 @@ update_xdg_dir_cache (void)
 	if (cached_xdg_dirs_handle == NULL) {
 		config_file = g_build_filename (g_get_user_config_dir (),
 						     "user-dirs.dirs", NULL);
-		uri = gnome_vfs_get_uri_from_local_path (config_file);
+		uri = g_filename_to_uri (config_file, NULL, NULL);
 		gnome_vfs_monitor_add (&cached_xdg_dirs_handle,
 				       uri,
 				       GNOME_VFS_MONITOR_FILE,
@@ -489,7 +489,7 @@ nautilus_get_desktop_directory_uri (void)
 	char *desktop_uri;
 	
 	desktop_path = nautilus_get_desktop_directory ();
-	desktop_uri = gnome_vfs_get_uri_from_local_path (desktop_path);
+	desktop_uri = g_filename_to_uri (desktop_path, NULL, NULL);
 	g_free (desktop_path);
 
 	return desktop_uri;
@@ -502,7 +502,7 @@ nautilus_get_desktop_directory_uri_no_create (void)
 	char *desktop_uri;
 	
 	desktop_path = get_desktop_path ();
-	desktop_uri = gnome_vfs_get_uri_from_local_path (desktop_path);
+	desktop_uri = g_filename_to_uri (desktop_path, NULL, NULL);
 	g_free (desktop_path);
 
 	return desktop_uri;
@@ -511,7 +511,7 @@ nautilus_get_desktop_directory_uri_no_create (void)
 char *
 nautilus_get_home_directory_uri (void)
 {
-	return  gnome_vfs_get_uri_from_local_path (g_get_home_dir ());
+	return  g_filename_to_uri (g_get_home_dir (), NULL, NULL);
 }
 
 
@@ -551,7 +551,7 @@ nautilus_get_templates_directory_uri (void)
 	char *directory, *uri;
 
 	directory = nautilus_get_templates_directory ();
-	uri = gnome_vfs_get_uri_from_local_path (directory);
+	uri = g_filename_to_uri (directory, NULL, NULL);
 	g_free (directory);
 	return uri;
 }
@@ -891,7 +891,7 @@ nautilus_get_uri_shortname_for_display (GnomeVFSURI *uri)
 		name = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_PASSWORD);
 	} else if (g_ascii_strcasecmp (uri->method_string, "file") == 0) {
 		text_uri = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_PASSWORD);
-		local_file = gnome_vfs_get_local_path_from_uri (text_uri);
+		local_file = g_filename_from_uri (text_uri, NULL, NULL);
 		g_free (name);
 		if (local_file == NULL) { /* Happens for e.g. file:///# */
 			local_file = g_strdup ("/");

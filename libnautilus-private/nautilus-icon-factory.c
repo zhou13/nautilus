@@ -883,7 +883,7 @@ image_uri_to_name_or_uri (const char *image_uri)
 {
 	char *icon_path;
 
-	icon_path = gnome_vfs_get_local_path_from_uri (image_uri);
+	icon_path = g_filename_from_uri (image_uri, NULL, NULL);
 	if (icon_path == NULL && image_uri[0] == '/') {
 		icon_path = g_strdup (image_uri);
 	}

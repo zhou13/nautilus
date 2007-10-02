@@ -370,7 +370,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 		   && nautilus_file_can_execute (file)
 		   && !nautilus_file_is_directory (file)) {	
 		   
-		file_uri = gnome_vfs_get_local_path_from_uri (uri);
+		file_uri = g_filename_from_uri (uri, NULL, NULL);
 
 		/* Non-local executables don't get launched. They act like non-executables. */
 		if (file_uri == NULL) {

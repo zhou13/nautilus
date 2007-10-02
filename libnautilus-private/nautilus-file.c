@@ -5159,7 +5159,7 @@ nautilus_file_get_volume_name (NautilusFile *file)
 
 	volume = NULL;
 
-	local_path = gnome_vfs_get_local_path_from_uri (file_uri);
+	local_path = g_filename_from_uri (file_uri, NULL, NULL);
 	if (local_path != NULL) {
 		volume = gnome_vfs_volume_monitor_get_volume_for_path (gnome_vfs_get_volume_monitor (), local_path);
 	}

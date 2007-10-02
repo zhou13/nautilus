@@ -151,7 +151,7 @@ nautilus_bookmark_list_init (NautilusBookmarkList *bookmarks)
 
 	nautilus_bookmark_list_load_file (bookmarks);
 	file = nautilus_bookmark_list_get_file_path ();
-	uri = gnome_vfs_get_uri_from_local_path (file);
+	uri = g_filename_to_uri (file, NULL, NULL);
 	res = gnome_vfs_monitor_add ( &bookmarks->handle,
 				uri,
 				GNOME_VFS_MONITOR_FILE,

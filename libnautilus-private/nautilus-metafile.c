@@ -203,7 +203,7 @@ construct_private_metafile_uri (const char *uri)
 	alternate_path = g_build_filename (metafiles_directory, file_name, NULL);
 	g_free (metafiles_directory);
 	g_free (file_name);
-	alternate_uri = gnome_vfs_get_uri_from_local_path (alternate_path);
+	alternate_uri = g_filename_to_uri (alternate_path, NULL, NULL);
 	g_free (alternate_path);
 
 	return alternate_uri;
@@ -2098,7 +2098,7 @@ metafile_write_start (NautilusMetafile *metafile)
 
 	metafile_uri = metafile->details->private_uri;
 
-	metafile_path = gnome_vfs_get_local_path_from_uri (metafile_uri);
+	metafile_path = g_filename_from_uri (metafile_uri, NULL, NULL);
 	g_assert (metafile_path != NULL);
 	
 	metafile_write_local (metafile, metafile_path);

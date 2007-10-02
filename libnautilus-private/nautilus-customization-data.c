@@ -286,7 +286,7 @@ get_global_customization_uri (const char *customization_name)
 	directory_path = g_build_filename (NAUTILUS_DATADIR,
 					   customization_name,
 					   NULL);
-	directory_uri = gnome_vfs_get_uri_from_local_path (directory_path);
+	directory_uri = g_filename_to_uri (directory_path, NULL, NULL);
 	
 	g_free (directory_path);
 
@@ -313,7 +313,7 @@ get_private_customization_uri (const char *customization_name)
 					   customization_name,
 					   NULL);
 	g_free (user_directory);
-	directory_uri = gnome_vfs_get_uri_from_local_path (directory_path);
+	directory_uri = g_filename_to_uri (directory_path, NULL, NULL);
 	g_free (directory_path);
 	
 	return directory_uri;
@@ -334,7 +334,7 @@ get_file_path_for_mode (const NautilusCustomizationData *data,
 	
 	uri = g_build_filename (directory_uri, file_name, NULL);
 	g_free (directory_uri);
-	directory_name = gnome_vfs_get_local_path_from_uri (uri);
+	directory_name = g_filename_from_uri (uri, NULL, NULL);
 	g_free (uri);
 
 	return directory_name;

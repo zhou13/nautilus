@@ -552,7 +552,7 @@ nautilus_bookmark_uri_known_not_to_exist (NautilusBookmark *bookmark)
 	gboolean exists;
 
 	/* Convert to a path, returning FALSE if not local. */
-	path_name = gnome_vfs_get_local_path_from_uri (bookmark->details->uri);
+	path_name = g_filename_from_uri (bookmark->details->uri, NULL, NULL);
 	if (path_name == NULL) {
 		return FALSE;
 	}

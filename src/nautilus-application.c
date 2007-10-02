@@ -433,7 +433,7 @@ initialize_kde_trash_hack (void)
 	trash_dir = NULL;
 
 	desktop_uri = nautilus_get_desktop_directory_uri_no_create ();
-	desktop_dir = gnome_vfs_get_local_path_from_uri (desktop_uri);
+	desktop_dir = g_filename_from_uri (desktop_uri, NULL, NULL);
 	g_free (desktop_uri);
 	
 	if (g_file_test (desktop_dir, G_FILE_TEST_EXISTS)) {
@@ -1347,7 +1347,7 @@ volume_unmounted_callback (GnomeVFSVolumeMonitor *monitor,
 			if (eel_str_has_prefix (uri, activation_uri)) {
 				close_list = g_list_prepend (close_list, window);
 			} else {
-				path = gnome_vfs_get_local_path_from_uri (uri);
+				path = g_filename_from_uri (uri, NULL, NULL);
 				if (path != NULL) {
 					window_volume = gnome_vfs_volume_monitor_get_volume_for_path (volume_monitor,
 												      path);
@@ -1640,7 +1640,7 @@ nautilus_application_load_session (NautilusApplication *application,
 		GnomeVFSFileInfo *info;
 		/* only remove file if it is regular, user-owned and the user has write access. */
 
-		uri = gnome_vfs_get_uri_from_local_path (filename);
+		uri = g_filename_to_uri (filename, NULL, NULL);
 		info = gnome_vfs_file_info_new ();
 		if (uri != NULL &&
 		    gnome_vfs_get_file_info (uri, info, GNOME_VFS_FILE_INFO_DEFAULT) == GNOME_VFS_OK &&

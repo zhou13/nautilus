@@ -1375,7 +1375,7 @@ action_save_search_as_callback (GtkAction *action,
 			g_free (filename);
 			g_free (dirname);
 
-			uri = gnome_vfs_get_uri_from_local_path (path);
+			uri = g_filename_to_uri (path, NULL, NULL);
 			g_free (path);
 			
 			nautilus_search_directory_save_to_file (search, uri);
@@ -1609,7 +1609,7 @@ set_up_scripts_directory_global (void)
 
 	scripts_directory_path = gnome_util_home_file ("nautilus-scripts");
 
-	scripts_directory_uri = gnome_vfs_get_uri_from_local_path (scripts_directory_path);
+	scripts_directory_uri = g_filename_to_uri (scripts_directory_path, NULL, NULL);
 	scripts_directory_uri_length = strlen (scripts_directory_uri);
 
 	if (!g_file_test (scripts_directory_path, G_FILE_TEST_EXISTS)) {
@@ -1630,7 +1630,7 @@ create_scripts_directory (void)
 	gnome1_path = g_strconcat (g_get_home_dir(), "/.gnome/nautilus-scripts", NULL);
 
 	if (g_file_test (gnome1_path, G_FILE_TEST_EXISTS)) {
-		gnome1_uri_str = gnome_vfs_get_uri_from_local_path (gnome1_path);
+		gnome1_uri_str = g_filename_to_uri (gnome1_path, NULL, NULL);
 		gnome1_uri = gnome_vfs_uri_new (gnome1_uri_str);
 		g_free (gnome1_uri_str);
 		if (gnome_vfs_xfer_uri (gnome1_uri, scripts_uri,
@@ -5040,7 +5040,7 @@ change_to_view_directory (FMDirectoryView *view)
 		uri = nautilus_get_desktop_directory_uri ();
 		
 	}
-	path = gnome_vfs_get_local_path_from_uri (uri);
+	path = g_filename_from_uri (uri, NULL, NULL);
 
 	/* FIXME: What to do about non-local directories? */
 	if (path != NULL) {
@@ -5104,7 +5104,7 @@ get_file_paths_or_uris_as_newline_delimited_string (GList *selection, gboolean g
 		}
 
 		if (get_paths) {
-			path = gnome_vfs_get_local_path_from_uri (uri);
+			path = g_filename_from_uri (uri, NULL, NULL);
 			if (path != NULL) {
 				g_string_append (expanding_string, path);
 				g_free (path);
@@ -5208,7 +5208,7 @@ run_script_callback (GtkAction *action, gpointer callback_data)
 	launch_parameters = (ScriptLaunchParameters *) callback_data;
 
 	file_uri = nautilus_file_get_uri (launch_parameters->file);
-	local_file_path = gnome_vfs_get_local_path_from_uri (file_uri);
+	local_file_path = g_filename_from_uri (file_uri, NULL, NULL);
 	g_assert (local_file_path != NULL);
 	g_free (file_uri);
 

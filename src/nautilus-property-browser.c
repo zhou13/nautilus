@@ -690,7 +690,7 @@ nautilus_property_browser_drag_data_get (GtkWidget *widget,
 			g_free (user_directory);
 		}
 
-		image_file_uri = gnome_vfs_get_uri_from_local_path (image_file_name);
+		image_file_uri = g_filename_to_uri (image_file_name, NULL, NULL);
 		gtk_selection_data_set (selection_data, selection_data->target, 8, image_file_uri, strlen (image_file_uri));
 		g_free (image_file_name);
 		g_free (image_file_uri);
@@ -964,7 +964,7 @@ remove_pattern(NautilusPropertyBrowser *property_browser, const char* pattern_na
 	pattern_path = g_strdup_printf ("%s/patterns/%s",
 					   user_directory,
 					   pattern_name);
-	pattern_uri = gnome_vfs_get_uri_from_local_path (pattern_path);
+	pattern_uri = g_filename_to_uri (pattern_path, NULL, NULL);
 	g_free (pattern_path);
 
 	g_free (user_directory);	
@@ -994,7 +994,7 @@ remove_emblem (NautilusPropertyBrowser *property_browser, const char* emblem_nam
 	emblem_path = g_strdup_printf ("%s/emblems/%s",
 				       user_directory,
 				       emblem_name);
-	emblem_uri = gnome_vfs_get_uri_from_local_path (emblem_path);
+	emblem_uri = g_filename_to_uri (emblem_path, NULL, NULL);
 	g_free (emblem_path);
 
 	g_free (user_directory);
@@ -1197,7 +1197,7 @@ add_pattern_to_browser (const char *path_name, gpointer *data)
 	}
 	
 	/* fetch the mime type and make sure that the file is an image */
-	path_uri = gnome_vfs_get_uri_from_local_path (path_name);	
+	path_uri = g_filename_to_uri (path_name, NULL, NULL);	
 
 	/* don't allow the user to change the reset image */
 	basename = eel_uri_get_basename (path_uri);
@@ -1223,7 +1223,7 @@ add_pattern_to_browser (const char *path_name, gpointer *data)
 
 	/* make the directory if it doesn't exist */
 	if (!g_file_test(directory_path, G_FILE_TEST_EXISTS)) {
-		directory_uri = gnome_vfs_get_uri_from_local_path (directory_path);
+		directory_uri = g_filename_to_uri (directory_path, NULL, NULL);
 		gnome_vfs_make_directory (directory_uri,
 						 GNOME_VFS_PERM_USER_ALL
 						 | GNOME_VFS_PERM_GROUP_ALL
@@ -1423,7 +1423,7 @@ emblem_dialog_clicked (GtkWidget *dialog, int which_button, NautilusPropertyBrow
 		if (property_browser->details->file_entry) {
 			emblem_path = gnome_icon_entry_get_filename (GNOME_ICON_ENTRY (property_browser->details->file_entry));
 			if (emblem_path) {
-				emblem_uri = gnome_vfs_get_uri_from_local_path (emblem_path);
+				emblem_uri = g_filename_to_uri (emblem_path, NULL, NULL);
 				if (ensure_uri_is_image (emblem_uri)) {
 					g_free (property_browser->details->image_path);
 					property_browser->details->image_path = emblem_path;				
@@ -1439,7 +1439,7 @@ emblem_dialog_clicked (GtkWidget *dialog, int which_button, NautilusPropertyBrow
 			}
 		}
 		
-		emblem_uri = gnome_vfs_get_uri_from_local_path (property_browser->details->image_path);
+		emblem_uri = g_filename_to_uri (property_browser->details->image_path, NULL, NULL);
 		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (emblem_uri);
 		g_free (emblem_uri);
 

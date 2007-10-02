@@ -1,5 +1,34 @@
 2007-10-02  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-bookmark.c:
+        * libnautilus-private/nautilus-customization-data.c:
+        * libnautilus-private/nautilus-desktop-directory.c:
+        * libnautilus-private/nautilus-directory-background.c:
+        * libnautilus-private/nautilus-dnd.c:
+        * libnautilus-private/nautilus-file-operations.c:
+        * libnautilus-private/nautilus-file-utilities.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-icon-factory.c:
+        * libnautilus-private/nautilus-metafile.c:
+        * libnautilus-private/nautilus-search-directory.c:
+        * libnautilus-private/nautilus-search-engine-tracker.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-ditem-page.c:
+        * src/file-manager/fm-icon-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-application.c:
+        * src/nautilus-bookmark-list.c:
+        * src/nautilus-image-properties-page.c:
+        * src/nautilus-information-panel.c:
+        * src/nautilus-places-sidebar.c:
+        * src/nautilus-property-browser.c:
+        * src/nautilus-query-editor.c:
+	gnome_vfs_get_local_path_from_uri -> g_filename_from_uri
+	gnome_vfs_get_uri_from_local_path -> g_filename_to_uri
+
+2007-10-02  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-factory.c:
 	Don't clear thumbnails and other absolute pathnames from icon
 	cache when mime data or icon theme changes. This is to avoid
