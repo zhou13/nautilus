@@ -29,6 +29,7 @@
 #include "nautilus-mime-application-chooser.h"
 
 #include "nautilus-open-with-dialog.h"
+#include "nautilus-signaller.h"
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-glib-extensions.h>
 
@@ -64,6 +65,8 @@ struct _NautilusMimeApplicationChooserDetails {
 	char *type_description;
 	char *orig_mime_type;
 	
+	guint refresh_timeout;
+
 	GtkWidget *label;
 	GtkWidget *entry;
 	GtkWidget *treeview;
@@ -81,7 +84,8 @@ enum {
 	NUM_COLUMNS
 };
 
-static void refresh_model (NautilusMimeApplicationChooser *chooser);
+static void refresh_model      (NautilusMimeApplicationChooser *chooser);
+static void refresh_model_soon (NautilusMimeApplicationChooser *chooser);
 
 static gpointer parent_class;
 
@@ -92,6 +96,10 @@ nautilus_mime_application_chooser_finalize (GObject *object)
 
 	chooser = NAUTILUS_MIME_APPLICATION_CHOOSER (object);
 
+	if (chooser->details->refresh_timeout) {
+		g_source_remove (chooser->details->refresh_timeout);
+	}
+	
 	g_free (chooser->details->uri);
 	g_free (chooser->details->content_type);
 	g_free (chooser->details->extension);
@@ -170,8 +178,9 @@ default_toggled_cb (GtkCellRendererToggle *renderer,
 				g_free (message);
 				g_error_free (error);
 			}
-			
-			refresh_model (chooser);
+
+			g_signal_emit_by_name (nautilus_signaller_get_current (),
+					       "mime_data_changed");
 		}
 		g_object_unref (info);
 	}
@@ -294,7 +303,7 @@ add_clicked_cb (GtkButton *button,
 	chooser = NAUTILUS_MIME_APPLICATION_CHOOSER (user_data);
 	
 	dialog = nautilus_add_application_dialog_new (chooser->details->uri,
-						 chooser->details->orig_mime_type);
+						      chooser->details->orig_mime_type);
 	gtk_window_set_screen (GTK_WINDOW (dialog),
 			       gtk_widget_get_screen (GTK_WIDGET (chooser)));
 	gtk_widget_show (dialog);
@@ -323,23 +332,22 @@ remove_clicked_cb (GtkButton *button,
 			g_error_free (error);
 			
 		}
-		refresh_model (chooser);
+		g_signal_emit_by_name (nautilus_signaller_get_current (),
+				       "mime_data_changed");
 		g_object_unref (info);
 	}
 }
 
-#if 0
 static void
-mime_monitor_data_changed_cb (GnomeVFSMIMEMonitor *monitor,
-			      gpointer user_data)
+mime_type_data_changed_cb (GObject *signaller,
+			   gpointer user_data)
 {
 	NautilusMimeApplicationChooser *chooser;
 
 	chooser = NAUTILUS_MIME_APPLICATION_CHOOSER (user_data);
 
-	refresh_model (chooser);
+	refresh_model_soon (chooser);
 }
-#endif
 
 static void
 nautilus_mime_application_chooser_instance_init (NautilusMimeApplicationChooser *chooser)
@@ -405,13 +413,10 @@ nautilus_mime_application_chooser_instance_init (NautilusMimeApplicationChooser 
 	
 	chooser->details->remove_button = button;
 
-#if 0
-	g_signal_connect_object (gnome_vfs_mime_monitor_get (),
-				 "data_changed",
-				 G_CALLBACK (mime_monitor_data_changed_cb),
-				 chooser,
-				 0);
-#endif
+	g_signal_connect (nautilus_signaller_get_current (),
+			  "mime_data_changed",
+			  G_CALLBACK (mime_type_data_changed_cb),
+			  chooser);
 }
 
 static char *
@@ -463,6 +468,32 @@ get_pixbuf_for_icon (GIcon *icon)
 		}
 	}
 	return pixbuf;
+}
+
+static gboolean
+refresh_model_timeout (gpointer data)
+{
+	NautilusMimeApplicationChooser *chooser = data;
+	
+	chooser->details->refresh_timeout = 0;
+
+	refresh_model (chooser);
+
+	return FALSE;
+}
+
+/* This adds a slight delay so that we're sure the mime data is
+   done writing */
+static void
+refresh_model_soon (NautilusMimeApplicationChooser *chooser)
+{
+	if (chooser->details->refresh_timeout != 0)
+		return;
+
+	chooser->details->refresh_timeout =
+		g_timeout_add (300,
+			       refresh_model_timeout,
+			       chooser);
 }
 
 static void

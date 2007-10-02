@@ -603,7 +603,7 @@ nautilus_directory_set_up_request (Request *request,
 }
 
 static void
-mime_db_changed_callback (GnomeVFSMIMEMonitor *ignore, NautilusDirectory *dir)
+mime_db_changed_callback (GObject *ignore, NautilusDirectory *dir)
 {
 	NautilusFileAttributes attrs;
 

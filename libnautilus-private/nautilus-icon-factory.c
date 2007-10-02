@@ -187,7 +187,7 @@ static void       nautilus_icon_factory_finalize         (GObject               
 static void       thumbnail_limit_changed_callback       (gpointer                  user_data);
 static void       thumbnail_size_changed_callback       (gpointer                  user_data);
 static void       show_thumbnails_changed_callback       (gpointer                  user_data);
-static void       mime_type_data_changed_callback        (GnomeVFSMIMEMonitor	   *monitor,
+static void       mime_type_data_changed_callback        (GObject                  *signaller,
 							  gpointer                  user_data);
 static guint      cache_key_hash                         (gconstpointer             p);
 static gboolean   cache_key_equal                        (gconstpointer             a,
@@ -834,9 +834,9 @@ show_thumbnails_changed_callback (gpointer user_data)
 }
 
 static void       
-mime_type_data_changed_callback (GnomeVFSMIMEMonitor *monitor, gpointer user_data)
+mime_type_data_changed_callback (GObject *signaller, gpointer user_data)
 {
-	g_assert (monitor != NULL);
+	g_assert (signaller != NULL);
 	g_assert (user_data == NULL);
 
 	/* We don't know which data changed, so we have to assume that
@@ -844,7 +844,7 @@ mime_type_data_changed_callback (GnomeVFSMIMEMonitor *monitor, gpointer user_dat
 	 */
 	nautilus_icon_factory_clear ();
 	g_signal_emit (get_icon_factory (), 
-			 signals[ICONS_CHANGED], 0);
+		       signals[ICONS_CHANGED], 0);
 }				 
 
 static char *

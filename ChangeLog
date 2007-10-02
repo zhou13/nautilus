@@ -1,3 +1,15 @@
+2007-10-02  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-icon-factory.c:
+        (mime_type_data_changed_callback):
+        * libnautilus-private/nautilus-directory-async.c:
+        (mime_db_changed_callback):
+	Fix up types in callbacks
+	
+        * libnautilus-private/nautilus-mime-application-chooser.c:
+        * libnautilus-private/nautilus-open-with-dialog.c:
+	Handle and emit mime_data_changed on NautilusSignaller
+
 2007-10-01  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/Makefile.am:

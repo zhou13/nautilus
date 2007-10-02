@@ -27,6 +27,7 @@
 
 #include <config.h>
 #include "nautilus-open-with-dialog.h"
+#include "nautilus-signaller.h"
 
 #include <eel/eel-stock-dialogs.h>
 
@@ -276,6 +277,9 @@ add_or_find_application (NautilusOpenWithDialog *dialog)
 		g_free (message);
 		g_error_free (error);
 	}
+
+	g_signal_emit_by_name (nautilus_signaller_get_current (),
+			       "mime_data_changed");
 
 	return app;
 }
