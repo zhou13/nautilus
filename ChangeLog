@@ -1,5 +1,10 @@
 2007-10-02  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-icon-dnd.c (selection_is_image_file):
+	Use gio to get mime type
+
+2007-10-02  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-utilities.c:
 	Use GFileMonitor to monitor xdg user dirs file
 

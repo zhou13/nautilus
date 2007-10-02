@@ -1123,9 +1123,11 @@ nautilus_icon_container_find_drop_target (NautilusIconContainer *container,
 static gboolean
 selection_is_image_file (GList *selection_list)
 {
-	char *mime_type;
+	const char *mime_type;
 	NautilusDragSelectionItem *selected_item;
 	gboolean result;
+	GFile *location;
+	GFileInfo *info;
 
 	/* Make sure only one item is selected */
 	if (selection_list == NULL ||
@@ -1135,11 +1137,22 @@ selection_is_image_file (GList *selection_list)
 
 	selected_item = selection_list->data;
 
-	mime_type = gnome_vfs_get_mime_type (selected_item->uri);
+	mime_type = NULL;
+	
+	location = g_file_new_for_uri (selected_item->uri);
+	info = g_file_query_info (location,
+				  G_FILE_ATTRIBUTE_STD_CONTENT_TYPE,
+				  0, NULL, NULL);
+	if (info) {
+		mime_type = g_file_info_get_content_type (info);
+	}
 
 	result = eel_istr_has_prefix (mime_type, "image/");
-	
-	g_free (mime_type);
+
+	if (info) {
+		g_object_unref (info);
+	}
+	g_object_unref (location);
 	
 	return result;
 }
