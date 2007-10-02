@@ -13,7 +13,7 @@ INCLUDES = 						\
 	-DDATADIR=\""$(datadir)"\" 			\
 	-DSYSCONFDIR=\""$(sysconfdir)"\" 			\
 	-DNAUTILUS_DATADIR=\""$(datadir)/nautilus"\" 	\
-	-DNAUTILUS_EXTENSIONDIR=\""$(libdir)/nautilus/extensions-1.0"\" \
+	-DNAUTILUS_EXTENSIONDIR=\""$(libdir)/nautilus/extensions-2.0"\" \
 	$(NULL)
 
 dependency_static_libs = \
