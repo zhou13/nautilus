@@ -38,6 +38,7 @@
 #include <eel/eel-debug.h>
 #include <libgnome/gnome-util.h>
 #include <glib/gi18n.h>
+#include <gio/gfilemonitor.h>
 #include <libgnomevfs/gnome-vfs-ops.h>
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
@@ -242,7 +243,7 @@ parse_xdg_dirs (const char *config_file)
 }
 
 static XdgDirEntry *cached_xdg_dirs = NULL;
-static GnomeVFSMonitorHandle *cached_xdg_dirs_handle = NULL;
+static GFileMonitor *cached_xdg_dirs_monitor = NULL;
 
 static void
 xdg_dir_changed (NautilusFile *file,
@@ -292,14 +293,13 @@ xdg_dir_changed (NautilusFile *file,
 }
 
 static void 
-xdg_dir_cache_changed_cb (GnomeVFSMonitorHandle    *handle,
-			  const gchar              *monitor_uri,
-			  const gchar              *info_uri,
-			  GnomeVFSMonitorEventType  event_type,
-			  gpointer                  user_data)
+xdg_dir_cache_changed_cb (GFileMonitor  *monitor,
+			  GFile *file,
+			  GFile *other_file,
+			  GFileMonitorEvent event_type)
 {
-	if (event_type == GNOME_VFS_MONITOR_EVENT_CHANGED ||
-	    event_type == GNOME_VFS_MONITOR_EVENT_CREATED) {
+	if (event_type == G_FILE_MONITOR_EVENT_CHANGED ||
+	    event_type == G_FILE_MONITOR_EVENT_CREATED) {
 		update_xdg_dir_cache ();
 	}
 }
@@ -361,15 +361,16 @@ destroy_xdg_dir_cache (void)
 	unschedule_user_dirs_changed ();
 	desktop_dir_changed ();
 
-	if (cached_xdg_dirs_handle != NULL) {
-		gnome_vfs_monitor_cancel (cached_xdg_dirs_handle);
-		cached_xdg_dirs_handle = NULL;
+	if (cached_xdg_dirs_monitor != NULL) {
+		g_object_unref  (cached_xdg_dirs_monitor);
+		cached_xdg_dirs_monitor = NULL;
 	}
 }
 
 static void
 update_xdg_dir_cache (void)
 {
+	GFile *file;
 	char *config_file, *uri;
 	int i;
 
@@ -393,16 +394,14 @@ update_xdg_dir_cache (void)
 		}
 	}
 
-	if (cached_xdg_dirs_handle == NULL) {
+	if (cached_xdg_dirs_monitor == NULL) {
 		config_file = g_build_filename (g_get_user_config_dir (),
 						     "user-dirs.dirs", NULL);
-		uri = g_filename_to_uri (config_file, NULL, NULL);
-		gnome_vfs_monitor_add (&cached_xdg_dirs_handle,
-				       uri,
-				       GNOME_VFS_MONITOR_FILE,
-				       xdg_dir_cache_changed_cb,
-				       NULL);
-		g_free (uri);
+		file = g_file_new_for_path (config_file);
+		cached_xdg_dirs_monitor = g_file_monitor_file (file, 0);
+		g_signal_connect (cached_xdg_dirs_monitor, "changed",
+				  G_CALLBACK (xdg_dir_cache_changed_cb), NULL);
+		g_object_unref (file);
 		g_free (config_file);
 
 		eel_debug_call_at_shutdown (destroy_xdg_dir_cache); 

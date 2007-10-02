@@ -1,5 +1,10 @@
 2007-10-02  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-utilities.c:
+	Use GFileMonitor to monitor xdg user dirs file
+
+2007-10-02  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/Makefile.am (INCLUDES):
 	Bump name for extension dir since we're not compatible anymore
 
