@@ -43,8 +43,6 @@
 #include "nautilus-search-directory.h"
 #include "nautilus-search-directory-file.h"
 #include "nautilus-thumbnails.h"
-#include "nautilus-trash-directory.h"
-#include "nautilus-trash-file.h"
 #include "nautilus-users-groups-cache.h"
 #include "nautilus-vfs-file.h"
 #include "nautilus-vfs-utils.h"
@@ -324,9 +322,7 @@ nautilus_file_new_from_filename (NautilusDirectory *directory,
 	g_return_val_if_fail (filename != NULL, NULL);
 	g_return_val_if_fail (filename[0] != '\0', NULL);
 
-	if (self_owned && NAUTILUS_IS_TRASH_DIRECTORY (directory)) {
-		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_TRASH_FILE, NULL));
-	} else if (NAUTILUS_IS_DESKTOP_DIRECTORY (directory)) {
+	if (NAUTILUS_IS_DESKTOP_DIRECTORY (directory)) {
 		if (self_owned) {
 			file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_DESKTOP_DIRECTORY_FILE, NULL));
 		} else {

@@ -183,10 +183,6 @@ libnautilus_private_la_SOURCES = \
 	nautilus-query.h \
 	nautilus-thumbnails.c \
 	nautilus-thumbnails.h \
-	nautilus-trash-directory.c \
-	nautilus-trash-directory.h \
-	nautilus-trash-file.c \
-	nautilus-trash-file.h \
 	nautilus-trash-monitor.c \
 	nautilus-trash-monitor.h \
 	nautilus-tree-view-drag-dest.c \

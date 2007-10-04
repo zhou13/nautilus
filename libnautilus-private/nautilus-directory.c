@@ -37,7 +37,6 @@
 #include "nautilus-metadata.h"
 #include "nautilus-metafile.h"
 #include "nautilus-desktop-directory.h"
-#include "nautilus-trash-directory.h"
 #include "nautilus-vfs-directory.h"
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gtk-macros.h>
@@ -503,9 +502,7 @@ nautilus_directory_new (GFile *location)
 
 	uri = g_file_get_uri (location);
 	
-	if (eel_uri_is_trash (uri)) {
-		directory = NAUTILUS_DIRECTORY (g_object_new (NAUTILUS_TYPE_TRASH_DIRECTORY, NULL));
-	} else if (eel_uri_is_desktop (uri)) {
+	if (eel_uri_is_desktop (uri)) {
 		directory = NAUTILUS_DIRECTORY (g_object_new (NAUTILUS_TYPE_DESKTOP_DIRECTORY, NULL));
 	} else if (eel_uri_is_search (uri)) {
 		directory = NAUTILUS_DIRECTORY (g_object_new (NAUTILUS_TYPE_SEARCH_DIRECTORY, NULL));
@@ -537,23 +534,20 @@ gboolean
 nautilus_directory_is_in_trash (NautilusDirectory *directory)
 {
 	char *uri;
+	gboolean res;
 	
 	g_assert (NAUTILUS_IS_DIRECTORY (directory));
 	
 	if (directory->details->location == NULL) {
 		return FALSE;
 	}
-	if (directory->details->is_in_trash_state == 0) {
-		uri = nautilus_directory_get_uri (directory);
-		if (eel_uri_is_in_trash (uri)) {
-			directory->details->is_in_trash_state = 1;
-		} else {
-			directory->details->is_in_trash_state = -1;
-		}
-		g_free (uri);
-	}
 	
-	return directory->details->is_in_trash_state > 0;
+	/* TODO-gio: Should have g_file_is_in_trash()? */
+	uri = nautilus_directory_get_uri (directory);
+	res = eel_uri_is_trash (uri);
+	g_free (uri);
+	
+	return res;
 }
 
 gboolean

@@ -65,7 +65,6 @@
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-monitor.h>
 #include <libnautilus-private/nautilus-search-directory.h>
-#include <libnautilus-private/nautilus-trash-directory.h>
 #include <libnautilus-private/nautilus-view-factory.h>
 #include <libnautilus-private/nautilus-window-info.h>
 #include <libnautilus-private/nautilus-vfs-utils.h>
@@ -1268,7 +1267,7 @@ update_for_new_location (NautilusWindow *window)
 			nautilus_window_set_search_mode (window, FALSE, NULL);
 		}
 
-		if (NAUTILUS_IS_TRASH_DIRECTORY (directory)) {
+		if (nautilus_directory_is_in_trash (directory)) {
 			nautilus_window_show_trash_bar (window);
 		}
 

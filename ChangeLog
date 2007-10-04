@@ -1,5 +1,23 @@
 2007-10-04  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/Makefile.am:
+        * libnautilus-private/nautilus-trash-directory.[ch]:
+        * libnautilus-private/nautilus-trash-file.[ch]:
+	Remove virtual trash locations, we now use the gvfs trash:
+	
+        * libnautilus-private/nautilus-trash-monitor.[ch]:
+	Make this a stub for now. Need to figure out how to do this.
+	
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-file-operations.c:
+        * libnautilus-private/nautilus-file.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-window-manage-views.c:
+	Handle the removal of NautilusTrash*
+
+2007-10-04  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-thumbnails.c:
 	Use gio instead of gnome-vfs to get mtime
 

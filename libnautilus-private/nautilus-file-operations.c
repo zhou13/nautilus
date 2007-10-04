@@ -2838,7 +2838,8 @@ do_empty_trash (GtkWidget *parent_view)
 	nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 			    "empty trash");
 
-	trash_dir_list = nautilus_trash_monitor_get_trash_directories ();
+	/* TODO-gio: Implement */
+	trash_dir_list = NULL;
 	if (trash_dir_list != NULL) {
 		/* set up the move parameters */
 		transfer_info = transfer_info_new (parent_view);
