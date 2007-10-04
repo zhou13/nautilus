@@ -120,18 +120,17 @@ static int thumbnail_icon_size = 0;
 static gboolean
 get_file_mtime (const char *file_uri, time_t* mtime)
 {
-	GnomeVFSFileInfo *file_info;
+	GFile *file;
+	GFileInfo *info;
 
-	/* gather the info and then compare modification times */
-	file_info = gnome_vfs_file_info_new ();
-	gnome_vfs_get_file_info (file_uri, file_info, GNOME_VFS_FILE_INFO_FOLLOW_LINKS);
+	*mtime = INVALID_MTIME;
 
-	if (file_info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_MTIME)
-		*mtime = file_info->mtime;
-	else
-		*mtime = INVALID_MTIME;
-
-	gnome_vfs_file_info_unref (file_info);
+	file = g_file_new_for_uri (file_uri);
+	info = g_file_query_info (file, G_FILE_ATTRIBUTE_TIME_MODIFIED, 0, NULL, NULL);
+	if (info) {
+		*mtime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
+		g_object_unref (info);
+	}
 	
 	return TRUE;
 }
@@ -190,16 +189,17 @@ nautilus_update_thumbnail_file_copied (const char *source_file_uri,
 {
 	char *old_thumbnail_path;
 	GdkPixbuf *pixbuf;
-	GnomeVFSFileInfo *file_info;
+	GFileInfo *file_info;
 	GnomeThumbnailFactory *factory;
+	GFile *destination_file;
 	
 	old_thumbnail_path = gnome_thumbnail_path_for_uri (source_file_uri, GNOME_THUMBNAIL_SIZE_NORMAL);
 	if (old_thumbnail_path != NULL &&
 	    g_file_test (old_thumbnail_path, G_FILE_TEST_EXISTS)) {
-		file_info = gnome_vfs_file_info_new ();
-		if (gnome_vfs_get_file_info (destination_file_uri,
-					     file_info,
-					     GNOME_VFS_FILE_INFO_DEFAULT) == GNOME_VFS_OK) {
+		destination_file = g_file_new_for_uri (destination_file_uri);
+		file_info = g_file_query_info (destination_file, G_FILE_ATTRIBUTE_TIME_MODIFIED, 0, NULL, NULL);
+		g_object_unref (destination_file);
+		if (file_info != NULL) {
 			pixbuf = gdk_pixbuf_new_from_file (old_thumbnail_path, NULL);
 			
 			if (pixbuf && gnome_thumbnail_has_uri (pixbuf, source_file_uri)) {
@@ -207,16 +207,15 @@ nautilus_update_thumbnail_file_copied (const char *source_file_uri,
 				gnome_thumbnail_factory_save_thumbnail (factory,
 									pixbuf,
 									destination_file_uri,
-									file_info->mtime);
+									g_file_info_get_attribute_uint64 (file_info, G_FILE_ATTRIBUTE_TIME_MODIFIED));
 				g_object_unref (factory);
 			}
 			
 			if (pixbuf) {
 				g_object_unref (pixbuf);
 			}
-			
+			g_object_unref (file_info);
 		}
-		gnome_vfs_file_info_unref (file_info);
 	}
 
 	g_free (old_thumbnail_path);

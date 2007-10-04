@@ -1,3 +1,8 @@
+2007-10-04  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-thumbnails.c:
+	Use gio instead of gnome-vfs to get mtime
+
 2007-10-02  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-customization-data.c:
