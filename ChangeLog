@@ -1,3 +1,7 @@
+2007-10-05  Paolo Borelli  <pborelli@katamail.com>
+
+	* configure.in: use gio-2.0 instead of gio-standalone.
+
 2007-10-04  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/Makefile.am:
