@@ -32,7 +32,6 @@
 
 #include "nautilus-actions.h"
 #include "nautilus-application.h"
-#include "nautilus-bookmark-list.h"
 #include "nautilus-bookmarks-window.h"
 #include "nautilus-information-panel.h"
 #include "nautilus-main.h"
