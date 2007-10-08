@@ -1,3 +1,10 @@
+2007-10-08  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
+        (nautilus_file_peek_display_name):
+	Use a display name based on the filename as the default instead
+	of "" before we've read the real display name from the backend.
+
 2007-10-08  Paolo Borelli  <pborelli@katamail.com>
 
 	* libnautilus-private/nautilus-icon-dnd.[ch]:

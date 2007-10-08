@@ -2779,13 +2779,29 @@ nautilus_file_peek_display_name_collation_key (NautilusFile *file)
 static const char *
 nautilus_file_peek_display_name (NautilusFile *file)
 {
-	const char *res;
+	const char *name;
+	char *escaped_name;
+
+	/* Default to display name based on filename if its not set yet */
 	
-	res = eel_ref_str_peek (file->details->display_name);
-	if (res == NULL)
-		res = "";
+	if (file->details->display_name == NULL) {
+		name = eel_ref_str_peek (file->details->name);
+		if (g_utf8_validate (name, -1, NULL)) {
+			nautilus_file_set_display_name (file,
+							name,
+							NULL,
+							FALSE);
+		} else {
+			escaped_name = gnome_vfs_escape_path_string (name);
+			nautilus_file_set_display_name (file,
+							escaped_name,
+							NULL,
+							FALSE);
+			g_free (escaped_name);
+		}
+	}
 	
-	return res;
+	return eel_ref_str_peek (file->details->display_name);
 }
 
 char *
