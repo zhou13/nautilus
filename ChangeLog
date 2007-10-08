@@ -1,5 +1,14 @@
 2007-10-08  Paolo Borelli  <pborelli@katamail.com>
 
+	* libnautilus-private/nautilus-icon-dnd.[ch]:
+	* src/nautilus-emblem-sidebar.c:
+	* src/nautilus-location-bar.c:
+
+	Replace nautilus_icon_dnd_uri_list_extract_uris with
+	g_uri_list_extract_uris.
+
+2007-10-08  Paolo Borelli  <pborelli@katamail.com>
+
 	* src/nautilus-bookmark-list.[ch]: port to gio.
 
 2007-10-05  Paolo Borelli  <pborelli@katamail.com>

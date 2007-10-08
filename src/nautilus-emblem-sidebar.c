@@ -727,12 +727,13 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 	Emblem *emblem;
 	GdkPixbuf *pixbuf;
 	char *uri, *error, *uri_utf8;
-	GList *uris, *l;
+	char **uris;
+	int i;
 	gboolean had_failure;
 
 	had_failure = FALSE;
 	emblems = NULL;
-	
+
 	switch (info) {
 	case TARGET_URI_LIST:
 		if (data->format != 8 ||
@@ -742,12 +743,13 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 			return;
 		}
 
-		uris = nautilus_icon_dnd_uri_list_extract_uris (data->data);
-		l = uris;
-		while (l != NULL) {
-			uri = eel_make_uri_canonical (l->data);
-			l = l->next;
+		uris = g_uri_list_extract_uris (data->data);
+		if (uris == NULL) {
+			break;
+		}
 
+		for (i = 0; uris[i] != NULL; ++i) {
+			uri = eel_make_uri_canonical (uris[i]);
 			if (uri == NULL) {
 				had_failure = TRUE;
 				continue;
@@ -771,7 +773,8 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 
 			emblems = g_slist_prepend (emblems, emblem);
 		}
-		nautilus_icon_dnd_uri_list_free_strings (uris);
+
+		g_strfreev (uris);
 
 		if (had_failure && emblems != NULL) {
 			eel_show_error_dialog (_("Some of the files could not be added as emblems."), _("The emblems do not appear to be valid images."), NULL);
@@ -842,16 +845,15 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 		/* apparently, this is a URI/title pair?  or just a pair
 		 * of identical URIs?  Regardless, this seems to work...
 		 */
-		uris = nautilus_icon_dnd_uri_list_extract_uris (data->data);
 
+		uris = g_uri_list_extract_uris (data->data);
 		if (uris == NULL) {
 			break;
 		}
-		
-		uri = uris->data;
 
+		uri = uris[0];
 		if (uri == NULL) {
-			nautilus_icon_dnd_uri_list_free_strings (uris);
+			g_strfreev (uris);
 			break;
 		}
 
@@ -874,6 +876,9 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 			eel_show_error_dialog (_("The emblem cannot be added."), error, NULL);
 			g_free (error);
 		}
+
+		g_strfreev (uris);
+
 		break;
 	}
 }

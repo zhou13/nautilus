@@ -34,12 +34,7 @@
 #include "nautilus-global-preferences.h"
 #include "nautilus-metadata.h"
 #include "nautilus-file-attributes.h"
-#include <eel/eel-string.h>
 #include <gtk/gtkmain.h>
-#include <gtk/gtksignal.h>
-#include <libgnome/gnome-config.h>
-#include <libgnome/gnome-util.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libbackground/preferences.h>
 
 static void background_changed_callback     (EelBackground *background, 

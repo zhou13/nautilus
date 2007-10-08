@@ -117,7 +117,7 @@ drag_data_received_callback (GtkWidget *widget,
 		             guint32 time,
 			     gpointer callback_data)
 {
-	GList *names, *node;
+	char **names;
 	NautilusApplication *application;
 	int name_count;
 	NautilusWindow *new_window;
@@ -131,9 +131,9 @@ drag_data_received_callback (GtkWidget *widget,
 	g_assert (data != NULL);
 	g_assert (callback_data == NULL);
 
-	names = nautilus_icon_dnd_uri_list_extract_uris (data->data);
+	names = g_uri_list_extract_uris (data->data);
 
-	if (names == NULL) {
+	if (names == NULL || *names == NULL) {
 		g_warning ("No D&D URI's");
 		gtk_drag_finish (context, FALSE, FALSE, time);
 		return;
@@ -145,7 +145,7 @@ drag_data_received_callback (GtkWidget *widget,
 	 * for multiple dropped URIs. This is likely to have been
 	 * a mistake.
 	 */
-	name_count = g_list_length (names);
+	name_count = g_strv_length (names);
 	if (name_count > 1) {
 		prompt = g_strdup_printf (ngettext("Do you want to view %d location?",
 						   "Do you want to view %d locations?",
@@ -176,20 +176,22 @@ drag_data_received_callback (GtkWidget *widget,
 	}
 
 	nautilus_navigation_bar_set_location (NAUTILUS_NAVIGATION_BAR (widget),
-					      names->data);	
+					      names[0]);	
 	nautilus_navigation_bar_location_changed (NAUTILUS_NAVIGATION_BAR (widget));
 
 	if (new_windows_for_extras) {
+		int i;
+
 		application = NAUTILUS_WINDOW (window)->application;
 		screen = gtk_window_get_screen (GTK_WINDOW (window));
 
-		for (node = names->next; node != NULL; node = node->next) {
+		for (i = 1; names[i] != NULL; ++i) {
 			new_window = nautilus_application_create_navigation_window (application, NULL, screen);
-			nautilus_window_go_to (new_window, node->data);
+			nautilus_window_go_to (new_window, names[i]);
 		}
 	}
 
-	nautilus_icon_dnd_uri_list_free_strings (names);
+	g_strfreev (names);
 
 	gtk_drag_finish (context, TRUE, FALSE, time);
 }
@@ -279,7 +281,6 @@ label_button_pressed_callback (GtkWidget             *widget,
 
 	return FALSE;
 }
-
 
 static int
 get_editable_number_of_chars (GtkEditable *editable)
