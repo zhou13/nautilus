@@ -5528,7 +5528,7 @@ get_icon_being_renamed (NautilusIconContainer *container)
 	return rename_icon;
 }			 
 
-static char *
+static GIcon *
 nautilus_icon_container_get_icon_images (NautilusIconContainer *container,
 					 NautilusIconData      *data,
 					 GList                **emblem_icons,
@@ -5769,7 +5769,7 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	NautilusIconContainerDetails *details;
 	guint icon_size;
 	guint min_image_size, max_image_size;
-	char *icon_name;
+	GIcon *icon_ref;
 	NautilusEmblemAttachPoints attach_points;
 	GdkPixbuf *pixbuf, *emblem_pixbuf;
 	GList *emblem_icon_names, *emblem_pixbufs, *p;
@@ -5802,11 +5802,10 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	emblem_icon_names = NULL;
 	embedded_text = NULL;
 	large_embedded_text = icon_size > ICON_SIZE_FOR_LARGE_EMBEDDED_TEXT;
-	icon_name = nautilus_icon_container_get_icon_images (
-		container, icon->data, 
-		&emblem_icon_names,
-		&embedded_text, large_embedded_text, &embedded_text_needs_loading,
-		&has_open_window);
+	icon_ref = nautilus_icon_container_get_icon_images (container, icon->data, 
+							    &emblem_icon_names,
+							    &embedded_text, large_embedded_text, &embedded_text_needs_loading,
+							    &has_open_window);
 	
 	modifier = NULL;
 	if (has_open_window) {
@@ -5816,14 +5815,12 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 		modifier = "accept";
 	}
 	
-	pixbuf = nautilus_icon_factory_get_pixbuf_for_file_with_icon
-		((NautilusFile *) icon->data,
-		 icon_name,
-		 modifier,
-		 icon_size,
-		 &attach_points,
-		 &embedded_text_rect,
-		 FALSE, TRUE, NULL);
+	pixbuf = nautilus_icon_factory_get_pixbuf_for_gicon (icon_ref,
+							     modifier,
+							     icon_size,
+							     &attach_points,
+							     &embedded_text_rect,
+							     FALSE, TRUE, NULL);
 
 	if (embedded_text_rect.width > MINIMUM_EMBEDDED_TEXT_RECT_WIDTH &&
 	    embedded_text_rect.height > MINIMUM_EMBEDDED_TEXT_RECT_HEIGHT &&
@@ -5902,7 +5899,7 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	g_free (editable_text);
 	g_free (additional_text);
 
-	g_free (icon_name);
+	g_object_unref (icon_ref);
 }
 
 static gboolean

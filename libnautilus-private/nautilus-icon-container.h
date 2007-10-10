@@ -127,7 +127,7 @@ typedef struct {
 	 * These must be implemented. The default "do nothing" is not
 	 * good enough, these are _not_ signals.
 	 */
-	char *       (* get_icon_images)          (NautilusIconContainer *container,
+	GIcon *      (* get_icon_images)          (NautilusIconContainer *container,
 						   NautilusIconData *data,
 						   GList **emblem_icons,
 						   char **embedded_text,

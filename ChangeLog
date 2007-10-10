@@ -1,5 +1,21 @@
 2007-10-10  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.[ch]:
+	Keep track of GIcon from gio.
+	Add nautilus_file_get_icon()
+	
+        * libnautilus-private/nautilus-icon-factory.[ch]:
+	Add nautilus_icon_factory_get_pixbuf_for_gicon().
+	This is a bit temporary, but can be used to move over
+	users to nautilus_file_get_icon().
+	
+        * libnautilus-private/nautilus-icon-container.[ch]:
+        * src/file-manager/fm-icon-container.c:
+	Use nautilus_file_get_icon() in icon view.
+
+2007-10-10  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-utilities.c:
         * libnautilus-private/nautilus-monitor.c:
         * src/nautilus-bookmark-list.c:

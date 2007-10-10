@@ -52,7 +52,7 @@ get_icon_view (NautilusIconContainer *container)
 	return ((FMIconContainer *)container)->view;
 }
 
-static char *
+static GIcon *
 fm_icon_container_get_icon_images (NautilusIconContainer *container,
 				   NautilusIconData      *data,
 				   GList                **emblem_icons,
@@ -88,7 +88,9 @@ fm_icon_container_get_icon_images (NautilusIconContainer *container,
 
 	*has_window_open = nautilus_file_has_open_window (file);
 	
-	return nautilus_icon_factory_get_icon_for_file (file, use_embedding);
+	return nautilus_file_get_icon (file,
+				       NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS |
+				       NAUTILUS_FILE_ICON_FLAGS_EMBEDDS_TEXT);
 }
 
 static char *

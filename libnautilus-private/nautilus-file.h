@@ -74,6 +74,12 @@ typedef enum {
 	NAUTILUS_REQUEST_DONE
 } NautilusRequestStatus;
 
+typedef enum {
+	NAUTILUS_FILE_ICON_FLAGS_NONE = 0,
+	NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS = (1<<0),
+	NAUTILUS_FILE_ICON_FLAGS_EMBEDDS_TEXT = (1<<1)
+} NautilusFileIconFlags;	
+
 /* Emblems sometimes displayed for NautilusFiles. Do not localize. */ 
 #define NAUTILUS_FILE_EMBLEM_NAME_SYMBOLIC_LINK "symbolic-link"
 #define NAUTILUS_FILE_EMBLEM_NAME_CANT_READ "noread"
@@ -345,6 +351,10 @@ char *                  nautilus_file_get_drop_target_uri               (Nautilu
 
 /* Get custom icon (if specified by metadata or link contents) */
 char *                  nautilus_file_get_custom_icon                   (NautilusFile                   *file);
+
+
+GIcon *                 nautilus_file_get_icon                          (NautilusFile                   *file,
+									 NautilusFileIconFlags           flags);
 
 
 gboolean                nautilus_file_has_open_window                   (NautilusFile                   *file);

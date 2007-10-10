@@ -115,6 +115,17 @@ guint                 nautilus_icon_factory_get_emblem_size_for_icon_size (guint
 guint                 nautilus_icon_factory_get_larger_icon_size         (guint size);
 guint                 nautilus_icon_factory_get_smaller_icon_size        (guint size);
 
+
+GdkPixbuf *nautilus_icon_factory_get_pixbuf_for_gicon            (GIcon                       *icon,
+								  const char                  *modifier,
+								  guint                        nominal_size,
+								  NautilusEmblemAttachPoints  *attach_points,
+								  GdkRectangle                *embedded_text_rect,
+								  gboolean                     force_size,
+								  gboolean                     wants_default,
+								  char                       **display_name);
+
+
 /* Render an icon to a particular size.
  * Ownership of a ref. count in this pixbuf comes with the deal.
  * This allows scaling in both dimensions. All other calls assume

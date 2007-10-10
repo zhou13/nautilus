@@ -40,6 +40,7 @@
 #include "nautilus-link-desktop-file.h"
 #include "nautilus-metadata.h"
 #include "nautilus-module.h"
+#include "nautilus-icon-factory.h"
 #include "nautilus-search-directory.h"
 #include "nautilus-search-directory-file.h"
 #include "nautilus-thumbnails.h"
@@ -64,7 +65,10 @@
 #include <libgnomevfs/gnome-vfs-volume.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libgnomevfs/gnome-vfs-drive.h>
+#include <libgnomeui/gnome-thumbnail.h>
 #include <glib/gfileutils.h>
+#include <gio/gthemedicon.h>
+#include <gio/gfileicon.h>
 #include <libnautilus-extension/nautilus-file-info.h>
 #include <libxml/parser.h>
 #include <pwd.h>
@@ -285,6 +289,11 @@ nautilus_file_clear_info (NautilusFile *file)
 		file->details->display_name_collation_key = NULL;
 		eel_ref_str_unref (file->details->edit_name);
 		file->details->edit_name = NULL;
+	}
+
+	if (file->details->icon != NULL) {
+		g_object_unref (file->details->icon);
+		file->details->icon = NULL;
 	}
 	
 	file->details->is_symlink = FALSE;
@@ -605,12 +614,15 @@ finalize (GObject *object)
 	if (file->details->get_info_error) {
 		g_error_free (file->details->get_info_error);
 	}
-	
+
 	nautilus_directory_unref (directory);
 	eel_ref_str_unref (file->details->name);
 	eel_ref_str_unref (file->details->display_name);
 	g_free (file->details->display_name_collation_key);
 	eel_ref_str_unref (file->details->edit_name);
+	if (file->details->icon) {
+		g_object_unref (file->details->icon);
+	}
 	g_free (file->details->symlink_name);
 	eel_ref_str_unref (file->details->mime_type);
 	g_free (file->details->selinux_context);
@@ -1448,6 +1460,7 @@ update_info_internal (NautilusFile *file,
 	time_t atime, mtime, ctime;
 	const char *symlink_name, *mime_type, *selinux_context, *name;
 	GFileType file_type;
+	GIcon *icon;
 
 	if (file->details->is_gone) {
 		return FALSE;
@@ -1586,6 +1599,16 @@ update_info_internal (NautilusFile *file,
 	file->details->atime = atime;
 	file->details->ctime = ctime;
 	file->details->mtime = mtime;
+
+	icon = g_file_info_get_icon (info);
+	if (!g_icon_equal (icon, file->details->icon)) {
+		changed = TRUE;
+
+		if (file->details->icon) {
+			g_object_unref (file->details->icon);
+		}
+		file->details->icon = g_object_ref (icon);
+	}
 
 	symlink_name = g_file_info_get_symlink_target (info);
 	if (eel_strcmp (file->details->symlink_name, symlink_name) != 0) {
@@ -2910,6 +2933,142 @@ nautilus_file_get_drop_target_uri (NautilusFile *file)
 	}
 
 	return uri;
+}
+
+static GIcon *
+get_custom_icon (NautilusFile *file)
+{
+	char *uri;
+	char *dir_uri;
+	char *custom_icon_uri;
+	char *tmp;
+	GFile *icon_file;
+	GIcon *icon;
+
+	g_assert (NAUTILUS_IS_FILE (file));
+
+	icon = NULL;
+	
+	/* Metadata takes precedence */
+	uri = nautilus_file_get_metadata (file, NAUTILUS_METADATA_KEY_CUSTOM_ICON, NULL);
+	if (uri != NULL && nautilus_file_is_directory (file)) {
+		/* The relative concatenation code will truncate
+		 * the URI basename without a trailing "/".
+		 * */
+		tmp = nautilus_file_get_uri (file);
+		dir_uri = g_strconcat (tmp, "/", NULL);
+		g_free (tmp);
+
+		custom_icon_uri = gnome_vfs_uri_make_full_from_relative (dir_uri, uri);
+
+		g_free (dir_uri);
+		g_free (uri);
+	} else {
+		custom_icon_uri = uri;
+	}
+
+	if (custom_icon_uri) {
+		icon_file = g_file_new_for_uri (custom_icon_uri);
+		icon = g_file_icon_new (icon_file);
+		g_object_unref (icon_file);
+	}
+ 
+	if (icon == NULL && file->details->got_link_info && file->details->custom_icon != NULL) {
+		if (g_path_is_absolute (file->details->custom_icon)) {
+			icon_file = g_file_new_for_path (file->details->custom_icon);
+			icon = g_file_icon_new (icon_file);
+			g_object_unref (icon_file);
+		} else {
+			icon = g_themed_icon_new (file->details->custom_icon);
+		}
+ 	}
+ 
+	return icon;
+}
+
+
+static int cached_thumbnail_limit;
+static int show_image_thumbs;
+
+static gboolean
+mimetype_limited_by_size (const char *mime_type)
+{
+	/* TODO: re-add */
+	/*
+        if (g_hash_table_lookup (factory->image_mime_types, mime_type)) {
+                return TRUE;
+	}
+	*/
+
+        return FALSE;
+}
+
+static gboolean
+should_show_thumbnail (NautilusFile *file)
+{
+	const char *mime_type;
+
+	mime_type = eel_ref_str_peek (file->details->mime_type);
+	if (mime_type == NULL) {
+		mime_type = "application/octet-stream";
+	}
+	
+	if (mimetype_limited_by_size (mime_type) &&
+	    nautilus_file_get_size (file) > (unsigned int)cached_thumbnail_limit) {
+		return FALSE;
+	}
+	
+	if (show_image_thumbs == NAUTILUS_SPEED_TRADEOFF_ALWAYS) {
+		return TRUE;
+	} else if (show_image_thumbs == NAUTILUS_SPEED_TRADEOFF_NEVER) {
+		return FALSE;
+	} else {
+		/* only local files */
+		return nautilus_file_is_local (file);
+	}
+
+	return FALSE;
+}
+
+GIcon *
+nautilus_file_get_icon (NautilusFile *file,
+			NautilusFileIconFlags flags)
+{
+	GnomeThumbnailFactory *thumbnail_factory;
+	GIcon *icon;
+	char *uri;
+	
+	icon = get_custom_icon (file);
+	if (icon) {
+		return icon;
+	}
+
+	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
+	    should_show_thumbnail (file)) {
+		GFile *thumbnail_file;
+		char *thumbnail;
+		
+		thumbnail_factory = nautilus_icon_factory_get_thumbnail_factory ();
+		uri = nautilus_file_get_uri (file);
+
+		thumbnail = gnome_thumbnail_factory_lookup (thumbnail_factory, uri,
+							    file->details->mtime);
+		
+		g_free (uri);
+
+		if (thumbnail) {
+			thumbnail_file = g_file_new_for_path (thumbnail);
+			icon = g_file_icon_new (thumbnail_file);
+			g_free (thumbnail);
+			return icon;
+		}
+	}
+
+	if (file->details->icon) {
+		return g_object_ref (file->details->icon);
+	}
+	
+	return g_themed_icon_new ("text-x-generic");
 }
 
 char *
@@ -6172,6 +6331,19 @@ nautilus_extract_top_left_text (const char *text,
 }
 
 static void
+thumbnail_limit_changed_callback (gpointer user_data)
+{
+	cached_thumbnail_limit = eel_preferences_get_integer (NAUTILUS_PREFERENCES_IMAGE_FILE_THUMBNAIL_LIMIT);
+}
+
+static void
+show_thumbnails_changed_callback (gpointer user_data)
+{
+	show_image_thumbs = eel_preferences_get_enum (NAUTILUS_PREFERENCES_SHOW_IMAGE_FILE_THUMBNAILS);
+}
+
+
+static void
 nautilus_file_class_init (NautilusFileClass *class)
 {
 	parent_class = g_type_class_peek_parent (class);
@@ -6202,6 +6374,18 @@ nautilus_file_class_init (NautilusFileClass *class)
 
 	eel_preferences_add_auto_enum (NAUTILUS_PREFERENCES_DATE_FORMAT,
 				       &date_format_pref);
+	
+	thumbnail_limit_changed_callback (NULL);
+	eel_preferences_add_callback (NAUTILUS_PREFERENCES_IMAGE_FILE_THUMBNAIL_LIMIT,
+				      thumbnail_limit_changed_callback,
+				      NULL);
+	
+	show_thumbnails_changed_callback (NULL);
+	eel_preferences_add_callback (NAUTILUS_PREFERENCES_SHOW_IMAGE_FILE_THUMBNAILS,
+				      show_thumbnails_changed_callback,
+				      NULL);
+
+
 }
 
 static void

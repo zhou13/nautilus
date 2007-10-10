@@ -54,6 +54,8 @@
 #include <gtk/gtkiconfactory.h>
 #include <gtk/gtkicontheme.h>
 #include <glib/gi18n.h>
+#include <gio/gthemedicon.h>
+#include <gio/gfileicon.h>
 #include <libgnome/gnome-util.h>
 #include <libgnome/gnome-macros.h>
 #include <libgnomeui/gnome-icon-lookup.h>
@@ -1523,6 +1525,58 @@ get_icon_from_cache (const char *icon,
 	nautilus_icon_factory_schedule_sweep (factory);
 	
         return cached_icon;
+}
+
+GdkPixbuf *
+nautilus_icon_factory_get_pixbuf_for_gicon (GIcon                       *icon,
+					    const char                  *modifier,
+					    guint                        nominal_size,
+					    NautilusEmblemAttachPoints  *attach_points,
+					    GdkRectangle                *embedded_text_rect,
+					    gboolean                     force_size,
+					    gboolean                     wants_default,
+					    char                       **display_name)
+{
+	NautilusIconFactory *factory;
+	char *icon_name;
+	char **icon_names;
+	int i;
+	GFile *icon_file;
+	GdkPixbuf *res;
+	
+	factory = get_icon_factory ();
+
+	icon_name = NULL;
+	
+	if (G_IS_THEMED_ICON (icon)) {
+		icon_names = g_themed_icon_get_names (G_THEMED_ICON (icon));
+
+		for (i = 0; icon_names[i] != NULL; i++) {
+			if (gtk_icon_theme_has_icon (factory->icon_theme, icon_names[i])) {
+				icon_name = g_strdup (icon_names[i]);
+				break;
+			}
+		}
+	} else if (G_IS_FILE_ICON (icon)) {
+		icon_file = g_file_icon_get_file (G_FILE_ICON (icon));
+		icon_name = g_file_get_path (icon_file);
+		/* TODO: Handle non-local files, read async */
+	}
+
+	if (icon_name == NULL) {
+		icon_name = g_strdup ("text-x-generic"); /* Fallback */
+	}
+	
+	res = nautilus_icon_factory_get_pixbuf_for_icon (icon_name,
+							 modifier,
+							 nominal_size,
+							 attach_points,
+							 embedded_text_rect,
+							 force_size,
+							 wants_default,
+							 display_name);
+	g_free (icon_name);
+	return res;
 }
 
 GdkPixbuf *

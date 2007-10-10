@@ -99,6 +99,8 @@ struct NautilusFileDetails
 	guint deep_unreadable_count;
 	goffset deep_size;
 
+	GIcon *icon;
+	
 	GList *mime_list; /* If this is a directory, the list of MIME types in it. */
 	char *top_left_text;
 
