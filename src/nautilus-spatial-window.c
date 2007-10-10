@@ -42,10 +42,11 @@
 #include "nautilus-search-bar.h"
 #include "nautilus-window-manage-views.h"
 #include "nautilus-zoom-control.h"
+#include <eel/eel-glib-extensions.h>
 #include <eel/eel-gtk-extensions.h>
-#include <eel/eel-gtk-macros.h>
 #include <eel/eel-string.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
+#include <gdk/gdkkeysyms.h>
 #include <gdk/gdkx.h>
 #include <gtk/gtkdnd.h>
 #include <gtk/gtkmain.h>
@@ -54,10 +55,6 @@
 #include <gtk/gtkvbox.h>
 #include <gtk/gtkuimanager.h>
 #include <glib/gi18n.h>
-#include <libgnome/gnome-macros.h>
-#include <libgnomeui/gnome-uidefs.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-private/nautilus-dnd.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-ui-utilities.h>
@@ -93,8 +90,6 @@ struct _NautilusSpatialWindowDetails {
 	GtkWidget *location_icon;
 
 	GtkWidget *query_editor;
-	
-	GnomeVFSURI *location;
 };
 
 static const GtkTargetEntry location_button_drag_types[] = {
@@ -102,8 +97,7 @@ static const GtkTargetEntry location_button_drag_types[] = {
 	{ NAUTILUS_ICON_DND_URI_LIST_TYPE, 0, NAUTILUS_ICON_DND_URI_LIST },
 };
 
-GNOME_CLASS_BOILERPLATE (NautilusSpatialWindow, nautilus_spatial_window,
-			 NautilusWindow, NAUTILUS_TYPE_WINDOW)
+G_DEFINE_TYPE(NautilusSpatialWindow, nautilus_spatial_window, NAUTILUS_TYPE_WINDOW)
 
 static gboolean
 save_window_geometry_timeout (gpointer callback_data)
@@ -128,7 +122,7 @@ nautilus_spatial_window_configure_event (GtkWidget *widget,
 	
 	window = NAUTILUS_SPATIAL_WINDOW (widget);
 
-	GTK_WIDGET_CLASS (parent_class)->configure_event (widget, event);
+	GTK_WIDGET_CLASS (nautilus_spatial_window_parent_class)->configure_event (widget, event);
 	
 	/* Only save the geometry if the user hasn't resized the window
 	 * for a second. Otherwise delay the callback another second.
@@ -172,7 +166,7 @@ nautilus_spatial_window_unrealize (GtkWidget *widget)
 	
 	window = NAUTILUS_SPATIAL_WINDOW (widget);
 
-	GTK_WIDGET_CLASS (parent_class)->unrealize (widget);
+	GTK_WIDGET_CLASS (nautilus_spatial_window_parent_class)->unrealize (widget);
 
 	if (window->details->save_geometry_timeout_id != 0) {
 		g_source_remove (window->details->save_geometry_timeout_id);
@@ -209,8 +203,8 @@ nautilus_spatial_window_state_event (GtkWidget *widget,
 						    event->new_window_state & GDK_WINDOW_STATE_ABOVE);
 	}
 
-	if (GTK_WIDGET_CLASS (parent_class)->window_state_event != NULL) {
-		return GTK_WIDGET_CLASS (parent_class)->window_state_event (widget, event);
+	if (GTK_WIDGET_CLASS (nautilus_spatial_window_parent_class)->window_state_event != NULL) {
+		return GTK_WIDGET_CLASS (nautilus_spatial_window_parent_class)->window_state_event (widget, event);
 	}
 
 	return FALSE;
@@ -225,7 +219,7 @@ nautilus_spatial_window_destroy (GtkObject *object)
 
 	window->details->content_box = NULL;
 
-	GTK_OBJECT_CLASS (parent_class)->destroy (object);
+	GTK_OBJECT_CLASS (nautilus_spatial_window_parent_class)->destroy (object);
 }
 
 static void
@@ -235,18 +229,11 @@ nautilus_spatial_window_finalize (GObject *object)
 	
 	window = NAUTILUS_SPATIAL_WINDOW (object);
 
-	if (window->details->location != NULL) {
-		gnome_vfs_uri_unref (window->details->location);
-	}
-
 	if (window->details->last_geometry != NULL) {
 		g_free (window->details->last_geometry);
 	}
 
-	g_free (window->details);
-	window->details = NULL;
-
-	G_OBJECT_CLASS (parent_class)->finalize (object);
+	G_OBJECT_CLASS (nautilus_spatial_window_parent_class)->finalize (object);
 }
 
 void
@@ -321,7 +308,7 @@ nautilus_spatial_window_show (GtkWidget *widget)
 
 	window = NAUTILUS_SPATIAL_WINDOW (widget);
 	
-	GTK_WIDGET_CLASS (parent_class)->show (widget);
+	GTK_WIDGET_CLASS (nautilus_spatial_window_parent_class)->show (widget);
 
 	if (NAUTILUS_WINDOW (window)->details->search_mode &&
 	    window->details->query_editor != NULL) {
@@ -423,8 +410,7 @@ real_set_title (NautilusWindow *window, const char *title)
 {
 	gboolean changed;
 
-	changed = EEL_CALL_PARENT_WITH_RETURN_VALUE
-		(NAUTILUS_WINDOW_CLASS, set_title, (window, title));
+	changed = NAUTILUS_WINDOW_CLASS (nautilus_spatial_window_parent_class)->set_title (window, title);
 
 	if (changed && title[0] == '\0') {
 		gtk_window_set_title (GTK_WINDOW (window), _("Nautilus"));
@@ -444,12 +430,11 @@ real_set_content_view_widget (NautilusWindow *window,
 			      NautilusView *new_view)
 {
 	GtkWidget *widget;
-	
-	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS, set_content_view_widget,
-			 (window, new_view));
+
+	NAUTILUS_WINDOW_CLASS (nautilus_spatial_window_parent_class)->set_content_view_widget (window, new_view);
 
 	widget = nautilus_view_get_widget (new_view);
-	
+
 	gtk_container_add (GTK_CONTAINER (NAUTILUS_SPATIAL_WINDOW (window)->details->content_box),
 			   widget);
 }
@@ -474,7 +459,6 @@ real_get_default_size (NautilusWindow *window,
 	}
 }
 
-
 static void
 real_set_throbber_active (NautilusWindow *window, gboolean active)
 {
@@ -492,64 +476,85 @@ real_set_allow_up (NautilusWindow *window, gboolean allow)
 					      SPATIAL_ACTION_CLOSE_PARENT_FOLDERS);
 	gtk_action_set_sensitive (action, allow);
 
-	NAUTILUS_WINDOW_CLASS (parent_class)->set_allow_up (window, allow);
+	NAUTILUS_WINDOW_CLASS (nautilus_spatial_window_parent_class)->set_allow_up (window, allow);
 }
 
 static void
 location_menu_item_activated_callback (GtkWidget *menu_item,
 				       NautilusSpatialWindow *window)
 {
-	GnomeVFSURI *uri;
 	char *location;
+	GFile *current;
+	GFile *dest;
 	GdkEvent *event;
 
-	uri = g_object_get_data (G_OBJECT (menu_item), "uri");
-	location = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_NONE);
+	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	current = g_file_new_for_uri (location);
+	g_free (location);
+
+	dest = g_object_get_data (G_OBJECT (menu_item), "uri");
+
 	event = gtk_get_current_event();
 
-	if (!gnome_vfs_uri_equal (uri, window->details->location))
+	if (!g_file_equal (current, dest))
 	{
+		char *uri;
+		GFile *child;
 		gboolean close_behind;
 		GList *selection;
-		GnomeVFSURI *child_uri;
 
 		close_behind = FALSE;
 		selection = NULL;
-		child_uri = g_object_get_data (G_OBJECT(menu_item), "child_uri");
-		if (child_uri != NULL) {
-			char *child_location;
-			child_location = gnome_vfs_uri_to_string (child_uri, GNOME_VFS_URI_HIDE_NONE);
-			selection = g_list_prepend (NULL, child_location);
+
+		uri = g_file_get_uri (dest);
+
+		child = g_object_get_data (G_OBJECT(menu_item), "child_uri");
+
+		if (child != NULL) {
+			char *child_uri;
+			child_uri = g_file_get_uri (child);
+			selection = g_list_prepend (NULL, child_uri);
 		}
+
 		if (event != NULL && ((GdkEventAny *) event)->type == GDK_BUTTON_RELEASE &&
 		   (((GdkEventButton *) event)->button == 2 ||
 		   (((GdkEventButton *) event)->state & GDK_SHIFT_MASK) != 0))
 		{
 			close_behind = TRUE;
 		}
-		nautilus_window_open_location_with_selection (NAUTILUS_WINDOW (window), location, selection, close_behind);
+
+		nautilus_window_open_location_with_selection (NAUTILUS_WINDOW (window),
+							      uri, selection, close_behind);
+
+		eel_g_list_free_deep (selection);
+		g_free (uri);
 	}
 
 	if (event != NULL) {
 		gdk_event_free (event);
 	}
 
-	g_free (location);
-	
+	g_object_unref (current);
 }
 
 static void
 got_file_info_for_location_menu_callback (NautilusFile *file,
 					  gpointer callback_data)
 {	
-	GtkWidget *icon;
 	GtkWidget *menu_item = callback_data;
+	GtkWidget *label;
+	GtkWidget *icon;
 	GdkPixbuf *pixbuf;
+	char *name;
 	char *icon_name;
 
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 
 	pixbuf = NULL;
+
+	name = nautilus_file_get_display_name (file);
+	label = gtk_bin_get_child (GTK_BIN (menu_item));
+	gtk_label_set_label (GTK_LABEL (label), name);
 
 	icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);
 	if (icon_name != NULL) {
@@ -622,53 +627,78 @@ location_button_pressed_callback (GtkWidget      *widget,
 }
 
 static void
-location_button_clicked_callback (GtkWidget *widget, NautilusSpatialWindow *window)
+location_button_clicked_callback (GtkWidget             *widget,
+				  NautilusSpatialWindow *window)
 {
 	GtkWidget *popup, *menu_item, *first_item = NULL;
-	GnomeVFSURI *uri;
-	GnomeVFSURI *child_uri;
-	char *name;
+	char *location;
+	GFile *uri;
+	GFile *child_uri;
 	GMainLoop *loop;
-
-	
-	g_return_if_fail (window->details->location != NULL);
 
 	popup = gtk_menu_new ();
 	first_item = NULL;
-	uri = gnome_vfs_uri_ref (window->details->location);
+
+	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	g_return_if_fail (location != NULL);
+
+	uri = g_file_new_for_uri (location);
+	g_free (location);
+
 	child_uri = NULL;
 	while (uri != NULL) {
 		NautilusFile *file;
-		char *uri_string;
+		char *name;
 
-		name = nautilus_get_uri_shortname_for_display (uri);
+		file = nautilus_file_get (uri);
+
+		name = nautilus_file_get_display_name (file);
 		menu_item = gtk_image_menu_item_new_with_label (name);
 		g_free (name);
+
 		if (first_item == NULL) {
 			first_item = menu_item;
 		}
-		
-		uri_string = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_NONE);
-		file = nautilus_file_get_by_uri (uri_string);
+
 		g_object_ref (menu_item);
 		nautilus_file_call_when_ready (file,
 					       NAUTILUS_FILE_ATTRIBUTE_INFO,
 					       got_file_info_for_location_menu_callback,
 					       menu_item);
-		g_free (uri_string);		
 
 		gtk_widget_show (menu_item);
 		g_signal_connect (menu_item, "activate",
 				  G_CALLBACK (location_menu_item_activated_callback),
 				  window);
-		g_object_set_data_full (G_OBJECT (menu_item), "uri", uri, (GDestroyNotify)gnome_vfs_uri_unref);
-		g_object_set_data_full (G_OBJECT (menu_item), "child_uri", child_uri, (GDestroyNotify)gnome_vfs_uri_unref);
+
+		g_object_set_data_full (G_OBJECT (menu_item),
+					"uri",
+					g_object_ref (uri),
+					(GDestroyNotify)g_object_unref);
+
+		if (child_uri) {
+			g_object_set_data_full (G_OBJECT (menu_item),
+						"child_uri",
+						g_object_ref (child_uri),
+						(GDestroyNotify)g_object_unref);
+		}
 
 		gtk_menu_shell_prepend (GTK_MENU_SHELL (popup), menu_item);
 
-		child_uri = gnome_vfs_uri_ref (uri);
-		uri = gnome_vfs_uri_get_parent (uri);
+		if (child_uri){
+			g_object_unref (child_uri);
+		}
+		child_uri = uri;
+		uri = g_file_get_parent (uri);
 	}
+
+	if (child_uri){
+		g_object_unref (child_uri);
+	}
+	if (uri){
+		g_object_unref (uri);
+	}
+
 	gtk_menu_set_screen (GTK_MENU (popup), gtk_widget_get_screen (widget));
 
 	loop = g_main_loop_new (NULL, FALSE);
@@ -727,25 +757,23 @@ get_data_binder (NautilusDragEachSelectedItemDataGet iteratee,
 		 gpointer                            data)
 {
 	NautilusSpatialWindow *window;
+	char *location;
 	int icon_size;
-	char *uri;
 
 	g_assert (NAUTILUS_IS_SPATIAL_WINDOW (iterator_context));
 	window = NAUTILUS_SPATIAL_WINDOW (iterator_context);
 
-	uri = gnome_vfs_uri_to_string (window->details->location,
-				       GNOME_VFS_URI_HIDE_NONE);
-
+	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
 	icon_size = get_dnd_icon_size (window);
 
-	iteratee (uri,
+	iteratee (location,
 		  0,
 		  0,
 		  icon_size,
 		  icon_size,
 		  data);
 
-	g_free (uri);
+	g_free (location);
 }
 
 static void
@@ -764,24 +792,20 @@ void
 nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 					      const char            *location)
 {
-	GnomeVFSURI *uri;
-	char *name;
-	
-	uri = NULL;
 	if (location != NULL) {
-		uri = gnome_vfs_uri_new (location);
-	}
-	if (uri != NULL) {
 		NautilusFile *file;
+		char *name;
 		GError *error;
-		
-		name = nautilus_get_uri_shortname_for_display (uri);
+
+		file = nautilus_file_get_by_uri (location);
+
+		/* FIXME: monitor for name change... */
+		name = nautilus_file_get_display_name (file);
 		gtk_label_set_label (GTK_LABEL (window->details->location_label),
 				     name);
 		g_free (name);
 		gtk_widget_set_sensitive (window->details->location_button, TRUE);
 
-		file = nautilus_file_get_by_uri (location);
 		error = nautilus_file_get_file_info_error (file);
 		if (error == NULL) {
 			char *icon_name;
@@ -810,11 +834,6 @@ nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 				     "");
 		gtk_widget_set_sensitive (window->details->location_button, FALSE);
 	}
-
-	if (window->details->location != NULL) {
-		gnome_vfs_uri_unref (window->details->location);
-	}
-	window->details->location = uri;
 }
 
 static void
@@ -885,7 +904,7 @@ static const GtkActionEntry spatial_entries[] = {
 };
 
 static void
-nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
+nautilus_spatial_window_init (NautilusSpatialWindow *window)
 {
 	GtkRcStyle *rc_style;
 	GtkWidget *arrow;
@@ -894,8 +913,11 @@ nautilus_spatial_window_instance_init (NautilusSpatialWindow *window)
 	GtkUIManager *ui_manager;
 	GtkTargetList *targets;
 	const char *ui;
-	
-	window->details = g_new0 (NautilusSpatialWindowDetails, 1);
+
+	window->details = G_TYPE_INSTANCE_GET_PRIVATE (window,
+						       NAUTILUS_TYPE_SPATIAL_WINDOW,
+						       NautilusSpatialWindowDetails);
+
 	window->affect_spatial_window_on_next_location_change = TRUE;
 
 	vbox = gtk_vbox_new (FALSE, 0);
@@ -1038,5 +1060,6 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 	gtk_binding_entry_add_signal (binding_set, GDK_Up, GDK_SHIFT_MASK | GDK_MOD1_MASK,
 				      "go_up", 1,
 				      G_TYPE_BOOLEAN, TRUE);
-	
+
+	g_type_class_add_private (G_OBJECT_CLASS (class), sizeof(NautilusSpatialWindowDetails));
 }
