@@ -46,6 +46,7 @@ typedef struct DeepCountState DeepCountState;
 typedef struct GetInfoState GetInfoState;
 typedef struct NewFilesState NewFilesState;
 typedef struct MimeListState MimeListState;
+typedef struct ThumbnailState ThumbnailState;
 
 struct NautilusDirectoryDetails
 {
@@ -110,6 +111,8 @@ struct NautilusDirectoryDetails
 	NautilusOperationHandle *extension_info_in_progress;
 	guint extension_info_idle;
 
+	ThumbnailState *thumbnail_state;
+	
 	TopLeftTextReadState *top_left_read_state;
 
 	LinkInfoReadState *link_info_read_state;
@@ -131,7 +134,7 @@ typedef struct {
 	gboolean top_left_text;
 	gboolean large_top_left_text;
 	gboolean extension_info;
-	gboolean slow_mime_type;
+	gboolean thumbnail;
 } Request;
 
 NautilusDirectory *nautilus_directory_get_existing                    (const char                *uri);

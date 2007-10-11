@@ -1,5 +1,22 @@
 2007-10-11  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-attributes.h:
+	Add NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL attribute
+	
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+	Load thumbnails asynchronosuly.
+	
+        * libnautilus-private/nautilus-file.c:
+	Initial code to use the asynchronoulsy loaded thumbnail
+	
+        * libnautilus-private/nautilus-icon-factory.c:
+	Add NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL as a required attribute for
+	icons
+
+2007-10-11  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.c:
 	Read thumbnail info from gio

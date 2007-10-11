@@ -100,7 +100,12 @@ struct NautilusFileDetails
 	goffset deep_size;
 
 	GIcon *icon;
+	
 	char *thumbnail_path;
+	GdkPixbuf *thumbnail;
+	int thumbnail_size;
+	int thumbnail_largest_requested_size;
+	
 	
 	GList *mime_list; /* If this is a directory, the list of MIME types in it. */
 	char *top_left_text;

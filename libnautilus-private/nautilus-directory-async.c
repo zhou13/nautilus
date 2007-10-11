@@ -80,6 +80,12 @@ struct LinkInfoReadState {
 	NautilusFile *file;
 };
 
+struct ThumbnailState {
+	NautilusDirectory *directory;
+	GCancellable *cancellable;
+	NautilusFile *file;
+};
+
 struct DirectoryLoadState {
 	NautilusDirectory *directory;
 	GCancellable *cancellable;
@@ -478,6 +484,17 @@ link_info_cancel (NautilusDirectory *directory)
 }
 
 static void
+thumbnail_cancel (NautilusDirectory *directory)
+{
+	if (directory->details->thumbnail_state != NULL) {
+		g_cancellable_cancel (directory->details->thumbnail_state->cancellable);
+		directory->details->thumbnail_state->directory = NULL;
+		directory->details->thumbnail_state = NULL;
+		async_job_end (directory, "thumbnail");
+	}
+}
+
+static void
 file_info_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->get_info_in_progress != NULL) {
@@ -600,6 +617,11 @@ nautilus_directory_set_up_request (Request *request,
 
 	request->metafile |= (file_attributes & NAUTILUS_FILE_ATTRIBUTE_METADATA) != 0;
 	request->extension_info = (file_attributes & NAUTILUS_FILE_ATTRIBUTE_EXTENSION_INFO) != 0;
+
+	if (file_attributes & NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL) {
+		request->thumbnail = TRUE;
+		request->file_info = TRUE;
+	}
 }
 
 static void
@@ -1530,6 +1552,12 @@ nautilus_async_destroying_file (NautilusFile *file)
 		changed = TRUE;
 	}
 
+	if (directory->details->thumbnail_state != NULL &&
+	    directory->details->thumbnail_state->file ==  file) {
+		directory->details->thumbnail_state->file = NULL;
+		changed = TRUE;
+	}
+	
 	/* Let the directory take care of the rest. */
 	if (changed) {
 		nautilus_directory_async_state_changed (directory);
@@ -1660,6 +1688,21 @@ static gboolean
 wants_extension_info (const Request *request)
 {
 	return request->extension_info;
+}
+
+static gboolean
+lacks_thumbnail (NautilusFile *file)
+{
+	return file->details->thumbnail_path != NULL &&
+		file->details->thumbnail_size != -1 &&
+		(file->details->thumbnail == NULL ||
+		 file->details->thumbnail_largest_requested_size > file->details->thumbnail_size);
+}
+
+static gboolean
+wants_thumbnail (const Request *request)
+{
+	return request->thumbnail;
 }
 
 static gboolean
@@ -3552,6 +3595,173 @@ link_info_start (NautilusDirectory *directory,
 }
 
 static void
+thumbnail_done (NautilusDirectory *directory,
+		NautilusFile *file,
+		GdkPixbuf *pixbuf)
+{
+	if (file->details->thumbnail) {
+		g_object_unref (file->details->thumbnail);
+		file->details->thumbnail = NULL;
+	}
+	if (pixbuf) {
+		file->details->thumbnail = g_object_ref (pixbuf);
+		file->details->thumbnail_size = 128;
+	} else {
+		file->details->thumbnail_size = -1;
+	}
+	
+	nautilus_directory_async_state_changed (directory);
+}
+
+static void
+thumbnail_stop (NautilusDirectory *directory)
+{
+	NautilusFile *file;
+
+	if (directory->details->thumbnail_state != NULL) {
+		file = directory->details->thumbnail_state->file;
+
+		if (file != NULL) {
+			g_assert (NAUTILUS_IS_FILE (file));
+			g_assert (file->details->directory == directory);
+			if (is_needy (file,
+				      lacks_thumbnail,
+				      wants_thumbnail)) {
+				return;
+			}
+		}
+
+		/* The link info is not wanted, so stop it. */
+		thumbnail_cancel (directory);
+	}
+}
+
+static void
+thumbnail_got_data (NautilusDirectory *directory,
+		    NautilusFile *file,
+		    gboolean result,
+		    goffset file_len,
+		    char *file_contents)
+{
+	GdkPixbuf *pixbuf;
+	GdkPixbufLoader *loader;
+	gboolean res;
+
+	nautilus_directory_ref (directory);
+
+	pixbuf = NULL;
+	/* Handle the case where we read the Nautilus link. */
+	if (result) {
+		loader = gdk_pixbuf_loader_new ();
+		
+		res = gdk_pixbuf_loader_write (loader, file_contents, file_len, NULL);
+		gdk_pixbuf_loader_close (loader, NULL);
+		if (res) {
+			pixbuf = g_object_ref (gdk_pixbuf_loader_get_pixbuf (loader));
+		}
+		g_object_unref (G_OBJECT (loader));
+	}
+
+	nautilus_file_ref (file);
+	thumbnail_done (directory, file, pixbuf);
+	nautilus_file_changed (file);
+	nautilus_file_unref (file);
+	
+	if (pixbuf) {
+		g_object_unref (pixbuf);
+	}
+
+	nautilus_directory_unref (directory);
+}
+
+static void
+thumbnail_state_free (ThumbnailState *state)
+{
+	g_object_unref (state->cancellable);
+	g_free (state);
+}
+
+static void
+thumbnail_read_callback (GObject *source_object,
+			 GAsyncResult *res,
+			 gpointer user_data)
+{
+	ThumbnailState *state;
+	gsize file_size;
+	char *file_contents;
+	gboolean result;
+	NautilusDirectory *directory;
+
+	state = user_data;
+
+	if (state->directory == NULL) {
+		/* Operation was cancelled. Bail out */
+		thumbnail_state_free (state);
+		return;
+	}
+
+	directory = nautilus_directory_ref (state->directory);
+
+	result = g_file_load_contents_finish (G_FILE (source_object),
+					      res,
+					      &file_contents, &file_size,
+					      NULL, NULL);
+
+	state->directory->details->thumbnail_state = NULL;
+	async_job_end (state->directory, "thumbnail");
+	
+	thumbnail_got_data (state->directory, state->file, result, file_size, file_contents);
+
+	g_free (file_contents);
+	
+	thumbnail_state_free (state);
+	
+	nautilus_directory_unref (directory);
+}
+
+static void
+thumbnail_start (NautilusDirectory *directory,
+		 NautilusFile *file,
+		 gboolean *doing_io)
+{
+	GFile *location;
+	ThumbnailState *state;
+	
+	if (directory->details->thumbnail_state != NULL) {
+		*doing_io = TRUE;
+		return;
+	}
+
+	if (!is_needy (file,
+		       lacks_thumbnail,
+		       wants_thumbnail)) {
+		return;
+	}
+	*doing_io = TRUE;
+
+	location = g_file_new_for_path (file->details->thumbnail_path);
+	
+	if (!async_job_start (directory, "thumbnail")) {
+		g_object_unref (location);
+		return;
+	}
+	
+	state = g_new0 (ThumbnailState, 1);
+	state->directory = directory;
+	state->file = file;
+	state->cancellable = g_cancellable_new ();
+	
+	directory->details->thumbnail_state = state;
+	
+	g_file_load_contents_async (location,
+				    state->cancellable,
+				    thumbnail_read_callback,
+				    state);
+	g_object_unref (location);
+}
+
+
+static void
 extension_info_cancel (NautilusDirectory *directory)
 {
 	if (directory->details->extension_info_in_progress != NULL) {
@@ -3727,6 +3937,7 @@ start_or_stop_io (NautilusDirectory *directory)
 	top_left_stop (directory);
 	link_info_stop (directory);
 	extension_info_stop (directory);
+	thumbnail_stop (directory);
 
 	doing_io = FALSE;
 	/* Take files that are all done off the queue. */
@@ -3753,6 +3964,7 @@ start_or_stop_io (NautilusDirectory *directory)
 		deep_count_start (directory, file, &doing_io);
 		mime_list_start (directory, file, &doing_io);
 		top_left_start (directory, file, &doing_io);
+		thumbnail_start (directory, file, &doing_io);
 
 		if (doing_io) {
 			return;
@@ -3822,6 +4034,7 @@ nautilus_directory_cancel (NautilusDirectory *directory)
 	new_files_cancel (directory);
 	top_left_cancel (directory);
 	extension_info_cancel (directory);
+	thumbnail_cancel (directory);
 
 	/* We aren't waiting for anything any more. */
 	if (waiting_directories != NULL) {
@@ -3919,6 +4132,10 @@ cancel_loading_attributes (NautilusDirectory *directory,
 
 	if (request.extension_info) {
 		extension_info_cancel (directory);
+	}
+	
+	if (request.thumbnail) {
+		thumbnail_cancel (directory);
 	}
 	
 	/* FIXME bugzilla.gnome.org 45064: implement cancelling metadata when we

@@ -3116,15 +3116,10 @@ nautilus_file_get_icon (NautilusFile *file,
 
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
 	    should_show_thumbnail (file)) {
-		GdkPixbuf *pixbuf;
-		if (file->details->thumbnail_path != NULL) {		
-			pixbuf = gdk_pixbuf_new_from_file (file->details->thumbnail_path, NULL);
-			if (pixbuf) {
-				icon = nautilus_icon_info_new_for_pixbuf (pixbuf);
-				g_object_unref (pixbuf);
-				return icon;
-			}
-		} else {
+		if (file->details->thumbnail) {
+			icon = nautilus_icon_info_new_for_pixbuf (file->details->thumbnail);
+			return icon;
+		} else if (file->details->thumbnail_path == NULL) {		
 			/* TODO: Queue thumbnailing of file */
 		}
 	}
