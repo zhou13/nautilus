@@ -1,5 +1,15 @@
 2007-10-11  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c (nautilus_file_get_gicon):
+	Handle accept, visited and embedding text state and
+	rewrite the icon as needed.
+	
+        * libnautilus-private/nautilus-icon-info.c:
+        (nautilus_icon_info_finalize):
+	Fix crash if pixbuf is NULL
+
+2007-10-11  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/Makefile.am:
         * libnautilus-private/nautilus-icon-info.[ch]:
 	Added NautilusInfoInfo, including caches and GIcon => pixbuf lookup

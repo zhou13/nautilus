@@ -3034,12 +3034,57 @@ static GIcon *
 nautilus_file_get_gicon (NautilusFile *file,
 			 NautilusFileIconFlags flags)
 {
-	/* Check has_open_window for folder => folder-visiting */
-	/* Check EMBEDDING_TEXT => add text-x-generic before text-x-preview */
-	/* Check FOR_ACCEPT => foo -> prepend foo-drag-accept */
+	const char * const * names;
+	const char *name;
+	GPtrArray *array;
+	GIcon *icon;
+	int i;
+	gboolean changed;
 
 	if (file->details->icon) {
-		return g_object_ref (file->details->icon);
+		icon = NULL;
+		
+		if (((flags & NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT) ||
+		     (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT) ||
+		     nautilus_file_has_open_window (file)) &&
+		    G_IS_THEMED_ICON (file->details->icon)) {
+			names = g_themed_icon_get_names (G_THEMED_ICON (file->details->icon));
+			array = g_ptr_array_new ();
+			
+			changed = TRUE;
+			for (i = 0; names[i] != NULL; i++) {
+				name = names[i];
+
+				if (strcmp (name, "folder") == 0 &&
+				    nautilus_file_has_open_window (file)) {
+					changed = TRUE;
+					g_ptr_array_add (array, "folder-visiting");
+				}
+				if (strcmp (name, "folder") == 0 &&
+				    (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT)) {
+					changed = TRUE;
+					g_ptr_array_add (array, "folder-drag-accept");
+				}
+				if (strcmp (name, "text-x-generic") == 0 &&
+				    (flags & NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT)) {
+					changed = TRUE;
+					g_ptr_array_add (array, "text-x-preview");
+				}
+				g_ptr_array_add (array, (char *)name);
+			}
+
+			if (changed) {
+				icon = g_themed_icon_new_from_names ((char **)array->pdata, array->len);
+			}
+			
+			g_ptr_array_free (array, TRUE);			
+		}
+
+		if (icon == NULL) {
+			icon = g_object_ref (file->details->icon);
+		}
+		
+		return icon;
 	}
 	
 	return g_themed_icon_new ("text-x-generic");

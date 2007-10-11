@@ -87,8 +87,10 @@ nautilus_icon_info_finalize (GObject *object)
 					    pixbuf_toggle_notify,
 					    icon);
 	}
-	
-	g_object_unref (icon->pixbuf);
+
+	if (icon->pixbuf) {
+		g_object_unref (icon->pixbuf);
+	}
 	g_free (icon->attach_points);
 	g_free (icon->display_name);
 
