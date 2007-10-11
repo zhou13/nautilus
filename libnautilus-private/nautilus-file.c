@@ -3030,23 +3030,42 @@ should_show_thumbnail (NautilusFile *file)
 	return FALSE;
 }
 
-GIcon *
+static GIcon *
+nautilus_file_get_gicon (NautilusFile *file,
+			 NautilusFileIconFlags flags)
+{
+	/* Check has_open_window for folder => folder-visiting */
+	/* Check EMBEDDING_TEXT => add text-x-generic before text-x-preview */
+	/* Check FOR_ACCEPT => foo -> prepend foo-drag-accept */
+
+	if (file->details->icon) {
+		return g_object_ref (file->details->icon);
+	}
+	
+	return g_themed_icon_new ("text-x-generic");
+}
+
+NautilusIconInfo *
 nautilus_file_get_icon (NautilusFile *file,
+			int size,
 			NautilusFileIconFlags flags)
 {
 	GnomeThumbnailFactory *thumbnail_factory;
-	GIcon *icon;
-	char *uri;
+	NautilusIconInfo *icon;
+	GIcon *gicon;
 	
-	icon = get_custom_icon (file);
-	if (icon) {
+	gicon = get_custom_icon (file);
+	if (gicon) {
+		icon = nautilus_icon_info_lookup (gicon, size);
+		g_object_unref (gicon);
 		return icon;
 	}
 
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
 	    should_show_thumbnail (file)) {
-		GFile *thumbnail_file;
+		GdkPixbuf *pixbuf;
 		char *thumbnail;
+		char *uri;
 		
 		thumbnail_factory = nautilus_icon_factory_get_thumbnail_factory ();
 		uri = nautilus_file_get_uri (file);
@@ -3057,19 +3076,25 @@ nautilus_file_get_icon (NautilusFile *file,
 		g_free (uri);
 
 		if (thumbnail) {
-			thumbnail_file = g_file_new_for_path (thumbnail);
-			icon = g_file_icon_new (thumbnail_file);
+			pixbuf = gdk_pixbuf_new_from_file (thumbnail, NULL);
 			g_free (thumbnail);
+			icon = nautilus_icon_info_new_for_pixbuf (pixbuf);
+			g_object_unref (pixbuf);
 			return icon;
 		}
 	}
 
-	if (file->details->icon) {
-		return g_object_ref (file->details->icon);
+	gicon = nautilus_file_get_gicon (file, flags);
+	if (gicon) {
+		icon = nautilus_icon_info_lookup (gicon, size);
+		g_object_unref (gicon);
+		return icon;
 	}
-	
-	return g_themed_icon_new ("text-x-generic");
+
+	return nautilus_icon_info_new_for_pixbuf (NULL);
 }
+
+
 
 char *
 nautilus_file_get_custom_icon (NautilusFile *file)

@@ -1,3 +1,25 @@
+2007-10-11  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/Makefile.am:
+        * libnautilus-private/nautilus-icon-info.[ch]:
+	Added NautilusInfoInfo, including caches and GIcon => pixbuf lookup
+	
+        * libnautilus-private/nautilus-file.[ch]:
+	Make nautilus_file_get_icon return a NautilusFileInfo
+	
+        * libnautilus-private/nautilus-icon-canvas-item.[ch]:
+	Split out attach points instead of using NautilusAttachPoints
+	
+        * libnautilus-private/nautilus-icon-container.[ch]:
+        * src/file-manager/fm-icon-container.c:
+	Use the new nautilus_file_get_icon and nautilus_file_info_* stuff
+
+        * libnautilus-private/nautilus-icon-factory.c:
+        * libnautilus-private/nautilus-program-choosing.c:
+        * libnautilus-private/nautilus-mime-application-chooser.c:
+        * libnautilus-private/nautilus-open-with-dialog.c:
+	Update to g_themed_icon_get_names const type
+	
 2007-10-10  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-private.h:

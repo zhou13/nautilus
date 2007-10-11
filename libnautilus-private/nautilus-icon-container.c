@@ -5528,11 +5528,13 @@ get_icon_being_renamed (NautilusIconContainer *container)
 	return rename_icon;
 }			 
 
-static GIcon *
+static NautilusIconInfo *
 nautilus_icon_container_get_icon_images (NautilusIconContainer *container,
 					 NautilusIconData      *data,
+					 int                    size,
 					 GList                **emblem_icons,
 					 char                 **embedded_text,
+					 gboolean               for_drag_accept,
 					 gboolean               need_large_embeddded_text,
 					 gboolean              *embedded_text_needs_loading,
 					 gboolean              *has_open_window)
@@ -5542,7 +5544,7 @@ nautilus_icon_container_get_icon_images (NautilusIconContainer *container,
 	klass = NAUTILUS_ICON_CONTAINER_GET_CLASS (container);
 	g_return_val_if_fail (klass->get_icon_images != NULL, NULL);
 
-	return klass->get_icon_images (container, data, emblem_icons, embedded_text, need_large_embeddded_text, embedded_text_needs_loading, has_open_window);
+	return klass->get_icon_images (container, data, size, emblem_icons, embedded_text, for_drag_accept, need_large_embeddded_text, embedded_text_needs_loading, has_open_window);
 }
 
 
@@ -5769,8 +5771,10 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	NautilusIconContainerDetails *details;
 	guint icon_size;
 	guint min_image_size, max_image_size;
-	GIcon *icon_ref;
-	NautilusEmblemAttachPoints attach_points;
+	NautilusIconInfo *icon_info;
+	GdkPoint *attach_points;
+	int n_attach_points;
+	gboolean has_embedded_text_rect;
 	GdkPixbuf *pixbuf, *emblem_pixbuf;
 	GList *emblem_icon_names, *emblem_pixbufs, *p;
 	char *editable_text, *additional_text;
@@ -5780,7 +5784,6 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	gboolean large_embedded_text;
 	gboolean embedded_text_needs_loading;
 	gboolean has_open_window;
-	char *modifier;
 	
 	if (icon == NULL) {
 		return;
@@ -5802,29 +5805,20 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	emblem_icon_names = NULL;
 	embedded_text = NULL;
 	large_embedded_text = icon_size > ICON_SIZE_FOR_LARGE_EMBEDDED_TEXT;
-	icon_ref = nautilus_icon_container_get_icon_images (container, icon->data, 
-							    &emblem_icon_names,
-							    &embedded_text, large_embedded_text, &embedded_text_needs_loading,
-							    &has_open_window);
-	
-	modifier = NULL;
-	if (has_open_window) {
-		modifier = "visiting";
-	}
-	if (icon == details->drop_target) {
-		modifier = "accept";
-	}
-	
-	pixbuf = nautilus_icon_factory_get_pixbuf_for_gicon (icon_ref,
-							     modifier,
-							     icon_size,
-							     &attach_points,
-							     &embedded_text_rect,
-							     FALSE, TRUE, NULL);
+	icon_info = nautilus_icon_container_get_icon_images (container, icon->data, icon_size,
+							     &emblem_icon_names,
+							     &embedded_text,
+							     icon == details->drop_target,							     
+							     large_embedded_text, &embedded_text_needs_loading,
+							     &has_open_window);
 
-	if (embedded_text_rect.width > MINIMUM_EMBEDDED_TEXT_RECT_WIDTH &&
-	    embedded_text_rect.height > MINIMUM_EMBEDDED_TEXT_RECT_HEIGHT &&
-	    embedded_text_needs_loading) {
+
+	pixbuf = nautilus_icon_info_get_pixbuf (icon_info);
+	nautilus_icon_info_get_attach_points (icon_info, &attach_points, &n_attach_points);
+	has_embedded_text_rect = nautilus_icon_info_get_embedded_rect (icon_info,
+								       &embedded_text_rect);
+ 
+	if (has_embedded_text_rect && embedded_text_needs_loading) {
 		icon->is_monitored = TRUE;
 		nautilus_icon_container_start_monitor_top_left (container, icon->data, icon, large_embedded_text);
 	}
@@ -5832,7 +5826,7 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	emblem_pixbufs = NULL;
 	
 	icon_size = MAX (nautilus_get_icon_size_for_zoom_level (container->details->zoom_level)
-			   * icon->scale, NAUTILUS_ICON_SIZE_SMALLEST);
+			 * icon->scale, NAUTILUS_ICON_SIZE_SMALLEST);
 	emblem_size = nautilus_icon_factory_get_emblem_size_for_icon_size (icon_size);
 	if (emblem_size != 0) {
 		for (p = emblem_icon_names; p != NULL; p = p->next) {
@@ -5881,13 +5875,13 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 		sanitize_loading_thumbnail_image_size (container,
 						       mime_type,
 						       &pixbuf,
-						       &attach_points,
+						       NULL,//&attach_points,
 						       &embedded_text_rect);
 		g_free (mime_type);
 	}
 	
 	nautilus_icon_canvas_item_set_image (icon->item, pixbuf);
-	nautilus_icon_canvas_item_set_attach_points (icon->item, &attach_points);
+	nautilus_icon_canvas_item_set_attach_points (icon->item, attach_points, n_attach_points);
 	nautilus_icon_canvas_item_set_emblems (icon->item, emblem_pixbufs);
 	nautilus_icon_canvas_item_set_embedded_text_rect (icon->item, &embedded_text_rect);
 	nautilus_icon_canvas_item_set_embedded_text (icon->item, embedded_text);
@@ -5899,7 +5893,7 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	g_free (editable_text);
 	g_free (additional_text);
 
-	g_object_unref (icon_ref);
+	g_object_unref (icon_info);
 }
 
 static gboolean

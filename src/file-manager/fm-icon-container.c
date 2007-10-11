@@ -52,11 +52,13 @@ get_icon_view (NautilusIconContainer *container)
 	return ((FMIconContainer *)container)->view;
 }
 
-static GIcon *
+static NautilusIconInfo *
 fm_icon_container_get_icon_images (NautilusIconContainer *container,
 				   NautilusIconData      *data,
+				   int                    size,
 				   GList                **emblem_icons,
 				   char                 **embedded_text,
+				   gboolean               for_drag_accept,
 				   gboolean               need_large_embeddded_text,
 				   gboolean              *embedded_text_needs_loading,
 				   gboolean              *has_window_open)
@@ -65,6 +67,7 @@ fm_icon_container_get_icon_images (NautilusIconContainer *container,
 	EelStringList *emblems_to_ignore;
 	NautilusFile *file;
 	gboolean use_embedding;
+	NautilusFileIconFlags flags;
 
 	file = (NautilusFile *) data;
 
@@ -87,10 +90,16 @@ fm_icon_container_get_icon_images (NautilusIconContainer *container,
 	}
 
 	*has_window_open = nautilus_file_has_open_window (file);
+
+	flags = NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS;
+	if (use_embedding) {
+		flags |= NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT;
+	}
+	if (for_drag_accept) {
+		flags |= NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT;
+	}
 	
-	return nautilus_file_get_icon (file,
-				       NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS |
-				       NAUTILUS_FILE_ICON_FLAGS_EMBEDDS_TEXT);
+	return nautilus_file_get_icon (file, size, flags);
 }
 
 static char *

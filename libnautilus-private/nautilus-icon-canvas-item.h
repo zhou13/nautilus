@@ -70,7 +70,8 @@ void        nautilus_icon_canvas_item_set_emblems              (NautilusIconCanv
 void        nautilus_icon_canvas_item_set_show_stretch_handles (NautilusIconCanvasItem       *item,
 								gboolean                      show_stretch_handles);
 void        nautilus_icon_canvas_item_set_attach_points        (NautilusIconCanvasItem       *item,
-								NautilusEmblemAttachPoints   *attach_points);
+								GdkPoint                     *attach_points,
+								int                           n_attach_points);
 void        nautilus_icon_canvas_item_set_embedded_text_rect   (NautilusIconCanvasItem       *item,
 								const GdkRectangle           *text_rect);
 void        nautilus_icon_canvas_item_set_embedded_text        (NautilusIconCanvasItem       *item,

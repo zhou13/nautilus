@@ -129,6 +129,8 @@ libnautilus_private_la_SOURCES = \
 	nautilus-icon-factory.c \
 	nautilus-icon-factory.h \
 	nautilus-icon-private.h \
+	nautilus-icon-info.c \
+	nautilus-icon-info.h \
 	nautilus-idle-queue.c \
 	nautilus-idle-queue.h \
 	nautilus-iso9660.h \

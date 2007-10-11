@@ -32,6 +32,7 @@
 #include <gio/gfile.h>
 #include <gio/gioerror.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
+#include <libnautilus-private/nautilus-icon-info.h>
 
 /* NautilusFile is an object used to represent a single element of a
  * NautilusDirectory. It's lightweight and relies on NautilusDirectory
@@ -77,7 +78,8 @@ typedef enum {
 typedef enum {
 	NAUTILUS_FILE_ICON_FLAGS_NONE = 0,
 	NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS = (1<<0),
-	NAUTILUS_FILE_ICON_FLAGS_EMBEDDS_TEXT = (1<<1)
+	NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT = (1<<1),
+	NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT = (1<<2)
 } NautilusFileIconFlags;	
 
 /* Emblems sometimes displayed for NautilusFiles. Do not localize. */ 
@@ -353,7 +355,8 @@ char *                  nautilus_file_get_drop_target_uri               (Nautilu
 char *                  nautilus_file_get_custom_icon                   (NautilusFile                   *file);
 
 
-GIcon *                 nautilus_file_get_icon                          (NautilusFile                   *file,
+NautilusIconInfo *      nautilus_file_get_icon                          (NautilusFile                   *file,
+									 int                             size,
 									 NautilusFileIconFlags           flags);
 
 

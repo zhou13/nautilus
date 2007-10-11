@@ -1539,7 +1539,7 @@ nautilus_icon_factory_get_pixbuf_for_gicon (GIcon                       *icon,
 {
 	NautilusIconFactory *factory;
 	char *icon_name;
-	char **icon_names;
+	const char * const*icon_names;
 	int i;
 	GFile *icon_file;
 	GdkPixbuf *res;

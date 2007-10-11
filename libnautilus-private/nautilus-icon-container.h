@@ -127,10 +127,12 @@ typedef struct {
 	 * These must be implemented. The default "do nothing" is not
 	 * good enough, these are _not_ signals.
 	 */
-	GIcon *      (* get_icon_images)          (NautilusIconContainer *container,
+	NautilusIconInfo *(* get_icon_images)     (NautilusIconContainer *container,
 						   NautilusIconData *data,
+						   int icon_size,
 						   GList **emblem_icons,
 						   char **embedded_text,
+						   gboolean for_drag_accept,
 						   gboolean need_large_embeddded_text,
 						   gboolean *embedded_text_needs_loading,
 						   gboolean *has_window_open);

@@ -447,7 +447,7 @@ get_pixbuf_for_icon (GIcon *icon)
 		}
 		g_free (filename);
 	} else if (G_IS_THEMED_ICON (icon)) {
-		char **names;
+		const char * const *names;
 		char *icon_no_extension;
 		char *p;
 		

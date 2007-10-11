@@ -70,7 +70,7 @@ static char *
 gicon_to_string (GIcon *icon)
 {
 	GFile *file;
-	char **names;
+	const char * const *names;
 	
 	if (G_IS_FILE_ICON (icon)) {
 		file = g_file_icon_get_file (G_FILE_ICON (icon));
@@ -80,7 +80,7 @@ gicon_to_string (GIcon *icon)
 	} else if (G_IS_THEMED_ICON (icon)) {
 		names = g_themed_icon_get_names (G_THEMED_ICON (icon));
 		if (names) {
-			return names[0];
+			return g_strdup (names[0]);
 		}
 	}
 	
