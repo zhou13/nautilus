@@ -65,7 +65,6 @@
 #include <libgnomevfs/gnome-vfs-volume.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libgnomevfs/gnome-vfs-drive.h>
-#include <libgnomeui/gnome-thumbnail.h>
 #include <glib/gfileutils.h>
 #include <gio/gthemedicon.h>
 #include <gio/gfileicon.h>
@@ -295,7 +294,9 @@ nautilus_file_clear_info (NautilusFile *file)
 		g_object_unref (file->details->icon);
 		file->details->icon = NULL;
 	}
-	
+
+	g_free (file->details->thumbnail_path);
+	file->details->thumbnail_path = NULL;
 	file->details->is_symlink = FALSE;
 	file->details->is_hidden = FALSE;
 	file->details->is_backup = FALSE;
@@ -623,6 +624,7 @@ finalize (GObject *object)
 	if (file->details->icon) {
 		g_object_unref (file->details->icon);
 	}
+	g_free (file->details->thumbnail_path);
 	g_free (file->details->symlink_name);
 	eel_ref_str_unref (file->details->mime_type);
 	g_free (file->details->selinux_context);
@@ -1458,7 +1460,7 @@ update_info_internal (NautilusFile *file,
 	int uid, gid;
 	goffset size;
 	time_t atime, mtime, ctime;
-	const char *symlink_name, *mime_type, *selinux_context, *name;
+	const char *symlink_name, *mime_type, *selinux_context, *name, *thumbnail_path;
 	GFileType file_type;
 	GIcon *icon;
 
@@ -1610,12 +1612,19 @@ update_info_internal (NautilusFile *file,
 		file->details->icon = g_object_ref (icon);
 	}
 
+	thumbnail_path =  g_file_info_get_attribute_byte_string (info, G_FILE_ATTRIBUTE_THUMBNAIL_PATH);
+	if (eel_strcmp (file->details->thumbnail_path, thumbnail_path) != 0) {
+		changed = TRUE;
+		g_free (file->details->thumbnail_path);
+		file->details->thumbnail_path = g_strdup (thumbnail_path);
+	}
+	
 	symlink_name = g_file_info_get_symlink_target (info);
 	if (eel_strcmp (file->details->symlink_name, symlink_name) != 0) {
 		changed = TRUE;
+		g_free (file->details->symlink_name);
+		file->details->symlink_name = g_strdup (symlink_name);
 	}
-	g_free (file->details->symlink_name);
-	file->details->symlink_name = g_strdup (symlink_name);
 
 	mime_type = g_file_info_get_content_type (info);
 	if (eel_strcmp (eel_ref_str_peek (file->details->mime_type), mime_type) != 0) {
@@ -1627,9 +1636,9 @@ update_info_internal (NautilusFile *file,
 	selinux_context = g_file_info_get_attribute_string (info, "selinux:context");
 	if (eel_strcmp (file->details->selinux_context, selinux_context) != 0) {
 		changed = TRUE;
+		g_free (file->details->selinux_context);
+		file->details->selinux_context = g_strdup (selinux_context);
 	}
-	g_free (file->details->selinux_context);
-	file->details->selinux_context = g_strdup (selinux_context);
 	
 	if (update_name) {
 		name = g_file_info_get_name (info);
@@ -3095,7 +3104,6 @@ nautilus_file_get_icon (NautilusFile *file,
 			int size,
 			NautilusFileIconFlags flags)
 {
-	GnomeThumbnailFactory *thumbnail_factory;
 	NautilusIconInfo *icon;
 	GIcon *gicon;
 	
@@ -3109,23 +3117,15 @@ nautilus_file_get_icon (NautilusFile *file,
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
 	    should_show_thumbnail (file)) {
 		GdkPixbuf *pixbuf;
-		char *thumbnail;
-		char *uri;
-		
-		thumbnail_factory = nautilus_icon_factory_get_thumbnail_factory ();
-		uri = nautilus_file_get_uri (file);
-
-		thumbnail = gnome_thumbnail_factory_lookup (thumbnail_factory, uri,
-							    file->details->mtime);
-		
-		g_free (uri);
-
-		if (thumbnail) {
-			pixbuf = gdk_pixbuf_new_from_file (thumbnail, NULL);
-			g_free (thumbnail);
-			icon = nautilus_icon_info_new_for_pixbuf (pixbuf);
-			g_object_unref (pixbuf);
-			return icon;
+		if (file->details->thumbnail_path != NULL) {		
+			pixbuf = gdk_pixbuf_new_from_file (file->details->thumbnail_path, NULL);
+			if (pixbuf) {
+				icon = nautilus_icon_info_new_for_pixbuf (pixbuf);
+				g_object_unref (pixbuf);
+				return icon;
+			}
+		} else {
+			/* TODO: Queue thumbnailing of file */
 		}
 	}
 

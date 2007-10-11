@@ -1,5 +1,11 @@
 2007-10-11  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+	Read thumbnail info from gio
+
+2007-10-11  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.c (nautilus_file_get_gicon):
 	Handle accept, visited and embedding text state and
 	rewrite the icon as needed.
