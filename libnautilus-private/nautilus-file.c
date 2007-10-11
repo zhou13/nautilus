@@ -3012,8 +3012,8 @@ mimetype_limited_by_size (const char *mime_type)
         return FALSE;
 }
 
-static gboolean
-should_show_thumbnail (NautilusFile *file)
+gboolean
+nautilus_file_should_show_thumbnail (NautilusFile *file)
 {
 	const char *mime_type;
 
@@ -3115,11 +3115,11 @@ nautilus_file_get_icon (NautilusFile *file,
 	}
 
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
-	    should_show_thumbnail (file)) {
+	    nautilus_file_should_show_thumbnail (file)) {
 		if (file->details->thumbnail) {
 			icon = nautilus_icon_info_new_for_pixbuf (file->details->thumbnail);
 			return icon;
-		} else if (file->details->thumbnail_path == NULL) {		
+		} else if (file->details->thumbnail_path == NULL) {
 			/* TODO: Queue thumbnailing of file */
 		}
 	}

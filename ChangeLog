@@ -1,5 +1,12 @@
 2007-10-11  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-directory-async.c:
+        Export nautilus_file_should_show_thumbnail and use it as needed in the
+	thumbnail reading code
+
+2007-10-11  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-attributes.h:
 	Add NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL attribute
 	

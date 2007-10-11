@@ -1693,7 +1693,8 @@ wants_extension_info (const Request *request)
 static gboolean
 lacks_thumbnail (NautilusFile *file)
 {
-	return file->details->thumbnail_path != NULL &&
+	return nautilus_file_should_show_thumbnail (file) &&
+		file->details->thumbnail_path != NULL &&
 		file->details->thumbnail_size != -1 &&
 		(file->details->thumbnail == NULL ||
 		 file->details->thumbnail_largest_requested_size > file->details->thumbnail_size);

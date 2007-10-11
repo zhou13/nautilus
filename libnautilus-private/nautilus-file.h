@@ -189,6 +189,7 @@ NautilusRequestStatus   nautilus_file_get_deep_counts                   (Nautilu
 									 guint                          *unreadable_directory_count,
 									 goffset               *total_size,
 									 gboolean                        force);
+gboolean                nautilus_file_should_show_thumbnail             (NautilusFile                   *file);
 gboolean                nautilus_file_should_show_directory_item_count  (NautilusFile                   *file);
 gboolean                nautilus_file_should_show_type                  (NautilusFile                   *file);
 GList *                 nautilus_file_get_keywords                      (NautilusFile                   *file);
