@@ -1439,25 +1439,25 @@ add_to_history_list (NautilusBookmark *bookmark)
 }
 
 void
-nautilus_remove_from_history_list_no_notify (const char *uri)
+nautilus_remove_from_history_list_no_notify (GFile *location)
 {
 	NautilusBookmark *bookmark;
 
-	bookmark = nautilus_bookmark_new (uri, "");
+	bookmark = nautilus_bookmark_new (location, "");
 	remove_from_history_list (bookmark);
 	g_object_unref (bookmark);
 }
 
 gboolean
-nautilus_add_to_history_list_no_notify (const char *uri,
+nautilus_add_to_history_list_no_notify (GFile *location,
 					const char *name,
 					gboolean has_custom_name,
-					const char *icon)
+					GIcon *icon)
 {
 	NautilusBookmark *bookmark;
 	gboolean ret;
 
-	bookmark = nautilus_bookmark_new_with_icon (uri, name, has_custom_name, icon);
+	bookmark = nautilus_bookmark_new_with_icon (location, name, has_custom_name, icon);
 	ret = add_to_history_list (bookmark);
 	g_object_unref (bookmark);
 

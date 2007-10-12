@@ -42,7 +42,6 @@
 #include <libgnomeui/gnome-help.h>
 #include <glade/glade.h>
 
-
 /* Static variables to keep track of window state. If there were
  * more than one bookmark-editing window, these would be struct or
  * class fields. 
@@ -783,15 +782,17 @@ update_bookmark_from_text (void)
 		GdkPixbuf *pixbuf;
 		guint selected_row;
 		GtkTreeIter iter;
+		GFile *location;
 
 		g_assert (GTK_IS_ENTRY (name_field));
 		g_assert (GTK_IS_ENTRY (uri_field));
 
-		bookmark = nautilus_bookmark_new
-			(gtk_entry_get_text (GTK_ENTRY (uri_field)),
-			 gtk_entry_get_text (GTK_ENTRY (name_field)));
-
-		nautilus_bookmark_set_has_custom_name (bookmark, name_text_changed);
+		location = g_file_new_for_uri (gtk_entry_get_text (GTK_ENTRY (uri_field)));
+		
+		bookmark = nautilus_bookmark_new_with_icon (location, gtk_entry_get_text (GTK_ENTRY (name_field)),
+							    name_text_changed, NULL);
+		
+		g_object_unref (location);
 
 		selected_row = get_selected_row ();
 

@@ -33,6 +33,7 @@
 #include <eel/eel-string.h>
 #include <gio/gfile.h>
 #include <gio/gfilemonitor.h>
+#include <gio/gthemedicon.h>
 
 #define MAX_BOOKMARK_LENGTH 80
 
@@ -57,8 +58,10 @@ new_bookmark_from_uri (const char *uri, const char *label)
 {
 	NautilusBookmark *new_bookmark;
 	NautilusFile *file;
-	char *name, *icon_name;
+	char *name;
+	GIcon *icon;
 	gboolean has_label;
+	GFile *location;
 
 	has_label = FALSE;
 	if (!label) { 
@@ -69,18 +72,22 @@ new_bookmark_from_uri (const char *uri, const char *label)
 	}
 
 	if (uri) {
-		file = nautilus_file_get_by_uri (uri);
-		icon_name = NULL;
+		location = g_file_new_for_uri (uri);
+		file = nautilus_file_get (location);
+		
+		icon = NULL;
 		if (nautilus_icon_factory_is_icon_ready_for_file (file)) {
-			icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);
+			icon = nautilus_file_get_gicon (file, 0);
 		}
-		if (!icon_name) {
-			icon_name = g_strdup ("gnome-fs-directory");
+		if (icon == NULL) {
+			icon = g_themed_icon_new ("gnome-fs-directory");
 		}
 
-		new_bookmark = nautilus_bookmark_new_with_icon (uri, name, has_label, icon_name);
+		new_bookmark = nautilus_bookmark_new_with_icon (location, name, has_label, icon);
+
+		g_object_unref (location);
 		nautilus_file_unref (file);
-		g_free (icon_name);
+		g_object_unref (icon);
 		g_free (name);
 
 		return new_bookmark;

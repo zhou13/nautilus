@@ -68,16 +68,17 @@ struct NautilusBookmarkClass {
 typedef struct NautilusBookmarkClass NautilusBookmarkClass;
 
 GType                 nautilus_bookmark_get_type               (void);
-NautilusBookmark *    nautilus_bookmark_new                    (const char            *uri,
+NautilusBookmark *    nautilus_bookmark_new                    (GFile                 *location,
 								const char            *name);
-NautilusBookmark *    nautilus_bookmark_new_with_icon          (const char            *uri,
+NautilusBookmark *    nautilus_bookmark_new_with_icon          (GFile                 *location,
 								const char            *name,
 								gboolean	       has_custom_name,
-								const char            *icon);
+								GIcon                 *icon);
 NautilusBookmark *    nautilus_bookmark_copy                   (NautilusBookmark      *bookmark);
 char *                nautilus_bookmark_get_name               (NautilusBookmark      *bookmark);
+GFile *               nautilus_bookmark_get_location           (NautilusBookmark      *bookmark);
 char *                nautilus_bookmark_get_uri                (NautilusBookmark      *bookmark);
-char *                nautilus_bookmark_get_icon               (NautilusBookmark      *bookmark);
+GIcon *               nautilus_bookmark_get_icon               (NautilusBookmark      *bookmark);
 gboolean	      nautilus_bookmark_get_has_custom_name    (NautilusBookmark      *bookmark);		
 gboolean              nautilus_bookmark_set_name               (NautilusBookmark      *bookmark,
 								const char            *new_name);

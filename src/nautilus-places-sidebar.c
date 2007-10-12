@@ -56,6 +56,7 @@
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
+#include <gio/gthemedicon.h>
 
 #include "nautilus-bookmark-list.h"
 #include "nautilus-places-sidebar.h"
@@ -188,7 +189,7 @@ static GtkTreeIter
 add_place (NautilusPlacesSidebar *sidebar,
 	   PlaceType place_type,
 	   const char *name,
-	   const char *icon,
+	   GIcon *icon,
 	   const char *uri,
 	   GnomeVFSDrive *drive,
 	   GnomeVFSVolume *volume,
@@ -196,8 +197,14 @@ add_place (NautilusPlacesSidebar *sidebar,
 {
 	GdkPixbuf            *pixbuf;
 	GtkTreeIter           iter, child_iter;
+	NautilusIconInfo *icon_info;
+	int icon_size;
 
-	pixbuf = nautilus_icon_factory_get_pixbuf_from_name_with_stock_size (icon, NULL, GTK_ICON_SIZE_MENU, NULL);
+	gtk_icon_size_lookup (GTK_ICON_SIZE_MENU, &icon_size, NULL);
+	icon_info = nautilus_icon_info_lookup (icon, icon_size);
+
+	pixbuf = nautilus_icon_info_get_pixbuf_at_size (icon_info, icon_size);
+	g_object_unref (icon_info);
 	gtk_list_store_append (sidebar->store, &iter);
 	gtk_list_store_set (sidebar->store, &iter,
 			    PLACES_SIDEBAR_COLUMN_ICON, pixbuf,
@@ -230,7 +237,9 @@ update_places (NautilusPlacesSidebar *sidebar)
 	GList		      *drives;
 	GnomeVFSDrive	      *drive;
 	int 		      bookmark_count, index;
-	char 		      *location, *icon, *mount_uri, *name, *desktop_path;
+	char 		      *location, *icon_name, *mount_uri, *name, *desktop_path;
+	GIcon *icon;
+	
 		
 	selection = gtk_tree_view_get_selection (sidebar->tree_view);
 	gtk_list_store_clear (sidebar->store);
@@ -244,9 +253,11 @@ update_places (NautilusPlacesSidebar *sidebar)
 
 		mount_uri = nautilus_get_home_directory_uri ();
 		display_name = g_filename_display_basename (g_get_home_dir ());
+		icon = g_themed_icon_new ("gnome-fs-home");
 		last_iter = add_place (sidebar, PLACES_BUILT_IN,
-				       display_name, "gnome-fs-home",
+				       display_name, icon,
 				       mount_uri, NULL, NULL, 0);
+		g_object_unref (icon);
 		g_free (display_name);
 		if (strcmp (location, mount_uri) == 0) {
 			gtk_tree_selection_select_iter (selection, &last_iter);
@@ -255,9 +266,11 @@ update_places (NautilusPlacesSidebar *sidebar)
 	}
 
 	mount_uri = g_filename_to_uri (desktop_path, NULL, NULL);
+	icon = g_themed_icon_new ("gnome-fs-desktop");
 	last_iter = add_place (sidebar, PLACES_BUILT_IN,
-			       _("Desktop"), "gnome-fs-desktop",
+			       _("Desktop"), icon,
 			       mount_uri, NULL, NULL, 0);
+	g_object_unref (icon);
 	if (strcmp (location, mount_uri) == 0) {
 		gtk_tree_selection_select_iter (selection, &last_iter);
 	}	
@@ -265,9 +278,11 @@ update_places (NautilusPlacesSidebar *sidebar)
 	g_free (desktop_path);
 	
  	mount_uri = "file:///"; /* No need to strdup */
+	icon = g_themed_icon_new ("gnome-dev-harddisk");
 	last_iter = add_place (sidebar, PLACES_BUILT_IN,
-			       _("File System"), "gnome-dev-harddisk",
+			       _("File System"), icon,
 			       mount_uri, NULL, NULL, 0);
+	g_object_unref (icon);
 	if (strcmp (location, mount_uri) == 0) {
 		gtk_tree_selection_select_iter (selection, &last_iter);
 	}
@@ -293,7 +308,8 @@ update_places (NautilusPlacesSidebar *sidebar)
 					gnome_vfs_volume_unref (volume);
 					continue;
 				}
-				icon = gnome_vfs_volume_get_icon (volume);
+				icon_name = gnome_vfs_volume_get_icon (volume);
+				icon = g_themed_icon_new (icon_name);
 				mount_uri = gnome_vfs_volume_get_activation_uri (volume);
 				name = gnome_vfs_volume_get_display_name (volume);
 				last_iter = add_place (sidebar, PLACES_MOUNTED_VOLUME,
@@ -303,7 +319,8 @@ update_places (NautilusPlacesSidebar *sidebar)
 					gtk_tree_selection_select_iter (selection, &last_iter);
 				}
 				gnome_vfs_volume_unref (volume);
-				g_free (icon);
+				g_object_unref (icon);
+				g_free (icon_name);
 				g_free (name);
 				g_free (mount_uri);
 			}
@@ -312,12 +329,14 @@ update_places (NautilusPlacesSidebar *sidebar)
 			/* The drive is unmounted but visible, add it.
 			 * This is for drives like floppy that can't be
 			 * auto-mounted */
-			icon = gnome_vfs_drive_get_icon (drive);
+			icon_name = gnome_vfs_drive_get_icon (drive);
+			icon = g_themed_icon_new (icon_name);
 			name = gnome_vfs_drive_get_display_name (drive);
 			last_iter = add_place (sidebar, PLACES_BUILT_IN,
 					       name, icon, NULL,
 					       drive, NULL, 0);
-			g_free (icon);
+			g_object_unref (icon);
+			g_free (icon_name);
 			g_free (name);
 		}		
 		gnome_vfs_drive_unref (drive);
@@ -336,7 +355,8 @@ update_places (NautilusPlacesSidebar *sidebar)
 			gnome_vfs_volume_unref (volume);
 			continue;
 		}
-		icon = gnome_vfs_volume_get_icon (volume);
+		icon_name = gnome_vfs_volume_get_icon (volume);
+		icon = g_themed_icon_new (icon_name);
 		mount_uri = gnome_vfs_volume_get_activation_uri (volume);
 		name = gnome_vfs_volume_get_display_name (volume);
 		last_iter = add_place (sidebar, PLACES_MOUNTED_VOLUME,
@@ -346,20 +366,23 @@ update_places (NautilusPlacesSidebar *sidebar)
 			gtk_tree_selection_select_iter (selection, &last_iter);
 		}
 		gnome_vfs_volume_unref (volume);
-		g_free (icon);
+		g_object_unref (icon);
+		g_free (icon_name);
 		g_free (name);
 		g_free (mount_uri);
 	}
 	g_list_free (volumes);
 
 	mount_uri = "trash:///"; /* No need to strdup */
-	icon = nautilus_trash_monitor_is_empty () ? "user-trash" : "user-trash-full";
+	icon_name = nautilus_trash_monitor_is_empty () ? "user-trash" : "user-trash-full";
+	icon = g_themed_icon_new (icon_name);
 	last_iter = add_place (sidebar, PLACES_BUILT_IN,
 			       _("Trash"), icon, mount_uri,
 			       NULL, NULL, 0);
 	if (strcmp (location, mount_uri) == 0) {
 		gtk_tree_selection_select_iter (selection, &last_iter);
 	}
+	g_object_unref (icon);
 
 	/* add separator */
 
@@ -388,7 +411,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 			gtk_tree_selection_select_iter (selection, &last_iter);
 		}
 		g_free (name);
-		g_free (icon);
+		g_object_unref (icon);
 		g_free (mount_uri);
 	}
 	g_free (location);
@@ -774,6 +797,8 @@ bookmarks_drop_uris (NautilusPlacesSidebar *sidebar,
 	char *uri, *name;
 	char **uris;
 	int i;
+	GFile *location;
+	GIcon *icon;
 	
 	uris = gtk_selection_data_get_uris (selection_data);
 	if (!uris)
@@ -789,17 +814,21 @@ bookmarks_drop_uris (NautilusPlacesSidebar *sidebar,
 		}
 
 		uri = nautilus_file_get_drop_target_uri (file);
+		location = g_file_new_for_uri (uri);
 		nautilus_file_unref (file);
 
 		name = nautilus_compute_title_for_uri (uri);
 
-		bookmark = nautilus_bookmark_new_with_icon (uri, name,
-							    FALSE, "gnome-fs-directory");
+		icon = g_themed_icon_new ("gnome-fs-directory");
+		bookmark = nautilus_bookmark_new_with_icon (location, name,
+							    FALSE, icon);
+		g_object_unref (icon);
 		
 		if (!nautilus_bookmark_list_contains (sidebar->bookmarks, bookmark)) {
 			nautilus_bookmark_list_insert_item (sidebar->bookmarks, bookmark, position++);
 		}
 
+		g_object_unref (location);
 		g_object_unref (bookmark);
 		g_free (name);
 		g_free (uri);

@@ -203,11 +203,11 @@ void               nautilus_window_set_viewed_file                       (Nautil
                                                                           NautilusFile      *file);
 void               nautilus_send_history_list_changed                    (void);
 void               nautilus_window_add_current_location_to_history_list  (NautilusWindow    *window);
-void               nautilus_remove_from_history_list_no_notify           (const char        *location);
-gboolean           nautilus_add_to_history_list_no_notify                (const char        *location,
+void               nautilus_remove_from_history_list_no_notify           (GFile             *location);
+gboolean           nautilus_add_to_history_list_no_notify                (GFile             *location,
 									  const char        *name,
 									  gboolean           has_custom_name,
-									  const char        *icon);
+									  GIcon            *icon);
 GList *            nautilus_get_history_list                             (void);
 void               nautilus_window_bookmarks_preference_changed_callback (gpointer           user_data);
 void		   nautilus_window_update_icon				 (NautilusWindow    *window);

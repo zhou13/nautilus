@@ -127,6 +127,7 @@ set_displayed_location (NautilusWindow *window, const char *location)
 {
         char *bookmark_uri;
         gboolean recreate;
+	GFile *loc;
         
         if (window->current_location_bookmark == NULL || location == NULL) {
                 recreate = TRUE;
@@ -142,8 +143,10 @@ set_displayed_location (NautilusWindow *window, const char *location)
                         g_object_unref (window->last_location_bookmark);
                 }
                 window->last_location_bookmark = window->current_location_bookmark;
+		loc = g_file_new_for_uri (location);
                 window->current_location_bookmark = (location == NULL) ? NULL
-                        : nautilus_bookmark_new (location, location);
+                        : nautilus_bookmark_new (loc, location);
+		g_object_unref (loc);
         }
         nautilus_window_update_title (window);
 	nautilus_window_update_icon (window);

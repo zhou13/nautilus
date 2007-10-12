@@ -3053,7 +3053,7 @@ nautilus_file_should_show_thumbnail (NautilusFile *file)
 	return FALSE;
 }
 
-static GIcon *
+GIcon *
 nautilus_file_get_gicon (NautilusFile *file,
 			 NautilusFileIconFlags flags)
 {

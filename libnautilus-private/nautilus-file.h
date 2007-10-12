@@ -356,6 +356,8 @@ char *                  nautilus_file_get_drop_target_uri               (Nautilu
 char *                  nautilus_file_get_custom_icon                   (NautilusFile                   *file);
 
 
+GIcon *                 nautilus_file_get_gicon                         (NautilusFile                   *file,
+									 NautilusFileIconFlags           flags);
 NautilusIconInfo *      nautilus_file_get_icon                          (NautilusFile                   *file,
 									 int                             size,
 									 NautilusFileIconFlags           flags);

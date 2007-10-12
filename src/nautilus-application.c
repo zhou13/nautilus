@@ -92,6 +92,9 @@
 #include <libnautilus-private/nautilus-signaller.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <bonobo-activation/bonobo-activation.h>
+#include <gio/gthemedicon.h>
+#include <gio/gfileicon.h>
+
 #ifdef HAVE_STARTUP_NOTIFICATION
 #define SN_API_NOT_YET_FROZEN Yes_i_know_DO_IT
 #include <libsn/sn-launchee.h>
@@ -1385,6 +1388,46 @@ removed_from_session (GnomeClient *client, gpointer data)
 }
 
 static char *
+icon_to_string (GIcon *icon)
+{
+	const char * const *names;
+	GFile *file;
+	
+	if (icon == NULL) {
+		return NULL;
+	} else if (G_IS_THEMED_ICON (icon)) {
+		names = g_themed_icon_get_names (G_THEMED_ICON (icon));
+		return g_strjoinv (":", (char **)names);		
+	} else if (G_IS_FILE_ICON (icon)) {
+		file = g_file_icon_get_file (G_FILE_ICON (icon));
+		return g_file_get_path (file);
+	}
+	return NULL;
+}
+
+static GIcon *
+icon_from_string (const char *string)
+{
+	GFile *file;
+	GIcon *icon;
+	gchar **names;
+	
+	if (g_path_is_absolute (string)) {
+		file = g_file_new_for_path (string);
+		icon = g_file_icon_new (file);
+		g_object_unref (file);
+		return icon;
+	} else {
+		names = g_strsplit (string, ":", 0);
+		icon = g_themed_icon_new_from_names (names, -1);
+		g_strfreev (names);
+		return icon;
+	}
+	return NULL;
+}
+
+
+static char *
 save_session_to_file (void)
 {
 	xmlDocPtr doc;
@@ -1406,6 +1449,7 @@ save_session_to_file (void)
 	for (l = nautilus_get_history_list (); l != NULL; l = l->next) {
 		NautilusBookmark *bookmark;
 		xmlNodePtr bookmark_node;
+		GIcon *icon;
 		char *tmp;
 
 		bookmark = l->data;
@@ -1416,9 +1460,13 @@ save_session_to_file (void)
 		xmlNewProp (bookmark_node, "name", tmp);
 		g_free (tmp);
 
-		tmp = nautilus_bookmark_get_icon (bookmark);
-		xmlNewProp (bookmark_node, "icon", tmp);
-		g_free (tmp);
+		icon = nautilus_bookmark_get_icon (bookmark);
+		tmp = icon_to_string (icon);
+		g_object_unref (icon);
+		if (tmp) {
+			xmlNewProp (bookmark_node, "icon", tmp);
+			g_free (tmp);
+		}
 
 		tmp = nautilus_bookmark_get_uri (bookmark);
 		xmlNewProp (bookmark_node, "uri", tmp);
@@ -1534,19 +1582,31 @@ nautilus_application_load_session (NautilusApplication *application,
 						if (!strcmp (bookmark_node->name, "text")) {
 							continue;
 						} else if (!strcmp (bookmark_node->name, "bookmark")) {
-							xmlChar *name, *icon, *uri;
+							xmlChar *name, *icon_str, *uri;
 							gboolean has_custom_name;
+							GIcon *icon;
+							GFile *location;
 
 							uri = xmlGetProp (bookmark_node, "uri");
 							name = xmlGetProp (bookmark_node, "name");
 							has_custom_name = xmlHasProp (bookmark_node, "has_custom_name") ? TRUE : FALSE;
-							icon = xmlGetProp (bookmark_node, "icon");
+							icon_str = xmlGetProp (bookmark_node, "icon");
+							icon = NULL;
+							if (icon_str) {
+								icon = icon_from_string (icon_str);
+							}
+							location = g_file_new_for_uri (uri);
 
-							emit_change |= nautilus_add_to_history_list_no_notify (uri, name, has_custom_name, icon);
+							emit_change |= nautilus_add_to_history_list_no_notify (location, name, has_custom_name, icon);
 
+							g_object_unref (location);
+
+							if (icon) {
+								g_object_unref (icon);
+							}
 							xmlFree (name);
 							xmlFree (uri);
-							xmlFree (icon);
+							xmlFree (icon_str);
 						} else {
 							g_message ("unexpected bookmark node %s while parsing %s", bookmark_node->name, filename);
 							bail = TRUE;

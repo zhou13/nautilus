@@ -427,7 +427,21 @@ GdkPixbuf *
 nautilus_icon_info_get_pixbuf_at_size (NautilusIconInfo  *icon,
 				       gsize              forced_size)
 {
-	return nautilus_icon_info_get_pixbuf (icon);
+	GdkPixbuf *pixbuf, *scaled_pixbuf;
+	int w, h, s;
+	double scale;
+
+	pixbuf = nautilus_icon_info_get_pixbuf (icon);
+
+	w = gdk_pixbuf_get_width (pixbuf);
+	h = gdk_pixbuf_get_height (pixbuf);
+	s = MAX (w, h);
+	scale = (double)forced_size / s;
+	scaled_pixbuf = gdk_pixbuf_scale_simple (pixbuf,
+						 w * scale, h * scale,
+						 GDK_INTERP_HYPER);
+	g_object_unref (pixbuf);
+	return scaled_pixbuf;
 }
 
 gboolean

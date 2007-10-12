@@ -1,5 +1,19 @@
 2007-10-12  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-bookmark.[ch]:
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-icon-info.c:
+        * src/nautilus-application.c:
+        * src/nautilus-bookmark-list.c:
+        * src/nautilus-bookmarks-window.c:
+        * src/nautilus-places-sidebar.c:
+        * src/nautilus-window-manage-views.c:
+        * src/nautilus-window-private.h:
+        * src/nautilus-window.c:
+	Convert bookmarks API to gio / GIcon
+
+2007-10-12  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.c:
         * libnautilus-private/nautilus-icon-container.c:
