@@ -3151,13 +3151,15 @@ nautilus_file_get_icon (NautilusFile *file,
 									 w * scale, h * scale,
 									 GDK_INTERP_HYPER);
 				nautilus_thumbnail_frame_image (&scaled_pixbuf);
+				
 				g_object_unref (raw_pixbuf);
 
 				if (modified_size > file->details->thumbnail_size) {
 					/* Invalidate if we resize upward (and the
 					   loaded was not the original raw version, w/ size 0).
 					*/
-					if (file->details->thumbnail_size != 0) {
+					if (file->details->thumbnail_size != 0 ||
+					    (modified_size > 128 && !file->details->thumbnail_tried_original)) {
 						nautilus_file_invalidate_attributes (file, NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL);
 					}
 					file->details->thumbnail_size = modified_size;

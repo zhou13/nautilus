@@ -84,6 +84,8 @@ struct ThumbnailState {
 	NautilusDirectory *directory;
 	GCancellable *cancellable;
 	NautilusFile *file;
+	gboolean trying_original;
+	gboolean tried_original;
 };
 
 struct DirectoryLoadState {
@@ -3596,9 +3598,11 @@ link_info_start (NautilusDirectory *directory,
 static void
 thumbnail_done (NautilusDirectory *directory,
 		NautilusFile *file,
-		GdkPixbuf *pixbuf)
+		GdkPixbuf *pixbuf,
+		gboolean tried_original)
 {
 	file->details->thumbnail_is_up_to_date = TRUE;
+	file->details->thumbnail_tried_original  = tried_original;
 	if (file->details->thumbnail) {
 		g_object_unref (file->details->thumbnail);
 		file->details->thumbnail = NULL;
@@ -3635,33 +3639,15 @@ thumbnail_stop (NautilusDirectory *directory)
 }
 
 static void
-thumbnail_got_data (NautilusDirectory *directory,
-		    NautilusFile *file,
-		    gboolean result,
-		    goffset file_len,
-		    char *file_contents)
+thumbnail_got_pixbuf (NautilusDirectory *directory,
+		      NautilusFile *file,
+		      GdkPixbuf *pixbuf,
+		      gboolean tried_original)
 {
-	GdkPixbuf *pixbuf;
-	GdkPixbufLoader *loader;
-	gboolean res;
-
 	nautilus_directory_ref (directory);
 
-	pixbuf = NULL;
-	/* Handle the case where we read the Nautilus link. */
-	if (result) {
-		loader = gdk_pixbuf_loader_new ();
-		
-		res = gdk_pixbuf_loader_write (loader, file_contents, file_len, NULL);
-		gdk_pixbuf_loader_close (loader, NULL);
-		if (res) {
-			pixbuf = g_object_ref (gdk_pixbuf_loader_get_pixbuf (loader));
-		}
-		g_object_unref (G_OBJECT (loader));
-	}
-
 	nautilus_file_ref (file);
-	thumbnail_done (directory, file, pixbuf);
+	thumbnail_done (directory, file, pixbuf, tried_original);
 	nautilus_file_changed (file);
 	nautilus_file_unref (file);
 	
@@ -3679,6 +3665,43 @@ thumbnail_state_free (ThumbnailState *state)
 	g_free (state);
 }
 
+static GdkPixbuf *
+get_pixbuf_for_content (goffset file_len,
+			char *file_contents)
+{
+	gboolean res;
+	GdkPixbuf *pixbuf, *pixbuf2;
+	GdkPixbufLoader *loader;
+	gsize chunk_len;
+	pixbuf = NULL;
+	
+	loader = gdk_pixbuf_loader_new ();
+
+	/* For some reason we have to write in chunks, or gdk-pixbuf fails */
+	res = TRUE;
+	while (res && file_len > 0) {
+		chunk_len = MIN (32*1024, file_len);
+		res = gdk_pixbuf_loader_write (loader, file_contents, chunk_len, NULL);
+		file_contents += chunk_len;
+		file_len -= chunk_len;
+	}
+	if (res) {
+		res = gdk_pixbuf_loader_close (loader, NULL);
+	}
+	if (res) {
+		pixbuf = g_object_ref (gdk_pixbuf_loader_get_pixbuf (loader));
+	}
+	g_object_unref (G_OBJECT (loader));
+
+	if (pixbuf) {
+		pixbuf2 = gdk_pixbuf_apply_embedded_orientation (pixbuf);
+		g_object_unref (pixbuf);
+		pixbuf = pixbuf2;
+	}
+	return pixbuf;
+}
+
+
 static void
 thumbnail_read_callback (GObject *source_object,
 			 GAsyncResult *res,
@@ -3689,6 +3712,8 @@ thumbnail_read_callback (GObject *source_object,
 	char *file_contents;
 	gboolean result;
 	NautilusDirectory *directory;
+	GdkPixbuf *pixbuf;
+	GFile *location;
 
 	state = user_data;
 
@@ -3705,14 +3730,29 @@ thumbnail_read_callback (GObject *source_object,
 					      &file_contents, &file_size,
 					      NULL, NULL);
 
-	state->directory->details->thumbnail_state = NULL;
-	async_job_end (state->directory, "thumbnail");
+	pixbuf = NULL;
+	if (result) {
+		pixbuf = get_pixbuf_for_content (file_size, file_contents);
+		g_free (file_contents);
+	}
 	
-	thumbnail_got_data (state->directory, state->file, result, file_size, file_contents);
+	if (pixbuf == NULL && state->trying_original) {
+		state->trying_original = FALSE;
 
-	g_free (file_contents);
+		location = g_file_new_for_path (state->file->details->thumbnail_path);
+		g_file_load_contents_async (location,
+					    state->cancellable,
+					    thumbnail_read_callback,
+					    state);
+		g_object_unref (location);
+	} else {
+		state->directory->details->thumbnail_state = NULL;
+		async_job_end (state->directory, "thumbnail");
+		
+		thumbnail_got_pixbuf (state->directory, state->file, pixbuf, state->tried_original);
 	
-	thumbnail_state_free (state);
+		thumbnail_state_free (state);
+	}
 	
 	nautilus_directory_unref (directory);
 }
@@ -3737,10 +3777,7 @@ thumbnail_start (NautilusDirectory *directory,
 	}
 	*doing_io = TRUE;
 
-	location = g_file_new_for_path (file->details->thumbnail_path);
-	
 	if (!async_job_start (directory, "thumbnail")) {
-		g_object_unref (location);
 		return;
 	}
 	
@@ -3748,6 +3785,14 @@ thumbnail_start (NautilusDirectory *directory,
 	state->directory = directory;
 	state->file = file;
 	state->cancellable = g_cancellable_new ();
+
+	if (file->details->thumbnail_size > 128) {
+		state->tried_original = TRUE;
+		state->trying_original = TRUE;
+		location = nautilus_file_get_location (file);
+	} else {
+		location = g_file_new_for_path (file->details->thumbnail_path);
+	}
 	
 	directory->details->thumbnail_state = state;
 	
