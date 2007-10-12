@@ -1,5 +1,11 @@
 2007-10-12  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+	Only invalidate thumbnails when sizing up, not
+	on the original scale from raw
+	
+2007-10-12  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.c:

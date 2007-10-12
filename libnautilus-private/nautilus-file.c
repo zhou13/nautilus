@@ -3154,10 +3154,15 @@ nautilus_file_get_icon (NautilusFile *file,
 				g_object_unref (raw_pixbuf);
 
 				if (modified_size > file->details->thumbnail_size) {
+					/* Invalidate if we resize upward (and the
+					   loaded was not the original raw version, w/ size 0).
+					*/
+					if (file->details->thumbnail_size != 0) {
+						nautilus_file_invalidate_attributes (file, NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL);
+					}
 					file->details->thumbnail_size = modified_size;
 					g_object_unref (file->details->thumbnail);
 					file->details->thumbnail = g_object_ref (scaled_pixbuf);
-					nautilus_file_invalidate_attributes (file, NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL);
 				}
 			}
 			
