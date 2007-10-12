@@ -83,6 +83,7 @@
 /* Time in seconds to cache getpwuid results */
 #define GETPWUID_CACHE_TIME (5*60)
 
+#define ICON_NAME_THUMBNAIL_LOADING   "image-loading"
 
 #undef NAUTILUS_FILE_DEBUG_REF
 #undef NAUTILUS_FILE_DEBUG_REF_VALGRIND
@@ -297,6 +298,7 @@ nautilus_file_clear_info (NautilusFile *file)
 
 	g_free (file->details->thumbnail_path);
 	file->details->thumbnail_path = NULL;
+	file->details->thumbnailing_failed = FALSE;
 	
 	file->details->is_symlink = FALSE;
 	file->details->is_hidden = FALSE;
@@ -1462,6 +1464,7 @@ update_info_internal (NautilusFile *file,
 	gboolean has_permissions;
 	GnomeVFSFilePermissions permissions;
 	gboolean can_read, can_write, can_execute, can_delete, can_rename;
+	gboolean thumbnailing_failed;
 	int uid, gid;
 	goffset size;
 	time_t atime, mtime, ctime;
@@ -1622,6 +1625,12 @@ update_info_internal (NautilusFile *file,
 		changed = TRUE;
 		g_free (file->details->thumbnail_path);
 		file->details->thumbnail_path = g_strdup (thumbnail_path);
+	}
+
+	thumbnailing_failed =  g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_THUMBNAILING_FAILED);
+	if (file->details->thumbnailing_failed != thumbnailing_failed) {
+		changed = TRUE;
+		file->details->thumbnailing_failed = thumbnailing_failed;
 	}
 	
 	symlink_name = g_file_info_get_symlink_target (info);
@@ -3171,12 +3180,21 @@ nautilus_file_get_icon (NautilusFile *file,
 			icon = nautilus_icon_info_new_for_pixbuf (scaled_pixbuf);
 			g_object_unref (scaled_pixbuf);
 			return icon;
-		} else if (file->details->thumbnail_path == NULL) {
-			/* TODO: Queue thumbnailing of file */
+		} else if (file->details->thumbnail_path == NULL &&
+			   !file->details->thumbnailing_failed &&
+			   !file->details->is_thumbnailing) {
+			if (nautilus_can_thumbnail (file)) {
+				nautilus_create_thumbnail (file);
+			}
 		}
 	}
 
-	gicon = nautilus_file_get_gicon (file, flags);
+	if (file->details->is_thumbnailing &&
+	    flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS)
+		gicon = g_themed_icon_new (ICON_NAME_THUMBNAIL_LOADING);
+	else
+		gicon = nautilus_file_get_gicon (file, flags);
+	
 	if (gicon) {
 		icon = nautilus_icon_info_lookup (gicon, size);
 		g_object_unref (gicon);

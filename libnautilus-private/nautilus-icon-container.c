@@ -5753,9 +5753,11 @@ sanitize_loading_thumbnail_image_size (NautilusIconContainer *container,
 		g_object_unref (*image);
 		*image = new_image;
 
-		for (i = 0; i < attach_points->num_points; i++) {
-			attach_points->points[i].x += x_offset;
-			attach_points->points[i].y += y_offset;
+		if (attach_points) {
+			for (i = 0; i < attach_points->num_points; i++) {
+				attach_points->points[i].x += x_offset;
+				attach_points->points[i].y += y_offset;
+			}
 		}
 
 		embedded_text_rect->x += x_offset;

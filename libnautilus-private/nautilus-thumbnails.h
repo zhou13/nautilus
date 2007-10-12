@@ -45,6 +45,7 @@ typedef void (* NautilusThumbnailAsyncLoadFunc) (NautilusThumbnailAsyncLoadHandl
 
 /* Returns NULL if there's no thumbnail yet. */
 void       nautilus_create_thumbnail                (NautilusFile *file);
+gboolean   nautilus_can_thumbnail                   (NautilusFile *file);
 void       nautilus_thumbnail_frame_image           (GdkPixbuf **pixbuf);
 GdkPixbuf *nautilus_thumbnail_unframe_image         (GdkPixbuf  *pixbuf);
 GdkPixbuf *nautilus_thumbnail_load_image            (const char *path,

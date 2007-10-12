@@ -686,7 +686,9 @@ thumbnail_thread_notify_file_changed (gpointer image_uri)
 
 	if (file != NULL) {
 		nautilus_file_set_is_thumbnailing (file, FALSE);
-		nautilus_file_changed (file);
+		nautilus_file_invalidate_attributes (file,
+						     NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL |
+						     NAUTILUS_FILE_ATTRIBUTE_INFO);
 		nautilus_file_unref (file);
 	}
 	g_free (image_uri);
@@ -694,6 +696,31 @@ thumbnail_thread_notify_file_changed (gpointer image_uri)
 	GDK_THREADS_LEAVE ();
 
 	return FALSE;
+}
+
+gboolean
+nautilus_can_thumbnail (NautilusFile *file)
+{
+	GnomeThumbnailFactory *factory;
+	gboolean res;
+	char *uri;
+	time_t mtime;
+	char *mime_type;
+		
+	uri = nautilus_file_get_uri (file);
+	mime_type = nautilus_file_get_mime_type (file);
+	mtime = nautilus_file_get_mtime (file);
+	
+	factory = nautilus_icon_factory_get_thumbnail_factory ();
+	res = gnome_thumbnail_factory_can_thumbnail (factory,
+						     uri,
+						     mime_type,
+						     mtime);
+	g_object_unref (factory);
+	g_free (mime_type);
+	g_free (uri);
+
+	return res;
 }
 
 void
