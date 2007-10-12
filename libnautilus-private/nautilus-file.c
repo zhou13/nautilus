@@ -3126,14 +3126,13 @@ nautilus_file_get_icon (NautilusFile *file,
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
 	    nautilus_file_should_show_thumbnail (file)) {
 		if (file->details->thumbnail) {
-			if (file->details->thumbnail_size == modified_size &&
-			    !file->details->thumbnail_is_raw) {
+			if (file->details->thumbnail_size == modified_size) {
 				scaled_pixbuf = g_object_ref (file->details->thumbnail);
 			} else {
 				int w, h, s;
 				double scale;
 				
-				if (file->details->thumbnail_is_raw) {
+				if (file->details->thumbnail_size == 0) {
 					raw_pixbuf = g_object_ref (file->details->thumbnail);
 				} else {
 					raw_pixbuf = nautilus_thumbnail_unframe_image (file->details->thumbnail);
@@ -3142,26 +3141,24 @@ nautilus_file_get_icon (NautilusFile *file,
 				w = gdk_pixbuf_get_width (raw_pixbuf);
 				h = gdk_pixbuf_get_height (raw_pixbuf);
 				
-				/* These compensates for frame size */
+				/* These compensates for frame size which will be added on the raw image */
 				s = MAX (NAUTILUS_THUMBNAIL_FRAME_LEFT + w + NAUTILUS_THUMBNAIL_FRAME_RIGHT,
 					 NAUTILUS_THUMBNAIL_FRAME_TOP + h + NAUTILUS_THUMBNAIL_FRAME_BOTTOM);
+				
 				scale = (double)modified_size / s;
 
 				scaled_pixbuf = gdk_pixbuf_scale_simple (raw_pixbuf,
 									 w * scale, h * scale,
 									 GDK_INTERP_HYPER);
 				nautilus_thumbnail_frame_image (&scaled_pixbuf);
-
 				g_object_unref (raw_pixbuf);
 
-				if (modified_size > file->details->thumbnail_largest_requested_size) {
-					file->details->thumbnail_largest_requested_size = modified_size;
+				if (modified_size > file->details->thumbnail_size) {
+					file->details->thumbnail_size = modified_size;
 					g_object_unref (file->details->thumbnail);
 					file->details->thumbnail = g_object_ref (scaled_pixbuf);
-					file->details->thumbnail_is_raw = FALSE;
+					nautilus_file_invalidate_attributes (file, NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL);
 				}
-
-				
 			}
 			
 			icon = nautilus_icon_info_new_for_pixbuf (scaled_pixbuf);

@@ -103,8 +103,7 @@ struct NautilusFileDetails
 	
 	char *thumbnail_path;
 	GdkPixbuf *thumbnail;
-	int thumbnail_size;
-	int thumbnail_largest_requested_size;
+	int thumbnail_size; /* 0 means original unframed thumbnail */
 	
 	GList *mime_list; /* If this is a directory, the list of MIME types in it. */
 	char *top_left_text;
@@ -173,7 +172,6 @@ struct NautilusFileDetails
 	eel_boolean_bit got_custom_display_name       : 1;
 
 	eel_boolean_bit thumbnail_is_up_to_date       : 1;
-	eel_boolean_bit thumbnail_is_raw              : 1;
 	
 	eel_boolean_bit is_thumbnailing               : 1;
 

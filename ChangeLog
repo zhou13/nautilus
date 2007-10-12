@@ -3,6 +3,14 @@
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.c:
+	Simplify thumbnail size handling and make it work.
+	Now handles resizing icons.
+
+2007-10-12  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
 	More exact handling of thumbnail up_to_date-ness, including
 	if loading a thumbnail fails.
 	Return thumbnails of the right size.

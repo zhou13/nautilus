@@ -1695,11 +1695,7 @@ lacks_thumbnail (NautilusFile *file)
 {
 	return nautilus_file_should_show_thumbnail (file) &&
 		file->details->thumbnail_path != NULL &&
-		(/* Either we haven't loaded the thumbnail (successfully or not) */
-		 !file->details->thumbnail_is_up_to_date ||
-		 /* Or we have loaded it, scaled it down and now its requested at a lower resolution */
-		 (file->details->thumbnail != NULL &&
-		  file->details->thumbnail_largest_requested_size > file->details->thumbnail_size));
+		!file->details->thumbnail_is_up_to_date;
 }
 
 static gboolean
@@ -3607,9 +3603,7 @@ thumbnail_done (NautilusDirectory *directory,
 		g_object_unref (file->details->thumbnail);
 		file->details->thumbnail = NULL;
 	}
-	file->details->thumbnail_is_raw = TRUE;
-	file->details->thumbnail_size = 128;
-	file->details->thumbnail_largest_requested_size = 0;
+	file->details->thumbnail_size = 0;
 	if (pixbuf) {
 		file->details->thumbnail = g_object_ref (pixbuf);
 	}
