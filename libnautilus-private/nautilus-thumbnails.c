@@ -256,10 +256,10 @@ nautilus_thumbnail_frame_image (GdkPixbuf **pixbuf)
 		return;
 	}
 	
-	left_offset = 3;
-	top_offset = 3;
-	right_offset = 6;
-	bottom_offset = 6;
+	left_offset = NAUTILUS_THUMBNAIL_FRAME_LEFT;
+	top_offset = NAUTILUS_THUMBNAIL_FRAME_TOP;
+	right_offset = NAUTILUS_THUMBNAIL_FRAME_RIGHT;
+	bottom_offset = NAUTILUS_THUMBNAIL_FRAME_BOTTOM;
 	
 	pixbuf_with_frame = eel_embed_image_in_frame
 		(*pixbuf, frame,
@@ -267,6 +267,43 @@ nautilus_thumbnail_frame_image (GdkPixbuf **pixbuf)
 	g_object_unref (*pixbuf);	
 
 	*pixbuf=pixbuf_with_frame;
+}
+
+GdkPixbuf *
+nautilus_thumbnail_unframe_image (GdkPixbuf *pixbuf)
+{
+	GdkPixbuf *pixbuf_without_frame, *frame;
+	int left_offset, top_offset, right_offset, bottom_offset;
+	int w, h;
+		
+	/* The pixbuf isn't already framed (i.e., it was not made by
+	 * an old Nautilus), so we must embed it in a frame.
+	 */
+
+	frame = nautilus_icon_factory_get_thumbnail_frame ();
+	if (frame == NULL) {
+		return NULL;
+	}
+	
+	left_offset = NAUTILUS_THUMBNAIL_FRAME_LEFT;
+	top_offset = NAUTILUS_THUMBNAIL_FRAME_TOP;
+	right_offset = NAUTILUS_THUMBNAIL_FRAME_RIGHT;
+	bottom_offset = NAUTILUS_THUMBNAIL_FRAME_BOTTOM;
+
+	w = gdk_pixbuf_get_width (pixbuf) - left_offset - right_offset;
+	h = gdk_pixbuf_get_height (pixbuf) - top_offset - bottom_offset;
+	pixbuf_without_frame =
+		gdk_pixbuf_new (gdk_pixbuf_get_colorspace (pixbuf),
+				gdk_pixbuf_get_has_alpha (pixbuf),
+				gdk_pixbuf_get_bits_per_sample (pixbuf),
+				w, h);
+
+	gdk_pixbuf_copy_area (pixbuf,
+			      left_offset, top_offset,
+			      w, h,
+			      pixbuf_without_frame, 0, 0);
+	
+	return pixbuf_without_frame;
 }
 
 typedef struct {

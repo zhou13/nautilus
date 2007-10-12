@@ -106,7 +106,6 @@ struct NautilusFileDetails
 	int thumbnail_size;
 	int thumbnail_largest_requested_size;
 	
-	
 	GList *mime_list; /* If this is a directory, the list of MIME types in it. */
 	char *top_left_text;
 
@@ -173,6 +172,9 @@ struct NautilusFileDetails
 	eel_boolean_bit link_info_is_up_to_date       : 1;
 	eel_boolean_bit got_custom_display_name       : 1;
 
+	eel_boolean_bit thumbnail_is_up_to_date       : 1;
+	eel_boolean_bit thumbnail_is_raw              : 1;
+	
 	eel_boolean_bit is_thumbnailing               : 1;
 
 	eel_boolean_bit has_volume                    : 1;

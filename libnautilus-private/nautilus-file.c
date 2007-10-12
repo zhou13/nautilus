@@ -297,6 +297,7 @@ nautilus_file_clear_info (NautilusFile *file)
 
 	g_free (file->details->thumbnail_path);
 	file->details->thumbnail_path = NULL;
+	
 	file->details->is_symlink = FALSE;
 	file->details->is_hidden = FALSE;
 	file->details->is_backup = FALSE;
@@ -632,6 +633,10 @@ finalize (GObject *object)
 	g_free (file->details->custom_icon);
 	g_free (file->details->activation_uri);
 	g_free (file->details->compare_by_emblem_cache);
+
+	if (file->details->thumbnail) {
+		g_object_unref (file->details->thumbnail);
+	}
 	
 	eel_g_list_free_deep (file->details->mime_list);
 
@@ -3106,6 +3111,8 @@ nautilus_file_get_icon (NautilusFile *file,
 {
 	NautilusIconInfo *icon;
 	GIcon *gicon;
+	GdkPixbuf *raw_pixbuf, *scaled_pixbuf;
+	int modified_size;
 	
 	gicon = get_custom_icon (file);
 	if (gicon) {
@@ -3114,10 +3121,51 @@ nautilus_file_get_icon (NautilusFile *file,
 		return icon;
 	}
 
+	modified_size = size * NAUTILUS_ICON_SIZE_THUMBNAIL / NAUTILUS_ICON_SIZE_STANDARD; 
+
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
 	    nautilus_file_should_show_thumbnail (file)) {
 		if (file->details->thumbnail) {
-			icon = nautilus_icon_info_new_for_pixbuf (file->details->thumbnail);
+			if (file->details->thumbnail_size == modified_size &&
+			    !file->details->thumbnail_is_raw) {
+				scaled_pixbuf = g_object_ref (file->details->thumbnail);
+			} else {
+				int w, h, s;
+				double scale;
+				
+				if (file->details->thumbnail_is_raw) {
+					raw_pixbuf = g_object_ref (file->details->thumbnail);
+				} else {
+					raw_pixbuf = nautilus_thumbnail_unframe_image (file->details->thumbnail);
+				}
+
+				w = gdk_pixbuf_get_width (raw_pixbuf);
+				h = gdk_pixbuf_get_height (raw_pixbuf);
+				
+				/* These compensates for frame size */
+				s = MAX (NAUTILUS_THUMBNAIL_FRAME_LEFT + w + NAUTILUS_THUMBNAIL_FRAME_RIGHT,
+					 NAUTILUS_THUMBNAIL_FRAME_TOP + h + NAUTILUS_THUMBNAIL_FRAME_BOTTOM);
+				scale = (double)modified_size / s;
+
+				scaled_pixbuf = gdk_pixbuf_scale_simple (raw_pixbuf,
+									 w * scale, h * scale,
+									 GDK_INTERP_HYPER);
+				nautilus_thumbnail_frame_image (&scaled_pixbuf);
+
+				g_object_unref (raw_pixbuf);
+
+				if (modified_size > file->details->thumbnail_largest_requested_size) {
+					file->details->thumbnail_largest_requested_size = modified_size;
+					g_object_unref (file->details->thumbnail);
+					file->details->thumbnail = g_object_ref (scaled_pixbuf);
+					file->details->thumbnail_is_raw = FALSE;
+				}
+
+				
+			}
+			
+			icon = nautilus_icon_info_new_for_pixbuf (scaled_pixbuf);
+			g_object_unref (scaled_pixbuf);
 			return icon;
 		} else if (file->details->thumbnail_path == NULL) {
 			/* TODO: Queue thumbnailing of file */
@@ -5882,6 +5930,12 @@ invalidate_link_info (NautilusFile *file)
 	file->details->link_info_is_up_to_date = FALSE;
 }
 
+static void
+invalidate_thumbnail (NautilusFile *file)
+{
+	file->details->thumbnail_is_up_to_date = FALSE;
+}
+
 void
 nautilus_file_invalidate_extension_info_internal (NautilusFile *file)
 {
@@ -5935,6 +5989,9 @@ nautilus_file_invalidate_attributes_internal (NautilusFile *file,
 	}
 	if (request.extension_info) {
 		nautilus_file_invalidate_extension_info_internal (file);
+	}
+	if (request.thumbnail) {
+		invalidate_thumbnail (file);
 	}
 
 	/* FIXME bugzilla.gnome.org 45075: implement invalidating metadata */
