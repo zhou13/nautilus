@@ -1,5 +1,17 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-icon-info.[ch]:
+        Add nautilus_icon_info_lookup_from_name
+	
+        * libnautilus-private/nautilus-ui-utilities.c:
+        * src/nautilus-desktop-window.c:
+        * src/nautilus-navigation-window.c:
+        * src/nautilus-pathbar.c:
+	Use nautilus_icon_info_lookup_from_name to get less
+	code
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * src/nautilus-pathbar.c:
         * src/nautilus-spatial-window.c:
 	Convert more stuff to new icon API

@@ -1018,7 +1018,6 @@ get_icon_for_file_path (const char *file_path, const char *default_icon_name)
 {
 	NautilusFile *file;
 	NautilusIconInfo *info;
-	GIcon *icon;
 	GdkPixbuf *pixbuf;
 
 	file = nautilus_file_get_by_uri (file_path);
@@ -1034,9 +1033,7 @@ get_icon_for_file_path (const char *file_path, const char *default_icon_name)
 
 	nautilus_file_unref (file);
 
-	icon = g_themed_icon_new (default_icon_name);
-	info = nautilus_icon_info_lookup (icon, NAUTILUS_PATH_BAR_ICON_SIZE);
-	g_object_unref (icon);
+	info = nautilus_icon_info_lookup_from_name (default_icon_name, NAUTILUS_PATH_BAR_ICON_SIZE);
 	pixbuf = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_PATH_BAR_ICON_SIZE);
 	g_object_unref (info);
 	

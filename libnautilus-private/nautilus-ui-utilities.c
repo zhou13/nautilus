@@ -121,7 +121,6 @@ nautilus_action_from_menu_item (NautilusMenuItem *item)
 	gboolean sensitive, priority;
 	GtkAction *action;
 	GdkPixbuf *pixbuf;
-	GIcon *icon;
 	NautilusIconInfo *info;
 	
 	g_object_get (G_OBJECT (item), 
@@ -137,10 +136,8 @@ nautilus_action_from_menu_item (NautilusMenuItem *item)
 				 icon_name);
 	
 	if (icon_name != NULL) {
-		icon = g_themed_icon_new (icon_name);
-		info = nautilus_icon_info_lookup (icon,
-						  nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU));
-		g_object_unref (icon);
+		info = nautilus_icon_info_lookup_from_name (icon_name,
+							    nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU));
 
 		pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info,
 									  nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU));
@@ -175,7 +172,6 @@ nautilus_toolbar_action_from_menu_item (NautilusMenuItem *item)
 	gboolean sensitive, priority;
 	GtkAction *action;
 	GdkPixbuf *pixbuf;
-	GIcon *icon;
 	NautilusIconInfo *info;
 	
 	g_object_get (G_OBJECT (item), 
@@ -191,9 +187,7 @@ nautilus_toolbar_action_from_menu_item (NautilusMenuItem *item)
 				 icon_name);
 	
 	if (icon_name != NULL) {
-		icon = g_themed_icon_new (icon_name);
-		info = nautilus_icon_info_lookup (icon, 24);
-		g_object_unref (icon);
+		info = nautilus_icon_info_lookup_from_name (icon_name, 24);
 
 		pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info, 24);
 		if (pixbuf != NULL) {

@@ -937,13 +937,7 @@ real_set_title (NautilusWindow *window, const char *title)
 static NautilusIconInfo *
 real_get_icon (NautilusWindow *window)
 {
-	GIcon *icon;
-	NautilusIconInfo *info;
-
-	icon = g_themed_icon_new ("file-manager");
-	info = nautilus_icon_info_lookup (icon, 48);
-	g_object_unref (icon);
-	return info;
+	return nautilus_icon_info_lookup_from_name ("file-manager", 48);
 }
 
 static void

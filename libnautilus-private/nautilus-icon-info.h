@@ -54,6 +54,8 @@ GType    nautilus_icon_info_get_type (void) G_GNUC_CONST;
 NautilusIconInfo *    nautilus_icon_info_new_for_pixbuf               (GdkPixbuf         *pixbuf);
 NautilusIconInfo *    nautilus_icon_info_lookup                       (GIcon             *icon,
 								       int                size);
+NautilusIconInfo *    nautilus_icon_info_lookup_from_name             (const char        *name,
+								       int                size);
 GdkPixbuf *           nautilus_icon_info_get_pixbuf                   (NautilusIconInfo  *icon);
 GdkPixbuf *           nautilus_icon_info_get_pixbuf_nodefault         (NautilusIconInfo  *icon);
 GdkPixbuf *           nautilus_icon_info_get_pixbuf_nodefault_at_size (NautilusIconInfo  *icon,

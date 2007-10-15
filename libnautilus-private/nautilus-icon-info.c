@@ -412,6 +412,20 @@ nautilus_icon_info_lookup (GIcon *icon,
 	return nautilus_icon_info_new_for_pixbuf (NULL);
 }
 
+NautilusIconInfo *
+nautilus_icon_info_lookup_from_name (const char *name,
+				     int size)
+{
+	GIcon *icon;
+	NautilusIconInfo *info;
+	
+	icon = g_themed_icon_new (name);
+	info = nautilus_icon_info_lookup (icon, size);
+	g_object_unref (icon);
+	return info;
+}
+
+
 GdkPixbuf *
 nautilus_icon_info_get_pixbuf_nodefault (NautilusIconInfo  *icon)
 {
