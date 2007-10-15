@@ -1,5 +1,10 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-file.c (nautilus_file_get_all_attributes):
+	Add thumbnail to all attributes
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.h:
 	Add NAUTILUS_FILE_ATTRIBUTES_FOR_ICON
 	
