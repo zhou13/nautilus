@@ -486,7 +486,7 @@ add_emblem (NautilusSidebarTitle *sidebar_title, GdkPixbuf *pixbuf)
 static void
 update_emblems (NautilusSidebarTitle *sidebar_title)
 {
-	GList *icons, *p;
+	GList *pixbufs, *p;
 	GdkPixbuf *pixbuf;
 
 	/* exit if we don't have the file yet */
@@ -500,22 +500,18 @@ update_emblems (NautilusSidebarTitle *sidebar_title)
 			       NULL);
 
 	/* fetch the emblem icons from metadata */
-	icons = nautilus_icon_factory_get_emblem_icons_for_file (sidebar_title->details->file, NULL);
+	pixbufs = nautilus_file_get_emblem_pixbufs (sidebar_title->details->file,
+						    nautilus_icon_get_emblem_size_for_icon_size (NAUTILUS_ICON_SIZE_STANDARD),
+						    FALSE,
+						    NULL);
 
 	/* loop through the list of emblems, installing them in the box */
-	for (p = icons; p != NULL; p = p->next) {
-		pixbuf = nautilus_icon_factory_get_pixbuf_for_icon
-			(p->data, NULL,
-			 nautilus_icon_get_emblem_size_for_icon_size (NAUTILUS_ICON_SIZE_STANDARD),
-			 NULL, NULL,
-			 FALSE, FALSE, NULL);
-		if (pixbuf != NULL) {
-			add_emblem (sidebar_title, pixbuf);
-			g_object_unref (pixbuf);
-		}
+	for (p = pixbufs; p != NULL; p = p->next) {
+		pixbuf = p->data;
+		add_emblem (sidebar_title, pixbuf);
+		g_object_unref (pixbuf);
 	}
-	
-	eel_g_list_free_deep (icons);
+	g_list_free (pixbufs);
 }
 
 /* return the filename text */

@@ -1123,7 +1123,7 @@ nautilus_icon_factory_get_emblem_icons_for_file (NautilusFile *file,
 
 	icons = NULL;
 
-	emblem_names = nautilus_file_get_emblem_names (file);
+	emblem_names = NULL; /*nautilus_file_get_emblem_names (file); */
 	for (node = emblem_names; node != NULL; node = node->next) {
 		name = node->data;
 		if (strcmp (name, NAUTILUS_FILE_EMBLEM_NAME_TRASH) == 0) {

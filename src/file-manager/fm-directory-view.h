@@ -225,7 +225,7 @@ struct FMDirectoryViewClass {
 	 * be displayed with each file. By default, all emblems returned by
 	 * NautilusFile are displayed.
 	 */
-	EelStringList * (* get_emblem_names_to_exclude)	(FMDirectoryView *view);
+	char ** (* get_emblem_names_to_exclude)	(FMDirectoryView *view);
 
 	/* file_limit_reached is a function pointer that subclasses may
 	 * override to control what happens when a directory is loaded
@@ -384,7 +384,7 @@ void                fm_directory_view_queue_file_change                (FMDirect
 									NautilusFile     *file);
 void                fm_directory_view_notify_selection_changed         (FMDirectoryView  *view);
 GtkUIManager *      fm_directory_view_get_ui_manager                   (FMDirectoryView  *view);
-EelStringList *     fm_directory_view_get_emblem_names_to_exclude      (FMDirectoryView  *view);
+char **             fm_directory_view_get_emblem_names_to_exclude      (FMDirectoryView  *view);
 NautilusDirectory  *fm_directory_view_get_model                        (FMDirectoryView  *view);
 GtkWindow	   *fm_directory_view_get_containing_window	       (FMDirectoryView  *view);
 NautilusFile       *fm_directory_view_get_directory_as_file            (FMDirectoryView  *view);

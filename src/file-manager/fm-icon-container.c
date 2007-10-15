@@ -56,7 +56,7 @@ static NautilusIconInfo *
 fm_icon_container_get_icon_images (NautilusIconContainer *container,
 				   NautilusIconData      *data,
 				   int                    size,
-				   GList                **emblem_icons,
+				   GList                **emblem_pixbufs,
 				   char                 **embedded_text,
 				   gboolean               for_drag_accept,
 				   gboolean               need_large_embeddded_text,
@@ -64,10 +64,11 @@ fm_icon_container_get_icon_images (NautilusIconContainer *container,
 				   gboolean              *has_window_open)
 {
 	FMIconView *icon_view;
-	EelStringList *emblems_to_ignore;
+	char **emblems_to_ignore;
 	NautilusFile *file;
 	gboolean use_embedding;
 	NautilusFileIconFlags flags;
+	guint emblem_size;
 
 	file = (NautilusFile *) data;
 
@@ -81,12 +82,16 @@ fm_icon_container_get_icon_images (NautilusIconContainer *container,
 		use_embedding = *embedded_text != NULL;
 	}
 	
-	if (emblem_icons != NULL) {
+	if (emblem_pixbufs != NULL) {
+		emblem_size = nautilus_icon_get_emblem_size_for_icon_size (size);
+		
 		emblems_to_ignore = fm_directory_view_get_emblem_names_to_exclude 
 			(FM_DIRECTORY_VIEW (icon_view));
-		*emblem_icons = nautilus_icon_factory_get_emblem_icons_for_file
-			(file, emblems_to_ignore);
-		eel_string_list_free (emblems_to_ignore);
+		*emblem_pixbufs = nautilus_file_get_emblem_pixbufs (file,
+								    emblem_size,
+								    FALSE,
+								    emblems_to_ignore);
+		g_strfreev (emblems_to_ignore);
 	}
 
 	*has_window_open = nautilus_file_has_open_window (file);

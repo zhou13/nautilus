@@ -2077,8 +2077,8 @@ file_has_note (NautilusFile *file)
 }
 
 static GList *
-prepend_automatic_emblem_names (NautilusFile *file,
-				GList *names)
+prepend_automatic_keywords (NautilusFile *file,
+			    GList *names)
 {
 	/* Prepend in reverse order. */
 
@@ -5271,7 +5271,7 @@ nautilus_file_is_mime_type (NautilusFile *file, const char *mime_type)
 }
 
 /**
- * nautilus_file_get_emblem_names
+ * nautilus_file_get_emblem_icons
  * 
  * Return the list of names of emblems that this file should display,
  * in canonical order.
@@ -5281,16 +5281,101 @@ nautilus_file_is_mime_type (NautilusFile *file, const char *mime_type)
  * 
  **/
 GList *
-nautilus_file_get_emblem_names (NautilusFile *file)
+nautilus_file_get_emblem_icons (NautilusFile *file,
+				char **exclude)
 {
+	GList *keywords, *l;
+	GList *icons;
+	char *icon_name;
+	char *keyword;
+	int i;
+	GIcon *icon;
+	
 	if (file == NULL) {
 		return NULL;
 	}
 	
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
+
+	keywords = nautilus_file_get_keywords (file);
+	keywords = prepend_automatic_keywords (file, keywords);
+
+	icons = NULL;
+	for (l = keywords; l != NULL; l = l->next) {
+		keyword = l->data;
+		
+#ifdef TRASH_IS_FAST_ENOUGH
+		if (strcmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_TRASH) == 0) {
+			char *uri;
+			gboolean file_is_trash;
+			/* Leave out the trash emblem for the trash itself, since
+			 * putting a trash emblem on a trash icon is gilding the
+			 * lily.
+			 */
+			uri = nautilus_file_get_uri (file);
+			file_is_trash = strcmp (uri, EEL_TRASH_URI) == 0;
+			g_free (uri);
+			if (file_is_trash) {
+				continue;
+			}
+		}
+#endif
+		if (exclude) {
+			for (i = 0; exclude[i] != NULL; i++) {
+				if (strcmp (exclude[i], keyword) == 0) {
+					continue;
+				}
+			}
+		}
+		
+		icon_name = nautilus_icon_get_emblem_icon_by_name (keyword);
+		icon = g_themed_icon_new (icon_name);
+		g_free (icon_name);
+		icons = g_list_prepend (icons, icon);
+	}
 	
-	return prepend_automatic_emblem_names
-		(file, nautilus_file_get_keywords (file));
+	eel_g_list_free_deep (keywords);
+	
+	return icons;
+}
+
+GList *
+nautilus_file_get_emblem_pixbufs (NautilusFile *file,
+				  int size,
+				  gboolean force_size,
+				  char **exclude)
+{
+	GList *icons, *l;
+	GList *pixbufs;
+	GIcon *icon;
+	GdkPixbuf *pixbuf;
+	NautilusIconInfo *icon_info;
+
+	icons = nautilus_file_get_emblem_icons (file, exclude);
+	pixbufs = NULL;
+
+	for (l = icons; l != NULL; l = l->next) {
+		icon = l->data;
+
+		icon_info = nautilus_icon_info_lookup (icon, size);
+		if (force_size) {
+			pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (icon_info, size);
+		} else {
+			pixbuf = nautilus_icon_info_get_pixbuf_nodefault (icon_info);
+		}
+		
+		if (pixbuf) {
+			pixbufs = g_list_prepend (pixbufs, pixbuf);
+		}
+		
+		
+		g_object_unref (icon);
+	}
+	g_list_free (icons);
+
+	return g_list_reverse (pixbufs);
+
+	
 }
 
 static GList *

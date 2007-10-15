@@ -8918,7 +8918,7 @@ metadata_for_files_in_directory_ready_callback (NautilusDirectory *directory,
 	finish_loading_if_all_metadata_loaded (view);
 }
 
-EelStringList *
+char **
 fm_directory_view_get_emblem_names_to_exclude (FMDirectoryView *view)
 {
 	g_return_val_if_fail (FM_IS_DIRECTORY_VIEW (view), NULL);
@@ -8928,28 +8928,26 @@ fm_directory_view_get_emblem_names_to_exclude (FMDirectoryView *view)
 		 get_emblem_names_to_exclude, (view));
 }
 
-static void
-fm_directory_view_add_relative_emblems_to_exclude (FMDirectoryView *view,
-						   EelStringList *list)
-{
-	if (!nautilus_file_can_write (view->details->directory_as_file)) {
-		eel_string_list_prepend (list, NAUTILUS_FILE_EMBLEM_NAME_CANT_WRITE);
-		eel_string_list_remove_duplicates (list);
-	}
-}
-
-static EelStringList *
+static char **
 real_get_emblem_names_to_exclude (FMDirectoryView *view)
 {
-	EelStringList *list;
+	char **excludes;
+	int i;
 	
 	g_assert (FM_IS_DIRECTORY_VIEW (view));
 
-	list = eel_string_list_new_from_string (NAUTILUS_FILE_EMBLEM_NAME_TRASH, TRUE);
+	excludes = g_new (char *, 3);
+	
+	i = 0;
+	excludes[i++] = g_strdup (NAUTILUS_FILE_EMBLEM_NAME_TRASH);
 
-	fm_directory_view_add_relative_emblems_to_exclude (view, list);
+	if (!nautilus_file_can_write (view->details->directory_as_file)) {
+		excludes[i++] = g_strdup (NAUTILUS_FILE_EMBLEM_NAME_CANT_WRITE);
+	}
 
-	return list;
+	excludes[i++] = NULL;
+
+	return excludes;
 }
 
 /**

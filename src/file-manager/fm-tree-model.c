@@ -30,6 +30,7 @@
 #include "fm-tree-model.h"
 
 #include <eel/eel-glib-extensions.h>
+#include <eel/eel-gdk-pixbuf-extensions.h>
 #include <glib/gi18n.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
@@ -289,29 +290,34 @@ static GdkPixbuf *
 tree_node_get_emblem_pixbuf_from_factory (TreeNode *node)
 {
 	GdkPixbuf *pixbuf;
-	GList *emblem_icons;
-	EelStringList *emblems_to_ignore;
-
-	emblems_to_ignore = eel_string_list_new_from_string (NAUTILUS_FILE_EMBLEM_NAME_TRASH, TRUE);
+	GList *emblem_pixbufs;
+	char *emblems_to_ignore[3];
+	int i;
+	
+	i = 0;
+	emblems_to_ignore[i++] = NAUTILUS_FILE_EMBLEM_NAME_TRASH;
+	
 	if (node->parent && node->parent->file) {
 		if (!nautilus_file_can_write (node->parent->file)) {
-			eel_string_list_prepend (emblems_to_ignore, NAUTILUS_FILE_EMBLEM_NAME_CANT_WRITE);
+			emblems_to_ignore[i++] = NAUTILUS_FILE_EMBLEM_NAME_CANT_WRITE;
 		}
 	}
-	emblem_icons = nautilus_icon_factory_get_emblem_icons_for_file
-		(node->file, emblems_to_ignore);
-	eel_string_list_free (emblems_to_ignore);
+	
+	emblems_to_ignore[i++] = NULL;
 
-	if (emblem_icons != NULL) {
-		pixbuf = nautilus_icon_factory_get_pixbuf_for_icon_with_stock_size
-			(emblem_icons->data, NULL,
-			 GTK_ICON_SIZE_MENU,
-			 NULL, NULL, FALSE, NULL);
+	emblem_pixbufs = nautilus_file_get_emblem_pixbufs (node->file,
+							   nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU),
+							   TRUE,
+							   emblems_to_ignore);
+	
+
+	if (emblem_pixbufs != NULL) {
+		pixbuf = g_object_ref (emblem_pixbufs->data);
 	} else {
 		pixbuf = NULL;
 	}
 
-	eel_g_list_free_deep (emblem_icons);
+	eel_gdk_pixbuf_list_free (emblem_pixbufs);
 
 	return pixbuf;
 }
