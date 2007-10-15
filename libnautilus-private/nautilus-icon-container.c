@@ -5736,7 +5736,7 @@ nautilus_icon_container_update_icon (NautilusIconContainer *container,
 	
 	icon_size = MAX (nautilus_get_icon_size_for_zoom_level (container->details->zoom_level)
 			 * icon->scale, NAUTILUS_ICON_SIZE_SMALLEST);
-	emblem_size = nautilus_icon_factory_get_emblem_size_for_icon_size (icon_size);
+	emblem_size = nautilus_icon_get_emblem_size_for_icon_size (icon_size);
 	if (emblem_size != 0) {
 		for (p = emblem_icon_names; p != NULL; p = p->next) {
 			emblem_pixbuf = nautilus_icon_factory_get_pixbuf_for_icon

@@ -287,9 +287,9 @@ get_best_icon_size (NautilusSidebarTitle *sidebar_title)
 
 	if (width < 0) {
 		/* use smallest available icon size */
-		return nautilus_icon_factory_get_smaller_icon_size (0);
+		return nautilus_icon_get_smaller_icon_size (0);
 	} else {
-		return nautilus_icon_factory_get_smaller_icon_size ((guint) width);
+		return nautilus_icon_get_smaller_icon_size ((guint) width);
 	}
 }
 
@@ -506,7 +506,7 @@ update_emblems (NautilusSidebarTitle *sidebar_title)
 	for (p = icons; p != NULL; p = p->next) {
 		pixbuf = nautilus_icon_factory_get_pixbuf_for_icon
 			(p->data, NULL,
-			 nautilus_icon_factory_get_emblem_size_for_icon_size (NAUTILUS_ICON_SIZE_STANDARD),
+			 nautilus_icon_get_emblem_size_for_icon_size (NAUTILUS_ICON_SIZE_STANDARD),
 			 NULL, NULL,
 			 FALSE, FALSE, NULL);
 		if (pixbuf != NULL) {

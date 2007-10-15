@@ -1112,31 +1112,6 @@ nautilus_icon_factory_is_icon_ready_for_file (NautilusFile *file)
 	return result;
 }
 
-char *
-nautilus_icon_factory_get_emblem_icon_by_name (const char *emblem_name)
-{
-	char *name_with_prefix;
-
-	name_with_prefix = g_strconcat (NAUTILUS_EMBLEM_NAME_PREFIX, emblem_name, NULL);
-
-	return name_with_prefix;
-}
-
-guint
-nautilus_icon_factory_get_emblem_size_for_icon_size (guint size)
-{
-	if (size >= 96)
-		return 48;
-	if (size >= 64)
-		return 32;
-	if (size >= 48)
-		return 24;
-	if (size >= 32)
-		return 16;
-	
-	return 0; /* no emblems for smaller sizes */
-}
-
 GList *
 nautilus_icon_factory_get_emblem_icons_for_file (NautilusFile *file,
 						 EelStringList *exclude)
@@ -1166,7 +1141,7 @@ nautilus_icon_factory_get_emblem_icons_for_file (NautilusFile *file,
 		if (eel_string_list_contains (exclude, name)) {
 			continue;
 		}
-		icon = nautilus_icon_factory_get_emblem_icon_by_name (name);
+		icon = nautilus_icon_get_emblem_icon_by_name (name);
 		icons = g_list_prepend (icons, icon);
 	}
 	eel_g_list_free_deep (emblem_names);
@@ -1174,53 +1149,6 @@ nautilus_icon_factory_get_emblem_icons_for_file (NautilusFile *file,
 	return g_list_reverse (icons);
 }
 
-guint
-nautilus_icon_factory_get_larger_icon_size (guint size)
-{
-	if (size < NAUTILUS_ICON_SIZE_SMALLEST) {
-		return NAUTILUS_ICON_SIZE_SMALLEST;
-	}
-	if (size < NAUTILUS_ICON_SIZE_SMALLER) {
-		return NAUTILUS_ICON_SIZE_SMALLER;
-	}
-	if (size < NAUTILUS_ICON_SIZE_SMALL) {
-		return NAUTILUS_ICON_SIZE_SMALL;
-	}
-	if (size < NAUTILUS_ICON_SIZE_STANDARD) {
-		return NAUTILUS_ICON_SIZE_STANDARD;
-	}
-	if (size < NAUTILUS_ICON_SIZE_LARGE) {
-		return NAUTILUS_ICON_SIZE_LARGE;
-	}
-	if (size < NAUTILUS_ICON_SIZE_LARGER) {
-		return NAUTILUS_ICON_SIZE_LARGER;
-	}
-	return NAUTILUS_ICON_SIZE_LARGEST;
-}
-
-guint
-nautilus_icon_factory_get_smaller_icon_size (guint size)
-{
-	if (size > NAUTILUS_ICON_SIZE_LARGEST) {
-		return NAUTILUS_ICON_SIZE_LARGEST;
-	}
-	if (size > NAUTILUS_ICON_SIZE_LARGER) {
-		return NAUTILUS_ICON_SIZE_LARGER;
-	}
-	if (size > NAUTILUS_ICON_SIZE_LARGE) {
-		return NAUTILUS_ICON_SIZE_LARGE;
-	}
-	if (size > NAUTILUS_ICON_SIZE_STANDARD) {
-		return NAUTILUS_ICON_SIZE_STANDARD;
-	}
-	if (size > NAUTILUS_ICON_SIZE_SMALL) {
-		return NAUTILUS_ICON_SIZE_SMALL;
-	}
-	if (size > NAUTILUS_ICON_SIZE_SMALLER) {
-		return NAUTILUS_ICON_SIZE_SMALLER;
-	}
-	return NAUTILUS_ICON_SIZE_SMALLEST;
-}
 
 
 
@@ -1690,40 +1618,6 @@ cache_key_equal (gconstpointer a, gconstpointer b)
 		eel_strcmp (key_a->modifier, key_b->modifier) == 0;
 }
 
-/* Return nominal icon size for given zoom level.
- * @zoom_level: zoom level for which to find matching icon size.
- * 
- * Return value: icon size between NAUTILUS_ICON_SIZE_SMALLEST and
- * NAUTILUS_ICON_SIZE_LARGEST, inclusive.
- */
-guint
-nautilus_get_icon_size_for_zoom_level (NautilusZoomLevel zoom_level)
-{
-	switch (zoom_level) {
-	case NAUTILUS_ZOOM_LEVEL_SMALLEST:
-		return NAUTILUS_ICON_SIZE_SMALLEST;
-	case NAUTILUS_ZOOM_LEVEL_SMALLER:
-		return NAUTILUS_ICON_SIZE_SMALLER;
-	case NAUTILUS_ZOOM_LEVEL_SMALL:
-		return NAUTILUS_ICON_SIZE_SMALL;
-	case NAUTILUS_ZOOM_LEVEL_STANDARD:
-		return NAUTILUS_ICON_SIZE_STANDARD;
-	case NAUTILUS_ZOOM_LEVEL_LARGE:
-		return NAUTILUS_ICON_SIZE_LARGE;
-	case NAUTILUS_ZOOM_LEVEL_LARGER:
-		return NAUTILUS_ICON_SIZE_LARGER;
-	case NAUTILUS_ZOOM_LEVEL_LARGEST:
-		return NAUTILUS_ICON_SIZE_LARGEST;
-	}
-	g_return_val_if_reached (NAUTILUS_ICON_SIZE_STANDARD);
-}
-
-float
-nautilus_get_relative_icon_size_for_zoom_level (NautilusZoomLevel zoom_level)
-{
-	return (float)nautilus_get_icon_size_for_zoom_level (zoom_level) / NAUTILUS_ICON_SIZE_STANDARD;
-}
-
 /* Convenience cover for nautilus_icon_factory_get_icon_for_file
  * and nautilus_icon_factory_get_pixbuf_for_icon.
  *
@@ -1897,54 +1791,3 @@ nautilus_icon_factory_remove_from_cache (const char *icon_name,
 	return g_hash_table_remove (hash_table, &lookup_key);
 }
 					 
-#if ! defined (NAUTILUS_OMIT_SELF_CHECK)
-
-void
-nautilus_self_check_icon_factory (void)
-{
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (0), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (1), 24);
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (2), 32);
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (3), 48);
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (4), 72);
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (5), 96);
-	EEL_CHECK_INTEGER_RESULT (nautilus_get_icon_size_for_zoom_level (6), 192);
-
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (0), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (1), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (15), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (16), 24);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (23), 24);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (24), 32);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (31), 32);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (32), 48);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (47), 48);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (48), 72);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (71), 72);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (72), 96);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (95), 96);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (96), 192);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (191), 192);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (192), 192);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_larger_icon_size (0xFFFFFFFF), 192);
-
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (0), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (1), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (11), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (12), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (24), 16);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (25), 24);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (32), 24);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (33), 32);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (48), 32);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (49), 48);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (72), 48);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (73), 72);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (96), 72);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (97), 96);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (192), 96);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (193), 192);
-	EEL_CHECK_INTEGER_RESULT (nautilus_icon_factory_get_smaller_icon_size (0xFFFFFFFF), 192);
-}
-
-#endif /* ! NAUTILUS_OMIT_SELF_CHECK */

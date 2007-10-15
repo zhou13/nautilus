@@ -8,6 +8,34 @@
 
 G_BEGIN_DECLS
 
+/* Names for Nautilus's different zoom levels, from tiniest items to largest items */
+typedef enum {
+	NAUTILUS_ZOOM_LEVEL_SMALLEST,
+	NAUTILUS_ZOOM_LEVEL_SMALLER,
+	NAUTILUS_ZOOM_LEVEL_SMALL,
+	NAUTILUS_ZOOM_LEVEL_STANDARD,
+	NAUTILUS_ZOOM_LEVEL_LARGE,
+	NAUTILUS_ZOOM_LEVEL_LARGER,
+	NAUTILUS_ZOOM_LEVEL_LARGEST
+} NautilusZoomLevel;
+
+/* Nominal icon sizes for each Nautilus zoom level.
+ * This scheme assumes that icons are designed to
+ * fit in a square space, though each image needn't
+ * be square. Since individual icons can be stretched,
+ * each icon is not constrained to this nominal size.
+ */
+#define NAUTILUS_ICON_SIZE_SMALLEST	16
+#define NAUTILUS_ICON_SIZE_SMALLER	24
+#define NAUTILUS_ICON_SIZE_SMALL	32
+#define NAUTILUS_ICON_SIZE_STANDARD	48
+#define NAUTILUS_ICON_SIZE_LARGE	72
+#define NAUTILUS_ICON_SIZE_LARGER	96
+#define NAUTILUS_ICON_SIZE_LARGEST     192
+
+/* Maximum size of an icon that the icon factory will ever produce */
+#define NAUTILUS_ICON_MAXIMUM_SIZE     320
+
 typedef struct _NautilusIconInfo      NautilusIconInfo;
 typedef struct _NautilusIconInfoClass NautilusIconInfoClass;
 
@@ -38,6 +66,18 @@ gboolean              nautilus_icon_info_get_attach_points    (NautilusIconInfo 
 G_CONST_RETURN gchar *nautilus_icon_info_get_display_name     (NautilusIconInfo  *icon);
 
 void                  nautilus_icon_info_clear_caches         (void);
+
+
+/* Relationship between zoom levels and icons sizes. */
+guint nautilus_get_icon_size_for_zoom_level          (NautilusZoomLevel  zoom_level);
+float nautilus_get_relative_icon_size_for_zoom_level (NautilusZoomLevel  zoom_level);
+
+guint nautilus_icon_get_larger_icon_size             (guint              size);
+guint nautilus_icon_get_smaller_icon_size            (guint              size);
+
+char *nautilus_icon_get_emblem_icon_by_name          (const char        *emblem_name);
+guint nautilus_icon_get_emblem_size_for_icon_size    (guint              size);
+
 
 G_END_DECLS
 

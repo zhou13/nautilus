@@ -31,6 +31,7 @@
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gtk/gtkobject.h>
 #include <libnautilus-private/nautilus-file.h>
+#include <libnautilus-private/nautilus-icon-info.h>
 #include <libgnomeui/gnome-icon-theme.h>
 #include <libgnomeui/gnome-thumbnail.h>
 
@@ -46,34 +47,6 @@
  * for any size icon, but normally will use one of the defined 
  * NAUTILUS_ICON_SIZE macros.
  */
-
-/* Names for Nautilus's different zoom levels, from tiniest items to largest items */
-typedef enum {
-	NAUTILUS_ZOOM_LEVEL_SMALLEST,
-	NAUTILUS_ZOOM_LEVEL_SMALLER,
-	NAUTILUS_ZOOM_LEVEL_SMALL,
-	NAUTILUS_ZOOM_LEVEL_STANDARD,
-	NAUTILUS_ZOOM_LEVEL_LARGE,
-	NAUTILUS_ZOOM_LEVEL_LARGER,
-	NAUTILUS_ZOOM_LEVEL_LARGEST
-} NautilusZoomLevel;
-
-/* Nominal icon sizes for each Nautilus zoom level.
- * This scheme assumes that icons are designed to
- * fit in a square space, though each image needn't
- * be square. Since individual icons can be stretched,
- * each icon is not constrained to this nominal size.
- */
-#define NAUTILUS_ICON_SIZE_SMALLEST	16
-#define NAUTILUS_ICON_SIZE_SMALLER	24
-#define NAUTILUS_ICON_SIZE_SMALL	32
-#define NAUTILUS_ICON_SIZE_STANDARD	48
-#define NAUTILUS_ICON_SIZE_LARGE	72
-#define NAUTILUS_ICON_SIZE_LARGER	96
-#define NAUTILUS_ICON_SIZE_LARGEST     192
-
-/* Maximum size of an icon that the icon factory will ever produce */
-#define NAUTILUS_ICON_MAXIMUM_SIZE     320
 
 /* here's a structure to hold the emblem attach points */
 
@@ -95,10 +68,6 @@ typedef struct {
  */
 GObject *             nautilus_icon_factory_get                          (void);
 
-/* Relationship between zoom levels and icons sizes. */
-guint                 nautilus_get_icon_size_for_zoom_level              (NautilusZoomLevel            zoom_level);
-float                 nautilus_get_relative_icon_size_for_zoom_level     (NautilusZoomLevel            zoom_level);
-
 /* Choose the appropriate icon, but don't render it yet. */
 char *                nautilus_icon_factory_get_icon_for_file            (NautilusFile                *file,
 									  gboolean                     embedd_text);
@@ -107,11 +76,7 @@ NautilusFileAttributes nautilus_icon_factory_get_required_file_attributes (void)
 
 GList *               nautilus_icon_factory_get_emblem_icons_for_file    (NautilusFile                *file,
 									  EelStringList               *exclude);
-char *                nautilus_icon_factory_get_emblem_icon_by_name      (const char                  *emblem_name);
-guint                 nautilus_icon_factory_get_emblem_size_for_icon_size (guint                       size);
 
-guint                 nautilus_icon_factory_get_larger_icon_size         (guint size);
-guint                 nautilus_icon_factory_get_smaller_icon_size        (guint size);
 
 
 GdkPixbuf *nautilus_icon_factory_get_pixbuf_for_gicon            (GIcon                       *icon,

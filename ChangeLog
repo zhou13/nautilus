@@ -1,5 +1,17 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-icon-factory.[ch]:
+        * libnautilus-private/nautilus-icon-info.[ch]:
+	Move over icon size util functions to nautilus-icon-info
+
+        * libnautilus-private/nautilus-icon-container.c:
+        * libnautilus-private/nautilus-lib-self-check-functions.h:
+        * src/file-manager/fm-list-model.c:
+        * src/nautilus-sidebar-title.c:
+	Update to new names
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-container.c:
         * libnautilus-private/nautilus-icon-factory.h:
 	Remove NAUTILUS_ICON_SIZE_THUMBNAIL define as this is

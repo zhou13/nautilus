@@ -25,6 +25,8 @@
 #include <gio/gthemedicon.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 
+#define NAUTILUS_EMBLEM_NAME_PREFIX "emblem-"
+
 struct _NautilusIconInfo
 {
 	GObject parent;
@@ -480,3 +482,110 @@ nautilus_icon_info_get_display_name   (NautilusIconInfo  *icon)
 	return icon->display_name;
 }
 
+
+/* Return nominal icon size for given zoom level.
+ * @zoom_level: zoom level for which to find matching icon size.
+ * 
+ * Return value: icon size between NAUTILUS_ICON_SIZE_SMALLEST and
+ * NAUTILUS_ICON_SIZE_LARGEST, inclusive.
+ */
+guint
+nautilus_get_icon_size_for_zoom_level (NautilusZoomLevel zoom_level)
+{
+	switch (zoom_level) {
+	case NAUTILUS_ZOOM_LEVEL_SMALLEST:
+		return NAUTILUS_ICON_SIZE_SMALLEST;
+	case NAUTILUS_ZOOM_LEVEL_SMALLER:
+		return NAUTILUS_ICON_SIZE_SMALLER;
+	case NAUTILUS_ZOOM_LEVEL_SMALL:
+		return NAUTILUS_ICON_SIZE_SMALL;
+	case NAUTILUS_ZOOM_LEVEL_STANDARD:
+		return NAUTILUS_ICON_SIZE_STANDARD;
+	case NAUTILUS_ZOOM_LEVEL_LARGE:
+		return NAUTILUS_ICON_SIZE_LARGE;
+	case NAUTILUS_ZOOM_LEVEL_LARGER:
+		return NAUTILUS_ICON_SIZE_LARGER;
+	case NAUTILUS_ZOOM_LEVEL_LARGEST:
+		return NAUTILUS_ICON_SIZE_LARGEST;
+	}
+	g_return_val_if_reached (NAUTILUS_ICON_SIZE_STANDARD);
+}
+
+float
+nautilus_get_relative_icon_size_for_zoom_level (NautilusZoomLevel zoom_level)
+{
+	return (float)nautilus_get_icon_size_for_zoom_level (zoom_level) / NAUTILUS_ICON_SIZE_STANDARD;
+}
+
+guint
+nautilus_icon_get_larger_icon_size (guint size)
+{
+	if (size < NAUTILUS_ICON_SIZE_SMALLEST) {
+		return NAUTILUS_ICON_SIZE_SMALLEST;
+	}
+	if (size < NAUTILUS_ICON_SIZE_SMALLER) {
+		return NAUTILUS_ICON_SIZE_SMALLER;
+	}
+	if (size < NAUTILUS_ICON_SIZE_SMALL) {
+		return NAUTILUS_ICON_SIZE_SMALL;
+	}
+	if (size < NAUTILUS_ICON_SIZE_STANDARD) {
+		return NAUTILUS_ICON_SIZE_STANDARD;
+	}
+	if (size < NAUTILUS_ICON_SIZE_LARGE) {
+		return NAUTILUS_ICON_SIZE_LARGE;
+	}
+	if (size < NAUTILUS_ICON_SIZE_LARGER) {
+		return NAUTILUS_ICON_SIZE_LARGER;
+	}
+	return NAUTILUS_ICON_SIZE_LARGEST;
+}
+
+guint
+nautilus_icon_get_smaller_icon_size (guint size)
+{
+	if (size > NAUTILUS_ICON_SIZE_LARGEST) {
+		return NAUTILUS_ICON_SIZE_LARGEST;
+	}
+	if (size > NAUTILUS_ICON_SIZE_LARGER) {
+		return NAUTILUS_ICON_SIZE_LARGER;
+	}
+	if (size > NAUTILUS_ICON_SIZE_LARGE) {
+		return NAUTILUS_ICON_SIZE_LARGE;
+	}
+	if (size > NAUTILUS_ICON_SIZE_STANDARD) {
+		return NAUTILUS_ICON_SIZE_STANDARD;
+	}
+	if (size > NAUTILUS_ICON_SIZE_SMALL) {
+		return NAUTILUS_ICON_SIZE_SMALL;
+	}
+	if (size > NAUTILUS_ICON_SIZE_SMALLER) {
+		return NAUTILUS_ICON_SIZE_SMALLER;
+	}
+	return NAUTILUS_ICON_SIZE_SMALLEST;
+}
+
+char *
+nautilus_icon_get_emblem_icon_by_name (const char *emblem_name)
+{
+	char *name_with_prefix;
+
+	name_with_prefix = g_strconcat (NAUTILUS_EMBLEM_NAME_PREFIX, emblem_name, NULL);
+
+	return name_with_prefix;
+}
+
+guint
+nautilus_icon_get_emblem_size_for_icon_size (guint size)
+{
+	if (size >= 96)
+		return 48;
+	if (size >= 64)
+		return 32;
+	if (size >= 48)
+		return 24;
+	if (size >= 32)
+		return 16;
+	
+	return 0; /* no emblems for smaller sizes */
+}
