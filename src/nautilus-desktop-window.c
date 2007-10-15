@@ -35,6 +35,7 @@
 #include <libgnome/gnome-macros.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <gio/gthemedicon.h>
 
 struct NautilusDesktopWindowDetails {
 	int dummy;
@@ -246,10 +247,16 @@ real_get_title (NautilusWindow *window)
 	return g_strdup (_("Desktop"));
 }
 
-static char *
-real_get_icon_name (NautilusWindow *window)
+static NautilusIconInfo *
+real_get_icon (NautilusWindow *window)
 {
-	return g_strdup ("gnome-fs-desktop");
+	GIcon *icon;
+	NautilusIconInfo *info;
+
+	icon = g_themed_icon_new ("gnome-fs-desktop");
+	info = nautilus_icon_info_lookup (icon, 48);
+	g_object_unref (icon);
+	return info;
 }
 
 static void
@@ -268,7 +275,7 @@ nautilus_desktop_window_class_init (NautilusDesktopWindowClass *class)
 		= real_add_current_location_to_history_list;
 	NAUTILUS_WINDOW_CLASS (class)->get_title 
 		= real_get_title;
-	NAUTILUS_WINDOW_CLASS (class)->get_icon_name
-		= real_get_icon_name;
+	NAUTILUS_WINDOW_CLASS (class)->get_icon
+		= real_get_icon;
 
 }

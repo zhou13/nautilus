@@ -65,7 +65,8 @@ gboolean              nautilus_icon_info_get_embedded_rect            (NautilusI
 gboolean              nautilus_icon_info_get_attach_points            (NautilusIconInfo  *icon,
 								       GdkPoint         **points,
 								       gint              *n_points);
-G_CONST_RETURN gchar *nautilus_icon_info_get_display_name             (NautilusIconInfo  *icon);
+G_CONST_RETURN char  *nautilus_icon_info_get_display_name             (NautilusIconInfo  *icon);
+G_CONST_RETURN char  *nautilus_icon_info_get_used_name                (NautilusIconInfo  *icon);
 
 void                  nautilus_icon_info_clear_caches                 (void);
 

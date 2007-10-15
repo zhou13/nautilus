@@ -399,10 +399,11 @@ real_set_search_mode (NautilusWindow *window, gboolean search_mode,
 	} 
 }
 
-static char *
-real_get_icon_name (NautilusWindow *window)
+static NautilusIconInfo *
+real_get_icon (NautilusWindow *window)
 {
-	return nautilus_icon_factory_get_icon_for_file (window->details->viewed_file, FALSE);
+	return nautilus_file_get_icon (window->details->viewed_file, 48,
+				       NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING);
 }
 
 static gboolean
@@ -1038,8 +1039,8 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 		real_prompt_for_location;
 	NAUTILUS_WINDOW_CLASS (class)->set_search_mode = 
 		real_set_search_mode;
-	NAUTILUS_WINDOW_CLASS (class)->get_icon_name =
-		real_get_icon_name;
+	NAUTILUS_WINDOW_CLASS (class)->get_icon =
+		real_get_icon;
 	NAUTILUS_WINDOW_CLASS (class)->set_title = 
 		real_set_title;
 	NAUTILUS_WINDOW_CLASS (class)->set_content_view_widget = 

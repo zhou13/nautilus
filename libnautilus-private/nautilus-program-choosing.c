@@ -499,7 +499,8 @@ nautilus_launch_show_file (NautilusFile *file,
 	
 	if (startup_notify == TRUE) {
 		char *name;
-		char *icon;
+		NautilusIconInfo *icon;
+		const char *icon_name;
 
 		sn_context = sn_launcher_context_new (sn_display,
 						      screen ? gdk_screen_get_number (screen) :
@@ -520,11 +521,12 @@ nautilus_launch_show_file (NautilusFile *file,
 			g_free (description);
 		}
 
-		icon = nautilus_icon_factory_get_icon_for_file (file, FALSE);
-		if (icon != NULL) {
-			sn_launcher_context_set_icon_name (sn_context, icon);
-			g_free (icon);
+		icon = nautilus_file_get_icon (file, 48, 0);
+		icon_name = nautilus_icon_info_get_used_name (icon);
+		if (icon_name != NULL) {
+			sn_launcher_context_set_icon_name (sn_context, icon_name);
 		}
+		g_object_unref (icon);
 		
 		if (!sn_launcher_context_get_initiated (sn_context)) {
 			const char *binary_name;
@@ -754,7 +756,8 @@ nautilus_launch_application (GAppInfo *application,
 		char *name;
 		char *description;
 		GIcon *gicon;
-		char *icon;
+		NautilusIconInfo *icon;
+		char *icon_name;
 		int   files_count;
 
 		file = NAUTILUS_FILE (files->data);
@@ -785,16 +788,19 @@ nautilus_launch_application (GAppInfo *application,
 			g_free (description);
 		}
 
-		icon = nautilus_icon_factory_get_icon_for_file (file, FALSE);
+		icon = nautilus_file_get_icon (file, 48, 0);
+		icon_name = g_strdup (nautilus_icon_info_get_used_name (icon));
 
-		if (icon == NULL) {
+		if (icon_name == NULL) {
 			gicon = g_app_info_get_icon (application);
-			icon = gicon_to_string (gicon);
+			if (gicon) {
+				icon_name = gicon_to_string (gicon);
+			}
 		}
 
-		if (icon != NULL) {
-			sn_launcher_context_set_icon_name (sn_context, icon);
-			g_free (icon);
+		if (icon_name != NULL) {
+			sn_launcher_context_set_icon_name (sn_context, icon_name);
+			g_free (icon_name);
 		}
 		
 		if (!sn_launcher_context_get_initiated (sn_context)) {

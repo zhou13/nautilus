@@ -2969,7 +2969,9 @@ get_custom_icon (NautilusFile *file)
 	GFile *icon_file;
 	GIcon *icon;
 
-	g_assert (NAUTILUS_IS_FILE (file));
+	if (file == NULL) {
+		return NULL;
+	}
 
 	icon = NULL;
 	
@@ -3071,7 +3073,8 @@ nautilus_file_get_gicon (NautilusFile *file,
 		
 		if (((flags & NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT) ||
 		     (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT) ||
-		     nautilus_file_has_open_window (file)) &&
+		     ((flags & NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING) == 0 &&
+		      nautilus_file_has_open_window (file))) &&
 		    G_IS_THEMED_ICON (file->details->icon)) {
 			names = g_themed_icon_get_names (G_THEMED_ICON (file->details->icon));
 			array = g_ptr_array_new ();
@@ -3081,6 +3084,7 @@ nautilus_file_get_gicon (NautilusFile *file,
 				name = names[i];
 
 				if (strcmp (name, "folder") == 0 &&
+				    (flags & NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING) == 0 &&
 				    nautilus_file_has_open_window (file)) {
 					changed = TRUE;
 					g_ptr_array_add (array, "folder-visiting");
@@ -3124,6 +3128,10 @@ nautilus_file_get_icon (NautilusFile *file,
 	GIcon *gicon;
 	GdkPixbuf *raw_pixbuf, *scaled_pixbuf;
 	int modified_size;
+
+	if (file == NULL) {
+		return NULL;
+	}
 	
 	gicon = get_custom_icon (file);
 	if (gicon) {
@@ -3206,7 +3214,25 @@ nautilus_file_get_icon (NautilusFile *file,
 	return nautilus_icon_info_new_for_pixbuf (NULL);
 }
 
+GdkPixbuf *
+nautilus_file_get_icon_pixbuf (NautilusFile *file,
+			       int size,
+			       gboolean force_size,
+			       NautilusFileIconFlags flags)
+{
+	NautilusIconInfo *info;
+	GdkPixbuf *pixbuf;
 
+	info = nautilus_file_get_icon (file, size, flags);
+	if (force_size) {
+		pixbuf = nautilus_icon_info_get_pixbuf (info);
+	} else {
+		pixbuf =  nautilus_icon_info_get_pixbuf_at_size (info, size);
+	}
+	g_object_unref (info);
+	
+	return pixbuf;
+}
 
 char *
 nautilus_file_get_custom_icon (NautilusFile *file)
@@ -3216,7 +3242,9 @@ nautilus_file_get_custom_icon (NautilusFile *file)
 	char *custom_icon;
 	char *tmp;
 
-	g_assert (NAUTILUS_IS_FILE (file));
+	if (file == NULL) {
+		return NULL;
+	}
 
 	/* Metadata takes precedence */
 	uri = nautilus_file_get_metadata (file, NAUTILUS_METADATA_KEY_CUSTOM_ICON, NULL);

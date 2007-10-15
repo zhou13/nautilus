@@ -1,5 +1,23 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.[ch]:
+	Add nautilus_file_get_icon_pixbuf and
+	IGNORE_VISITING icon flag
+	
+        * libnautilus-private/nautilus-icon-info.[ch]:
+        Add nautilus_icon_info_get_used_name function
+
+        * libnautilus-private/nautilus-emblem-utils.c:
+        * libnautilus-private/nautilus-program-choosing.c:
+        * libnautilus-private/nautilus-ui-utilities.c:
+        * src/nautilus-desktop-window.c:
+        * src/nautilus-navigation-window.c:
+        * src/nautilus-spatial-window.c:
+        * src/nautilus-window.[ch]:
+	Convert to new icon APIs
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/Makefile.am:
         * libnautilus-private/nautilus-audio-player.c: Removed.
         * libnautilus-private/nautilus-audio-player.h: Removed.

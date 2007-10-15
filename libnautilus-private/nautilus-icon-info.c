@@ -18,6 +18,7 @@
  */
 
 #include <config.h>
+#include <string.h>
 #include "nautilus-icon-info.h"
 #include "nautilus-default-file-icon.h"
 #include <gtk/gtkicontheme.h>
@@ -41,6 +42,7 @@ struct _NautilusIconInfo
 	gint n_attach_points;
 	GdkPoint *attach_points;
 	char *display_name;
+        char *icon_name;
 };
 
 struct _NautilusIconInfoClass
@@ -96,6 +98,7 @@ nautilus_icon_info_finalize (GObject *object)
 	}
 	g_free (icon->attach_points);
 	g_free (icon->display_name);
+	g_free (icon->icon_name);
 
         G_OBJECT_CLASS (nautilus_icon_info_parent_class)->finalize (object);
 }
@@ -131,6 +134,8 @@ nautilus_icon_info_new_for_icon_info (GtkIconInfo *icon_info)
 	NautilusIconInfo *icon;
 	GdkPoint *points;
 	gint n_points;
+	const char *filename;
+	char *basename, *p;
 
 	icon = g_object_new (NAUTILUS_TYPE_ICON_INFO, NULL);
 
@@ -145,6 +150,16 @@ nautilus_icon_info_new_for_icon_info (GtkIconInfo *icon_info)
 	}
 
 	icon->display_name = g_strdup (gtk_icon_info_get_display_name (icon_info));
+
+	filename = gtk_icon_info_get_display_name (icon_info);
+	if (filename != NULL) {
+		basename = g_path_get_basename (filename);
+		p = strrchr (basename, '.');
+		if (p) {
+			*p = 0;
+		}
+		icon->icon_name = basename;
+	}
 	
 	return icon;
 }
@@ -502,12 +517,17 @@ nautilus_icon_info_get_attach_points (NautilusIconInfo  *icon,
 	return icon->n_attach_points != 0;
 }
 
-G_CONST_RETURN gchar *
+G_CONST_RETURN char *
 nautilus_icon_info_get_display_name   (NautilusIconInfo  *icon)
 {
 	return icon->display_name;
 }
 
+G_CONST_RETURN char *
+nautilus_icon_info_get_used_name (NautilusIconInfo  *icon)
+{
+	return icon->icon_name;
+}
 
 /* Return nominal icon size for given zoom level.
  * @zoom_level: zoom level for which to find matching icon size.

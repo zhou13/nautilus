@@ -83,6 +83,7 @@
 #include <libnautilus-private/nautilus-signaller.h>
 #include <math.h>
 #include <sys/time.h>
+#include <gio/gthemedicon.h>
 
 
 /* FIXME bugzilla.gnome.org 41243: 
@@ -933,10 +934,16 @@ real_set_title (NautilusWindow *window, const char *title)
 	return changed;
 }
 
-static char *
-real_get_icon_name (NautilusWindow *window)
+static NautilusIconInfo *
+real_get_icon (NautilusWindow *window)
 {
-	return g_strdup ("file-manager");
+	GIcon *icon;
+	NautilusIconInfo *info;
+
+	icon = g_themed_icon_new ("file-manager");
+	info = nautilus_icon_info_lookup (icon, 48);
+	g_object_unref (icon);
+	return info;
 }
 
 static void
@@ -1579,7 +1586,7 @@ nautilus_navigation_window_class_init (NautilusNavigationWindowClass *class)
 	NAUTILUS_WINDOW_CLASS (class)->prompt_for_location = real_prompt_for_location;
 	NAUTILUS_WINDOW_CLASS (class)->set_search_mode = real_set_search_mode;
 	NAUTILUS_WINDOW_CLASS (class)->set_title = real_set_title;
-	NAUTILUS_WINDOW_CLASS (class)->get_icon_name = real_get_icon_name;
+	NAUTILUS_WINDOW_CLASS (class)->get_icon = real_get_icon;
 	NAUTILUS_WINDOW_CLASS (class)->get_default_size = real_get_default_size;
 	NAUTILUS_WINDOW_CLASS (class)->close = real_window_close;
 

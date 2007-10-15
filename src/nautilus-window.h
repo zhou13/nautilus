@@ -68,7 +68,7 @@ typedef struct {
 
         char * (* get_title) (NautilusWindow *window);
         gboolean (* set_title) (NautilusWindow *window, const char *title);
-        char * (* get_icon_name) (NautilusWindow *window);
+        NautilusIconInfo * (* get_icon) (NautilusWindow *window);
 
         void   (* load_view_as_menu) (NautilusWindow *window);
         void   (* set_content_view_widget) (NautilusWindow *window, 

@@ -78,8 +78,9 @@ typedef enum {
 typedef enum {
 	NAUTILUS_FILE_ICON_FLAGS_NONE = 0,
 	NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS = (1<<0),
-	NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT = (1<<1),
-	NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT = (1<<2)
+	NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING = (1<<1),
+	NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT = (1<<2),
+	NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT = (1<<3)
 } NautilusFileIconFlags;	
 
 /* Emblems sometimes displayed for NautilusFiles. Do not localize. */ 
@@ -369,7 +370,10 @@ GIcon *                 nautilus_file_get_gicon                         (Nautilu
 NautilusIconInfo *      nautilus_file_get_icon                          (NautilusFile                   *file,
 									 int                             size,
 									 NautilusFileIconFlags           flags);
-
+GdkPixbuf *             nautilus_file_get_icon_pixbuf                   (NautilusFile                   *file,
+									 int                             size,
+									 gboolean                        force_size,
+									 NautilusFileIconFlags           flags);
 
 gboolean                nautilus_file_has_open_window                   (NautilusFile                   *file);
 void                    nautilus_file_set_has_open_window               (NautilusFile                   *file,

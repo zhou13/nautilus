@@ -24,7 +24,8 @@
 
 #include <config.h>
 #include "nautilus-ui-utilities.h"
-#include "nautilus-icon-factory.h"
+#include "nautilus-icon-info.h"
+#include <gio/gthemedicon.h>
 
 #include <gtk/gtkenums.h>
 #include <eel/eel-debug.h>
@@ -116,14 +117,16 @@ extension_action_callback (GtkAction *action,
 GtkAction *
 nautilus_action_from_menu_item (NautilusMenuItem *item)
 {
-	char *name, *label, *tip, *icon;
+	char *name, *label, *tip, *icon_name;
 	gboolean sensitive, priority;
 	GtkAction *action;
 	GdkPixbuf *pixbuf;
+	GIcon *icon;
+	NautilusIconInfo *info;
 	
 	g_object_get (G_OBJECT (item), 
 		      "name", &name, "label", &label, 
-		      "tip", &tip, "icon", &icon,
+		      "tip", &tip, "icon", &icon_name,
 		      "sensitive", &sensitive,
 		      "priority", &priority,
 		      NULL);
@@ -131,21 +134,22 @@ nautilus_action_from_menu_item (NautilusMenuItem *item)
 	action = gtk_action_new (name,
 				 label,
 				 tip,
-				 icon);
+				 icon_name);
 	
-	/* TODO: This should really use themed icons, but that
-	   doesn't work here yet */
-	if (icon != NULL) {
-		pixbuf = nautilus_icon_factory_get_pixbuf_from_name_with_stock_size
-			(icon,
-			 NULL,
-			 GTK_ICON_SIZE_MENU,
-			 NULL);
+	if (icon_name != NULL) {
+		icon = g_themed_icon_new (icon_name);
+		info = nautilus_icon_info_lookup (icon,
+						  nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU));
+		g_object_unref (icon);
+
+		pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info,
+									  nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU));
 		if (pixbuf != NULL) {
 			g_object_set_data_full (G_OBJECT (action), "menu-icon",
 						pixbuf,
 						g_object_unref);
 		}
+		g_object_unref (info);
 	}
 	
 	gtk_action_set_sensitive (action, sensitive);
@@ -159,7 +163,7 @@ nautilus_action_from_menu_item (NautilusMenuItem *item)
 	g_free (name);
 	g_free (label);
 	g_free (tip);
-	g_free (icon);
+	g_free (icon_name);
 	
 	return action;
 }
@@ -167,14 +171,16 @@ nautilus_action_from_menu_item (NautilusMenuItem *item)
 GtkAction *
 nautilus_toolbar_action_from_menu_item (NautilusMenuItem *item)
 {
-	char *name, *label, *tip, *icon;
+	char *name, *label, *tip, *icon_name;
 	gboolean sensitive, priority;
 	GtkAction *action;
 	GdkPixbuf *pixbuf;
+	GIcon *icon;
+	NautilusIconInfo *info;
 	
 	g_object_get (G_OBJECT (item), 
 		      "name", &name, "label", &label, 
-		      "tip", &tip, "icon", &icon,
+		      "tip", &tip, "icon", &icon_name,
 		      "sensitive", &sensitive,
 		      "priority", &priority,
 		      NULL);
@@ -182,21 +188,20 @@ nautilus_toolbar_action_from_menu_item (NautilusMenuItem *item)
 	action = gtk_action_new (name,
 				 label,
 				 tip,
-				 icon);
+				 icon_name);
 	
-	/* TODO: This should really use themed icons, but that
-	   doesn't work here yet */
-	if (icon != NULL) {
-		pixbuf = nautilus_icon_factory_get_pixbuf_from_name 
-			(icon,
-			 NULL,
-			 24, TRUE, 
-			 NULL);
+	if (icon_name != NULL) {
+		icon = g_themed_icon_new (icon_name);
+		info = nautilus_icon_info_lookup (icon, 24);
+		g_object_unref (icon);
+
+		pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info, 24);
 		if (pixbuf != NULL) {
 			g_object_set_data_full (G_OBJECT (action), "toolbar-icon",
 						pixbuf,
 						g_object_unref);
 		}
+		g_object_unref (info);
 	}
 	
 	gtk_action_set_sensitive (action, sensitive);
@@ -210,7 +215,7 @@ nautilus_toolbar_action_from_menu_item (NautilusMenuItem *item)
 	g_free (name);
 	g_free (label);
 	g_free (tip);
-	g_free (icon);
+	g_free (icon_name);
 
 	return action;
 }

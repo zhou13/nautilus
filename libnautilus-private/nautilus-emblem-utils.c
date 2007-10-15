@@ -29,14 +29,14 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
-#include "nautilus-icon-factory.h"
+#include "nautilus-file.h"
 #include <eel/eel-string.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-vfs-extensions.h>
 #include <glib/gi18n.h>
-#include <libgnomeui/gnome-icon-theme.h>
+#include <gtk/gtkicontheme.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include "nautilus-emblem-utils.h"
 
@@ -53,9 +53,8 @@ nautilus_emblem_list_availible (void)
 	GtkIconTheme *icon_theme;
 	GList *list;
 	
-	icon_theme = nautilus_icon_factory_get_icon_theme ();
+	icon_theme = gtk_icon_theme_get_default ();
 	list = gtk_icon_theme_list_icons (icon_theme, "Emblems");
-	g_object_unref (icon_theme);
 	return list;
 }
 
@@ -64,9 +63,8 @@ nautilus_emblem_refresh_list (void)
 {
 	GtkIconTheme *icon_theme;
 	
-	icon_theme = nautilus_icon_factory_get_icon_theme ();
+	icon_theme = gtk_icon_theme_get_default ();
 	gtk_icon_theme_rescan_if_needed (icon_theme);
-	g_object_unref (icon_theme);
 }
 
 char *
@@ -416,8 +414,7 @@ nautilus_emblem_rename_emblem (const char *keyword, const char *name)
 	fclose (file);
 
 	icon_name = nautilus_emblem_get_icon_name_from_keyword (keyword);
-	nautilus_icon_factory_remove_from_cache (icon_name, NULL, 
-						 NAUTILUS_ICON_SIZE_STANDARD);
+	nautilus_icon_info_clear_caches (); /* A bit overkill, but this happens rarely */
 	
 	g_free (icon_name);
 

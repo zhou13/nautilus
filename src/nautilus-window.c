@@ -1216,16 +1216,30 @@ nautilus_window_update_title (NautilusWindow *window)
 void
 nautilus_window_update_icon (NautilusWindow *window)
 {
-	char *icon_name;
+	NautilusIconInfo *info;
+	const char *icon_name;
+	GdkPixbuf *pixbuf;
 
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	icon_name = EEL_CALL_METHOD_WITH_RETURN_VALUE (NAUTILUS_WINDOW_CLASS, window,
-						       get_icon_name, (window));
+	info = EEL_CALL_METHOD_WITH_RETURN_VALUE (NAUTILUS_WINDOW_CLASS, window,
+						 get_icon, (window));
 
-	if (icon_name != NULL) {
-		gtk_window_set_icon_name (GTK_WINDOW (window), icon_name);
-		g_free (icon_name);
+	icon_name = NULL;
+	if (info) {
+		icon_name = nautilus_icon_info_get_used_name (info);
+		if (icon_name != NULL) {
+			gtk_window_set_icon_name (GTK_WINDOW (window), icon_name);
+		} else {
+			pixbuf = nautilus_icon_info_get_pixbuf_nodefault (info);
+			
+			if (pixbuf) {
+				gtk_window_set_icon (GTK_WINDOW (window), pixbuf);
+			} 
+			g_object_unref (pixbuf);
+		}
+		
+		g_object_unref (info);
 	}
 }
 
