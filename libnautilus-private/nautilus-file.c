@@ -3132,7 +3132,7 @@ nautilus_file_get_icon (NautilusFile *file,
 		return icon;
 	}
 
-	modified_size = size * NAUTILUS_ICON_SIZE_THUMBNAIL / NAUTILUS_ICON_SIZE_STANDARD; 
+	modified_size = size * cached_thumbnail_size / NAUTILUS_ICON_SIZE_STANDARD; 
 
 	if (flags & NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS &&
 	    nautilus_file_should_show_thumbnail (file)) {

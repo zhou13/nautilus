@@ -1,10 +1,15 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:
+	Actually handle thumbnail size prefs
+	
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
 	Handle thumbnail size prefs
 	Handle all sorts of icon changes and emit CHANGED on
 	files in this case.
-	
+
         * libnautilus-private/nautilus-directory-private.h:
         * libnautilus-private/nautilus-directory.c:
         * libnautilus-private/nautilus-icon-container.c:
