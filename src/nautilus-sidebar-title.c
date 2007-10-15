@@ -313,7 +313,8 @@ update_icon (NautilusSidebarTitle *sidebar_title)
 	pixbuf = NULL;
 	if (icon_name != NULL && icon_name[0] != '\0') {
 		pixbuf = nautilus_icon_factory_get_pixbuf_from_name (icon_name, NULL, NAUTILUS_ICON_SIZE_LARGE, TRUE, NULL);
-	} else if (nautilus_icon_factory_is_icon_ready_for_file (sidebar_title->details->file)) {
+	} else if (nautilus_file_check_if_ready (sidebar_title->details->file,
+						 NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
 		pixbuf = nautilus_icon_factory_get_pixbuf_for_file (sidebar_title->details->file,
 								    "accept",
 								    sidebar_title->details->best_icon_size,
@@ -570,9 +571,7 @@ monitor_add (NautilusSidebarTitle *sidebar_title)
 
 	sidebar_title->details->monitoring_count = item_count_ready (sidebar_title);
 
-	attributes = nautilus_icon_factory_get_required_file_attributes ();		
-	attributes |= NAUTILUS_FILE_ATTRIBUTE_METADATA;
-	
+	attributes = NAUTILUS_FILE_ATTRIBUTES_FOR_ICON | NAUTILUS_FILE_ATTRIBUTE_METADATA;
 	if (sidebar_title->details->monitoring_count) {
 		attributes |= NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT;
 	}

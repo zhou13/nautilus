@@ -103,6 +103,9 @@ typedef char * (*NautilusTruncateCallback)    (const char    *string,
 					       int	      width,
 					       void	     *context);
 
+
+#define NAUTILUS_FILE_ATTRIBUTES_FOR_ICON (NAUTILUS_FILE_ATTRIBUTE_INFO | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |NAUTILUS_FILE_ATTRIBUTE_METADATA | NAUTILUS_FILE_ATTRIBUTE_THUMBNAIL)
+
 typedef void NautilusFileListHandle;
 
 /* GObject requirements. */

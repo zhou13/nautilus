@@ -76,7 +76,8 @@ new_bookmark_from_uri (const char *uri, const char *label)
 		file = nautilus_file_get (location);
 		
 		icon = NULL;
-		if (nautilus_icon_factory_is_icon_ready_for_file (file)) {
+		if (nautilus_file_check_if_ready (file,
+						  NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
 			icon = nautilus_file_get_gicon (file, 0);
 		}
 		if (icon == NULL) {

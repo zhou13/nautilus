@@ -1699,8 +1699,9 @@ add_directory_to_directory_list (FMDirectoryView *view,
 	if (g_list_find (*directory_list, directory) == NULL) {
 		nautilus_directory_ref (directory);
 
-		attributes = nautilus_icon_factory_get_required_file_attributes ();
-		attributes |= NAUTILUS_FILE_ATTRIBUTE_INFO |
+		attributes =
+			NAUTILUS_FILE_ATTRIBUTES_FOR_ICON |
+			NAUTILUS_FILE_ATTRIBUTE_INFO |
 			NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT;
  
 		nautilus_directory_file_monitor_add (directory, directory_list,
@@ -2676,7 +2677,8 @@ still_should_show_file (FMDirectoryView *view, NautilusFile *file, NautilusDirec
 static gboolean
 ready_to_load (NautilusFile *file)
 {
-	return nautilus_icon_factory_is_icon_ready_for_file (file);
+	return nautilus_file_check_if_ready (file,
+					     NAUTILUS_FILE_ATTRIBUTES_FOR_ICON);
 }
 
 static int
@@ -3246,8 +3248,9 @@ fm_directory_view_add_subdirectory (FMDirectoryView  *view,
 	
 	nautilus_directory_ref (directory);
 
-	attributes = nautilus_icon_factory_get_required_file_attributes ();
-	attributes |= NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT |
+	attributes =
+		NAUTILUS_FILE_ATTRIBUTES_FOR_ICON |
+		NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT |
 		NAUTILUS_FILE_ATTRIBUTE_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |
@@ -8865,8 +8868,9 @@ finish_loading (FMDirectoryView *view)
 	 * attribute is based on that, and the file's metadata
 	 * and possible custom name.
 	 */
-	attributes = nautilus_icon_factory_get_required_file_attributes ();
-	attributes |= NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT |
+	attributes =
+		NAUTILUS_FILE_ATTRIBUTES_FOR_ICON |
+		NAUTILUS_FILE_ATTRIBUTE_DIRECTORY_ITEM_COUNT |
 		NAUTILUS_FILE_ATTRIBUTE_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA |

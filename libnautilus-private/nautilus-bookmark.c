@@ -25,7 +25,6 @@
 #include <config.h>
 #include "nautilus-bookmark.h"
 
-#include "nautilus-icon-factory.h"
 #include "nautilus-icon-info.h"
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-gtk-extensions.h>
@@ -349,7 +348,8 @@ nautilus_bookmark_update_icon (NautilusBookmark *bookmark)
 		return FALSE;
 	}
 
-	if (nautilus_icon_factory_is_icon_ready_for_file (bookmark->details->file)) {
+	if (nautilus_file_check_if_ready (bookmark->details->file,
+					  NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
 		new_icon = nautilus_file_get_gicon (bookmark->details->file, 0);
 		if (nautilus_bookmark_icon_is_different (bookmark, new_icon)) {
 			if (bookmark->details->icon) {

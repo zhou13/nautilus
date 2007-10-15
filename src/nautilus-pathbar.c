@@ -1023,7 +1023,8 @@ get_icon_name_for_file_path (const char *file_path)
 		return g_strdup (DEFAULT_ICON);
 	}
 	icon_name = NULL;
-	if (nautilus_icon_factory_is_icon_ready_for_file (file)) {
+	if (nautilus_file_check_if_ready (file,
+					  NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
 		icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);
 	}
 	if (!icon_name) {

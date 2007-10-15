@@ -1,3 +1,19 @@
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.h:
+	Add NAUTILUS_FILE_ATTRIBUTES_FOR_ICON
+	
+        * libnautilus-private/nautilus-bookmark.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.c:
+        * src/nautilus-bookmark-list.c:
+        * src/nautilus-pathbar.c:
+        * src/nautilus-sidebar-title.c:
+	Use NAUTILUS_FILE_ATTRIBUTES_FOR_ICON instead of
+	nautilus_icon_factory_is_icon_ready_for_file and
+	nautilus_icon_factory_get_required_file_attributes.
+
 2007-10-12  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-bookmark.[ch]:
