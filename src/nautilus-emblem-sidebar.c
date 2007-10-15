@@ -456,23 +456,26 @@ create_emblem_widget (NautilusEmblemSidebar *emblem_sidebar,
 		      const char *name)
 {
 	GtkWidget *ret;
-	char *display_name, *keyword;
+	const char *display_name;
+	char *keyword;
 	GdkPixbuf *pixbuf;
-	
-	pixbuf = nautilus_icon_factory_get_pixbuf_from_name (name, NULL,
-							     NAUTILUS_ICON_SIZE_STANDARD, TRUE,
-							     &display_name);
+	NautilusIconInfo *info;
 
+	info = nautilus_icon_info_lookup_from_name (name, NAUTILUS_ICON_SIZE_STANDARD);
+
+	pixbuf = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_ICON_SIZE_STANDARD);
+	
+	display_name = nautilus_icon_info_get_display_name (info);
+	
 	keyword = nautilus_emblem_get_keyword_from_icon_name (name);
 	if (display_name == NULL) {
-		display_name = g_strdup (keyword);
+		display_name = keyword;
 	}
 
 	ret = create_emblem_widget_with_pixbuf (emblem_sidebar, keyword,
 						display_name, pixbuf);
 	g_free (keyword);
-	g_free (display_name);
-
+	g_object_unref (info);
 	return ret;
 }
 

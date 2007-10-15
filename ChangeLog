@@ -1,5 +1,22 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.[ch]:
+	Add NAUTILUS_FILE_ICON_FLAGS_FOR_OPEN_FOLDER
+	Fix force_size handling
+	
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-empty-view.c:
+        * src/file-manager/fm-list-model.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.c:
+        * src/nautilus-emblem-sidebar.c:
+        * src/nautilus-navigation-window-menus.c:
+        * src/nautilus-property-browser.c:
+        * src/nautilus-sidebar-title.c:
+	Convert more stuff to new icon API
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-info.[ch]:
         Add nautilus_icon_info_lookup_from_name
 	

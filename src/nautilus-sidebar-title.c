@@ -298,6 +298,7 @@ static void
 update_icon (NautilusSidebarTitle *sidebar_title)
 {
 	GdkPixbuf *pixbuf;
+	NautilusIconInfo *info;
 	char *icon_name;
 	gboolean leave_pixbuf_unchanged;
 	
@@ -308,13 +309,16 @@ update_icon (NautilusSidebarTitle *sidebar_title)
 
 	pixbuf = NULL;
 	if (icon_name != NULL && icon_name[0] != '\0') {
-		pixbuf = nautilus_icon_factory_get_pixbuf_from_name (icon_name, NULL, NAUTILUS_ICON_SIZE_LARGE, TRUE, NULL);
-	} else if (nautilus_file_check_if_ready (sidebar_title->details->file,
+		info = nautilus_icon_info_lookup_from_name (icon_name, NAUTILUS_ICON_SIZE_LARGE);
+		pixbuf = nautilus_icon_info_get_pixbuf_at_size (info,  NAUTILUS_ICON_SIZE_LARGE);
+		g_object_unref (info);
+	} else if (sidebar_title->details->file != NULL &&
+		   nautilus_file_check_if_ready (sidebar_title->details->file,
 						 NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
-		pixbuf = nautilus_icon_factory_get_pixbuf_for_file (sidebar_title->details->file,
-								    "accept",
-								    sidebar_title->details->best_icon_size,
-								    FALSE);
+		pixbuf = nautilus_file_get_icon_pixbuf (sidebar_title->details->file,
+							sidebar_title->details->best_icon_size,
+							FALSE,
+							NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT);
 	} else if (sidebar_title->details->determined_icon) {
 		/* We used to know the icon for this file, but now the file says it isn't
 		 * ready. This means that some file info has been invalidated, which

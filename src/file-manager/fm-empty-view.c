@@ -61,7 +61,7 @@ fm_empty_view_add_file (FMDirectoryView *view, NautilusFile *file, NautilusDirec
 	if (!timer) timer = g_timer_new ();
 
 	g_timer_start (timer);
-	icon = nautilus_icon_factory_get_pixbuf_for_file (file, NULL, nautilus_get_icon_size_for_zoom_level (NAUTILUS_ZOOM_LEVEL_STANDARD), TRUE);
+	icon = nautilus_file_get_icon_pixbuf (file, nautilus_get_icon_size_for_zoom_level (NAUTILUS_ZOOM_LEVEL_STANDARD), TRUE, 0);
 
 	elaps = g_timer_elapsed (timer, NULL);
 	g_timer_stop (timer);

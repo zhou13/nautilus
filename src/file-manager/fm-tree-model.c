@@ -242,29 +242,59 @@ tree_node_parent (TreeNode *node, TreeNode *parent)
 }
 
 static GdkPixbuf *
-tree_node_get_pixbuf_from_factory (TreeNode *node,
-				   const char *modifier)
+get_menu_icon (const char *icon_name)
+{
+	NautilusIconInfo *info;
+	GdkPixbuf *pixbuf;
+	int size;
+
+	size = nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU);
+	
+	info = nautilus_icon_info_lookup_from_name (icon_name, size);
+	pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info, size);
+	g_object_unref (info);
+	
+	return pixbuf;
+}
+
+static GdkPixbuf *
+get_menu_icon_for_file (NautilusFile *file,
+			NautilusFileIconFlags flags)
+{
+	NautilusIconInfo *info;
+	GdkPixbuf *pixbuf;
+	int size;
+
+	size = nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU);
+	
+	info = nautilus_file_get_icon (file, size, flags);
+	pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info, size);
+	g_object_unref (info);
+	
+	return pixbuf;
+}
+
+static GdkPixbuf *
+tree_node_get_pixbuf (TreeNode *node,
+		      NautilusFileIconFlags flags)
 {
 	if (node->parent == NULL) {
-		return nautilus_icon_factory_get_pixbuf_from_name_with_stock_size
-			(node->icon_name, NULL,
-			 GTK_ICON_SIZE_MENU, NULL);
+		return get_menu_icon (node->icon_name);
 	}
-	return nautilus_icon_factory_get_pixbuf_for_file_with_stock_size
-		(node->file, modifier, GTK_ICON_SIZE_MENU);
+	return get_menu_icon_for_file (node->file, flags);
 }
 
 static gboolean
 tree_node_update_pixbuf (TreeNode *node,
 			 GdkPixbuf **pixbuf_storage,
-			 const char *modifier)
+			 NautilusFileIconFlags flags)
 {
 	GdkPixbuf *pixbuf;
 
 	if (*pixbuf_storage == NULL) {
 		return FALSE;
 	}
-	pixbuf = tree_node_get_pixbuf_from_factory (node, modifier);
+	pixbuf = tree_node_get_pixbuf (node, flags);
 	if (pixbuf == *pixbuf_storage) {
 		g_object_unref (pixbuf);
 		return FALSE;
@@ -277,17 +307,17 @@ tree_node_update_pixbuf (TreeNode *node,
 static gboolean
 tree_node_update_closed_pixbuf (TreeNode *node)
 {
-	return tree_node_update_pixbuf (node, &node->closed_pixbuf, NULL);
+	return tree_node_update_pixbuf (node, &node->closed_pixbuf, 0);
 }
 
 static gboolean
 tree_node_update_open_pixbuf (TreeNode *node)
 {
-	return tree_node_update_pixbuf (node, &node->open_pixbuf, "accept");
+	return tree_node_update_pixbuf (node, &node->open_pixbuf, NAUTILUS_FILE_ICON_FLAGS_FOR_OPEN_FOLDER);
 }
 
 static GdkPixbuf *
-tree_node_get_emblem_pixbuf_from_factory (TreeNode *node)
+tree_node_get_emblem_pixbuf_internal (TreeNode *node)
 {
 	GdkPixbuf *pixbuf;
 	GList *emblem_pixbufs;
@@ -330,7 +360,7 @@ tree_node_update_emblem_pixbuf (TreeNode *node)
 	if (node->emblem_pixbuf == NULL) {
 		return FALSE;
 	}
-	pixbuf = tree_node_get_emblem_pixbuf_from_factory (node);
+	pixbuf = tree_node_get_emblem_pixbuf_internal (node);
 	if (pixbuf == node->emblem_pixbuf) {
 		g_object_unref (pixbuf);
 		return FALSE;
@@ -366,7 +396,7 @@ static GdkPixbuf *
 tree_node_get_closed_pixbuf (TreeNode *node)
 {
 	if (node->closed_pixbuf == NULL) {
-		node->closed_pixbuf = tree_node_get_pixbuf_from_factory (node, NULL);
+		node->closed_pixbuf = tree_node_get_pixbuf (node, 0);
 	}
 	return node->closed_pixbuf;
 }
@@ -375,7 +405,7 @@ static GdkPixbuf *
 tree_node_get_open_pixbuf (TreeNode *node)
 {
 	if (node->open_pixbuf == NULL) {
-		node->open_pixbuf = tree_node_get_pixbuf_from_factory (node, "accept");
+		node->open_pixbuf = tree_node_get_pixbuf (node, NAUTILUS_FILE_ICON_FLAGS_FOR_OPEN_FOLDER);
 	}
 	return node->open_pixbuf;
 }
@@ -384,7 +414,7 @@ static GdkPixbuf *
 tree_node_get_emblem_pixbuf (TreeNode *node)
 {
 	if (node->emblem_pixbuf == NULL) {
-		node->emblem_pixbuf = tree_node_get_emblem_pixbuf_from_factory (node);
+		node->emblem_pixbuf = tree_node_get_emblem_pixbuf_internal (node);
 	}
 	return node->emblem_pixbuf;
 }

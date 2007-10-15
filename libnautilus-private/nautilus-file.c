@@ -3073,6 +3073,7 @@ nautilus_file_get_gicon (NautilusFile *file,
 		
 		if (((flags & NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT) ||
 		     (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT) ||
+		     (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_OPEN_FOLDER) ||
 		     ((flags & NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING) == 0 &&
 		      nautilus_file_has_open_window (file))) &&
 		    G_IS_THEMED_ICON (file->details->icon)) {
@@ -3093,6 +3094,11 @@ nautilus_file_get_gicon (NautilusFile *file,
 				    (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT)) {
 					changed = TRUE;
 					g_ptr_array_add (array, "folder-drag-accept");
+				}
+				if (strcmp (name, "folder") == 0 &&
+				    (flags & NAUTILUS_FILE_ICON_FLAGS_FOR_OPEN_FOLDER)) {
+					changed = TRUE;
+					g_ptr_array_add (array, "folder-open");
 				}
 				if (strcmp (name, "text-x-generic") == 0 &&
 				    (flags & NAUTILUS_FILE_ICON_FLAGS_EMBEDDING_TEXT)) {
@@ -3225,9 +3231,9 @@ nautilus_file_get_icon_pixbuf (NautilusFile *file,
 
 	info = nautilus_file_get_icon (file, size, flags);
 	if (force_size) {
-		pixbuf = nautilus_icon_info_get_pixbuf (info);
-	} else {
 		pixbuf =  nautilus_icon_info_get_pixbuf_at_size (info, size);
+	} else {
+		pixbuf = nautilus_icon_info_get_pixbuf (info);
 	}
 	g_object_unref (info);
 	

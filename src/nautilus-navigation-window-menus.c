@@ -397,11 +397,8 @@ static void
 nautilus_navigation_window_initialize_go_menu (NautilusNavigationWindow *window)
 {
 	/* Recreate bookmarks part of menu if history list changes
-	 * or if icon theme changes.
 	 */
 	g_signal_connect_object (nautilus_signaller_get_current (), "history_list_changed",
-				 G_CALLBACK (schedule_refresh_go_menu), window, G_CONNECT_SWAPPED);
-	g_signal_connect_object (nautilus_icon_factory_get (), "icons_changed",
 				 G_CALLBACK (schedule_refresh_go_menu), window, G_CONNECT_SWAPPED);
 }
 

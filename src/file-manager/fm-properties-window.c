@@ -410,7 +410,7 @@ static GdkPixbuf *
 get_pixbuf_for_properties_window (FMPropertiesWindow *window)
 {
 	GdkPixbuf *pixbuf;
-	char *icon;
+	NautilusIconInfo *icon, *new_icon;
 	GList *l;
 	
 	icon = NULL;
@@ -420,30 +420,25 @@ get_pixbuf_for_properties_window (FMPropertiesWindow *window)
 		file = NAUTILUS_FILE (l->data);
 		
 		if (!icon) {
-			icon = nautilus_icon_factory_get_icon_for_file (file, FALSE);
+			icon = nautilus_file_get_icon (file, NAUTILUS_ICON_SIZE_STANDARD, NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS | NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING);
 		} else {
-			char *new_icon;
-			new_icon = nautilus_icon_factory_get_icon_for_file (file, FALSE);
-			if (!new_icon || strcmp (new_icon, icon)) {
-				g_free (icon);
-				g_free (new_icon);
+			new_icon = nautilus_file_get_icon (file, NAUTILUS_ICON_SIZE_STANDARD, NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS | NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING);
+			if (!new_icon || new_icon != icon) {
+				g_object_unref (icon);
+				g_object_unref (new_icon);
 				icon = NULL;
 				break;
 			}
-			g_free (new_icon);
+			g_object_unref (new_icon);
 		}
 	}
 
 	if (!icon) {
-		icon = g_strdup ("gnome-fs-regular");
+		icon = nautilus_icon_info_lookup_from_name ("text-x-generic", NAUTILUS_ICON_SIZE_STANDARD);
 	}
 	
-	pixbuf = nautilus_icon_factory_get_pixbuf_for_icon (icon, NULL,
-							    NAUTILUS_ICON_SIZE_STANDARD,
-							    NULL, NULL,
-							    FALSE, TRUE, NULL);
-
-	g_free (icon);
+	pixbuf = nautilus_icon_info_get_pixbuf_at_size (icon, NAUTILUS_ICON_SIZE_STANDARD);
+	g_object_unref (icon);
 
 	return pixbuf;
 }
@@ -3204,6 +3199,7 @@ create_emblems_page (FMPropertiesWindow *window)
 	GdkPixbuf *pixbuf;
 	char *label;
 	GList *icons, *l;
+	NautilusIconInfo *info;
 
 	/* The emblems wrapped table */
 	scroller = eel_scrolled_wrap_table_new (TRUE, &emblems_table);
@@ -3227,15 +3223,17 @@ create_emblems_page (FMPropertiesWindow *window)
 		if (!nautilus_emblem_should_show_in_list (emblem_name)) {
 			continue;
 		}
-		
-		pixbuf = nautilus_icon_factory_get_pixbuf_from_name (emblem_name, NULL,
-								     NAUTILUS_ICON_SIZE_SMALL, TRUE,
-								     &label);
+
+		info = nautilus_icon_info_lookup_from_name (emblem_name, NAUTILUS_ICON_SIZE_SMALL);
+		pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info, NAUTILUS_ICON_SIZE_SMALL);
 
 		if (pixbuf == NULL) {
 			continue;
 		}
-
+		
+		label = g_strdup (nautilus_icon_info_get_display_name (info));
+		g_object_unref (info);
+		
 		if (label == NULL) {
 			label = nautilus_emblem_get_keyword_from_icon_name (emblem_name);
 		}

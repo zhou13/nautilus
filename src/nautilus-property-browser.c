@@ -79,7 +79,6 @@
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-emblem-utils.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-metadata.h>
@@ -741,6 +740,7 @@ make_drag_image (NautilusPropertyBrowser *property_browser, const char* file_nam
 	char *image_file_name;
 	char *icon_name;
 	gboolean is_reset;
+	NautilusIconInfo *info;
 
 	if (property_browser->details->category_type == NAUTILUS_PROPERTY_EMBLEM) {
 		if (strcmp (file_name, "erase") == 0) {
@@ -753,9 +753,9 @@ make_drag_image (NautilusPropertyBrowser *property_browser, const char* file_nam
 			g_free (image_file_name);
 		} else {
 			icon_name = nautilus_emblem_get_icon_name_from_keyword (file_name);
-			pixbuf = nautilus_icon_factory_get_pixbuf_from_name (icon_name, NULL,
-									     NAUTILUS_ICON_SIZE_STANDARD, TRUE,
-									     NULL);
+			info = nautilus_icon_info_lookup_from_name (file_name, NAUTILUS_ICON_SIZE_STANDARD);
+			pixbuf = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_ICON_SIZE_STANDARD);
+			g_object_unref (info);
 			g_free (icon_name);
 		}
 		return pixbuf;
@@ -1707,6 +1707,7 @@ make_properties_from_directories (NautilusPropertyBrowser *property_browser)
 	GtkWidget *blank;
 	guint num_images;
 	char *path;
+	NautilusIconInfo *info;
 
 	g_return_if_fail (NAUTILUS_IS_PROPERTY_BROWSER (property_browser));
 	g_return_if_fail (EEL_IS_IMAGE_TABLE (property_browser->details->content_table));
@@ -1728,9 +1729,11 @@ make_properties_from_directories (NautilusPropertyBrowser *property_browser)
 				continue;
 			}
 			object_name = nautilus_emblem_get_keyword_from_icon_name (icon_name);
-			object_pixbuf = nautilus_icon_factory_get_pixbuf_from_name (icon_name, NULL,
-										    NAUTILUS_ICON_SIZE_SMALL, TRUE,
-										    &object_label);
+			info = nautilus_icon_info_lookup_from_name (object_name, NAUTILUS_ICON_SIZE_STANDARD);
+			object_pixbuf = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_ICON_SIZE_STANDARD);
+			object_label = g_strdup (nautilus_icon_info_get_display_name (info));
+			g_object_unref (info);
+			
 			if (object_label == NULL) {
 				object_label = g_strdup (object_name);
 			}

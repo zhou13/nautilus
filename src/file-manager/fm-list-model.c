@@ -251,12 +251,12 @@ fm_list_model_get_value (GtkTreeModel *tree_model, GtkTreeIter *iter, int column
 	int icon_size;
 	guint emblem_size;
 	NautilusZoomLevel zoom_level;
-	char *modifier;
 	GList *emblem_pixbufs;
 	NautilusFile *parent_file;
 	char *emblems_to_ignore[3];
 	int i;
-
+	NautilusFileIconFlags flags;
+	
 	model = (FMListModel *)tree_model;
 
 	g_return_if_fail (model->details->stamp == iter->stamp);
@@ -289,7 +289,7 @@ fm_list_model_get_value (GtkTreeModel *tree_model, GtkTreeIter *iter, int column
 			zoom_level = fm_list_model_get_zoom_level_from_column_id (column);
 			icon_size = nautilus_get_icon_size_for_zoom_level (zoom_level);
 
-			modifier = NULL;
+			flags = NAUTILUS_FILE_ICON_FLAGS_USE_THUMBNAILS;
 			if (model->details->drag_view != NULL) {
 				GtkTreePath *path_a, *path_b;
 				
@@ -300,19 +300,15 @@ fm_list_model_get_value (GtkTreeModel *tree_model, GtkTreeIter *iter, int column
 					path_b = gtk_tree_model_get_path (tree_model, iter);
 
 					if (gtk_tree_path_compare (path_a, path_b) == 0) {
-						modifier = "accept";
+						flags |= NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT;
 					}
 						
 					gtk_tree_path_free (path_a);
 					gtk_tree_path_free (path_b);
 				}
 			}
-			
-			if (nautilus_file_has_open_window (file)) {
-				modifier = "visiting";
-			}
-			
-			icon = nautilus_icon_factory_get_pixbuf_for_file (file, modifier, icon_size, TRUE);
+
+			icon = nautilus_file_get_icon_pixbuf (file, icon_size, TRUE, flags);
   
 			g_value_set_object (value, icon);
 			g_object_unref (icon);
