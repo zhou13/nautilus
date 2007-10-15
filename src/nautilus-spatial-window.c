@@ -61,7 +61,6 @@
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-horizontal-splitter.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <libnautilus-private/nautilus-program-choosing.h>
@@ -547,7 +546,6 @@ got_file_info_for_location_menu_callback (NautilusFile *file,
 	GtkWidget *icon;
 	GdkPixbuf *pixbuf;
 	char *name;
-	char *icon_name;
 
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 
@@ -557,11 +555,10 @@ got_file_info_for_location_menu_callback (NautilusFile *file,
 	label = gtk_bin_get_child (GTK_BIN (menu_item));
 	gtk_label_set_label (GTK_LABEL (label), name);
 
-	icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);
-	if (icon_name != NULL) {
-		pixbuf = nautilus_icon_factory_get_pixbuf_from_name_with_stock_size (icon_name, NULL, GTK_ICON_SIZE_MENU, NULL);
-		g_free (icon_name);
-	}
+	pixbuf = nautilus_file_get_icon_pixbuf (file,
+						nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU),
+						TRUE,
+						NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING);
 
 	if (pixbuf != NULL) {
 		icon = gtk_image_new_from_pixbuf (pixbuf);
@@ -741,8 +738,10 @@ location_button_drag_begin_callback (GtkWidget             *widget,
 {
 	GdkPixbuf *pixbuf;
 
-	pixbuf = nautilus_icon_factory_get_pixbuf_for_file (NAUTILUS_WINDOW (window)->details->viewed_file,
-							    "open", get_dnd_icon_size (window), FALSE);
+	pixbuf = nautilus_file_get_icon_pixbuf (NAUTILUS_WINDOW (window)->details->viewed_file,
+						get_dnd_icon_size (window),
+						FALSE,
+						NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING | NAUTILUS_FILE_ICON_FLAGS_FOR_DRAG_ACCEPT);
 
 	gtk_drag_set_icon_pixbuf (context, pixbuf, 0, 0);
 
@@ -809,16 +808,12 @@ nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
 
 		error = nautilus_file_get_file_info_error (file);
 		if (error == NULL) {
-			char *icon_name;
 			GdkPixbuf *pixbuf;
 
-			pixbuf = NULL;
-
-			icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);		
-			if (icon_name != NULL) {
-				pixbuf = nautilus_icon_factory_get_pixbuf_from_name_with_stock_size (icon_name, NULL, GTK_ICON_SIZE_MENU, NULL);
-				g_free (icon_name);
-			}
+			pixbuf = nautilus_file_get_icon_pixbuf (file,
+								nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU),
+								TRUE,
+								NAUTILUS_FILE_ICON_FLAGS_IGNORE_VISITING);
 
 			if (pixbuf != NULL) {
 				gtk_image_set_from_pixbuf (GTK_IMAGE (window->details->location_icon),  pixbuf);

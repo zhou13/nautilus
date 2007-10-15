@@ -33,6 +33,7 @@
 #include <gtk/gtkhbox.h>
 #include <gtk/gtkmain.h>
 #include <glib/gi18n.h>
+#include <gio/gthemedicon.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libnautilus-private/nautilus-icon-factory.h>
@@ -64,9 +65,9 @@ static gboolean desktop_is_home;
 
 #define NAUTILUS_PATH_BAR_ICON_SIZE 16
 
-#define DEFAULT_ICON 		"gnome-fs-directory"
-#define DEFAULT_DESKTOP_ICON 	"gnome-fs-desktop"
-#define DEFAULT_HOME_ICON 	"gnome-fs-home"
+#define DEFAULT_ICON 		"folder"
+#define DEFAULT_DESKTOP_ICON 	"user-desktop"
+#define DEFAULT_HOME_ICON 	"user-home"
 #define DEFAULT_FILESYSTEM_ICON	"gnome-dev-harddisk"
 
 typedef struct _ButtonData ButtonData;
@@ -79,7 +80,7 @@ struct _ButtonData
         char *path;
 
 	/* custom icon */ 
-	char *custom_icon_name;
+	GdkPixbuf *custom_icon;
 
 	/* flag to indicate its the base folder in the URI */
 	gboolean is_base_dir;
@@ -1012,34 +1013,40 @@ button_clicked_cb (GtkWidget *button,
         g_signal_emit (path_bar, path_bar_signals [PATH_CLICKED], 0, button_data->path);
 }
 
-static char *
-get_icon_name_for_file_path (const char *file_path)
+static GdkPixbuf *
+get_icon_for_file_path (const char *file_path, const char *default_icon_name)
 {
 	NautilusFile *file;
-	char 	     *icon_name;
+	NautilusIconInfo *info;
+	GIcon *icon;
+	GdkPixbuf *pixbuf;
 
 	file = nautilus_file_get_by_uri (file_path);
-	if (!file) {
-		return g_strdup (DEFAULT_ICON);
-	}
-	icon_name = NULL;
-	if (nautilus_file_check_if_ready (file,
+	
+	if (file != NULL &&
+	    nautilus_file_check_if_ready (file,
 					  NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
-		icon_name = nautilus_icon_factory_get_icon_for_file (file, FALSE);
+		info = nautilus_file_get_icon (file, NAUTILUS_PATH_BAR_ICON_SIZE, 0);
+		pixbuf = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_PATH_BAR_ICON_SIZE);
+		g_object_unref (info);
+		return pixbuf;
 	}
-	if (!icon_name) {
-		icon_name = g_strdup (DEFAULT_ICON);
-	}
+
 	nautilus_file_unref (file);
-	return icon_name;
+
+	icon = g_themed_icon_new (default_icon_name);
+	info = nautilus_icon_info_lookup (icon, NAUTILUS_PATH_BAR_ICON_SIZE);
+	g_object_unref (icon);
+	pixbuf = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_PATH_BAR_ICON_SIZE);
+	g_object_unref (info);
+	
+	return pixbuf;
 }
 
 static GdkPixbuf *
 get_button_image (NautilusPathBar *path_bar,
 		  ButtonType  button_type)
 {
-	char *icon_name;
-
 	switch (button_type)
         {
 		case ROOT_BUTTON:
@@ -1047,18 +1054,7 @@ get_button_image (NautilusPathBar *path_bar,
 				return path_bar->root_icon;
                        	}
 
-			icon_name = get_icon_name_for_file_path (path_bar->root_path);
-			if (strcmp (icon_name, DEFAULT_ICON) == 0) {
-			        path_bar->root_icon = nautilus_icon_factory_get_pixbuf_from_name (DEFAULT_FILESYSTEM_ICON,
-											  NULL, NAUTILUS_PATH_BAR_ICON_SIZE,
-											  TRUE, NULL);
-			} else {
-				path_bar->root_icon = nautilus_icon_factory_get_pixbuf_from_name (icon_name,
-											  NULL, NAUTILUS_PATH_BAR_ICON_SIZE,
-											  TRUE, NULL);
-			}
-
-			g_free (icon_name);
+			path_bar->root_icon = get_icon_for_file_path (path_bar->root_path, DEFAULT_FILESYSTEM_ICON);
 			return path_bar->root_icon;
 
 		case HOME_BUTTON:
@@ -1066,36 +1062,14 @@ get_button_image (NautilusPathBar *path_bar,
 		      		return path_bar->home_icon;
 			}
 
-			icon_name = get_icon_name_for_file_path (path_bar->home_path);
-			if (strcmp (icon_name, DEFAULT_ICON) == 0) {
-				path_bar->home_icon = nautilus_icon_factory_get_pixbuf_from_name (DEFAULT_HOME_ICON,
-											  NULL, NAUTILUS_PATH_BAR_ICON_SIZE,
-											  TRUE, NULL);
-			} else {
-				path_bar->home_icon = nautilus_icon_factory_get_pixbuf_from_name (icon_name,
-											  NULL, NAUTILUS_PATH_BAR_ICON_SIZE,
-											  TRUE, NULL);
-			}
-
-			g_free (icon_name);
+			path_bar->home_icon = get_icon_for_file_path (path_bar->root_path, DEFAULT_HOME_ICON);
 			return path_bar->home_icon;
 
                 case DESKTOP_BUTTON:
                       	if (path_bar->desktop_icon != NULL) {
 				return path_bar->desktop_icon;
 			}
-			icon_name = get_icon_name_for_file_path (path_bar->desktop_path);
-			if (strcmp (icon_name, DEFAULT_ICON) == 0) {
-		      		path_bar->desktop_icon = nautilus_icon_factory_get_pixbuf_from_name (DEFAULT_DESKTOP_ICON,
-											     NULL, NAUTILUS_PATH_BAR_ICON_SIZE,
-											     TRUE, NULL);
-			} else {
-				path_bar->desktop_icon = nautilus_icon_factory_get_pixbuf_from_name (icon_name,
-											  NULL, NAUTILUS_PATH_BAR_ICON_SIZE,
-											  TRUE, NULL);
-			}
-
-			g_free (icon_name);
+			path_bar->desktop_icon = get_icon_for_file_path (path_bar->root_path, DEFAULT_DESKTOP_ICON);
       			return path_bar->desktop_icon;
 
 	    	default:
@@ -1110,8 +1084,8 @@ button_data_free (ButtonData *button_data)
 {
         g_free (button_data->path);
         g_free (button_data->dir_name);
-	if (button_data->custom_icon_name) {
-		g_free (button_data->custom_icon_name);
+	if (button_data->custom_icon) {
+		g_object_unref (button_data->custom_icon);
 	}
         g_free (button_data);
 }
@@ -1177,8 +1151,8 @@ nautilus_path_bar_update_button_appearance (NautilusPathBar *path_bar,
 		if (button_data->type == VOLUME_BUTTON || (button_data->type == NORMAL_BUTTON && button_data->is_base_dir) ) {
 	
 			/* set custom icon for roots */
-			if (button_data->custom_icon_name) {
-				gtk_image_set_from_icon_name (GTK_IMAGE (button_data->image), button_data->custom_icon_name, GTK_ICON_SIZE_MENU);  
+			if (button_data->custom_icon) {
+				gtk_image_set_from_pixbuf (GTK_IMAGE (button_data->image), button_data->custom_icon);  
 			}
 		} else {
 	                GdkPixbuf *pixbuf;
@@ -1226,6 +1200,9 @@ is_file_path_mounted_volume (const char *file_path, ButtonData *button_data)
 	GnomeVFSVolume 	      *volume;
 	gboolean	       result;
 	char		      *mount_uri;
+	char *icon_name;
+	GIcon *icon;
+	NautilusIconInfo *info;
 
 	result = FALSE;
 	volume_monitor = gnome_vfs_get_volume_monitor ();
@@ -1241,10 +1218,16 @@ is_file_path_mounted_volume (const char *file_path, ButtonData *button_data)
 			result = TRUE;
 			/* set volume specific details in button_data */
 			if (button_data) {
-				button_data->custom_icon_name = gnome_vfs_volume_get_icon (volume);
-				if (!button_data->custom_icon_name) {
-					button_data->custom_icon_name = g_strdup (DEFAULT_ICON);
+				icon_name = gnome_vfs_volume_get_icon (volume);
+				if (icon_name == NULL) {
+					icon_name = g_strdup (DEFAULT_ICON);
 				}
+				icon = g_themed_icon_new (icon_name);
+				g_free (icon_name);
+				info = nautilus_icon_info_lookup (icon, NAUTILUS_PATH_BAR_ICON_SIZE);
+				g_object_unref (icon);
+				button_data->custom_icon = nautilus_icon_info_get_pixbuf_at_size (info, NAUTILUS_PATH_BAR_ICON_SIZE);
+				g_object_unref (info);
 				button_data->path = g_strdup (mount_uri);
 				button_data->dir_name = gnome_vfs_volume_get_display_name (volume);
 			}
@@ -1362,7 +1345,7 @@ make_directory_button (NautilusPathBar  *path_bar,
         	                gtk_box_pack_start (GTK_BOX (child), button_data->image, FALSE, FALSE, 0);
         	                gtk_box_pack_start (GTK_BOX (child), label_alignment, FALSE, FALSE, 0);
 				button_data->is_base_dir = TRUE;
-				button_data->custom_icon_name = get_icon_name_for_file_path (path);
+				button_data->custom_icon = get_icon_for_file_path (path, DEFAULT_ICON);
 			} else {
 				button_data->is_base_dir = FALSE;
 	      			button_data->label = gtk_label_new (NULL);
