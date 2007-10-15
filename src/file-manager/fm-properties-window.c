@@ -72,7 +72,6 @@
 #include <libnautilus-private/nautilus-file-operations.h>
 #include <libnautilus-private/nautilus-desktop-icon-file.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-emblem-utils.h>
 #include <libnautilus-private/nautilus-link.h>
 #include <libnautilus-private/nautilus-metadata.h>

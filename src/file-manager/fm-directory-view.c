@@ -97,7 +97,6 @@
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-file-private.h> /* for nautilus_file_get_existing_by_uri */
 #include <libnautilus-private/nautilus-global-preferences.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-link.h>
 #include <libnautilus-private/nautilus-marshal.h>
 #include <libnautilus-private/nautilus-metadata.h>

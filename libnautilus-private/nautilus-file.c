@@ -41,7 +41,6 @@
 #include "nautilus-link-desktop-file.h"
 #include "nautilus-metadata.h"
 #include "nautilus-module.h"
-#include "nautilus-icon-factory.h"
 #include "nautilus-search-directory.h"
 #include "nautilus-search-directory-file.h"
 #include "nautilus-thumbnails.h"

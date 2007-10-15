@@ -48,7 +48,6 @@
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-sidebar.h>
 #include <string.h>

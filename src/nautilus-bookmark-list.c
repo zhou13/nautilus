@@ -29,6 +29,7 @@
 #include "nautilus-bookmark-list.h"
 
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-file.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-string.h>
 #include <gio/gfile.h>

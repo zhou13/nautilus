@@ -1,5 +1,49 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/Makefile.am:
+        * libnautilus-private/nautilus-icon-factory-private.h: Removed.
+        * libnautilus-private/nautilus-icon-factory.c: Removed.
+        * libnautilus-private/nautilus-icon-factory.h: Removed.
+	Remove NautilusIconFactory code.
+	Now all code use the new APIs
+	YAHOO!!!
+	
+        * libnautilus-private/nautilus-bookmark.c:
+        * libnautilus-private/nautilus-bookmark.h:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-global-preferences.c:
+        * libnautilus-private/nautilus-icon-canvas-item.c:
+        * libnautilus-private/nautilus-icon-canvas-item.h:
+        * libnautilus-private/nautilus-icon-container.h:
+        * libnautilus-private/nautilus-icon-private.h:
+        * libnautilus-private/nautilus-link-desktop-file.c:
+        * libnautilus-private/nautilus-program-choosing.c:
+        * libnautilus-private/nautilus-view.h:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-icon-view.c:
+        * src/file-manager/fm-list-model.c:
+        * src/file-manager/fm-list-model.h:
+        * src/file-manager/fm-list-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.c:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-application.c:
+        * src/nautilus-bookmark-list.c:
+        * src/nautilus-bookmarks-window.c:
+        * src/nautilus-emblem-sidebar.c:
+        * src/nautilus-navigation-window-menus.c:
+        * src/nautilus-navigation-window.c:
+        * src/nautilus-pathbar.c:
+        * src/nautilus-places-sidebar.c:
+        * src/nautilus-sidebar-title.c:
+        * src/nautilus-window-menus.c:
+        * src/nautilus-window.c:
+        * src/nautilus-zoom-control.h:
+        * test/test-nautilus-wrap-table.c:
+	Don't include the nautilus-icon-factory headers
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.[ch]:
 	Add NAUTILUS_FILE_ICON_FLAGS_FOR_OPEN_FOLDER
 	Fix force_size handling

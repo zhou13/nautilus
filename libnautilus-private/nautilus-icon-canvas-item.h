@@ -28,7 +28,6 @@
 #include <libart_lgpl/art_rect.h>
 #include <libart_lgpl/art_point.h>
 #include <eel/eel-canvas.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 
 G_BEGIN_DECLS
 

@@ -35,7 +35,6 @@
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-file.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <gtk/gtkenums.h>
 #include <string.h>
 

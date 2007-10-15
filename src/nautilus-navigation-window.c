@@ -69,7 +69,7 @@
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-horizontal-splitter.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
+#include <libnautilus-private/nautilus-icon-info.h>
 #include <libnautilus-private/nautilus-metadata.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <libnautilus-private/nautilus-program-choosing.h>

@@ -25,7 +25,7 @@
 #include <config.h>
 #include "nautilus-bookmark.h"
 
-#include "nautilus-icon-info.h"
+#include "nautilus-file.h"
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-gtk-macros.h>
@@ -39,6 +39,7 @@
 #include <libgnome/gnome-macros.h>
 #include <libgnome/gnome-util.h>
 #include <gio/gthemedicon.h>
+#include <libnautilus-private/nautilus-file.h>
 
 enum {
 	APPEARANCE_CHANGED,

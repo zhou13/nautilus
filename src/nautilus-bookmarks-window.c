@@ -34,7 +34,6 @@
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-gnome-extensions.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-undo-signal-handlers.h>
 #include <gtk/gtkenums.h>
 #include <gtk/gtkhbbox.h>

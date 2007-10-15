@@ -30,7 +30,6 @@
 #include "nautilus-directory.h"
 #include "nautilus-file-attributes.h"
 #include "nautilus-file-utilities.h"
-#include "nautilus-icon-factory.h"
 #include "nautilus-file.h"
 #include "nautilus-metadata.h"
 #include "nautilus-program-choosing.h"

@@ -27,7 +27,7 @@
 #define NAUTILUS_ICON_CONTAINER_H
 
 #include <eel/eel-canvas.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
+#include <libnautilus-private/nautilus-icon-info.h>
 
 #define NAUTILUS_ICON_CONTAINER(obj) \
 	GTK_CHECK_CAST (obj, nautilus_icon_container_get_type (), NautilusIconContainer)

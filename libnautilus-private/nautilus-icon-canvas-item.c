@@ -30,7 +30,6 @@
 
 #include "nautilus-file-utilities.h"
 #include "nautilus-global-preferences.h"
-#include "nautilus-icon-factory.h"
 #include "nautilus-icon-private.h"
 #include <eel/eel-art-extensions.h>
 #include <eel/eel-gdk-extensions.h>

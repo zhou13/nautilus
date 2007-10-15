@@ -36,7 +36,7 @@
 #include <gio/gthemedicon.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
+#include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include "nautilus-pathbar.h"

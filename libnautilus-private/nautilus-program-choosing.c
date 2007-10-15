@@ -28,7 +28,7 @@
 
 #include "nautilus-mime-actions.h"
 #include "nautilus-global-preferences.h"
-#include "nautilus-icon-factory.h"
+#include "nautilus-icon-info.h"
 #include "nautilus-vfs-utils.h"
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gnome-extensions.h>

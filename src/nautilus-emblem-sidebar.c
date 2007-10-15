@@ -61,7 +61,6 @@
 #include <libgnomeui/gnome-popup-menu.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <gconf/gconf-client.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
 #include <libnautilus-private/nautilus-emblem-utils.h>
 #include <libnautilus-private/nautilus-file-utilities.h>

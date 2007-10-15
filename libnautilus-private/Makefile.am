@@ -123,9 +123,6 @@ libnautilus_private_la_SOURCES = \
 	nautilus-icon-container.h \
 	nautilus-icon-dnd.c \
 	nautilus-icon-dnd.h \
-	nautilus-icon-factory-private.h \
-	nautilus-icon-factory.c \
-	nautilus-icon-factory.h \
 	nautilus-icon-private.h \
 	nautilus-icon-info.c \
 	nautilus-icon-info.h \

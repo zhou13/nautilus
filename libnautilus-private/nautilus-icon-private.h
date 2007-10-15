@@ -30,7 +30,6 @@
 #include <libnautilus-private/nautilus-icon-canvas-item.h>
 #include <libnautilus-private/nautilus-icon-container.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 
 /* An Icon. */
 

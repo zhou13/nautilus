@@ -83,7 +83,6 @@
 #include <libnautilus-private/nautilus-debug-log.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-metafile-factory.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-undo-manager.h>

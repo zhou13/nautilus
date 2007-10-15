@@ -35,7 +35,6 @@
 #include <gtk/gtktreednd.h>
 #include <gtk/gtktreesortable.h>
 #include <glib/gi18n.h>
-#include <libnautilus-private/nautilus-icon-factory.h>
 #include <libnautilus-private/nautilus-dnd.h>
 
 #if GLIB_CHECK_VERSION (2, 13, 0)
