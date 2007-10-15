@@ -49,8 +49,6 @@ marshal_sources = \
 
 libnautilus_private_la_SOURCES = \
 	$(nautilus_metafile_server_idl_sources)	\
-	nautilus-audio-player.c \
-	nautilus-audio-player.h \
 	nautilus-bookmark.c \
 	nautilus-bookmark.h \
 	nautilus-cell-renderer-pixbuf-emblem.c \

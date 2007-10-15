@@ -57,7 +57,6 @@
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libgnomevfs/gnome-vfs-xfer.h>
-#include <libnautilus-private/nautilus-audio-player.h>
 #include <libnautilus-private/nautilus-directory-background.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-dnd.h>
@@ -112,7 +111,6 @@ struct FMIconViewDetails
 	GtkActionGroup *icon_action_group;
 	guint icon_merge_id;
 	
-	NautilusAudioPlayerData *audio_player_data;
 	int audio_preview_timeout;
 	NautilusFile *audio_preview_file;
 
@@ -1752,7 +1750,6 @@ band_select_ended_callback (NautilusIconContainer *container,
 static gboolean
 play_file (gpointer callback_data)
 {
-#if USE_OLD_AUDIO_PREVIEW	
 	NautilusFile *file;
 	FMIconView *icon_view;
 	FILE *sound_process;
@@ -1854,30 +1851,6 @@ play_file (gpointer callback_data)
 	g_free (mime_type);
 
 	icon_view->details->audio_preview_timeout = 0;
-#else
-	char *file_path, *file_uri, *mime_type;
-	gboolean is_mp3;
-	FMIconView *icon_view;
-	
-	icon_view = FM_ICON_VIEW (callback_data);
-		
-	file_uri = nautilus_file_get_uri (icon_view->details->audio_preview_file);
-	file_path = g_filename_from_uri (file_uri, NULL, NULL);
-	mime_type = nautilus_file_get_mime_type (icon_view->details->audio_preview_file);
-
-	is_mp3 = eel_strcasecmp (mime_type, "audio/mpeg") == 0;
-
-	if (file_path != NULL && !is_mp3) {
-		icon_view->details->audio_player_data = nautilus_audio_player_play (file_path);
-	}
-	
-	g_free (file_uri);
-	g_free (file_path);	
-	g_free (mime_type);
-
-	icon_view->details->audio_preview_timeout = 0;
-	icon_view->details->audio_preview_file = NULL;
-#endif
 	return FALSE;
 }
 
@@ -1893,19 +1866,11 @@ static void
 preview_audio (FMIconView *icon_view, NautilusFile *file, gboolean start_flag)
 {		
 	/* Stop current audio playback */
-#if USE_OLD_AUDIO_PREVIEW
 	if (audio_preview_pid > 0) {
 		kill (-audio_preview_pid, SIGTERM);
 		waitpid (audio_preview_pid, NULL, 0);
 		audio_preview_pid = 0;
 	}
-#else
-	if (icon_view->details->audio_player_data != NULL) {
-		nautilus_audio_player_stop (icon_view->details->audio_player_data);
-		g_free (icon_view->details->audio_player_data);
-		icon_view->details->audio_player_data = NULL;
-	}
-#endif
 	if (icon_view->details->audio_preview_timeout != 0) {
 		g_source_remove (icon_view->details->audio_preview_timeout);
 		icon_view->details->audio_preview_timeout = 0;
@@ -1913,12 +1878,7 @@ preview_audio (FMIconView *icon_view, NautilusFile *file, gboolean start_flag)
 			
 	if (start_flag) {
 		icon_view->details->audio_preview_file = file;
-#if USE_OLD_AUDIO_PREVIEW			
 		icon_view->details->audio_preview_timeout = g_timeout_add (1000, play_file, icon_view);
-#else
-		/* FIXME: Need to kill the existing timeout if there is one? */
-		icon_view->details->audio_preview_timeout = g_timeout_add (1000, play_file, icon_view);
-#endif
 	}
 }
 

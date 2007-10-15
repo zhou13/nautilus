@@ -1,5 +1,13 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/Makefile.am:
+        * libnautilus-private/nautilus-audio-player.c: Removed.
+        * libnautilus-private/nautilus-audio-player.h: Removed.
+        * src/file-manager/fm-icon-view.c:
+	Kill old unused code
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-info.[ch]:
 	Add nautilus_icon_info_get_pixbuf_nodefault_at_size
 	
