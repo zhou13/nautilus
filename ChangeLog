@@ -1,5 +1,10 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-thumbnails.c:
+	Add required thumbnailing stuff from NautilusIconFactory here
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-factory.[ch]:
         * libnautilus-private/nautilus-icon-info.[ch]:
 	Move over icon size util functions to nautilus-icon-info

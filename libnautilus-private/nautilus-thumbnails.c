@@ -28,8 +28,7 @@
 
 #include "nautilus-directory-notify.h"
 #include "nautilus-global-preferences.h"
-#include "nautilus-icon-factory-private.h"
-#include "nautilus-icon-factory.h"
+#include "nautilus-file-utilities.h"
 #include <math.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-graphic-effects.h>
@@ -45,6 +44,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <signal.h>
+#include <libgnomeui/gnome-thumbnail.h>
 
 #include "nautilus-file-private.h"
 
@@ -143,6 +143,19 @@ free_thumbnail_info (NautilusThumbnailInfo *info)
 	g_free (info);
 }
 
+static GnomeThumbnailFactory *
+get_thumbnail_factory (void)
+{
+	static GnomeThumbnailFactory *thumbnail_factory = NULL;
+
+	if (thumbnail_factory == NULL) {
+		thumbnail_factory = gnome_thumbnail_factory_new (GNOME_THUMBNAIL_SIZE_NORMAL);
+	}
+
+	return thumbnail_factory;
+}
+
+
 /* This function is added as a very low priority idle function to start the
    thread to create any needed thumbnails. It is added with a very low priority
    so that it doesn't delay showing the directory in the icon/list views.
@@ -155,7 +168,7 @@ thumbnail_thread_starter_cb (gpointer data)
 
 	/* Don't do this in thread, since g_object_ref is not threadsafe */
 	if (thumbnail_factory == NULL) {
-		thumbnail_factory = nautilus_icon_factory_get_thumbnail_factory ();
+		thumbnail_factory = get_thumbnail_factory ();
 	}
 
 	/* We create the thread in the detached state, as we don't need/want
@@ -203,12 +216,11 @@ nautilus_update_thumbnail_file_copied (const char *source_file_uri,
 			pixbuf = gdk_pixbuf_new_from_file (old_thumbnail_path, NULL);
 			
 			if (pixbuf && gnome_thumbnail_has_uri (pixbuf, source_file_uri)) {
-				factory = nautilus_icon_factory_get_thumbnail_factory ();
+				factory = get_thumbnail_factory ();
 				gnome_thumbnail_factory_save_thumbnail (factory,
 									pixbuf,
 									destination_file_uri,
 									g_file_info_get_attribute_uint64 (file_info, G_FILE_ATTRIBUTE_TIME_MODIFIED));
-				g_object_unref (factory);
 			}
 			
 			if (pixbuf) {
@@ -241,6 +253,24 @@ nautilus_remove_thumbnail_for_file (const char *file_uri)
 	g_free (thumbnail_path);
 }
 
+static GdkPixbuf *
+nautilus_get_thumbnail_frame (void)
+{
+	char *image_path;
+	static GdkPixbuf *thumbnail_frame = NULL;
+
+	if (thumbnail_frame == NULL) {
+		image_path = nautilus_pixmap_file ("thumbnail_frame.png");
+		if (image_path != NULL) {
+			thumbnail_frame = gdk_pixbuf_new_from_file (image_path, NULL);
+		}
+		g_free (image_path);
+	}
+	
+	return thumbnail_frame;
+}
+
+
 void
 nautilus_thumbnail_frame_image (GdkPixbuf **pixbuf)
 {
@@ -251,7 +281,7 @@ nautilus_thumbnail_frame_image (GdkPixbuf **pixbuf)
 	 * an old Nautilus), so we must embed it in a frame.
 	 */
 
-	frame = nautilus_icon_factory_get_thumbnail_frame ();
+	frame = nautilus_get_thumbnail_frame ();
 	if (frame == NULL) {
 		return;
 	}
@@ -266,7 +296,7 @@ nautilus_thumbnail_frame_image (GdkPixbuf **pixbuf)
 		 left_offset, top_offset, right_offset, bottom_offset);
 	g_object_unref (*pixbuf);	
 
-	*pixbuf=pixbuf_with_frame;
+	*pixbuf = pixbuf_with_frame;
 }
 
 GdkPixbuf *
@@ -280,7 +310,7 @@ nautilus_thumbnail_unframe_image (GdkPixbuf *pixbuf)
 	 * an old Nautilus), so we must embed it in a frame.
 	 */
 
-	frame = nautilus_icon_factory_get_thumbnail_frame ();
+	frame = nautilus_get_thumbnail_frame ();
 	if (frame == NULL) {
 		return NULL;
 	}
@@ -711,12 +741,11 @@ nautilus_can_thumbnail (NautilusFile *file)
 	mime_type = nautilus_file_get_mime_type (file);
 	mtime = nautilus_file_get_mtime (file);
 	
-	factory = nautilus_icon_factory_get_thumbnail_factory ();
+	factory = get_thumbnail_factory ();
 	res = gnome_thumbnail_factory_can_thumbnail (factory,
 						     uri,
 						     mime_type,
 						     mtime);
-	g_object_unref (factory);
 	g_free (mime_type);
 	g_free (uri);
 
