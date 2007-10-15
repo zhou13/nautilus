@@ -200,7 +200,7 @@ add_place (NautilusPlacesSidebar *sidebar,
 	NautilusIconInfo *icon_info;
 	int icon_size;
 
-	gtk_icon_size_lookup (GTK_ICON_SIZE_MENU, &icon_size, NULL);
+	icon_size = nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU);
 	icon_info = nautilus_icon_info_lookup (icon, icon_size);
 
 	pixbuf = nautilus_icon_info_get_pixbuf_at_size (icon_info, icon_size);

@@ -1,5 +1,14 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-icon-info.[ch]:
+	Add nautilus_get_icon_size_for_stock_size
+	
+        * libnautilus-private/nautilus-bookmark.c:
+        * src/nautilus-places-sidebar.c:
+        Use the above
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-thumbnails.c:
 	Add required thumbnailing stuff from NautilusIconFactory here
 

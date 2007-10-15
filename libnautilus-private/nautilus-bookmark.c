@@ -235,8 +235,7 @@ nautilus_bookmark_get_pixbuf (NautilusBookmark *bookmark,
 		return NULL;
 	}
 	
-	gtk_icon_size_lookup (stock_size, &pixel_size, NULL);
-	
+	pixel_size = nautilus_get_icon_size_for_stock_size (stock_size);
 	info = nautilus_icon_info_lookup (icon, pixel_size);
 	result = nautilus_icon_info_get_pixbuf_at_size (info, pixel_size);	
 	g_object_unref (info);

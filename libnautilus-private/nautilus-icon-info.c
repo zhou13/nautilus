@@ -21,6 +21,7 @@
 #include "nautilus-icon-info.h"
 #include "nautilus-default-file-icon.h"
 #include <gtk/gtkicontheme.h>
+#include <gtk/gtkiconfactory.h>
 #include <gio/gloadableicon.h>
 #include <gio/gthemedicon.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
@@ -564,6 +565,18 @@ nautilus_icon_get_smaller_icon_size (guint size)
 	}
 	return NAUTILUS_ICON_SIZE_SMALLEST;
 }
+
+gint
+nautilus_get_icon_size_for_stock_size (GtkIconSize size)
+{
+  gint w, h;
+
+  if (gtk_icon_size_lookup (size, &w, &h)) {
+    return MAX (w, h);
+  } 
+  return NAUTILUS_ZOOM_LEVEL_STANDARD;
+}
+
 
 char *
 nautilus_icon_get_emblem_icon_by_name (const char *emblem_name)
