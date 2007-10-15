@@ -5041,13 +5041,6 @@ nautilus_icon_container_instance_init (NautilusIconContainer *container)
 
 	container->details = details;
 
-	/* Make sure that we find out if the icons change. */
-	g_signal_connect_object 
-		(nautilus_icon_factory_get (),
-		 "icons_changed", 
-		 G_CALLBACK (nautilus_icon_container_request_update_all),
-		 container, G_CONNECT_SWAPPED);
-
 	/* when the background changes, we must set up the label text color */
 	background = eel_get_widget_background (GTK_WIDGET (container));
 	

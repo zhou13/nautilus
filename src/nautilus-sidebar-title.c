@@ -144,10 +144,6 @@ nautilus_sidebar_title_init (NautilusSidebarTitle *sidebar_title)
 {
 	sidebar_title->details = g_new0 (NautilusSidebarTitleDetails, 1);
 	
-	/* Register to find out about icon theme changes */
-	g_signal_connect_object (nautilus_icon_factory_get (), "icons_changed",
-				 G_CALLBACK (update_icon), sidebar_title, G_CONNECT_SWAPPED);
-
 	/* Create the icon */
 	sidebar_title->details->icon = gtk_image_new ();
 	gtk_box_pack_start (GTK_BOX (sidebar_title), sidebar_title->details->icon, 0, 0, 0);

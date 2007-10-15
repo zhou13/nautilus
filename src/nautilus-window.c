@@ -144,14 +144,6 @@ static const struct {
 };
 
 static void
-icons_changed_callback (GObject *factory, NautilusWindow *window)
-{
-	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
-
-	nautilus_window_update_icon (window);
-}
-
-static void
 nautilus_window_init (NautilusWindow *window)
 {
 	GtkWidget *table;
@@ -193,13 +185,6 @@ nautilus_window_init (NautilusWindow *window)
 			  0, 1,                               0, 1,
 			  GTK_EXPAND | GTK_FILL | GTK_SHRINK, 0,
 			  0,                                  0);
-
-	/* Register IconFactory callback to update the window border icon
-	 * when the icon-theme is changed.
-	 */
-	g_signal_connect_object (nautilus_icon_factory_get (), "icons_changed",
-				 G_CALLBACK (icons_changed_callback), window,
-				 0);
 
 	/* Register to menu provider extension signal managing menu updates */
 	g_signal_connect_object (nautilus_signaller_get_current (), "popup_menu_changed",

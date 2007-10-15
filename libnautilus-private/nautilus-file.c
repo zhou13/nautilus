@@ -28,6 +28,7 @@
 #include "nautilus-directory-metafile.h"
 #include "nautilus-directory-notify.h"
 #include "nautilus-directory-private.h"
+#include "nautilus-signaller.h"
 #include "nautilus-desktop-directory.h"
 #include "nautilus-desktop-directory-file.h"
 #include "nautilus-desktop-icon-file.h"
@@ -3011,6 +3012,7 @@ get_custom_icon (NautilusFile *file)
 
 
 static int cached_thumbnail_limit;
+static int cached_thumbnail_size;
 static int show_image_thumbs;
 
 static gboolean
@@ -6479,18 +6481,67 @@ static void
 thumbnail_limit_changed_callback (gpointer user_data)
 {
 	cached_thumbnail_limit = eel_preferences_get_integer (NAUTILUS_PREFERENCES_IMAGE_FILE_THUMBNAIL_LIMIT);
+
+	/* Tell the world that icons might have changed. We could invent a narrower-scope
+	 * signal to mean only "thumbnails might have changed" if this ends up being slow
+	 * for some reason.
+	 */
+	emit_change_signals_for_all_files_in_all_directories ();
+}
+
+static void
+thumbnail_size_changed_callback (gpointer user_data)
+{
+	cached_thumbnail_size = eel_preferences_get_integer (NAUTILUS_PREFERENCES_ICON_VIEW_THUMBNAIL_SIZE);
+
+	/* Tell the world that icons might have changed. We could invent a narrower-scope
+	 * signal to mean only "thumbnails might have changed" if this ends up being slow
+	 * for some reason.
+	 */
+	emit_change_signals_for_all_files_in_all_directories ();
 }
 
 static void
 show_thumbnails_changed_callback (gpointer user_data)
 {
 	show_image_thumbs = eel_preferences_get_enum (NAUTILUS_PREFERENCES_SHOW_IMAGE_FILE_THUMBNAILS);
+
+	/* Tell the world that icons might have changed. We could invent a narrower-scope
+	 * signal to mean only "thumbnails might have changed" if this ends up being slow
+	 * for some reason.
+	 */
+	emit_change_signals_for_all_files_in_all_directories ();
 }
 
+static void       
+mime_type_data_changed_callback (GObject *signaller, gpointer user_data)
+{
+	/* Tell the world that icons might have changed. We could invent a narrower-scope
+	 * signal to mean only "thumbnails might have changed" if this ends up being slow
+	 * for some reason.
+	 */
+	emit_change_signals_for_all_files_in_all_directories ();
+}
+
+static void
+icon_theme_changed_callback (GtkIconTheme *icon_theme,
+			     gpointer user_data)
+{
+	/* Clear all pixmap caches as the icon => pixmap lookup changed */
+	nautilus_icon_info_clear_caches ();
+	
+	/* Tell the world that icons might have changed. We could invent a narrower-scope
+	 * signal to mean only "thumbnails might have changed" if this ends up being slow
+	 * for some reason.
+	 */
+	emit_change_signals_for_all_files_in_all_directories ();
+}
 
 static void
 nautilus_file_class_init (NautilusFileClass *class)
 {
+	GtkIconTheme *icon_theme;
+	
 	parent_class = g_type_class_peek_parent (class);
 
 	G_OBJECT_CLASS (class)->finalize = finalize;
@@ -6524,13 +6575,25 @@ nautilus_file_class_init (NautilusFileClass *class)
 	eel_preferences_add_callback (NAUTILUS_PREFERENCES_IMAGE_FILE_THUMBNAIL_LIMIT,
 				      thumbnail_limit_changed_callback,
 				      NULL);
-	
+	thumbnail_size_changed_callback (NULL);
+	eel_preferences_add_callback (NAUTILUS_PREFERENCES_ICON_VIEW_THUMBNAIL_SIZE,
+				      thumbnail_size_changed_callback,
+				      NULL);
 	show_thumbnails_changed_callback (NULL);
 	eel_preferences_add_callback (NAUTILUS_PREFERENCES_SHOW_IMAGE_FILE_THUMBNAILS,
 				      show_thumbnails_changed_callback,
 				      NULL);
 
+	icon_theme = gtk_icon_theme_get_default ();
+	g_signal_connect_object (icon_theme,
+				 "changed",
+				 G_CALLBACK (icon_theme_changed_callback),
+				 NULL, 0);
 
+	g_signal_connect (nautilus_signaller_get_current (),
+			  "mime_data_changed",
+			  G_CALLBACK (mime_type_data_changed_callback),
+			  NULL);
 }
 
 static void

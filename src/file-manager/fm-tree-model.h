@@ -85,7 +85,6 @@ gboolean           fm_tree_model_file_get_iter             (FMTreeModel *model,
 								  NautilusFile *file,
 								  GtkTreeIter *currentIter);
 
-void               fm_tree_model_set_theme                 (FMTreeModel *model);
 GnomeVFSVolume *   fm_tree_model_get_volume_for_root_node_file        
                                                            (FMTreeModel  *model, 
                                                             NautilusFile *file);

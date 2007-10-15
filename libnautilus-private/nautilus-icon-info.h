@@ -37,6 +37,8 @@ gboolean              nautilus_icon_info_get_attach_points    (NautilusIconInfo 
 							       gint              *n_points);
 G_CONST_RETURN gchar *nautilus_icon_info_get_display_name     (NautilusIconInfo  *icon);
 
+void                  nautilus_icon_info_clear_caches         (void);
+
 G_END_DECLS
 
 #endif /* NAUTILUS_ICON_INFO_H */

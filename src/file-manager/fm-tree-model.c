@@ -1658,36 +1658,6 @@ fm_tree_model_new (void)
 	return model;
 }
 
-static void
-set_theme (TreeNode *node, FMTreeModel *model)
-{
-	TreeNode *child;
-	
-	tree_node_update_closed_pixbuf (node);
-	tree_node_update_open_pixbuf (node);
-	
-	report_node_contents_changed (model, node);
-	
-	for (child = node->first_child; child != NULL; child = child->next) {
-		set_theme (child, model);
-	}
-} 
-
-void
-fm_tree_model_set_theme (FMTreeModel *model)
-{
-	TreeNode *node;
-
-	g_return_if_fail (FM_IS_TREE_MODEL (model));
-
-	node = model->details->root_node;
-	while (node != NULL) {
-		set_theme (node, model);
-		node = node->next;
-	}
-}
-
-
 void
 fm_tree_model_set_show_hidden_files (FMTreeModel *model,
 					   gboolean show_hidden_files)

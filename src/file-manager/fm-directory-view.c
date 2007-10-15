@@ -1677,18 +1677,6 @@ templates_added_or_changed_callback (NautilusDirectory *directory,
 }
 
 static void
-icons_changed_callback (gpointer callback_data)
-{
-	FMDirectoryView *view;
-
-	view = FM_DIRECTORY_VIEW (callback_data);
-
-	view->details->scripts_invalid = TRUE;
-	view->details->templates_invalid = TRUE;
-	schedule_update_menus (view);
-}
-
-static void
 add_directory_to_directory_list (FMDirectoryView *view,
 				 NautilusDirectory *directory,
 				 GList **directory_list,
@@ -1949,11 +1937,6 @@ fm_directory_view_init (FMDirectoryView *view)
 
 	g_signal_connect_object (nautilus_trash_monitor_get (), "trash_state_changed",
 				 G_CALLBACK (fm_directory_view_trash_state_changed_callback), view, 0);
-
-	/* React to icon theme changes. */
-	g_signal_connect_object (nautilus_icon_factory_get (), "icons_changed",
-				 G_CALLBACK (icons_changed_callback),
-				 view, G_CONNECT_SWAPPED);
 
 	/* React to clipboard changes */
 	g_signal_connect_object (nautilus_clipboard_monitor_get (), "clipboard_changed",

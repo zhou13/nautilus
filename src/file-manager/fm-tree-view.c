@@ -590,17 +590,6 @@ move_copy_items_callback (NautilusTreeViewDragDest *dest,
 }
 
 static void
-theme_changed_callback (GObject *icon_factory, gpointer callback_data)
-{
-        FMTreeView *view; 
-
-        view = FM_TREE_VIEW (callback_data);
-	if (view->details->child_model != NULL) {
-		fm_tree_model_set_theme (FM_TREE_MODEL (view->details->child_model));
-	}
-}
-
-static void
 add_root_for_volume (FMTreeView *view,
 		     GnomeVFSVolume *volume)
 {
@@ -1558,9 +1547,6 @@ fm_tree_view_init (FMTreeView *view)
 	eel_preferences_add_callback (NAUTILUS_PREFERENCES_TREE_SHOW_ONLY_DIRECTORIES,
 				      filtering_changed_callback, view);
 	
-	g_signal_connect_object (nautilus_icon_factory_get(), "icons_changed",
-				 G_CALLBACK (theme_changed_callback), view, 0);  
-
 	view->details->popup_file = NULL;
 	create_popup_menu (view);
 }

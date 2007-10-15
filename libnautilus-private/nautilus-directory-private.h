@@ -193,6 +193,7 @@ void               nautilus_directory_emit_files_changed              (NautilusD
 void               nautilus_directory_emit_change_signals             (NautilusDirectory         *directory,
 								       GList                     *changed_files);
 void               emit_change_signals_for_all_files		      (NautilusDirectory	 *directory);
+void               emit_change_signals_for_all_files_in_all_directories (void);
 void               nautilus_directory_emit_done_loading               (NautilusDirectory         *directory);
 void               nautilus_directory_emit_load_error                 (NautilusDirectory         *directory,
 								       GError                    *error);

@@ -1,5 +1,30 @@
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+	Handle thumbnail size prefs
+	Handle all sorts of icon changes and emit CHANGED on
+	files in this case.
+	
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-icon-container.c:
+        * libnautilus-private/nautilus-icon-info.c:
+        * libnautilus-private/nautilus-icon-info.h:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-list-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.c:
+        * src/file-manager/fm-tree-model.h:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-bookmarks-window.c:
+        * src/nautilus-sidebar-title.c:
+        * src/nautilus-window-bookmarks.c:
+        * src/nautilus-window.c:
+	Remove use of icon factory icons_changed signal, using instead
+	the file CHANGED signal.
+
+2007-10-15  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-file.c (nautilus_file_get_all_attributes):
 	Add thumbnail to all attributes
 

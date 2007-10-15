@@ -164,10 +164,11 @@ static guint reap_cache_timeout = 0;
 #define NSEC_PER_SEC ((guint64)1000000000L)
 
 static guint time_now;
+
 static gboolean
-reap_icon (gpointer  key,
-	   gpointer  value,
-	   gpointer  user_info)
+reap_old_icon (gpointer  key,
+	       gpointer  value,
+	       gpointer  user_info)
 {
 	NautilusIconInfo *icon = value;
 	gboolean *reapable_icons_left = user_info;
@@ -196,13 +197,13 @@ reap_cache (gpointer data)
 	
 	if (loadable_icon_cache) {
 		g_hash_table_foreach_remove (loadable_icon_cache,
-					     reap_icon,
+					     reap_old_icon,
 					     &reapable_icons_left);
 	}
 	
 	if (themed_icon_cache) {
 		g_hash_table_foreach_remove (themed_icon_cache,
-					     reap_icon,
+					     reap_old_icon,
 					     &reapable_icons_left);
 	}
 	
@@ -223,7 +224,18 @@ schedule_reap_cache (void)
 								 NULL, NULL);
 	}
 }
+
+void
+nautilus_icon_info_clear_caches (void)
+{
+	if (loadable_icon_cache) {
+		g_hash_table_remove_all (loadable_icon_cache);
+	}
 	
+	if (themed_icon_cache) {
+		g_hash_table_remove_all (themed_icon_cache);
+	}
+}
 
 static guint
 loadable_icon_key_hash (LoadableIconKey *key)

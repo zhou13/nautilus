@@ -325,9 +325,4 @@ nautilus_window_initialize_bookmarks_menu (NautilusWindow *window)
 	g_signal_connect_object (nautilus_get_bookmark_list (), "contents_changed",
 				 G_CALLBACK (schedule_refresh_bookmarks_menu),
 				 window, G_CONNECT_SWAPPED);
-
-	/* Recreate static & dynamic parts of menu if icon theme changes */
-	g_signal_connect_object (nautilus_icon_factory_get (), "icons_changed",
-				 G_CALLBACK (schedule_refresh_bookmarks_menu),
-				 window, G_CONNECT_SWAPPED);
 }

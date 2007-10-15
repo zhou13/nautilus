@@ -384,11 +384,6 @@ create_bookmarks_window (NautilusBookmarkList *list, GObject *undo_manager_sourc
 		g_signal_connect (jump_button, "clicked",
 				  G_CALLBACK (on_jump_button_clicked), undo_manager_source);
 
-	/* Register to find out about icon theme changes */
-	g_signal_connect_object (nautilus_icon_factory_get (), "icons_changed",
-				 G_CALLBACK (repopulate), window,
-				 G_CONNECT_SWAPPED);
-                      	    
 	gtk_tree_selection_set_mode (bookmark_selection, GTK_SELECTION_BROWSE);
 	
 	/* Fill in list widget with bookmarks, must be after signals are wired up. */

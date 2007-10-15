@@ -271,6 +271,40 @@ emit_change_signals_for_all_files (NautilusDirectory *directory)
 }
 
 static void
+collect_all_directories (gpointer key, gpointer value, gpointer callback_data)
+{
+	NautilusDirectory *directory;
+	GList **dirs;
+	GFile *location;
+
+	location = (GFile *) key;
+	directory = NAUTILUS_DIRECTORY (value);
+	dirs = callback_data;
+
+	*dirs = g_list_prepend (*dirs, nautilus_directory_ref (directory));
+}
+
+void
+emit_change_signals_for_all_files_in_all_directories (void)
+{
+	GList *dirs, *l;
+	NautilusDirectory *directory;
+
+	dirs = NULL;
+	g_hash_table_foreach (directories,
+			      collect_all_directories,
+			      &dirs);
+
+	for (l = dirs; l != NULL; l = l->next) {
+		directory = NAUTILUS_DIRECTORY (l->data);
+		emit_change_signals_for_all_files (directory);
+		nautilus_directory_unref (directory);
+	}
+
+	g_list_free (dirs);
+}
+
+static void
 async_state_changed_one (gpointer key, gpointer value, gpointer user_data)
 {
 	NautilusDirectory *directory;

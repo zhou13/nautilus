@@ -596,12 +596,6 @@ create_image_widget (FMPropertiesWindow *window,
 
 	g_object_set_data (G_OBJECT (image), "properties_window", window);
 
-	/* React to icon theme changes. */
-	g_signal_connect_object (nautilus_icon_factory_get (),
-				 "icons_changed",
-				 G_CALLBACK (update_properties_window_icon),
-				 image, G_CONNECT_SWAPPED);
-
 	window->details->icon_image = image;
 	window->details->icon_button = button;
 

@@ -2354,19 +2354,6 @@ fm_list_view_click_policy_changed (FMDirectoryView *directory_view)
 }
 
 static void
-icons_changed_callback (GObject *icon_factory,
-			gpointer callback_data)
-{
-	FMListView *view;
-
-	view = FM_LIST_VIEW (callback_data);
-
-	gtk_tree_model_foreach (GTK_TREE_MODEL (view->details->model),
-				list_view_changed_foreach, NULL);
-}
-
-
-static void
 default_sort_order_changed_callback (gpointer callback_data)
 {
 	FMListView *list_view;
@@ -2690,12 +2677,6 @@ fm_list_view_init (FMListView *list_view)
 	fm_list_view_click_policy_changed (FM_DIRECTORY_VIEW (list_view));
 	
 	fm_list_view_sort_directories_first_changed (FM_DIRECTORY_VIEW (list_view));
-	
-	g_signal_connect_object 
-		(nautilus_icon_factory_get (),
-		 "icons_changed",
-		 G_CALLBACK (icons_changed_callback),
-		 list_view, 0);
 	
 	/* ensure that the zoom level is always set in begin_loading */
 	list_view->details->zoom_level = NAUTILUS_ZOOM_LEVEL_SMALLEST - 1;
