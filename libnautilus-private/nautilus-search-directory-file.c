@@ -191,7 +191,7 @@ nautilus_search_directory_file_init (gpointer object, gpointer klass)
 
 	file->details->display_name = g_strdup (_("Search"));
 	file->details->custom_icon = NULL;
-	file->details->activation_uri = NULL;
+	file->details->activation_location = NULL;
 	file->details->got_link_info = TRUE;
 	file->details->link_info_is_up_to_date = TRUE;
 

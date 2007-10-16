@@ -172,7 +172,6 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 {
 	NautilusFile *file;
 	NautilusDesktopLink *link;
-	GnomeVFSVolume *volume;
 	char *display_name;
 	
 	file = NAUTILUS_FILE (icon_file);
@@ -197,9 +196,12 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	file->details->can_read = TRUE;
 	file->details->can_write = TRUE;
 
+	/* TODO-gio: We don't really need to set volumes on the file, instead
+	   use mountable files
 	volume = nautilus_desktop_link_get_volume (link);
 	nautilus_file_set_volume (file, volume);
 	gnome_vfs_volume_unref (volume);
+	 */
 	
 	file->details->file_info_is_up_to_date = TRUE;
 
@@ -212,8 +214,10 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 		g_object_unref (file->details->icon);
 	}
 	file->details->icon = nautilus_desktop_link_get_icon (link);
-	g_free (file->details->activation_uri);
-	file->details->activation_uri = nautilus_desktop_link_get_activation_uri (link);
+	if (file->details->activation_location) {
+		g_object_unref (file->details->activation_location);
+	}
+	file->details->activation_location = nautilus_desktop_link_get_activation_location (link);
 	file->details->got_link_info = TRUE;
 	file->details->link_info_is_up_to_date = TRUE;
 

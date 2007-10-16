@@ -34,7 +34,8 @@
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <gio/gthemedicon.h>
-#include <libgnomevfs/gnome-vfs.h>
+#include <gio/gvolume.h>
+#include <gio/gdrive.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
@@ -44,7 +45,7 @@ struct NautilusDesktopLinkDetails {
 	NautilusDesktopLinkType type;
         char *filename;
 	char *display_name;
-	char *activation_uri;
+	GFile *activation_location;
 	GIcon *icon;
 
 	NautilusDesktopIconFile *icon_file;
@@ -53,7 +54,7 @@ struct NautilusDesktopLinkDetails {
 	gulong trash_state_handler;
 
 	/* Just for volume icons: */
-	GnomeVFSVolume *volume;
+	GVolume *volume;
 };
 
 static void nautilus_desktop_link_init       (gpointer              object,
@@ -110,7 +111,6 @@ trash_name_changed (gpointer callback_data)
 	link = NAUTILUS_DESKTOP_LINK (callback_data);
 	g_assert (link->details->type == NAUTILUS_DESKTOP_LINK_TRASH);
 
-	
 	g_free (link->details->display_name);
 	link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_TRASH_NAME);
 	nautilus_desktop_link_changed (link);
@@ -143,7 +143,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 	case NAUTILUS_DESKTOP_LINK_HOME:
 		link->details->filename = g_strdup ("home");
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_HOME_NAME);
-		link->details->activation_uri = nautilus_get_home_directory_uri ();
+		link->details->activation_location = g_file_new_for_path (g_get_home_dir ());
 		link->details->icon = g_themed_icon_new ("user-home");
 
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_HOME_NAME,
@@ -157,7 +157,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_COMPUTER_NAME);
 		
-		link->details->activation_uri = g_strdup ("computer:///");
+		link->details->activation_location = g_file_new_for_uri ("computer:///");
 		/* TODO: This might need a different icon: */
 		link->details->icon = g_themed_icon_new ("gnome-fs-client");
 
@@ -170,7 +170,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 	case NAUTILUS_DESKTOP_LINK_TRASH:
 		link->details->filename = g_strdup ("trash");
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_TRASH_NAME);
-		link->details->activation_uri = g_strdup (EEL_TRASH_URI);
+		link->details->activation_location = g_file_new_for_uri (EEL_TRASH_URI);
 		link->details->icon = nautilus_trash_monitor_get_icon ();
 		
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_TRASH_NAME,
@@ -184,7 +184,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 	case NAUTILUS_DESKTOP_LINK_NETWORK:
 		link->details->filename = g_strdup ("network");
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_NETWORK_NAME);
-		link->details->activation_uri = g_strdup ("network:///");
+		link->details->activation_location = g_file_new_for_uri ("network:///");
 		link->details->icon = g_themed_icon_new ("gnome-fs-network");
 
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_NETWORK_NAME,
@@ -203,29 +203,33 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 }
 
 NautilusDesktopLink *
-nautilus_desktop_link_new_from_volume (GnomeVFSVolume *volume)
+nautilus_desktop_link_new_from_volume (GVolume *volume)
 {
 	NautilusDesktopLink *link;
-	GnomeVFSDrive *drive;
-	char *name, *filename;
-	char *icon_name;
+	GDrive *drive;
+	char *name, *filename, *p;
 
 	link = NAUTILUS_DESKTOP_LINK (g_object_new (NAUTILUS_TYPE_DESKTOP_LINK, NULL));
 	
 	link->details->type = NAUTILUS_DESKTOP_LINK_VOLUME;
 
-	link->details->volume = gnome_vfs_volume_ref (volume);
+	link->details->volume = g_object_ref (volume);
 
 	/* We try to use the drive name to get somewhat stable filenames
 	   for metadata */
-	drive = gnome_vfs_volume_get_drive (volume);
+	drive = g_volume_get_drive (volume);
 	if (drive != NULL) {
-		name = gnome_vfs_drive_get_display_name (drive);
+		name = g_drive_get_name (drive);
+		g_object_unref (drive);
 	} else {
-		name = gnome_vfs_volume_get_display_name (volume);
+		name = g_volume_get_name (volume);
 	}
-	gnome_vfs_drive_unref (drive);
 
+	/* Replace slashes in name */
+	while ((p = strchr (name, '/')) != NULL) {
+		*p = '-';
+	}
+	
 	filename = g_strconcat (name, ".volume", NULL);
 	link->details->filename =
 		nautilus_desktop_link_monitor_make_filename_unique (nautilus_desktop_link_monitor_get (),
@@ -233,24 +237,20 @@ nautilus_desktop_link_new_from_volume (GnomeVFSVolume *volume)
 	g_free (filename);
 	g_free (name);
 	
-	link->details->display_name = gnome_vfs_volume_get_display_name (volume);
+	link->details->display_name = g_volume_get_name (volume);
 	
-	link->details->activation_uri = gnome_vfs_volume_get_activation_uri (volume);
-	icon_name = gnome_vfs_volume_get_icon (volume);
-	if (icon_name) {
-		link->details->icon = g_themed_icon_new (icon_name);
-	}
-	g_free (icon_name);
+	link->details->activation_location = g_volume_get_root (volume);
+	link->details->icon = g_volume_get_icon (volume);
 	
 	create_icon_file (link);
 
 	return link;
 }
 
-GnomeVFSVolume *
+GVolume *
 nautilus_desktop_link_get_volume (NautilusDesktopLink *link)
 {
-	return gnome_vfs_volume_ref (link->details->volume);
+	return g_object_ref (link->details->volume);
 }
 
 
@@ -281,10 +281,13 @@ nautilus_desktop_link_get_icon (NautilusDesktopLink *link)
 	return NULL;
 }
 
-char *
-nautilus_desktop_link_get_activation_uri (NautilusDesktopLink *link)
+GFile *
+nautilus_desktop_link_get_activation_location (NautilusDesktopLink *link)
 {
-	return g_strdup (link->details->activation_uri);
+	if (link->details->activation_location) {
+		return g_object_ref (link->details->activation_location);
+	}
+	return NULL;
 }
 
 gboolean
@@ -415,12 +418,14 @@ desktop_link_finalize (GObject *object)
 	}
 
 	if (link->details->type == NAUTILUS_DESKTOP_LINK_VOLUME) {
-		gnome_vfs_volume_unref (link->details->volume);
+		g_object_unref (link->details->volume);
 	}
 
 	g_free (link->details->filename);
 	g_free (link->details->display_name);
-	g_free (link->details->activation_uri);
+	if (link->details->activation_location) {
+		g_object_unref (link->details->activation_location);
+	}
 	g_free (link->details->icon);
 	g_free (link->details);
 

@@ -3401,9 +3401,14 @@ link_info_done (NautilusDirectory *directory,
 	nautilus_file_set_display_name (file, name, name, TRUE);
 	
 	file->details->got_link_info = TRUE;
-	g_free (file->details->activation_uri);
+	if (file->details->activation_location) {
+		g_object_unref (file->details->activation_location);
+		file->details->activation_location = NULL;
+	}
 	g_free (file->details->custom_icon);
-	file->details->activation_uri = g_strdup (uri);
+	if (uri) {
+		file->details->activation_location = g_file_new_for_uri (uri);
+	}
 	file->details->custom_icon = g_strdup (icon);
 
 	volume = NULL;

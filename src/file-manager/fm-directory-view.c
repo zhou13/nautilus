@@ -5101,6 +5101,7 @@ get_file_paths_or_uris_as_newline_delimited_string (GList *selection, gboolean g
 	NautilusDesktopLink *link;
 	GString *expanding_string;
 	GList *node;
+	GFile *location;
 
 	expanding_string = g_string_new ("");
 	for (node = selection; node != NULL; node = node->next) {
@@ -5108,7 +5109,9 @@ get_file_paths_or_uris_as_newline_delimited_string (GList *selection, gboolean g
 		if (NAUTILUS_IS_DESKTOP_ICON_FILE (node->data)) {
 			link = nautilus_desktop_icon_file_get_link (NAUTILUS_DESKTOP_ICON_FILE (node->data));
 			if (link != NULL) {
-				uri = nautilus_desktop_link_get_activation_uri (link);
+				location = nautilus_desktop_link_get_activation_location (link);
+				uri = g_file_get_uri (location);
+				g_object_unref (location);
 				g_object_unref (G_OBJECT (link));
 			}
 		} else {

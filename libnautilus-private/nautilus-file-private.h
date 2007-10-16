@@ -110,7 +110,7 @@ struct NautilusFileDetails
 
 	/* Info you might get from a link (.desktop, .directory or nautilus link) */
 	char *custom_icon;
-	char *activation_uri;
+	GFile *activation_location;
 
 	/* The following is for file operations in progress. Since
 	 * there are normally only a few of these, we can move them to

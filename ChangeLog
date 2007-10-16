@@ -1,5 +1,18 @@
 2007-10-16  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-desktop-link-monitor.c:
+        * libnautilus-private/nautilus-desktop-link.[ch]:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-search-directory-file.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-properties-window.c:
+	Convert some volume monitor use to gio
+
+2007-10-16  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-trash-monitor.c:
 	Ref icon in nautilus_trash_monitor_get_icon()
 	

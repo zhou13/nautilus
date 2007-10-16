@@ -633,7 +633,9 @@ finalize (GObject *object)
 	g_free (file->details->selinux_context);
 	g_free (file->details->top_left_text);
 	g_free (file->details->custom_icon);
-	g_free (file->details->activation_uri);
+	if (file->details->activation_location) {
+		g_object_unref (file->details->activation_location);
+	}
 	g_free (file->details->compare_by_emblem_cache);
 
 	if (file->details->thumbnail) {
@@ -2913,8 +2915,8 @@ nautilus_file_get_activation_uri (NautilusFile *file)
 		return NULL;
 	}
 
-	if (file->details->activation_uri != NULL) {
-		return g_strdup (file->details->activation_uri);
+	if (file->details->activation_location != NULL) {
+		return g_file_get_uri (file->details->activation_location);
 	}
 	
 	return nautilus_file_get_uri (file);
@@ -2925,6 +2927,7 @@ char *
 nautilus_file_get_drop_target_uri (NautilusFile *file)
 {
 	char *uri, *target_uri;
+	GFile *location;
 	NautilusDesktopLink *link;
 	
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
@@ -2933,9 +2936,11 @@ nautilus_file_get_drop_target_uri (NautilusFile *file)
 		link = nautilus_desktop_icon_file_get_link (NAUTILUS_DESKTOP_ICON_FILE (file));
 
 		if (link != NULL) {
-			uri = nautilus_desktop_link_get_activation_uri (link);
+			location = nautilus_desktop_link_get_activation_location (link);
 			g_object_unref (link);
-			if (uri != NULL) {
+			if (location != NULL) {
+				uri = g_file_get_uri (location);
+				g_object_unref (location);
 				return uri;
 			}
 		}
