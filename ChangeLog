@@ -1,5 +1,16 @@
 2007-10-16  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-trash-monitor.c:
+	Ref icon in nautilus_trash_monitor_get_icon()
+	
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-desktop-link.c:
+        * libnautilus-private/nautilus-desktop-link.h:
+        * src/nautilus-places-sidebar.c:
+	Use nautilus_trash_monitor_get_icon() when possible
+	
+2007-10-16  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-trash-monitor.[ch]:
 	Add full gio implementation and get_icon()
 

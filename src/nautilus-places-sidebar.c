@@ -375,8 +375,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 	g_list_free (volumes);
 
 	mount_uri = "trash:///"; /* No need to strdup */
-	icon_name = nautilus_trash_monitor_is_empty () ? "user-trash" : "user-trash-full";
-	icon = g_themed_icon_new (icon_name);
+	icon = nautilus_trash_monitor_get_icon ();
 	last_iter = add_place (sidebar, PLACES_BUILT_IN,
 			       _("Trash"), icon, mount_uri,
 			       NULL, NULL, 0);

@@ -227,7 +227,10 @@ nautilus_trash_monitor_get_icon (void)
 	NautilusTrashMonitor *monitor;
 
 	monitor = nautilus_trash_monitor_get ();
-	return monitor->details->icon;
+	if (monitor->details->icon) {
+		return g_object_ref (monitor->details->icon);
+	}
+	return NULL;
 }
 
 void

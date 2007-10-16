@@ -33,21 +33,19 @@
 #include <eel/eel-vfs-extensions.h>
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
+#include <gio/gthemedicon.h>
 #include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <string.h>
 
-#define TRASH_EMPTY_ICON "gnome-fs-trash-empty"
-#define TRASH_FULL_ICON "gnome-fs-trash-full"
-
 struct NautilusDesktopLinkDetails {
 	NautilusDesktopLinkType type;
         char *filename;
 	char *display_name;
 	char *activation_uri;
-	char *icon;
+	GIcon *icon;
 
 	NautilusDesktopIconFile *icon_file;
 	
@@ -146,7 +144,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 		link->details->filename = g_strdup ("home");
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_HOME_NAME);
 		link->details->activation_uri = nautilus_get_home_directory_uri ();
-		link->details->icon = g_strdup ("gnome-fs-home");
+		link->details->icon = g_themed_icon_new ("user-home");
 
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_HOME_NAME,
 					      home_name_changed,
@@ -161,7 +159,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 		
 		link->details->activation_uri = g_strdup ("computer:///");
 		/* TODO: This might need a different icon: */
-		link->details->icon = g_strdup ("gnome-fs-client");
+		link->details->icon = g_themed_icon_new ("gnome-fs-client");
 
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_COMPUTER_NAME,
 					      computer_name_changed,
@@ -173,11 +171,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 		link->details->filename = g_strdup ("trash");
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_TRASH_NAME);
 		link->details->activation_uri = g_strdup (EEL_TRASH_URI);
-		if (nautilus_trash_monitor_is_empty ()) {
-			link->details->icon = g_strdup (TRASH_EMPTY_ICON);
-		} else {
-			link->details->icon = g_strdup (TRASH_FULL_ICON);
-		}
+		link->details->icon = nautilus_trash_monitor_get_icon ();
 		
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_TRASH_NAME,
 					      trash_name_changed,
@@ -191,7 +185,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 		link->details->filename = g_strdup ("network");
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_NETWORK_NAME);
 		link->details->activation_uri = g_strdup ("network:///");
-		link->details->icon = g_strdup ("gnome-fs-network");
+		link->details->icon = g_themed_icon_new ("gnome-fs-network");
 
 		eel_preferences_add_callback (NAUTILUS_PREFERENCES_DESKTOP_NETWORK_NAME,
 					      network_name_changed,
@@ -214,6 +208,7 @@ nautilus_desktop_link_new_from_volume (GnomeVFSVolume *volume)
 	NautilusDesktopLink *link;
 	GnomeVFSDrive *drive;
 	char *name, *filename;
+	char *icon_name;
 
 	link = NAUTILUS_DESKTOP_LINK (g_object_new (NAUTILUS_TYPE_DESKTOP_LINK, NULL));
 	
@@ -241,8 +236,12 @@ nautilus_desktop_link_new_from_volume (GnomeVFSVolume *volume)
 	link->details->display_name = gnome_vfs_volume_get_display_name (volume);
 	
 	link->details->activation_uri = gnome_vfs_volume_get_activation_uri (volume);
-	link->details->icon = gnome_vfs_volume_get_icon (volume);
-
+	icon_name = gnome_vfs_volume_get_icon (volume);
+	if (icon_name) {
+		link->details->icon = g_themed_icon_new (icon_name);
+	}
+	g_free (icon_name);
+	
 	create_icon_file (link);
 
 	return link;
@@ -273,10 +272,13 @@ nautilus_desktop_link_get_display_name (NautilusDesktopLink *link)
 	return g_strdup (link->details->display_name);
 }
 
-char *
+GIcon *
 nautilus_desktop_link_get_icon (NautilusDesktopLink *link)
 {
-	return g_strdup (link->details->icon);
+	if (link->details->icon != NULL) {
+		return g_object_ref (link->details->icon);
+	}
+	return NULL;
 }
 
 char *
@@ -311,13 +313,10 @@ trash_state_changed_callback (NautilusTrashMonitor *trash_monitor,
 	link = NAUTILUS_DESKTOP_LINK (callback_data);
 	g_assert (link->details->type == NAUTILUS_DESKTOP_LINK_TRASH);
 
-	g_free (link->details->icon);
-	
-	if (state) {
-		link->details->icon = g_strdup (TRASH_EMPTY_ICON);
-	} else {
-		link->details->icon = g_strdup (TRASH_FULL_ICON);
+	if (link->details->icon) {
+		g_object_unref (link->details->icon);
 	}
+	link->details->icon = nautilus_trash_monitor_get_icon ();
 
 	nautilus_desktop_link_changed (link);
 }
