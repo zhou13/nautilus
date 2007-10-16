@@ -1,3 +1,8 @@
+2007-10-16  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-trash-monitor.[ch]:
+	Add full gio implementation and get_icon()
+
 2007-10-15  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/Makefile.am:

@@ -33,9 +33,14 @@
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-vfs-extensions.h>
 #include <gtk/gtksignal.h>
+#include <gio/gthemedicon.h>
+#include <gio/gfilemonitor.h>
+#include <string.h>
 
 struct NautilusTrashMonitorDetails {
 	gboolean empty;
+	GIcon *icon;
+	GFileMonitor *file_monitor;
 };
 
 enum {
@@ -53,12 +58,29 @@ static void nautilus_trash_monitor_init       (gpointer                   object
 EEL_CLASS_BOILERPLATE (NautilusTrashMonitor, nautilus_trash_monitor, G_TYPE_OBJECT)
 
 static void
+nautilus_trash_monitor_finalize (GObject *object)
+{
+	NautilusTrashMonitor *trash_monitor;
+
+	trash_monitor = NAUTILUS_TRASH_MONITOR (object);
+
+	if (trash_monitor->details->icon) {
+		g_object_unref (trash_monitor->details->icon);
+	}
+	if (trash_monitor->details->file_monitor) {
+		g_object_unref (trash_monitor->details->file_monitor);
+	}
+}
+
+static void
 nautilus_trash_monitor_class_init (NautilusTrashMonitorClass *klass)
 {
 	GObjectClass *object_class;
 
 	object_class = G_OBJECT_CLASS (klass);
 
+	object_class->finalize = nautilus_trash_monitor_finalize;
+	
 	signals[TRASH_STATE_CHANGED] = g_signal_new
 		("trash_state_changed",
 		 G_TYPE_FROM_CLASS (object_class),
@@ -71,16 +93,101 @@ nautilus_trash_monitor_class_init (NautilusTrashMonitorClass *klass)
 }
 
 static void
+update_info_cb (GObject *source_object,
+		GAsyncResult *res,
+		gpointer user_data)
+{
+	NautilusTrashMonitor *trash_monitor;
+	GFileInfo *info;
+	GIcon *icon;
+	const char * const *names;
+	gboolean empty;
+	int i;
+
+	trash_monitor = NAUTILUS_TRASH_MONITOR (user_data);
+	
+	info = g_file_query_info_finish (G_FILE (source_object),
+					 res, NULL);
+
+	if (info != NULL) {
+		icon = g_file_info_get_icon (info);
+
+		if (icon) {
+			g_object_unref (trash_monitor->details->icon);
+			trash_monitor->details->icon = g_object_ref (icon);
+			empty = TRUE;
+			if (G_IS_THEMED_ICON (icon)) {
+				names = g_themed_icon_get_names (G_THEMED_ICON (icon));
+				for (i = 0; names[i] != NULL; i++) {
+					if (strcmp (names[i], "user-trash-full") == 0) {
+						empty = FALSE;
+						break;
+					}
+				}
+			}
+			trash_monitor->details->empty = empty;
+
+			/* trash got empty or full, notify everyone who cares */
+			g_signal_emit (trash_monitor, 
+				       signals[TRASH_STATE_CHANGED], 0,
+				       trash_monitor->details->empty);
+		}
+	}
+
+	g_object_unref (trash_monitor);
+}
+
+static void
+schedule_update_info (NautilusTrashMonitor *trash_monitor)
+{
+	GFile *location;
+
+	location = g_file_new_for_uri ("trash:///");
+
+	g_file_query_info_async (location,
+				 G_FILE_ATTRIBUTE_STD_ICON,
+				 0, 0, NULL,
+				 update_info_cb, g_object_ref (trash_monitor));
+	
+	g_object_unref (location);
+}
+
+static void
+file_changed (GDirectoryMonitor* monitor,
+	      GFile *child,
+	      GFile *other_file,
+	      GFileMonitorEvent event_type,
+	      gpointer user_data)
+{
+	NautilusTrashMonitor *trash_monitor;
+
+	trash_monitor = NAUTILUS_TRASH_MONITOR (user_data);
+	
+	schedule_update_info (trash_monitor);
+}
+
+static void
 nautilus_trash_monitor_init (gpointer object, gpointer klass)
 {
 	NautilusTrashMonitor *trash_monitor;
+	GFile *location;
 
 	trash_monitor = NAUTILUS_TRASH_MONITOR (object);
 
 	trash_monitor->details = g_new0 (NautilusTrashMonitorDetails, 1);
 	trash_monitor->details->empty = TRUE;
+	trash_monitor->details->icon = g_themed_icon_new ("user-trash");
 
-	/* TODO-gio: How to handle this in gio world */
+	location = g_file_new_for_uri ("trash:///");
+
+	trash_monitor->details->file_monitor = g_file_monitor_file (location, 0, NULL);
+
+	g_signal_connect (trash_monitor->details->file_monitor, "changed",
+			  (GCallback)file_changed, trash_monitor);
+	
+	g_object_unref (location);
+
+	schedule_update_info (trash_monitor);
 }
 
 
@@ -112,6 +219,15 @@ nautilus_trash_monitor_is_empty (void)
 
 	monitor = nautilus_trash_monitor_get ();
 	return monitor->details->empty;
+}
+
+GIcon *
+nautilus_trash_monitor_get_icon (void)
+{
+	NautilusTrashMonitor *monitor;
+
+	monitor = nautilus_trash_monitor_get ();
+	return monitor->details->icon;
 }
 
 void

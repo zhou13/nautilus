@@ -27,6 +27,7 @@
 #define NAUTILUS_TRASH_MONITOR_H
 
 #include <gtk/gtkobject.h>
+#include <gio/gicon.h>
 
 typedef struct NautilusTrashMonitor NautilusTrashMonitor;
 typedef struct NautilusTrashMonitorClass NautilusTrashMonitorClass;
@@ -59,6 +60,7 @@ GtkType			nautilus_trash_monitor_get_type				(void);
 
 NautilusTrashMonitor   *nautilus_trash_monitor_get 				(void);
 gboolean		nautilus_trash_monitor_is_empty 			(void);
+GIcon                  *nautilus_trash_monitor_get_icon                         (void);
 
 void		        nautilus_trash_monitor_add_new_trash_directories        (void);
 
