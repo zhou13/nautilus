@@ -1,3 +1,8 @@
+2007-10-17  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-search-engine-simple.c:
+	Update to use gio
+
 2007-10-17  Paolo Borelli  <pborelli@katamail.com>
 
 	* libnautilus-private/nautilus-emblem-utils.c: do not use gnome-vfs.
