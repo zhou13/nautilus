@@ -61,8 +61,8 @@ struct TreeNode {
 
 	NautilusFile *file;
 	char *display_name;
-	char *icon_name;
-	GnomeVFSVolume *volume;
+	GIcon *icon;
+	GVolume *volume;
 	GdkPixbuf *closed_pixbuf;
 	GdkPixbuf *open_pixbuf;
 	GdkPixbuf *emblem_pixbuf;
@@ -203,7 +203,7 @@ tree_node_destroy (FMTreeModel *model, TreeNode *node)
 
 	g_object_unref (node->file);
 	g_free (node->display_name);
-	g_free (node->icon_name);
+	object_unref_if_not_NULL (node->icon);
 	object_unref_if_not_NULL (node->closed_pixbuf);
 	object_unref_if_not_NULL (node->open_pixbuf);
 	object_unref_if_not_NULL (node->emblem_pixbuf);
@@ -241,7 +241,7 @@ tree_node_parent (TreeNode *node, TreeNode *parent)
 }
 
 static GdkPixbuf *
-get_menu_icon (const char *icon_name)
+get_menu_icon (GIcon *icon)
 {
 	NautilusIconInfo *info;
 	GdkPixbuf *pixbuf;
@@ -249,7 +249,7 @@ get_menu_icon (const char *icon_name)
 
 	size = nautilus_get_icon_size_for_stock_size (GTK_ICON_SIZE_MENU);
 	
-	info = nautilus_icon_info_lookup_from_name (icon_name, size);
+	info = nautilus_icon_info_lookup (icon, size);
 	pixbuf = nautilus_icon_info_get_pixbuf_nodefault_at_size (info, size);
 	g_object_unref (info);
 	
@@ -278,7 +278,7 @@ tree_node_get_pixbuf (TreeNode *node,
 		      NautilusFileIconFlags flags)
 {
 	if (node->parent == NULL) {
-		return get_menu_icon (node->icon_name);
+		return get_menu_icon (node->icon);
 	}
 	return get_menu_icon_for_file (node->file, flags);
 }
@@ -1583,7 +1583,7 @@ fm_tree_model_unref_node (GtkTreeModel *model, GtkTreeIter *iter)
 }
 
 void
-fm_tree_model_add_root_uri (FMTreeModel *model, const char *root_uri, const char *display_name, const char *icon_name, GnomeVFSVolume *volume)
+fm_tree_model_add_root_uri (FMTreeModel *model, const char *root_uri, const char *display_name, GIcon *icon, GVolume *volume)
 {
 	NautilusFile *file;
 	TreeNode *node, *cnode;
@@ -1594,10 +1594,9 @@ fm_tree_model_add_root_uri (FMTreeModel *model, const char *root_uri, const char
 	newroot = tree_model_root_new (model);
 	node = create_node_for_file (newroot, file);
 	node->display_name = g_strdup (display_name);
-	node->icon_name = g_strdup (icon_name);
+	node->icon = g_object_ref (icon);
 	if (volume) {
-		gnome_vfs_volume_ref (volume);
-		node->volume = volume;
+		node->volume = g_object_ref (volume);
 	}
 	newroot->root_node = node;
 	node->parent = NULL;
@@ -1616,7 +1615,7 @@ fm_tree_model_add_root_uri (FMTreeModel *model, const char *root_uri, const char
 	report_node_inserted (model, node);
 }
 
-GnomeVFSVolume *
+GVolume *
 fm_tree_model_get_volume_for_root_node_file (FMTreeModel *model, NautilusFile *file)
 {
 	TreeNode *node;
@@ -1654,7 +1653,7 @@ fm_tree_model_remove_root_uri (FMTreeModel *model, const char *uri)
 		/* remove the node */
 		
 		if (node->volume) {
-			gnome_vfs_volume_unref (node->volume);
+			g_object_unref (node->volume);
 			node->volume = NULL;
 		}
 

@@ -57,6 +57,8 @@
 #include <gtk/gtkmenushell.h>
 #include <gtk/gtkclipboard.h>
 #include <glib/gi18n.h>
+#include <gio/gvolumemonitor.h>
+#include <gio/gthemedicon.h>
 #include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-popup-menu.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
@@ -88,6 +90,8 @@ struct FMTreeViewDetails {
 	GtkTreeView *tree_widget;
 	GtkTreeModelSort *sort_model;
 	FMTreeModel *child_model;
+
+	GVolumeMonitor *volume_monitor;
 
 	NautilusFile *activation_file;
 	gboolean activation_in_new_window;
@@ -590,45 +594,48 @@ move_copy_items_callback (NautilusTreeViewDragDest *dest,
 
 static void
 add_root_for_volume (FMTreeView *view,
-		     GnomeVFSVolume *volume)
+		     GVolume *volume)
 {
-	char *icon, *mount_uri, *name;
+	char *mount_uri, *name;
+	GFile *root;
+	GIcon *icon;
 
-	if (!gnome_vfs_volume_is_user_visible (volume)) {
-		return;
-	}
-	
-	icon = gnome_vfs_volume_get_icon (volume);
-	mount_uri = gnome_vfs_volume_get_activation_uri (volume);
-	name = gnome_vfs_volume_get_display_name (volume);
+	icon = g_volume_get_icon (volume);
+	root = g_volume_get_root (volume);
+	mount_uri = g_file_get_uri (root);
+	g_object_unref (root);
+	name = g_volume_get_name (volume);
 	
 	fm_tree_model_add_root_uri(view->details->child_model,
 				   mount_uri, name, icon, volume);
 
-	g_free (icon);
+	g_object_unref (icon);
 	g_free (name);
 	g_free (mount_uri);
 	
 }
 
 static void
-volume_mounted_callback (GnomeVFSVolumeMonitor *volume_monitor,
-			 GnomeVFSVolume *volume,
+volume_mounted_callback (GVolumeMonitor *volume_monitor,
+			 GVolume *volume,
 			 FMTreeView *view)
 {
 	add_root_for_volume (view, volume);
 }
 
 static void
-volume_unmounted_callback (GnomeVFSVolumeMonitor *volume_monitor,
-			   GnomeVFSVolume *volume,
+volume_unmounted_callback (GVolumeMonitor *volume_monitor,
+			   GVolume *volume,
 			   FMTreeView *view)
 {
+	GFile *root;
 	char *mount_uri;
-	
-	mount_uri = gnome_vfs_volume_get_activation_uri (volume);
+
+	root = g_volume_get_root (volume);
+	mount_uri = g_file_get_uri (root);
+	g_object_unref (root);
 	fm_tree_model_remove_root_uri (view->details->child_model,
-					     mount_uri);
+				       mount_uri);
 	g_free (mount_uri);
 }
 
@@ -695,19 +702,6 @@ can_move_uri_to_trash (const char *file_uri_string)
 }
 
 static gboolean
-eject_for_type (GnomeVFSDeviceType type)
-{
-	switch (type) {
-	case GNOME_VFS_DEVICE_TYPE_CDROM:
-	case GNOME_VFS_DEVICE_TYPE_ZIP:
-	case GNOME_VFS_DEVICE_TYPE_JAZ:
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
-
-static gboolean
 is_parent_writable (NautilusFile *file)
 {
 	NautilusFile *parent;
@@ -741,7 +735,7 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 	if (event->button == 3) {
 		gboolean unmount_is_eject = FALSE;
 		gboolean show_unmount = FALSE;
-		GnomeVFSVolume *volume = NULL;
+		GVolume *volume = NULL;
 		
 		if (!gtk_tree_view_get_path_at_pos (treeview, event->x, event->y,
 						    &path, NULL, NULL, NULL)) {
@@ -793,7 +787,7 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 		volume = fm_tree_model_get_volume_for_root_node_file (view->details->child_model, view->details->popup_file);
 		if (volume) {
 			show_unmount = TRUE;
-			unmount_is_eject = eject_for_type (gnome_vfs_volume_get_device_type (volume));
+			unmount_is_eject = g_volume_can_eject (volume);
 		} 
 		
 		gtk_label_set_text (GTK_LABEL (GTK_BIN (GTK_MENU_ITEM (view->details->popup_unmount))->child),
@@ -1186,30 +1180,11 @@ fm_tree_view_properties_cb (GtkWidget *menu_item,
 }
 
 static void
-volume_or_drive_unmounted_callback (gboolean succeeded,
-				    char *error,
-				    char *detailed_error,
-				    gpointer data)
-{
-	gboolean eject;
-
-	eject = GPOINTER_TO_INT (data);
-	if (!succeeded) {
-		if (eject) {
-			eel_show_error_dialog_with_details (error, NULL, detailed_error, NULL);
-		} else {
-			eel_show_error_dialog_with_details (error, NULL, detailed_error, NULL);
-		}
-	}
-}
-
-
-static void
 fm_tree_view_unmount_cb (GtkWidget *menu_item,
 			    FMTreeView *view)
 {
 	NautilusFile *file = view->details->popup_file;
-	GnomeVFSVolume *volume;
+	GVolume *volume;
 	
 	if (file == NULL) {
 		return;
@@ -1218,11 +1193,12 @@ fm_tree_view_unmount_cb (GtkWidget *menu_item,
 	volume = fm_tree_model_get_volume_for_root_node_file (view->details->child_model, file);
 	
 	if (volume != NULL) {
-		if (eject_for_type (gnome_vfs_volume_get_device_type (volume))) {
-			gnome_vfs_volume_eject (volume, volume_or_drive_unmounted_callback, GINT_TO_POINTER (TRUE));
+		if (g_volume_can_eject (volume)) {
+			/* TODO-gio: Handle callbacks */
+			g_volume_eject (volume, NULL, NULL);
 		} else {
-			nautilus_file_operations_unmount_volume (GTK_WIDGET (view), volume,
-					volume_or_drive_unmounted_callback, GINT_TO_POINTER (FALSE));
+			/* TODO-gio: Handle callbacks */
+			g_volume_unmount (volume, NULL, NULL);
 		}
 	}
 }
@@ -1359,10 +1335,11 @@ create_tree (FMTreeView *view)
 {
 	GtkCellRenderer *cell;
 	GtkTreeViewColumn *column;
-	GnomeVFSVolumeMonitor *volume_monitor;
+	GVolumeMonitor *volume_monitor;
 	char *home_uri;
 	GList *volumes, *l;
 	char *location;
+	GIcon *icon;
 	
 	view->details->child_model = fm_tree_model_new ();
 	view->details->sort_model = GTK_TREE_MODEL_SORT
@@ -1379,19 +1356,25 @@ create_tree (FMTreeView *view)
 		 G_CALLBACK (row_loaded_callback),
 		 view, G_CONNECT_AFTER);
 	home_uri = nautilus_get_home_directory_uri ();
-	fm_tree_model_add_root_uri (view->details->child_model, home_uri, _("Home Folder"), "gnome-fs-home", NULL);
+	icon = g_themed_icon_new ("user-home");
+	fm_tree_model_add_root_uri (view->details->child_model, home_uri, _("Home Folder"), icon, NULL);
+	g_object_unref (icon);
 	g_free (home_uri);
-	fm_tree_model_add_root_uri (view->details->child_model, "file:///", _("File System"), "gnome-fs-directory", NULL);
+	icon = g_themed_icon_new ("folder");
+	fm_tree_model_add_root_uri (view->details->child_model, "file:///", _("File System"), icon, NULL);
+	g_object_unref (icon);
 #ifdef NOT_YET_USABLE
+	icon = g_themed_icon_new ("gnome-fs-network");
 	fm_tree_model_add_root_uri (view->details->child_model, "network:///", _("Network Neighbourhood"), "gnome-fs-network", NULL);
+	g_object_unref (icon);
 #endif
 	
-	volume_monitor = gnome_vfs_get_volume_monitor ();
-	volumes = gnome_vfs_volume_monitor_get_mounted_volumes (volume_monitor);
-	volumes = g_list_sort (volumes, (GCompareFunc) gnome_vfs_volume_compare);
+	volume_monitor = g_volume_monitor_get ();
+	view->details->volume_monitor = volume_monitor;
+	volumes = g_volume_monitor_get_mounted_volumes (volume_monitor);
 	for (l = volumes; l != NULL; l = l->next) {
 		add_root_for_volume (view, l->data);
-		gnome_vfs_volume_unref (l->data);
+		g_object_unref (l->data);
 	}
 	g_list_free (volumes);
 	
@@ -1596,6 +1579,8 @@ fm_tree_view_finalize (GObject *object)
 		g_free (view->details->selection_location);
 	}
 
+	g_object_unref (view->details->volume_monitor);
+	
 	g_free (view->details);
 
 	G_OBJECT_CLASS (parent_class)->finalize (object);

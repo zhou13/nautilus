@@ -303,6 +303,7 @@ nautilus_file_clear_info (NautilusFile *file)
 	file->details->is_symlink = FALSE;
 	file->details->is_hidden = FALSE;
 	file->details->is_backup = FALSE;
+	file->details->is_mountpoint = FALSE;
 	file->details->uid = -1;
 	file->details->gid = -1;
 	file->details->can_read = TRUE;
@@ -310,9 +311,13 @@ nautilus_file_clear_info (NautilusFile *file)
 	file->details->can_execute = TRUE;
 	file->details->can_delete = TRUE;
 	file->details->can_rename = TRUE;
+	file->details->can_mount = FALSE;
+	file->details->can_unmount = FALSE;
+	file->details->can_eject = FALSE;
 	file->details->has_permissions = FALSE;
 	file->details->permissions = 0;
 	file->details->size = -1;
+	file->details->sort_order = 0;
 	file->details->mtime = 0;
 	file->details->atime = 0;
 	file->details->ctime = 0;
@@ -813,6 +818,57 @@ nautilus_file_can_execute (NautilusFile *file)
 	return file->details->can_execute;
 }
 
+gboolean
+nautilus_file_can_mount (NautilusFile *file)
+{
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
+	
+	return file->details->can_mount;
+}
+	
+gboolean
+nautilus_file_can_unmount (NautilusFile *file)
+{
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
+
+	return file->details->can_unmount;
+}
+	
+gboolean
+nautilus_file_can_eject (NautilusFile *file)
+{
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
+
+	return file->details->can_eject;
+}
+
+void
+nautilus_file_mount (NautilusFile                   *file,
+		     GtkWidget                      *parent,
+		     NautilusFileMountCallback       callback,
+		     gpointer                        callback_data)
+{
+	/* TODO-gio: Implement */
+}
+
+void
+nautilus_file_unmount (NautilusFile                   *file,
+		       GtkWidget                      *parent,
+		       NautilusFileOperationCallback   callback,
+		       gpointer                        callback_data)
+{
+	/* TODO-gio: Implement */
+}
+
+void
+nautilus_file_eject (NautilusFile                   *file,
+		     GtkWidget                      *parent,
+		     NautilusFileOperationCallback   callback,
+		     gpointer                        callback_data)
+{
+	/* TODO-gio: Implement */
+}
+
 /**
  * nautilus_file_is_desktop_directory:
  * 
@@ -908,63 +964,6 @@ nautilus_file_can_rename (NautilusFile *file)
 	}
 
 	return file->details->can_rename;
-}
-
-gboolean
-nautilus_file_has_volume (NautilusFile *file)
-{
-	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
-	
-	return file->details->has_volume;
-}
-
-gboolean
-nautilus_file_has_drive (NautilusFile *file)
-{
-	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
-	
-	return file->details->has_drive;
-}
-
-void
-nautilus_file_set_volume (NautilusFile *file,
-			  GnomeVFSVolume *volume)
-{
-	file->details->has_volume = volume != NULL;
-	gnome_vfs_volume_ref (volume);
-        g_object_set_data_full (G_OBJECT (file),
-				"nautilus_file_volume",
-				volume,
-				(GDestroyNotify)gnome_vfs_volume_unref);
-	
-}
-
-void
-nautilus_file_set_drive (NautilusFile *file,
-			 GnomeVFSDrive *drive)
-{
-	file->details->has_drive = drive != NULL;
-	gnome_vfs_drive_ref (drive);
-        g_object_set_data_full (G_OBJECT (file),
-				"nautilus_file_drive",
-				drive,
-				(GDestroyNotify)gnome_vfs_drive_unref);
-}
-
-
-GnomeVFSVolume *
-nautilus_file_get_volume (NautilusFile *file)
-{
-	return g_object_get_data (G_OBJECT (file),
-				  "nautilus_file_volume");
-
-}
-
-GnomeVFSDrive *
-nautilus_file_get_drive (NautilusFile *file)
-{
-	return g_object_get_data (G_OBJECT (file),
-				  "nautilus_file_drive");
 }
 
 GFile *
@@ -1462,13 +1461,14 @@ update_info_internal (NautilusFile *file,
 {
 	GList *node;
 	gboolean changed;
-	gboolean is_symlink, is_hidden, is_backup;
+	gboolean is_symlink, is_hidden, is_backup, is_mountpoint;
 	gboolean has_permissions;
 	GnomeVFSFilePermissions permissions;
-	gboolean can_read, can_write, can_execute, can_delete, can_rename;
+	gboolean can_read, can_write, can_execute, can_delete, can_rename, can_mount, can_unmount, can_eject;
 	gboolean thumbnailing_failed;
 	int uid, gid;
 	goffset size;
+	int sort_order;
 	time_t atime, mtime, ctime;
 	const char *symlink_name, *mime_type, *selinux_context, *name, *thumbnail_path;
 	GFileType file_type;
@@ -1527,6 +1527,12 @@ update_info_internal (NautilusFile *file,
 	}
 	file->details->is_backup = is_backup;
 		
+	is_mountpoint = g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_UNIX_IS_MOUNTPOINT);
+	if (file->details->is_mountpoint != is_mountpoint) {
+		changed = TRUE;
+	}
+	file->details->is_mountpoint = is_mountpoint;
+
 	has_permissions = g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_UNIX_MODE);
 	permissions = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE);;
 	if (file->details->has_permissions != has_permissions ||
@@ -1542,6 +1548,9 @@ update_info_internal (NautilusFile *file,
 	can_execute = TRUE;
 	can_delete = TRUE;
 	can_rename = TRUE;
+	can_mount = FALSE;
+	can_unmount = FALSE;
+	can_eject = FALSE;
 	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_READ)) {
 		can_read = g_file_info_get_attribute_boolean (info,
 							      G_FILE_ATTRIBUTE_ACCESS_CAN_READ);
@@ -1562,11 +1571,26 @@ update_info_internal (NautilusFile *file,
 		can_rename = g_file_info_get_attribute_boolean (info,
 								G_FILE_ATTRIBUTE_ACCESS_CAN_RENAME);
 	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_MOUNTABLE_CAN_MOUNT)) {
+		can_mount = g_file_info_get_attribute_boolean (info,
+							       G_FILE_ATTRIBUTE_MOUNTABLE_CAN_MOUNT);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_MOUNTABLE_CAN_UNMOUNT)) {
+		can_unmount = g_file_info_get_attribute_boolean (info,
+								 G_FILE_ATTRIBUTE_MOUNTABLE_CAN_UNMOUNT);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_MOUNTABLE_CAN_EJECT)) {
+		can_eject = g_file_info_get_attribute_boolean (info,
+							       G_FILE_ATTRIBUTE_MOUNTABLE_CAN_EJECT);
+	}
 	if (file->details->can_read != can_read ||
 	    file->details->can_write != can_write ||
 	    file->details->can_execute != can_execute ||
 	    file->details->can_delete != can_delete ||
-	    file->details->can_rename != can_rename) {
+	    file->details->can_rename != can_rename ||
+	    file->details->can_mount != can_mount ||
+	    file->details->can_unmount != can_unmount ||
+	    file->details->can_eject != can_eject) {
 		changed = TRUE;
 	}
 	
@@ -1575,6 +1599,9 @@ update_info_internal (NautilusFile *file,
 	file->details->can_execute = can_execute;
 	file->details->can_delete = can_delete;
 	file->details->can_rename = can_rename;
+	file->details->can_mount = can_mount;
+	file->details->can_unmount = can_unmount;
+	file->details->can_eject = can_eject;
 
 	uid = -1;
 	gid = -1;
@@ -1600,6 +1627,12 @@ update_info_internal (NautilusFile *file,
 	}
 	file->details->size = size;
 
+	sort_order = g_file_info_get_sort_order (info);
+	if (file->details->sort_order != sort_order) {
+		changed = TRUE;
+	}
+	file->details->sort_order = sort_order;
+	
 	atime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_ACCESS);
 	ctime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_CHANGED);
 	mtime = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
@@ -2292,10 +2325,6 @@ nautilus_file_compare_for_sort_internal (NautilusFile *file_1,
 					 NautilusFile *file_2,
 					 gboolean directories_first)
 {
-	int compare;
-	GnomeVFSDrive *drive1, *drive2;
-	GnomeVFSVolume *volume1, *volume2;
-
 	gboolean is_directory_1, is_directory_2;
 
 	if (directories_first) {
@@ -2311,37 +2340,10 @@ nautilus_file_compare_for_sort_internal (NautilusFile *file_1,
 		}
 	}
 
-	/* Always sort drives/volumes separately: */
-	if (file_1->details->has_drive != file_2->details->has_drive) {
-		if (file_1->details->has_drive) {
-			return -1;
-		} else {
-			return 1;
-		}
-	}
-	if (file_1->details->has_drive) {
-		drive1 = nautilus_file_get_drive (file_1);
-		drive2 = nautilus_file_get_drive (file_2);
-		compare = gnome_vfs_drive_compare (drive1, drive2);
-		if (compare != 0) {
-			return compare;
-		}
-	}
-	
-	if (file_1->details->has_volume != file_2->details->has_volume) {
-		if (file_1->details->has_volume) {
-			return -1;
-		} else {
-			return 1;
-		}
-	}
-	if (file_1->details->has_volume) {
-		volume1 = nautilus_file_get_volume (file_1);
-		volume2 = nautilus_file_get_volume (file_2);
-		compare = gnome_vfs_volume_compare (volume1, volume2);
-		if (compare != 0) {
-			return compare;
-		}
+	if (file_1->details->sort_order < file_2->details->sort_order) {
+		return -1;
+	} else if (file_1->details->sort_order > file_2->details->sort_order) {
+		return 1;
 	}
 
 	return 0;
@@ -5511,6 +5513,13 @@ nautilus_file_is_symbolic_link (NautilusFile *file)
 	return file->details->is_symlink;
 }
 
+gboolean
+nautilus_file_is_mountpoint (NautilusFile *file)
+{
+	return file->details->is_mountpoint;
+}
+
+
 /**
  * nautilus_file_is_broken_symbolic_link
  * 
@@ -6791,10 +6800,6 @@ nautilus_file_info_iface_init (NautilusFileInfoIface *iface)
 	iface->get_string_attribute = nautilus_file_get_string_attribute;
 	iface->add_string_attribute = nautilus_file_add_string_attribute;
 	iface->invalidate_extension_info = nautilus_file_invalidate_extension_info;
-	iface->has_volume = nautilus_file_has_volume;
-	iface->has_drive = nautilus_file_has_drive;   
-	iface->get_volume = nautilus_file_get_volume;
-	iface->get_drive = nautilus_file_get_drive;
 }
 
 #if !defined (NAUTILUS_OMIT_SELF_CHECK)

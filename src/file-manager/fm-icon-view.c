@@ -535,7 +535,7 @@ file_has_lazy_position (FMDirectoryView *view,
 	 * icon we don't overlap that one. We don't do this in general though,
 	 * as it can cause icons moving around.
 	 */
-	lazy_position = nautilus_file_has_volume (file);
+	lazy_position = nautilus_file_can_unmount (file);
 	if (lazy_position && fm_directory_view_get_loading (view)) {
 		/* if volumes are loaded during directory load, don't mark them
 		 * as lazy. This is wrong for files that were mounted during user

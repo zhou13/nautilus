@@ -337,12 +337,9 @@ nautilus_link_desktop_file_get_link_info_given_file_contents (const char        
 							      int                link_file_size,
 							      char             **uri,
 							      char             **name,
-							      char             **icon,
-							      gulong            *drive_id,
-							      gulong            *volume_id)
+							      char             **icon)
 {
 	GnomeDesktopItem *desktop_file;
-	const char *id;
 
 	desktop_file = gnome_desktop_item_new_from_string (NULL, file_contents, link_file_size, 0, NULL);
 	if (desktop_file == NULL) {
@@ -353,16 +350,6 @@ nautilus_link_desktop_file_get_link_info_given_file_contents (const char        
 	*name = nautilus_link_desktop_file_get_link_name_from_desktop (desktop_file);
 	*icon = nautilus_link_desktop_file_get_link_icon_from_desktop (desktop_file);
 
-	id = gnome_desktop_item_get_string (desktop_file, "X-Gnome-Volume");
-	if (id != NULL) {
-		*volume_id = atol (id);
-	}
-
-	id = gnome_desktop_item_get_string (desktop_file, "X-Gnome-Drive");
-	if (id != NULL) {
-		*drive_id = atol (id);
-	}
-	
 	gnome_desktop_item_unref (desktop_file);
 }
 

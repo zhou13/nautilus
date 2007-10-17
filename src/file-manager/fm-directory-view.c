@@ -387,10 +387,6 @@ static GdkDragAction ask_link_action                           (FMDirectoryView 
 static void     update_templates_directory                     (FMDirectoryView *view);
 static void     user_dirs_changed                              (FMDirectoryView *view);
 
-static void file_get_volume_and_drive (NautilusFile    *file,
-				       GnomeVFSVolume **volume,
-				       GnomeVFSDrive  **drive);
-
 static void action_open_scripts_folder_callback    (GtkAction *action,
 						    gpointer   callback_data);
 static void action_cut_files_callback              (GtkAction *action,
@@ -6193,23 +6189,6 @@ action_rename_select_all_callback (GtkAction *action,
 	real_action_rename (FM_DIRECTORY_VIEW (callback_data), TRUE);
 }
 
-static void
-drive_mounted_callback (gboolean succeeded,
-			char *error,
-			char *detailed_error,
-			gpointer data)
-{
-	if (!succeeded) {
-		if (*error == 0 &&
-		    detailed_error != NULL && *detailed_error == 0) {
-			/* This means the mount command displays its own errors */
-			return;
-		}
-		eel_show_error_dialog_with_details (error, NULL,
-						    detailed_error, NULL);
-	}
-}
-
 
 static void
 action_mount_volume_callback (GtkAction *action,
@@ -6217,7 +6196,6 @@ action_mount_volume_callback (GtkAction *action,
 {
 	NautilusFile *file;
 	GList *selection, *l;
-	GnomeVFSDrive *drive;
 	FMDirectoryView *view;
 
         view = FM_DIRECTORY_VIEW (data);
@@ -6225,66 +6203,14 @@ action_mount_volume_callback (GtkAction *action,
 	selection = fm_directory_view_get_selection (view);
 	for (l = selection; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
-
-		if (nautilus_file_has_drive (file)) {
-			drive = nautilus_file_get_drive (file);
-			if (drive != NULL) {
-				gnome_vfs_drive_mount (drive, drive_mounted_callback, NULL);
-			}
+		
+		if (nautilus_file_can_mount (file)) {
+			nautilus_file_mount (file, GTK_WIDGET (view),
+					     NULL, NULL);
 		}
 	}
 	nautilus_file_list_free (selection);
 }
-
-static gboolean
-eject_for_type (GnomeVFSDeviceType type)
-{
-	switch (type) {
-	case GNOME_VFS_DEVICE_TYPE_CDROM:
-	case GNOME_VFS_DEVICE_TYPE_ZIP:
-	case GNOME_VFS_DEVICE_TYPE_JAZ:
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
-
-
-static void
-volume_or_drive_unmounted_callback (gboolean succeeded,
-				    char *error,
-				    char *detailed_error,
-				    gpointer data)
-{
-	if (!succeeded) {
-		if (*error == 0 &&
-		    detailed_error != NULL && *detailed_error == 0) {
-			/* This means the unmount command displays its own errors */
-			return;
-		}
-		eel_show_error_dialog_with_details (error, NULL, 
-		                                    detailed_error, NULL);
-	}
-}
-
-
-static void
-volume_or_drive_ejected_callback (gboolean succeeded,
-				    char *error,
-				    char *detailed_error,
-				    gpointer data)
-{
-	if (!succeeded) {
-		if (*error == 0 &&
-		    detailed_error != NULL && *detailed_error == 0) {
-			/* This means the mount command displays its own errors */
-			return;
-		}
-		eel_show_error_dialog_with_details (error, NULL, 
-		                                    detailed_error, NULL);
-	}
-}
-
 
 static void
 action_unmount_volume_callback (GtkAction *action,
@@ -6292,8 +6218,6 @@ action_unmount_volume_callback (GtkAction *action,
 {
 	NautilusFile *file;
 	GList *selection, *l;
-	GnomeVFSDrive *drive;
-	GnomeVFSVolume *volume;
 	FMDirectoryView *view;
 
         view = FM_DIRECTORY_VIEW (data);
@@ -6302,18 +6226,9 @@ action_unmount_volume_callback (GtkAction *action,
 
 	for (l = selection; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
-		if (nautilus_file_has_volume (file)) {
-			volume = nautilus_file_get_volume (file);
-			if (volume != NULL) {
-				nautilus_file_operations_unmount_volume (GTK_WIDGET (view), volume,
-						volume_or_drive_unmounted_callback, NULL);
-			}
-		} else if (nautilus_file_has_drive (file)) {
-			drive = nautilus_file_get_drive (file);
-			if (drive != NULL) {
-				nautilus_file_operations_unmount_drive (GTK_WIDGET (view), drive,
-						volume_or_drive_unmounted_callback, NULL);
-			}
+		if (nautilus_file_can_unmount (file)) {
+			nautilus_file_unmount (file, GTK_WIDGET (view),
+					       NULL, NULL);
 		}
 	}
 	nautilus_file_list_free (selection);
@@ -6323,9 +6238,9 @@ static void
 action_format_volume_callback (GtkAction *action,
 			       gpointer   data)
 {
+#ifdef TODO_GIO		
 	NautilusFile *file;
 	GList *selection, *l;
-	GnomeVFSDrive *drive;
 	FMDirectoryView *view;
 
         view = FM_DIRECTORY_VIEW (data);
@@ -6334,14 +6249,12 @@ action_format_volume_callback (GtkAction *action,
 	for (l = selection; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
 
-		if (nautilus_file_has_drive (file)) {
-			drive = nautilus_file_get_drive (file);
-			if (gnome_vfs_drive_get_device_type (drive) == GNOME_VFS_DEVICE_TYPE_FLOPPY) {
-				g_spawn_command_line_async ("gfloppy", NULL);
-			}
+		if (something) {
+			g_spawn_command_line_async ("gfloppy", NULL);
 		}
 	}	
 	nautilus_file_list_free (selection);
+#endif
 }
 
 static void
@@ -6350,8 +6263,6 @@ action_eject_volume_callback (GtkAction *action,
 {
 	NautilusFile *file;
 	GList *selection, *l;
-	GnomeVFSDrive *drive;
-	GnomeVFSVolume *volume;
 	FMDirectoryView *view;
 
         view = FM_DIRECTORY_VIEW (data);
@@ -6360,16 +6271,9 @@ action_eject_volume_callback (GtkAction *action,
 	for (l = selection; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
 		
-		if (nautilus_file_has_volume (file)) {
-			volume = nautilus_file_get_volume (file);
-			if (volume != NULL) {
-				gnome_vfs_volume_eject (volume, volume_or_drive_ejected_callback, NULL);
-			}
-		} else if (nautilus_file_has_drive (file)) {
-			drive = nautilus_file_get_drive (file);
-			if (drive != NULL) {
-				gnome_vfs_drive_eject (drive, volume_or_drive_ejected_callback, NULL);
-			}
+		if (nautilus_file_can_eject (file)) {
+			nautilus_file_eject (file, GTK_WIDGET (view),
+					     NULL, NULL);
 		}
 	}	
 	nautilus_file_list_free (selection);
@@ -6380,7 +6284,6 @@ action_self_mount_volume_callback (GtkAction *action,
 				   gpointer data)
 {
 	NautilusFile *file;
-	GnomeVFSDrive *drive;
 	FMDirectoryView *view;
 
 	view = FM_DIRECTORY_VIEW (data);
@@ -6390,13 +6293,7 @@ action_self_mount_volume_callback (GtkAction *action,
 		return;
 	}
 
-	file_get_volume_and_drive (file, NULL, &drive);
-
-	if (drive != NULL) {
-		gnome_vfs_drive_mount (drive, drive_mounted_callback, NULL);
-	}
-
-	gnome_vfs_drive_unref (drive);
+	nautilus_file_mount (file, GTK_WIDGET (view), NULL, NULL);
 }
 
 static void
@@ -6404,8 +6301,6 @@ action_self_unmount_volume_callback (GtkAction *action,
 				     gpointer data)
 {
 	NautilusFile *file;
-	GnomeVFSVolume *volume;
-	GnomeVFSDrive *drive;
 	FMDirectoryView *view;
 
 	view = FM_DIRECTORY_VIEW (data);
@@ -6415,18 +6310,7 @@ action_self_unmount_volume_callback (GtkAction *action,
 		return;
 	}
 
-	file_get_volume_and_drive (file, &volume, &drive);
-
-	if (volume != NULL) {
-		nautilus_file_operations_unmount_volume (GTK_WIDGET (view), volume,
-				volume_or_drive_unmounted_callback, NULL);
-	} else if (drive != NULL) {
-		nautilus_file_operations_unmount_drive (GTK_WIDGET (view), drive,
-				volume_or_drive_unmounted_callback, NULL);
-	}
-
-	gnome_vfs_volume_unref (volume);
-	gnome_vfs_drive_unref (drive);
+	nautilus_file_unmount (file, GTK_WIDGET (view), NULL, NULL);
 }
 
 static void
@@ -6434,8 +6318,6 @@ action_self_eject_volume_callback (GtkAction *action,
 				   gpointer data)
 {
 	NautilusFile *file;
-	GnomeVFSDrive *drive;
-	GnomeVFSVolume *volume;
 	FMDirectoryView *view;
 
 	view = FM_DIRECTORY_VIEW (data);
@@ -6444,17 +6326,8 @@ action_self_eject_volume_callback (GtkAction *action,
 	if (file == NULL) {
 		return;
 	}
-
-	file_get_volume_and_drive (file, &volume, &drive);
-
-	if (volume != NULL) {
-		gnome_vfs_volume_eject (volume, volume_or_drive_unmounted_callback, NULL);
-	} else if (drive != NULL) {
-		gnome_vfs_drive_eject (drive, volume_or_drive_unmounted_callback, NULL);
-	}
-
-	gnome_vfs_volume_unref (volume);
-	gnome_vfs_drive_unref (drive);
+	
+	nautilus_file_eject (file, GTK_WIDGET (view), NULL, NULL);
 }
 
 static void 
@@ -6462,7 +6335,6 @@ action_self_format_volume_callback (GtkAction *action,
 				    gpointer   data)
 {
 	NautilusFile *file;
-	GnomeVFSDrive *drive;
 	FMDirectoryView *view;
 
 	view = FM_DIRECTORY_VIEW (data);
@@ -6472,14 +6344,11 @@ action_self_format_volume_callback (GtkAction *action,
 		return;
 	}
 
-	file_get_volume_and_drive (file, NULL, &drive);
-
-	if (drive != NULL && 
-	    gnome_vfs_drive_get_device_type (drive) == GNOME_VFS_DEVICE_TYPE_FLOPPY) {
+#ifdef TODO_GIO
+	if (something) {
 		g_spawn_command_line_async ("gfloppy", NULL);
 	}
-
-	gnome_vfs_drive_unref (drive);
+#endif
 }
 
 static void
@@ -7159,8 +7028,6 @@ file_list_all_are_folders (GList *file_list)
 			is_dir =
 				(linked_file != NULL &&
 				 nautilus_file_is_directory (linked_file)) ||
-				nautilus_file_has_volume (file) ||
-				nautilus_file_has_drive (file) ||
 				(activation_uri != NULL &&
 				 activation_uri[strlen (activation_uri) - 1] == '/');
 			
@@ -7186,8 +7053,6 @@ file_should_show_foreach (NautilusFile *file,
 			  gboolean     *show_connect,
                           gboolean     *show_format)
 {
-	GnomeVFSVolume *volume;
-	GnomeVFSDrive *drive;
 	char *uri;
 
 	*show_mount = FALSE;
@@ -7196,26 +7061,24 @@ file_should_show_foreach (NautilusFile *file,
 	*show_connect = FALSE;
 	*show_format = FALSE;
 
-	if (nautilus_file_has_volume (file)) {
+	if (nautilus_file_can_eject (file)) {
+		*show_eject = TRUE;
+	} else if (nautilus_file_can_unmount (file)) {
+		*show_unmount = TRUE;
+	}
+
+	if (nautilus_file_can_mount (file)) {
 		*show_unmount = TRUE;
 
-		volume = nautilus_file_get_volume (file);
-		*show_eject = eject_for_type (gnome_vfs_volume_get_device_type (volume));
-	} else if (nautilus_file_has_drive (file)) {
-		drive = nautilus_file_get_drive (file);
-		*show_eject = eject_for_type (gnome_vfs_drive_get_device_type (drive));
-		if (gnome_vfs_drive_is_mounted (drive)) {
-			*show_unmount = TRUE;
-		} else {
-			*show_mount = TRUE;
-		}
-
-		if (gnome_vfs_drive_get_device_type (drive) == GNOME_VFS_DEVICE_TYPE_FLOPPY &&
-		    !gnome_vfs_drive_is_mounted (drive) &&
+#ifdef TODO_GIO		
+		if (something &&
 		    g_find_program_in_path ("gfloppy")) {
 			*show_format = TRUE;
 		}
-	} else if (nautilus_file_is_nautilus_link (file)) {
+#endif
+	}
+
+	if (nautilus_file_is_nautilus_link (file)) {
 		uri = nautilus_file_get_activation_uri (file);
 		if (uri != NULL &&
 		    (eel_istr_has_prefix (uri, "ftp:") ||
@@ -7224,70 +7087,7 @@ file_should_show_foreach (NautilusFile *file,
 			*show_connect = TRUE;
 		}
 		g_free (uri);
-	} else if (nautilus_file_is_mime_type (file,
-					       "x-directory/smb-share")) {
-		*show_connect = TRUE;
-	}
-}
-
-static void
-file_get_volume_and_drive (NautilusFile    *file,
-			   GnomeVFSVolume **volume,
-			   GnomeVFSDrive  **drive)
-{
-	GnomeVFSVolume *one_volume;
-	GnomeVFSDrive *one_drive;
-	GList *l, *list;
-	char *uri, *one_uri;
-
-	g_assert (file != NULL);
-
-	uri = nautilus_file_get_uri (file);
-	g_assert (uri != NULL);
-
-	if (volume != NULL) {
-		*volume = NULL;
-
-		list = gnome_vfs_volume_monitor_get_mounted_volumes (gnome_vfs_get_volume_monitor ());
-
-		for (l = list; l != NULL && *volume == NULL; l = l->next) {
-			one_volume = l->data;
-
-			one_uri = gnome_vfs_volume_get_activation_uri (one_volume);
-			if (one_uri != NULL && (strcmp (uri, one_uri) == 0)) {
-				*volume = gnome_vfs_volume_ref (one_volume);
-			}
-
-			g_free (one_uri);
-		}
-
-		g_list_foreach (list, (GFunc) gnome_vfs_volume_unref, NULL);
-		g_list_free (list);
-	}
-
-	if (drive != NULL) {
-		*drive = NULL;
-
-		list = gnome_vfs_volume_monitor_get_connected_drives (gnome_vfs_get_volume_monitor ());
-
-		for (l = list; l != NULL; l = l->next) {
-			one_drive = l->data;
-
-			one_uri = gnome_vfs_drive_get_activation_uri (one_drive);
-			if (one_uri != NULL && (strcmp (uri, one_uri) == 0)) {
-				*drive = gnome_vfs_drive_ref (one_drive);
-				g_free (one_uri);
-				break;
-			}
-
-			g_free (one_uri);
-		}
-
-		g_list_foreach (list, (GFunc) gnome_vfs_drive_unref, NULL);
-		g_list_free (list);
-	}
-
-	g_free (uri);
+	} 
 }
 
 static void
@@ -7297,9 +7097,6 @@ file_should_show_self (NautilusFile *file,
 		       gboolean     *show_eject,
 		       gboolean     *show_format)
 {
-	GnomeVFSVolume *volume;
-	GnomeVFSDrive *drive;
-
 	*show_mount = FALSE;
 	*show_unmount = FALSE;
 	*show_eject = FALSE;
@@ -7308,29 +7105,22 @@ file_should_show_self (NautilusFile *file,
 	if (file == NULL) {
 		return;
 	}
-
-	file_get_volume_and_drive (file, &volume, &drive);
-
-	if (volume != NULL) {
+	
+	if (nautilus_file_can_eject (file)) {
+		*show_eject = TRUE;
+	} else if (nautilus_file_can_unmount (file)) {
 		*show_unmount = TRUE;
-		*show_eject = eject_for_type (gnome_vfs_volume_get_device_type (volume));
-	} else if (drive != NULL) {
-		*show_eject = eject_for_type (gnome_vfs_drive_get_device_type (drive));
-		if (gnome_vfs_drive_is_mounted (drive)) {
-			*show_unmount = TRUE;
-		} else {
-			*show_mount = TRUE;
-		}
-
-		if (gnome_vfs_drive_get_device_type (drive) == GNOME_VFS_DEVICE_TYPE_FLOPPY &&
-		    !gnome_vfs_drive_is_mounted (drive) &&
-		    g_find_program_in_path ("gfloppy")) {
-			*show_format = TRUE;
-		}
+	}
+	
+	if (nautilus_file_can_mount (file)) {
+		*show_mount = TRUE;
 	}
 
-	gnome_vfs_volume_unref (volume);
-	gnome_vfs_drive_unref (drive);
+#ifdef TODO_GIO
+	if (something && g_find_program_in_path ("gfloppy")) {
+		*show_format = TRUE;
+	}
+#endif
 }
 
 
@@ -8492,27 +8282,16 @@ activate_callback (GList *files, gpointer callback_data)
 }
 
 static void
-activation_drive_mounted_callback (gboolean succeeded,
-				   char *error,
-				   char *detailed_error,
-				   gpointer callback_data)
+activation_file_mounted_callback (NautilusFile  *file,
+				  GError        *error,
+				  GFile         *mounted_location,
+				  gpointer       callback_data)
 {
 	ActivateParameters *parameters;
 
 	parameters = callback_data;
 
-	parameters->mount_success &= succeeded;
-
-	if (!succeeded && !parameters->cancelled) {
-		if (*error == 0 &&
-		    detailed_error != NULL && *detailed_error == 0) {
-			/* This means the mount command displays its own errors */
-		}  else {
-			eel_show_error_dialog_with_details (error, NULL,
-							    detailed_error, 
-							    NULL);
-		}
-	}
+	parameters->mount_success &= error != NULL;
 
 	if (--parameters->pending_mounts > 0) {
 		/* wait for other mounts to finish... */
@@ -8533,13 +8312,6 @@ activation_drive_mounted_callback (gboolean succeeded,
 }
 
 static void
-mount_foreach (gpointer drive,
-	       gpointer callback_data)
-{
-	gnome_vfs_drive_mount (drive, activation_drive_mounted_callback, callback_data);
-}
-
-static void
 activate_activation_uris_ready_callback (GList *files_ignore,
 					 gpointer callback_data)
 {
@@ -8549,7 +8321,6 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	NautilusFile *file;
 	NautilusFile *actual_file;
 	NautilusFileAttributes attributes;
-	GnomeVFSDrive *drive;
 	char *uri;
 	
 	parameters = callback_data;
@@ -8572,13 +8343,9 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 			continue;
 		}
 
-		if (!parameters->mount_success && nautilus_file_has_drive (file)) {
-			drive = nautilus_file_get_drive (file);
-			if (drive != NULL &&
-			    !gnome_vfs_drive_is_mounted (drive)) {
-				not_yet_mounted = g_list_prepend (not_yet_mounted, drive);
-				parameters->pending_mounts++;
-			}
+		if (!parameters->mount_success && nautilus_file_can_mount (file)) {
+			not_yet_mounted = g_list_prepend (not_yet_mounted, file);
+			parameters->pending_mounts++;
 		}
 	}
 
@@ -8592,10 +8359,14 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 
 	if (not_yet_mounted != NULL) {
 		not_yet_mounted = g_list_reverse (not_yet_mounted);
-		g_list_foreach (not_yet_mounted, mount_foreach, callback_data);
+		for (l = not_yet_mounted; l != NULL; l = l->next) {
+			file = l->data;
+			nautilus_file_mount (file, GTK_WIDGET (parameters->view),
+					     activation_file_mounted_callback, callback_data);
+		}
 		g_list_free (not_yet_mounted);
 
-		/* activation_drive_mounted_callback will reveal whether all mounts were successful */
+		/* activation_file_mounted_callback will reveal whether all mounts were successful */
 		parameters->mount_success = TRUE;
 		return;
 	}

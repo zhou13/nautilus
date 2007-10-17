@@ -46,7 +46,7 @@
 	 GNOME_VFS_FILE_INFO_GET_ACCESS_RIGHTS)
 
 #define NAUTILUS_FILE_DEFAULT_ATTRIBUTES				\
-	"std:*,access:*,mountable:*,time:*,unix:*,owner:*,selinux:*,thumbnail:*"
+	"std:*,access:*,mountable:*,time:*,unix:*,owner:*,selinux:*,thumbnail:*,mountable:*"
 
 /* These are in the typical sort order. Known things come first, then
  * things where we can't know, finally things where we don't yet know.
@@ -69,12 +69,14 @@ struct NautilusFileDetails
 
 	/* File info: */
 	GFileType type;
-	
+
 	eel_ref_str display_name;
 	char *display_name_collation_key;
 	eel_ref_str edit_name;
 
 	goffset size; /* -1 is unknown */
+	
+	int sort_order;
 	
 	guint permissions;
 	int uid; /* -1 is none */
@@ -177,13 +179,11 @@ struct NautilusFileDetails
 	
 	eel_boolean_bit is_thumbnailing               : 1;
 
-	eel_boolean_bit has_volume                    : 1;
-	eel_boolean_bit has_drive                     : 1;
-
 	/* TRUE if the file is open in a spatial window */
 	eel_boolean_bit has_open_window               : 1;
 
 	eel_boolean_bit is_symlink                    : 1;
+	eel_boolean_bit is_mountpoint                 : 1;
 	eel_boolean_bit is_hidden                     : 1;
 	eel_boolean_bit is_backup                     : 1;
 
@@ -194,6 +194,9 @@ struct NautilusFileDetails
 	eel_boolean_bit can_execute                   : 1;
 	eel_boolean_bit can_delete                    : 1;
 	eel_boolean_bit can_rename                    : 1;
+	eel_boolean_bit can_mount                     : 1;
+	eel_boolean_bit can_unmount                   : 1;
+	eel_boolean_bit can_eject                     : 1;
 };
 
 NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory      *directory,
@@ -250,11 +253,5 @@ void                   nautilus_file_info_providers_done                (Nautilu
 /* Thumbnailing: */
 void          nautilus_file_set_is_thumbnailing            (NautilusFile           *file,
 							    gboolean                is_thumbnailing);
-
-/* Volumes: */
-void nautilus_file_set_drive  (NautilusFile   *file,
-			       GnomeVFSDrive  *drive);
-void nautilus_file_set_volume (NautilusFile   *file,
-			       GnomeVFSVolume *volume);
 
 #endif

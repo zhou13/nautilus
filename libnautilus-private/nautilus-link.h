@@ -60,9 +60,7 @@ void           nautilus_link_get_link_info_given_file_contents (const char      
 								int               link_file_size,
 								char            **uri,
 								char            **name,
-								char            **icon,
-								gulong           *drive_id,
-								gulong           *volume_id);
+								char            **icon);
 void             nautilus_link_local_create_from_gnome_entry     (GnomeDesktopItem *item,
 								  const char       *dest_uri,
 								  const GdkPoint   *position,

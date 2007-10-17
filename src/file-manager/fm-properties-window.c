@@ -326,28 +326,10 @@ get_target_file_for_original_file (NautilusFile *file)
 	NautilusFile *target_file;
 	GFile *location;
 	char *uri_to_display;
-	GnomeVFSVolume *volume;
-	GnomeVFSDrive *drive;
 	NautilusDesktopLink *link;
 
 	target_file = NULL;
-	if (nautilus_file_has_volume (file)) {
-		volume = nautilus_file_get_volume (file);
-		if (volume != NULL) {
-			uri_to_display = gnome_vfs_volume_get_activation_uri (volume);
-			target_file = nautilus_file_get_by_uri (uri_to_display);
-			g_free (uri_to_display);
-		}
-	} else if (nautilus_file_has_drive (file)) {
-		drive = nautilus_file_get_drive (file);
-		if (drive != NULL) {
-			uri_to_display = gnome_vfs_drive_get_activation_uri (drive);
-			if (uri_to_display != NULL) {
-				target_file = nautilus_file_get_by_uri (uri_to_display);
-				g_free (uri_to_display);
-			}
-		}
-	} else if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
+	if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
 		link = nautilus_desktop_icon_file_get_link (NAUTILUS_DESKTOP_ICON_FILE (file));
 
 		if (link != NULL) {
@@ -360,9 +342,14 @@ get_target_file_for_original_file (NautilusFile *file)
 			
 			g_object_unref (link);
 		}
-        }
-
-
+        } else {
+		uri_to_display = nautilus_file_get_activation_uri (file);
+		if (uri_to_display != NULL) {
+			target_file = nautilus_file_get_by_uri (uri_to_display);
+			g_free (uri_to_display);
+		}
+	}
+	
 	if (target_file != NULL) {
 		return target_file;
 	}
@@ -2646,12 +2633,6 @@ static gboolean
 should_show_volume_usage (FMPropertiesWindow *window)
 {
 	NautilusFile 		*file;
-	GnomeVFSVolume 		*volume;
-	GnomeVFSVolumeMonitor 	*monitor;
-	GList 			*mounted_volumes;
-	gchar 			*volume_uri;
-	gchar 			*file_uri;
-	gboolean                match, is_root;
 	gboolean 		success = FALSE;
 	
 	if (is_multi_file_window (window)) {
@@ -2664,43 +2645,13 @@ should_show_volume_usage (FMPropertiesWindow *window)
 		return FALSE;
 	}
 
-	if (nautilus_file_has_volume (file)) {
-		volume = nautilus_file_get_volume (file);
-		if (volume != NULL &&
-		    gnome_vfs_volume_get_volume_type (volume) == GNOME_VFS_VOLUME_TYPE_MOUNTPOINT) {
-			return TRUE;
-		}
-		return FALSE;
+	if (nautilus_file_can_unmount (file)) {
+		return TRUE;
 	}
 
-	file_uri = nautilus_file_get_activation_uri (file);
-	
-	monitor = gnome_vfs_get_volume_monitor ();		
-	
-	mounted_volumes = gnome_vfs_volume_monitor_get_mounted_volumes (monitor);
-
-	while (mounted_volumes != NULL) {
-		volume = mounted_volumes->data;
-
-		volume_uri = gnome_vfs_volume_get_activation_uri (volume);
-		match = strcmp (volume_uri, file_uri) == 0;
-		is_root = strcmp (volume_uri, "file:///") == 0;
-		g_free (volume_uri);
-
-		if (match &&
-		    (gnome_vfs_volume_is_user_visible (volume) || is_root) &&
-		    gnome_vfs_volume_get_volume_type (volume) == GNOME_VFS_VOLUME_TYPE_MOUNTPOINT) {
-			success = TRUE;
-			break;
-		}
-
-		mounted_volumes = mounted_volumes->next;
-	}
-	
-	g_free (file_uri);
-
-	eel_g_object_list_free (mounted_volumes);
-	
+#ifdef TODO_GIO
+	/* Look at is_mountpoint for activation uri */
+#endif
 	return success;
 }
 

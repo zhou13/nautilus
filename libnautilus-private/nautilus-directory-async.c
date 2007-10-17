@@ -188,9 +188,7 @@ static void     link_info_done                                (NautilusDirectory
 							       NautilusFile           *file,
 							       const char             *uri,
 							       const char             *name,
-							       const char             *icon,
-							       gulong                  drive_id,
-							       gulong                  volume_id);
+							       const char             *icon);
 static void     move_file_to_low_priority_queue               (NautilusDirectory      *directory,
 							       NautilusFile           *file);
 static void     move_file_to_extension_queue                  (NautilusDirectory      *directory,
@@ -1666,7 +1664,7 @@ lacks_link_info (NautilusFile *file)
 		if (nautilus_file_is_nautilus_link (file)) {
 			return TRUE;
 		} else {
-			link_info_done (file->details->directory, file, NULL, NULL, NULL, 0, 0);
+			link_info_done (file->details->directory, file, NULL, NULL, NULL);
 			return FALSE;
 		}
 	} else {
@@ -3388,14 +3386,8 @@ link_info_done (NautilusDirectory *directory,
 		NautilusFile *file,
 		const char *uri,
 		const char *name, 
-		const char *icon,
-		gulong drive_id,
-		gulong volume_id)
+		const char *icon)
 {
-	GnomeVFSVolumeMonitor *monitor;
-	GnomeVFSVolume *volume;
-	GnomeVFSDrive *drive;
-	
 	file->details->link_info_is_up_to_date = TRUE;
 
 	nautilus_file_set_display_name (file, name, name, TRUE);
@@ -3410,22 +3402,6 @@ link_info_done (NautilusDirectory *directory,
 		file->details->activation_location = g_file_new_for_uri (uri);
 	}
 	file->details->custom_icon = g_strdup (icon);
-
-	volume = NULL;
-	if (volume_id != 0) {
-		monitor = gnome_vfs_get_volume_monitor ();
-		volume = gnome_vfs_volume_monitor_get_volume_by_id (monitor, volume_id);
-	}
-	nautilus_file_set_volume (file, volume);
-	gnome_vfs_volume_unref (volume);
-	
-	drive = NULL;
-	if (drive_id != 0) {
-		monitor = gnome_vfs_get_volume_monitor ();
-		drive = gnome_vfs_volume_monitor_get_drive_by_id (monitor, drive_id);
-	}
-	nautilus_file_set_drive (file, drive);
-	gnome_vfs_drive_unref (drive);
 	
 	nautilus_directory_async_state_changed (directory);
 }
@@ -3471,24 +3447,22 @@ link_info_got_data (NautilusDirectory *directory,
 		    char *file_contents)
 {
 	char *uri, *name, *icon;
-	gulong drive_id, volume_id;
 
 	nautilus_directory_ref (directory);
 
 	/* Handle the case where we read the Nautilus link. */
 	if (result) {
 		nautilus_link_get_link_info_given_file_contents (file_contents, bytes_read,
-								 &uri, &name, &icon, &drive_id, &volume_id);
+								 &uri, &name, &icon);
 	} else {
 		/* FIXME bugzilla.gnome.org 42433: We should report this error to the user. */
 		uri = NULL;
 		name = NULL;
 		icon = NULL;
-		volume_id = drive_id = 0;
 	}
 
 	nautilus_file_ref (file);
-	link_info_done (directory, file, uri, name, icon, drive_id, volume_id);
+	link_info_done (directory, file, uri, name, icon);
 	nautilus_file_changed (file);
 	nautilus_file_unref (file);
 	
@@ -3574,7 +3548,7 @@ link_info_start (NautilusDirectory *directory,
 	
 	/* If it's not a link we are done. If it is, we need to read it. */
 	if (!nautilus_style_link) {
-		link_info_done (directory, file, NULL, NULL, NULL, 0, 0);
+		link_info_done (directory, file, NULL, NULL, NULL);
 	} else if (should_read_link_info_sync (file)) {
 		result = g_file_load_contents (location, NULL, &file_contents, &file_size, NULL, NULL);
 		link_info_got_data (directory, file, result, file_size, file_contents);

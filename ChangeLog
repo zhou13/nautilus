@@ -1,3 +1,23 @@
+2007-10-17  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-file-private.h:
+	Remove has/get_volume/drive, replace with
+	can_mount/unmount/eject and mount/unmount/eject.
+	(Which are not fully implemented yet)
+	Add nautilus_file_is_mountpoint.
+	
+        * libnautilus-extension/nautilus-file-info.[ch]:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-link-desktop-file.[ch]:
+        * libnautilus-private/nautilus-link.[ch]:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-icon-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-model.[ch]:
+        * src/file-manager/fm-tree-view.c:
+	Use gio volume APIs
+
 2007-10-16  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-desktop-icon-file.c:

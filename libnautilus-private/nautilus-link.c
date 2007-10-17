@@ -153,18 +153,14 @@ nautilus_link_get_link_info_given_file_contents (const char       *file_contents
 						 int               link_file_size,
 						 char            **uri,
 						 char            **name,
-						 char            **icon,
-						 gulong           *drive_id,
-						 gulong           *volume_id)
+						 char            **icon)
 {
 	*uri = NULL;
 	*name = NULL;
 	*icon = NULL;
-	*drive_id = 0;
-	*volume_id = 0;
 	
 	if (is_link_data (file_contents, link_file_size)) {
-		nautilus_link_desktop_file_get_link_info_given_file_contents (file_contents, link_file_size, uri, name, icon, drive_id, volume_id);
+		nautilus_link_desktop_file_get_link_info_given_file_contents (file_contents, link_file_size, uri, name, icon);
 	}
 }
 

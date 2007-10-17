@@ -27,7 +27,6 @@
 
 #include <gtk/gtkobject.h>
 #include <libgnomevfs/gnome-vfs-types.h>
-#include <libgnomevfs/gnome-vfs-volume.h>
 #include <gio/gfileinfo.h>
 #include <gio/gfile.h>
 #include <gio/gioerror.h>
@@ -98,6 +97,10 @@ typedef void (*NautilusFileListCallback)      (GList         *file_list,
 				               gpointer       callback_data);
 typedef void (*NautilusFileOperationCallback) (NautilusFile  *file,
 					       GError        *error,
+					       gpointer       callback_data);
+typedef void (*NautilusFileMountCallback)     (NautilusFile  *file,
+					       GError        *error,
+					       GFile         *mounted_location,
 					       gpointer       callback_data);
 typedef int (*NautilusWidthMeasureCallback)   (const char    *string,
 					       void	     *context);
@@ -171,6 +174,7 @@ char *                  nautilus_file_get_mime_type                     (Nautilu
 gboolean                nautilus_file_is_mime_type                      (NautilusFile                   *file,
 									 const char                     *mime_type);
 gboolean                nautilus_file_is_symbolic_link                  (NautilusFile                   *file);
+gboolean                nautilus_file_is_mountpoint                     (NautilusFile                   *file);
 char *                  nautilus_file_get_volume_free_space             (NautilusFile                   *file);
 char *                  nautilus_file_get_volume_name                   (NautilusFile                   *file);
 char *                  nautilus_file_get_symbolic_link_target_path     (NautilusFile                   *file);
@@ -240,11 +244,22 @@ gboolean                nautilus_file_can_write                         (Nautilu
 gboolean                nautilus_file_can_execute                       (NautilusFile                   *file);
 gboolean                nautilus_file_can_rename                        (NautilusFile                   *file);
 
-/* Volumes. */
-gboolean                nautilus_file_has_volume                        (NautilusFile                   *file);
-gboolean                nautilus_file_has_drive                         (NautilusFile                   *file);
-GnomeVFSVolume *        nautilus_file_get_volume                        (NautilusFile                   *file);
-GnomeVFSDrive *         nautilus_file_get_drive                         (NautilusFile                   *file);
+gboolean                nautilus_file_can_mount                         (NautilusFile                   *file);
+gboolean                nautilus_file_can_unmount                       (NautilusFile                   *file);
+gboolean                nautilus_file_can_eject                         (NautilusFile                   *file);
+
+void                    nautilus_file_mount                             (NautilusFile                   *file,
+									 GtkWidget                      *parent,
+									 NautilusFileMountCallback       callback,
+									 gpointer                        callback_data);
+void                    nautilus_file_unmount                           (NautilusFile                   *file,
+									 GtkWidget                      *parent,
+									 NautilusFileOperationCallback   callback,
+									 gpointer                        callback_data);
+void                    nautilus_file_eject                             (NautilusFile                   *file,
+									 GtkWidget                      *parent,
+									 NautilusFileOperationCallback   callback,
+									 gpointer                        callback_data);
 
 /* Basic operations for file objects. */
 void                    nautilus_file_set_owner                         (NautilusFile                   *file,
