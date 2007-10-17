@@ -999,7 +999,7 @@ nautilus_file_can_trash (NautilusFile *file)
 		return FALSE;
 	}
 
-	return file->details->can_delete;
+	return file->details->can_trash;
 }
 
 GFile *

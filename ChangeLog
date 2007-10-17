@@ -1,5 +1,10 @@
 2007-10-17  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-file.c (nautilus_file_can_trash):
+	Typo can_delete -> can_trash
+
+2007-10-17  Alexander Larsson  <alexl@redhat.com>
+
         * src/nautilus-property-browser.c:
 	Replace some gnome-vfs code with gio code
 

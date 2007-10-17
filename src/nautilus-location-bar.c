@@ -539,14 +539,17 @@ static char *
 nautilus_location_bar_get_location (NautilusNavigationBar *navigation_bar) 
 {
 	NautilusLocationBar *bar;
-	char *user_location, *best_uri;
+	char *user_location, *uri;
+	GFile *location;
 
 	bar = NAUTILUS_LOCATION_BAR (navigation_bar);
 	
 	user_location = gtk_editable_get_chars (GTK_EDITABLE (bar->details->entry), 0, -1);
-	best_uri = gnome_vfs_make_uri_from_input (user_location);
+	location = g_file_parse_name (user_location);
 	g_free (user_location);
-	return best_uri;
+	uri = g_file_get_uri (location);
+	g_object_unref (location);
+	return uri;
 }
 	       
 /**
@@ -559,10 +562,13 @@ static void
 nautilus_location_bar_update_label (NautilusLocationBar *bar)
 {
 	const char *current_text;
+	GFile *location;
 	char *current_location;
 	
 	current_text = gtk_entry_get_text (GTK_ENTRY (bar->details->entry));
-	current_location = gnome_vfs_make_uri_from_input (current_text);
+	location = g_file_parse_name (current_text);
+	current_location = g_file_get_uri (location);
+	g_object_unref (location);
 	
 	if (gnome_vfs_uris_match (bar->details->last_location, current_location)) {
 		gtk_label_set_text (GTK_LABEL (bar->details->label), LOCATION_LABEL);

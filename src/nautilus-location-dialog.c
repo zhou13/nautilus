@@ -82,6 +82,7 @@ open_current_location (NautilusLocationDialog *dialog)
 	
 	user_location = gtk_editable_get_chars (GTK_EDITABLE (dialog->details->entry), 0, -1);
 	location = g_file_parse_name (user_location);
+	g_free (user_location);
 	uri = g_file_get_uri (location);
 	g_object_unref (location);
 
