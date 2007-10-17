@@ -1,5 +1,10 @@
 2007-10-17  Alexander Larsson  <alexl@redhat.com>
 
+        * src/nautilus-places-sidebar.c:
+	Use gio volume APIs
+
+2007-10-17  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.[ch]:
         * libnautilus-private/nautilus-file-private.h:
 	Remove has/get_volume/drive, replace with
