@@ -513,7 +513,7 @@ nautilus_location_bar_set_location (NautilusNavigationBar *navigation_bar,
  * @bar: A NautilusLocationBar.
  *
  * returns a newly allocated "string" containing the mangled
- * (by gnome_vfs_make_uri_from_input) text that the user typed in...maybe a URI 
+ * (by g_file_parse_name) text that the user typed in...maybe a URI 
  * but not guaranteed.
  *
  **/
