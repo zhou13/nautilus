@@ -2548,7 +2548,7 @@ is_merged_trash_directory (NautilusFile *file)
 	gboolean result;
 
 	file_uri = nautilus_file_get_uri (file);
-	result = gnome_vfs_uris_match (file_uri, EEL_TRASH_URI);
+	result = strcmp (file_uri, "trash:///") == 0;
 	g_free (file_uri);
 
 	return result;
@@ -2557,13 +2557,7 @@ is_merged_trash_directory (NautilusFile *file)
 static gboolean
 should_show_custom_icon_buttons (FMPropertiesWindow *window) 
 {
-	/* FIXME bugzilla.gnome.org 45642:
-	 * Custom icons aren't displayed on the the desktop Trash icon, so
-	 * we shouldn't pretend that they work by showing them here.
-	 * When bug 5642 is fixed we can remove this case.
-	 */
-	if (!is_multi_file_window (window) 
-	    && is_merged_trash_directory (get_target_file (window))) {
+	if (!is_multi_file_window (window)) {
 		return FALSE;
 	}
 
@@ -2783,52 +2777,9 @@ paint_pie_chart (GtkWidget *widget, GdkEventExpose *eev, gpointer data)
   	cairo_destroy (cr);
 }
 
-static gboolean
-get_mount_stats (gchar *path, guint64 *capacity, guint64 *free)
-{
-	int statfs_result;
-#if HAVE_STATVFS
-	struct statvfs statfs_buffer;
-#else
-	struct statfs statfs_buffer;
-#endif
-	goffset block_size;
-
-	if (path == NULL) {
-		return FALSE;
-	}
-
-	statfs_result = -1;
-	
-#if HAVE_STATVFS
-	statfs_result = statvfs (path, &statfs_buffer);
-	block_size = statfs_buffer.f_frsize; 
-#else
-#if STATFS_ARGS == 2
-	statfs_result = statfs (path, &statfs_buffer);
-#elif STATFS_ARGS == 4
-	statfs_result = statfs (path, &statfs_buffer,
-				sizeof (statfs_buffer), 0);
-#endif
-	block_size = statfs_buffer.f_bsize; 
-#endif  
-
-	if (statfs_result != 0) {
-		return FALSE;
-	}
-	
-	*capacity = statfs_buffer.f_blocks * block_size;
-
-	*free 	 = statfs_buffer.f_bavail * block_size; 
-	
-	return TRUE;
-}
-
 static GtkWidget* 
 create_pie_widget (FMPropertiesWindow *window)
 {
-	GnomeVFSVolumeMonitor 	*monitor;
-	GnomeVFSVolume		*volume;
 	NautilusFile		*file;
 	GtkTable 		*table;
 	GtkWidget 		*pie_canvas;
@@ -2841,9 +2792,10 @@ create_pie_widget (FMPropertiesWindow *window)
 	gchar			*capacity;
 	gchar 			*used;
 	gchar 			*free;
-	gchar 			*fs_type;
+	const char		*fs_type;
 	gchar			*uri;
-	gchar			*path;
+	GFile *location;
+	GFileInfo *info;
 	
 	capacity = g_format_file_size_for_display (window->details->volume_capacity);
 	free 	 = g_format_file_size_for_display (window->details->volume_free);
@@ -2867,21 +2819,18 @@ create_pie_widget (FMPropertiesWindow *window)
 
 	capacity_label = gtk_label_new (g_strconcat (_("Total capacity: "), capacity, NULL));
 	fstype_label = gtk_label_new (NULL);
+
+	location = g_file_new_for_uri (uri);
+	info = g_file_query_filesystem_info (location, G_FILE_ATTRIBUTE_FS_TYPE,
+					     NULL, NULL);
 	
-	monitor = gnome_vfs_get_volume_monitor ();
-	
-	path = g_filename_from_uri (uri, NULL, NULL);
-	
-	volume = gnome_vfs_volume_monitor_get_volume_for_path (monitor, path);
-	
-	if (volume !=NULL) {
-		fs_type = gnome_vfs_volume_get_filesystem_type (volume);
-		if (fs_type != NULL) {
-			gtk_label_set_text (GTK_LABEL (fstype_label), g_strconcat (_("Filesytem type: "), fs_type, NULL));
-		}
+	fs_type = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_FS_TYPE);
+	if (fs_type != NULL) {
+		gtk_label_set_text (GTK_LABEL (fstype_label), g_strconcat (_("Filesytem type: "), fs_type, NULL));
 	}
+	g_object_unref (info);
+	g_object_unref (location);
 	
-	g_free (path);
 	g_free (uri);
 	g_free (capacity);
 	g_free (used);
@@ -2909,22 +2858,24 @@ static GtkWidget*
 create_volume_usage_widget (FMPropertiesWindow *window)
 {
 	GtkWidget *piewidget;
-	GnomeVFSURI *vfs_uri;
-	gchar *path;
 	gchar *uri;
 	NautilusFile *file;
+	GFile *location;
+	GFileInfo *info;
 	
 	file = get_original_file (window);
 	
-	uri 	= nautilus_file_get_activation_uri (file);
-	vfs_uri = gnome_vfs_uri_new (uri);
-	path 	= g_filename_from_uri (uri,NULL,NULL);
+	uri = nautilus_file_get_activation_uri (file);
+
+	location = g_file_new_for_uri (uri);
+	info = g_file_query_filesystem_info (location, "fs:*", NULL, NULL);
 	
-	get_mount_stats (path, &window->details->volume_capacity, &window->details->volume_free);
+	window->details->volume_capacity = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_SIZE);
+	window->details->volume_free = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_FREE);
+
+	g_object_unref (info);
+	g_object_unref (location);
 	
-	g_free (uri);
-	g_free(path);
-				
 	piewidget = create_pie_widget (window);
 	                   
         gtk_widget_show_all (piewidget);            
