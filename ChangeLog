@@ -1,5 +1,9 @@
 2007-10-17  Paolo Borelli  <pborelli@katamail.com>
 
+	* libnautilus-private/nautilus-emblem-utils.c: do not use gnome-vfs.
+
+2007-10-17  Paolo Borelli  <pborelli@katamail.com>
+
 	* libnautilus-private/nautilus-link.[ch]: remove.
 	* libnautilus-private/nautilus-link-desktop-file.[ch]: port to gio
 	and rename them to nautilus-link.[ch]

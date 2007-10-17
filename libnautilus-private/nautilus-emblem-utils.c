@@ -34,10 +34,8 @@
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-stock-dialogs.h>
-#include <eel/eel-vfs-extensions.h>
 #include <glib/gi18n.h>
 #include <gtk/gtkicontheme.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include "nautilus-emblem-utils.h"
 
 #define EMBLEM_NAME_TRASH   "emblem-trash"
@@ -225,9 +223,7 @@ nautilus_emblem_install_custom_emblem (GdkPixbuf *pixbuf,
 				       const char *display_name,
 				       GtkWindow *parent_window)
 {
-	GnomeVFSURI *vfs_uri;
-	char *path, *dir, *stat_dir;
-	FILE *file;
+	char *basename, *path, *dir, *stat_dir;
 	struct stat stat_buf;
 	struct utimbuf ubuf;
 	
@@ -237,19 +233,25 @@ nautilus_emblem_install_custom_emblem (GdkPixbuf *pixbuf,
 		return;
 	}
 
-	dir = g_strdup_printf ("%s/.icons/hicolor/48x48/emblems",
-			       g_get_home_dir ());
-	stat_dir = g_strdup_printf ("%s/.icons/hicolor",
-				    g_get_home_dir ());
+	dir = g_build_filename (g_get_home_dir (),
+				".icons", "hicolor", "48x48", "emblems",
+				NULL);
+	stat_dir = g_build_filename (g_get_home_dir (),
+				     ".icons", "hicolor",
+				     NULL);
 
-	vfs_uri = gnome_vfs_uri_new (dir);
+	if (g_mkdir_with_parents (dir, 0755) != 0) {
+		eel_show_error_dialog (_("The emblem cannot be installed."),
+				       _("Sorry, unable to save custom emblem."), 				       
+				       GTK_WINDOW (parent_window));
+		g_free (dir);
+		g_free (stat_dir);
+		return;
+	}
 
-	g_return_if_fail (vfs_uri != NULL);
-	
-	eel_make_directory_and_parents (vfs_uri, 0755);
-	gnome_vfs_uri_unref (vfs_uri);
-	
-	path = g_strdup_printf ("%s/emblem-%s.png", dir, keyword);
+	basename = g_strdup_printf ("emblem-%s.png", keyword);
+	path = g_build_filename (dir, basename, NULL);
+	g_free (basename);
 
 	/* save the image */
 	if (eel_gdk_pixbuf_save_to_file (pixbuf, path) != TRUE) {
@@ -265,23 +267,28 @@ nautilus_emblem_install_custom_emblem (GdkPixbuf *pixbuf,
 	g_free (path);
 
 	if (display_name != NULL) {
-		path = g_strdup_printf ("%s/emblem-%s.icon", dir, keyword);
-		file = fopen (path, "w+");
-		g_free (path);
+		char *contents;
 
-		if (file == NULL) {
+		basename = g_strdup_printf ("emblem-%s.icon", keyword);
+		path = g_build_filename (dir, basename, NULL);
+		g_free (basename);
+
+		contents = g_strdup_printf ("\n[Icon Data]\n\nDisplayName=%s\n",
+					    display_name);
+
+		if (!g_file_set_contents (path, contents, strlen (contents), NULL)) {
 			eel_show_error_dialog (_("The emblem cannot be installed."),
 					       _("Sorry, unable to save custom emblem name."), 
 					       GTK_WINDOW (parent_window));
+			g_free (contents);
+			g_free (path);
 			g_free (stat_dir);
 			g_free (dir);
 			return;
 		}
-		
-		/* write the icon description */
-		fprintf (file, "\n[Icon Data]\n\nDisplayName=%s\n", display_name);
-		fflush (file);
-		fclose (file);
+
+		g_free (contents);
+		g_free (path);
 	}
 
 	/* Touch the toplevel dir */
@@ -290,7 +297,7 @@ nautilus_emblem_install_custom_emblem (GdkPixbuf *pixbuf,
 		ubuf.modtime = time (NULL);
 		utime (stat_dir, &ubuf);
 	}
-	
+
 	g_free (dir);
 	g_free (stat_dir);
 
