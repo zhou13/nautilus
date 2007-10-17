@@ -1,5 +1,11 @@
 2007-10-17  Alexander Larsson  <alexl@redhat.com>
 
+        * src/nautilus-location-bar.c:
+	Remove some unused code
+	Replace gnome_vfs code with gio code
+
+2007-10-17  Alexander Larsson  <alexl@redhat.com>
+
 	* libnautilus-private/nautilus-file.c (nautilus_file_can_trash):
 	Typo can_delete -> can_trash
 

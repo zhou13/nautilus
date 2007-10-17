@@ -67,9 +67,6 @@ struct NautilusLocationBarDetails {
 	
 	char *last_location;
 	
-	char *current_directory;
-	GList *file_info_list;
-	
 	guint idle_id;
 };
 
@@ -360,14 +357,6 @@ destroy (GtkObject *object)
 		bar->details->idle_id = 0;
 	}
 	
-	if (bar->details->file_info_list) {
-		gnome_vfs_file_info_list_free (bar->details->file_info_list);	
-		bar->details->file_info_list = NULL;
-	}
-	
-	g_free (bar->details->current_directory);
-	bar->details->current_directory = NULL;
-	
 	g_free (bar->details->last_location);
 	bar->details->last_location = NULL;
 	
@@ -506,13 +495,6 @@ nautilus_location_bar_set_location (NautilusNavigationBar *navigation_bar,
 		g_free (formatted_location);
 	}
 
-	/* free up the cached file info from the previous location */
-	g_free (bar->details->current_directory);
-	bar->details->current_directory = NULL;
-	
-	gnome_vfs_file_info_list_free (bar->details->file_info_list);	
-	bar->details->file_info_list = NULL;			
-	
 	/* remember the original location for later comparison */
 	
 	if (bar->details->last_location != location) {
@@ -563,18 +545,18 @@ nautilus_location_bar_update_label (NautilusLocationBar *bar)
 {
 	const char *current_text;
 	GFile *location;
-	char *current_location;
+	GFile *last_location;
 	
 	current_text = gtk_entry_get_text (GTK_ENTRY (bar->details->entry));
 	location = g_file_parse_name (current_text);
-	current_location = g_file_get_uri (location);
-	g_object_unref (location);
+	last_location = g_file_parse_name (bar->details->last_location);
 	
-	if (gnome_vfs_uris_match (bar->details->last_location, current_location)) {
+	if (g_file_equal (last_location, location)) {
 		gtk_label_set_text (GTK_LABEL (bar->details->label), LOCATION_LABEL);
 	} else {		 
 		gtk_label_set_text (GTK_LABEL (bar->details->label), GO_TO_LABEL);
 	}
 
-	g_free (current_location);
+	g_object_unref (location);
+	g_object_unref (last_location);
 }
