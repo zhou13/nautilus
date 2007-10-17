@@ -74,13 +74,13 @@ is_local_file_a_link (const char *uri)
 				  0, NULL, &error);
 	if (info) {
 		link = is_link_mime_type (g_file_info_get_content_type (info));
+		g_object_unref (info);
 	}
 	else {
 		g_warning ("Error getting info: %s\n", error->message);
 		g_error_free (error);
 	}
 
-	g_object_unref (info);
 	g_object_unref (file);
 
 	return link;
