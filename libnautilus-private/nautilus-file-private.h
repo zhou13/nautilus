@@ -193,6 +193,7 @@ struct NautilusFileDetails
 	eel_boolean_bit can_write                     : 1;
 	eel_boolean_bit can_execute                   : 1;
 	eel_boolean_bit can_delete                    : 1;
+	eel_boolean_bit can_trash                     : 1;
 	eel_boolean_bit can_rename                    : 1;
 	eel_boolean_bit can_mount                     : 1;
 	eel_boolean_bit can_unmount                   : 1;

@@ -309,6 +309,7 @@ nautilus_file_clear_info (NautilusFile *file)
 	file->details->can_write = TRUE;
 	file->details->can_execute = TRUE;
 	file->details->can_delete = TRUE;
+	file->details->can_trash = TRUE;
 	file->details->can_rename = TRUE;
 	file->details->can_mount = FALSE;
 	file->details->can_unmount = FALSE;
@@ -965,6 +966,42 @@ nautilus_file_can_rename (NautilusFile *file)
 	return file->details->can_rename;
 }
 
+gboolean
+nautilus_file_can_delete (NautilusFile *file)
+{
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
+
+	/* Nonexistent files can't be deleted. */
+	if (nautilus_file_is_gone (file)) {
+		return FALSE;
+	}
+
+	/* Self-owned files can't be deleted */
+	if (nautilus_file_is_self_owned (file)) {
+		return FALSE;
+	}
+
+	return file->details->can_delete;
+}
+
+gboolean
+nautilus_file_can_trash (NautilusFile *file)
+{
+	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
+
+	/* Nonexistent files can't be deleted. */
+	if (nautilus_file_is_gone (file)) {
+		return FALSE;
+	}
+
+	/* Self-owned files can't be deleted */
+	if (nautilus_file_is_self_owned (file)) {
+		return FALSE;
+	}
+
+	return file->details->can_delete;
+}
+
 GFile *
 nautilus_file_get_location (NautilusFile *file)
 {
@@ -1463,7 +1500,7 @@ update_info_internal (NautilusFile *file,
 	gboolean is_symlink, is_hidden, is_backup, is_mountpoint;
 	gboolean has_permissions;
 	GnomeVFSFilePermissions permissions;
-	gboolean can_read, can_write, can_execute, can_delete, can_rename, can_mount, can_unmount, can_eject;
+	gboolean can_read, can_write, can_execute, can_delete, can_trash, can_rename, can_mount, can_unmount, can_eject;
 	gboolean thumbnailing_failed;
 	int uid, gid;
 	goffset size;
@@ -1546,6 +1583,7 @@ update_info_internal (NautilusFile *file,
 	can_write = TRUE;
 	can_execute = TRUE;
 	can_delete = TRUE;
+	can_trash = TRUE;
 	can_rename = TRUE;
 	can_mount = FALSE;
 	can_unmount = FALSE;
@@ -1565,6 +1603,10 @@ update_info_internal (NautilusFile *file,
 	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_DELETE)) {
 		can_delete = g_file_info_get_attribute_boolean (info,
 								G_FILE_ATTRIBUTE_ACCESS_CAN_DELETE);
+	}
+	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_TRASH)) {
+		can_trash = g_file_info_get_attribute_boolean (info,
+							       G_FILE_ATTRIBUTE_ACCESS_CAN_TRASH);
 	}
 	if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_ACCESS_CAN_RENAME)) {
 		can_rename = g_file_info_get_attribute_boolean (info,
@@ -1586,6 +1628,7 @@ update_info_internal (NautilusFile *file,
 	    file->details->can_write != can_write ||
 	    file->details->can_execute != can_execute ||
 	    file->details->can_delete != can_delete ||
+	    file->details->can_trash != can_trash ||
 	    file->details->can_rename != can_rename ||
 	    file->details->can_mount != can_mount ||
 	    file->details->can_unmount != can_unmount ||
@@ -1597,6 +1640,7 @@ update_info_internal (NautilusFile *file,
 	file->details->can_write = can_write;
 	file->details->can_execute = can_execute;
 	file->details->can_delete = can_delete;
+	file->details->can_trash = can_trash;
 	file->details->can_rename = can_rename;
 	file->details->can_mount = can_mount;
 	file->details->can_unmount = can_unmount;

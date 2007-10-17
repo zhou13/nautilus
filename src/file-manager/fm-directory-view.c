@@ -1616,33 +1616,11 @@ set_up_scripts_directory_global (void)
 static void
 create_scripts_directory (void)
 {
-	char *gnome1_path, *gnome1_uri_str;
-	GnomeVFSURI *gnome1_uri, *scripts_uri;
+	GFile *dir;
 
-	scripts_uri = gnome_vfs_uri_new (scripts_directory_uri);
-	/* try to migrate nautilus 1 scripts */
-	gnome1_path = g_strconcat (g_get_home_dir(), "/.gnome/nautilus-scripts", NULL);
-
-	if (g_file_test (gnome1_path, G_FILE_TEST_EXISTS)) {
-		gnome1_uri_str = g_filename_to_uri (gnome1_path, NULL, NULL);
-		gnome1_uri = gnome_vfs_uri_new (gnome1_uri_str);
-		g_free (gnome1_uri_str);
-		if (gnome_vfs_xfer_uri (gnome1_uri, scripts_uri,
-					GNOME_VFS_XFER_DEFAULT,
-					GNOME_VFS_XFER_ERROR_MODE_ABORT,
-					GNOME_VFS_XFER_OVERWRITE_MODE_SKIP,
-					NULL, NULL) != GNOME_VFS_OK) {
-			g_warning ("Failed to migrate Nautilus1 scripts\n");
-		}
-		gnome_vfs_uri_unref (gnome1_uri);
-	}
-	g_free (gnome1_path);
-
-	/* make sure scripts directory is created */
-	gnome_vfs_make_directory_for_uri (scripts_uri, 
-					  GNOME_VFS_PERM_USER_ALL | GNOME_VFS_PERM_GROUP_ALL | GNOME_VFS_PERM_OTHER_READ);
-
-	gnome_vfs_uri_unref (scripts_uri);
+	dir = g_file_new_for_uri (scripts_directory_uri);
+	g_file_make_directory (dir, NULL, NULL);
+	g_object_unref (dir);
 }
 
 static void
@@ -9443,8 +9421,6 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 	char *container_uri;
 	GArray *points;
 	char **bits;
-	GnomeVFSResult result;
-	GnomeVFSFileInfo *file_info;
 	GList *uri_list = NULL;
 
 	if (encoded_url == NULL) {
@@ -9483,21 +9459,28 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 	}
 
 	if (action == GDK_ACTION_ASK) {
-		file_info = gnome_vfs_file_info_new ();
-		result = gnome_vfs_get_file_info (url, file_info,
-		    GNOME_VFS_FILE_INFO_GET_MIME_TYPE
-		    | GNOME_VFS_FILE_INFO_FOLLOW_LINKS);
+		GFileInfo *info;
+		GFile *f;
+		const char *mime_type;
 
-		if ( eel_strcasecmp (file_info->mime_type, "text/html") == 0 ||
-		    eel_strcasecmp (file_info->mime_type, "text/xml") == 0 ||
-		    eel_strcasecmp (file_info->mime_type, "application/xhtml+xml") == 0) {
+		f = g_file_new_for_uri (url);
+		info = g_file_query_info (f, G_FILE_ATTRIBUTE_STD_CONTENT_TYPE, 0, NULL, NULL);
+		mime_type = NULL;
+		
+		if (info) {
+			mime_type = g_file_info_get_content_type (info);
+		}
+		
+		if (eel_strcasecmp (mime_type, "text/html") == 0 ||
+		    eel_strcasecmp (mime_type, "text/xml") == 0 ||
+		    eel_strcasecmp (mime_type, "application/xhtml+xml") == 0) {
 			action = GDK_ACTION_LINK;
-		} else if (eel_strcasecmp (file_info->mime_type, "text/plain") == 0) {
+		} else if (eel_strcasecmp (mime_type, "text/plain") == 0) {
 			action = ask_link_action (view);
 		} else {
 			action = GDK_ACTION_COPY;
 		}
-		gnome_vfs_file_info_unref (file_info);
+		g_object_unref (info);
 		
 		if (action == 0) {
 			g_free (container_uri);
