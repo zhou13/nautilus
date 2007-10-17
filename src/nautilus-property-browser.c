@@ -42,7 +42,6 @@
 #include <eel/eel-labeled-image.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
-#include <eel/eel-vfs-extensions.h>
 #include <eel/eel-xml-extensions.h>
 #include <librsvg/rsvg.h>
 #include <libxml/parser.h>
@@ -67,6 +66,7 @@
 #include <gtk/gtkvbox.h>
 #include <gtk/gtkviewport.h>
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <libgnome/gnome-util.h>
 #include <libgnome/gnome-help.h>
 #include <libgnomeui/gnome-color-picker.h>
@@ -74,7 +74,6 @@
 #include <libgnomeui/gnome-help.h>
 #include <libgnomeui/gnome-stock-icons.h>
 #include <libgnomeui/gnome-uidefs.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-private/nautilus-customization-data.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-emblem-utils.h>
@@ -716,18 +715,26 @@ static gboolean
 ensure_uri_is_image (const char *uri)
 {	
 	gboolean is_image;
-	GnomeVFSResult result;
-	GnomeVFSFileInfo *file_info;
-
-	file_info = gnome_vfs_file_info_new ();
-	result = gnome_vfs_get_file_info
-		(uri, file_info,
-		 GNOME_VFS_FILE_INFO_GET_MIME_TYPE
-		 | GNOME_VFS_FILE_INFO_FOLLOW_LINKS);
-        is_image = eel_istr_has_prefix (file_info->mime_type, "image/")
-		&& eel_strcasecmp (file_info->mime_type, "image/svg") != 0
-		&& eel_strcasecmp (file_info->mime_type, "image/svg+xml") != 0;
-	gnome_vfs_file_info_unref (file_info);
+	GFileInfo *info;
+	GFile *f;
+	const char *mime_type;
+	
+	f = g_file_new_for_uri (uri);
+	info = g_file_query_info (f, G_FILE_ATTRIBUTE_STD_CONTENT_TYPE, 0, NULL, NULL);
+	if (info == NULL) {
+		return FALSE;
+	}
+	
+	mime_type = g_file_info_get_content_type (info);
+	if (mime_type == NULL) {
+		return FALSE;
+	}
+	
+        is_image = eel_istr_has_prefix (mime_type, "image/")
+		&& eel_strcasecmp (mime_type, "image/svg") != 0
+		&& eel_strcasecmp (mime_type, "image/svg+xml") != 0;
+	
+	g_object_unref (info);
 	return is_image;
 }
 
@@ -955,29 +962,27 @@ remove_color (NautilusPropertyBrowser *property_browser, const char* color_name)
 static void
 remove_pattern(NautilusPropertyBrowser *property_browser, const char* pattern_name)
 {
-	char *pattern_path, *pattern_uri;
+	char *pattern_path;
 	char *user_directory;
 
 	user_directory = nautilus_get_user_directory ();
 
 	/* build the pathname of the pattern */
-	pattern_path = g_strdup_printf ("%s/patterns/%s",
-					   user_directory,
-					   pattern_name);
-	pattern_uri = g_filename_to_uri (pattern_path, NULL, NULL);
-	g_free (pattern_path);
-
+	pattern_path = g_build_filename (user_directory,
+					 "patterns",
+					 pattern_name,
+					 NULL);
 	g_free (user_directory);	
 
 	/* delete the pattern from the pattern directory */
-	if (gnome_vfs_unlink (pattern_uri) != GNOME_VFS_OK) {
+	if (g_unlink (pattern_path) != 0) {
 		char *message = g_strdup_printf (_("Sorry, but pattern %s couldn't be deleted."), pattern_name);
 		char *detail = _("Check that you have permission to delete the pattern.");
 		eel_show_error_dialog (message, detail, GTK_WINDOW (property_browser));
 		g_free (message);
 	}
 	
-	g_free (pattern_uri);
+	g_free (pattern_path);
 }
 
 /* remove the emblem matching the passed in name */
@@ -986,30 +991,28 @@ static void
 remove_emblem (NautilusPropertyBrowser *property_browser, const char* emblem_name)
 {
 	/* build the pathname of the emblem */
-	char *emblem_path, *emblem_uri;
+	char *emblem_path;
 	char *user_directory;
 
 	user_directory = nautilus_get_user_directory ();
 
-	emblem_path = g_strdup_printf ("%s/emblems/%s",
-				       user_directory,
-				       emblem_name);
-	emblem_uri = g_filename_to_uri (emblem_path, NULL, NULL);
-	g_free (emblem_path);
+	emblem_path = g_build_filename (user_directory,
+					"emblems",
+					emblem_name,
+					NULL);
 
 	g_free (user_directory);
 
 	/* delete the emblem from the emblem directory */
-	if (gnome_vfs_unlink (emblem_uri) != GNOME_VFS_OK) {
+	if (g_unlink (emblem_path) != 0) {
 		char *message = g_strdup_printf (_("Sorry, but emblem %s couldn't be deleted."), emblem_name);
 		char *detail = _("Check that you have permission to delete the emblem.");
 		eel_show_error_dialog (message, detail, GTK_WINDOW (property_browser));
 		g_free (message);
-	}
-	else {
+	} else {
 		emit_emblems_changed_signal ();
 	}
-	g_free (emblem_uri);
+	g_free (emblem_path);
 }
 
 /* handle removing the passed in element */
@@ -1175,8 +1178,7 @@ add_pattern_to_browser (const char *path_name, gpointer *data)
 	char *directory_path, *source_file_name, *destination_name;
 	char *path_uri, *basename;
 	char *user_directory;	
-	char *directory_uri;
-	GnomeVFSResult result;
+	GFile *src, *dest;
 	
 	NautilusPropertyBrowser *property_browser = NAUTILUS_PROPERTY_BROWSER (data);
 
@@ -1200,7 +1202,7 @@ add_pattern_to_browser (const char *path_name, gpointer *data)
 	path_uri = g_filename_to_uri (path_name, NULL, NULL);	
 
 	/* don't allow the user to change the reset image */
-	basename = eel_uri_get_basename (path_uri);
+	basename = g_path_get_basename (path_name);
 	if (basename && eel_strcmp (basename, RESET_IMAGE_NAME) == 0) {
 		eel_show_error_dialog (_("Sorry, but you can't replace the reset image."), 
 		                       _("Reset is a special image that cannot be deleted."), 
@@ -1222,24 +1224,24 @@ add_pattern_to_browser (const char *path_name, gpointer *data)
 	destination_name = g_build_filename (directory_path, source_file_name + 1, NULL);
 
 	/* make the directory if it doesn't exist */
-	if (!g_file_test(directory_path, G_FILE_TEST_EXISTS)) {
-		directory_uri = g_filename_to_uri (directory_path, NULL, NULL);
-		gnome_vfs_make_directory (directory_uri,
-						 GNOME_VFS_PERM_USER_ALL
-						 | GNOME_VFS_PERM_GROUP_ALL
-						 | GNOME_VFS_PERM_OTHER_READ);
-		g_free (directory_uri);
+	if (!g_file_test (directory_path, G_FILE_TEST_EXISTS)) {
+		g_mkdir_with_parents (directory_path, 0775);
 	}
 		
 	g_free (directory_path);
-		
-	result = eel_copy_uri_simple (path_name, destination_name);		
-	if (result != GNOME_VFS_OK) {
+
+	src = g_file_new_for_path (path_name);
+	dest = g_file_new_for_path (destination_name);
+	if (!g_file_copy (src, dest,
+			  0,
+			  NULL, NULL, NULL, NULL)) {
 		char *message = g_strdup_printf (_("Sorry, but the pattern %s couldn't be installed."), path_name);
 		eel_show_error_dialog (message, NULL, GTK_WINDOW (property_browser));
 		g_free (message);
 	}
-		
+	g_object_unref (src);
+	g_object_unref (dest);
+	
 	g_free (destination_name);
 	
 	/* update the property browser's contents to show the new one */
