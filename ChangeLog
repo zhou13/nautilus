@@ -1,5 +1,10 @@
 2007-10-17  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-vfs-utils.[ch]:
+	Remove now unused gnome_vfs to gio helpers
+
+2007-10-17  Alexander Larsson  <alexl@redhat.com>
+
         * src/nautilus-location-bar.c:
 	Remove some unused code
 	Replace gnome_vfs code with gio code
