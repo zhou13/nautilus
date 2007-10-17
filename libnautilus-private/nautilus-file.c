@@ -38,7 +38,6 @@
 #include "nautilus-global-preferences.h"
 #include "nautilus-lib-self-check-functions.h"
 #include "nautilus-link.h"
-#include "nautilus-link-desktop-file.h"
 #include "nautilus-metadata.h"
 #include "nautilus-module.h"
 #include "nautilus-search-directory.h"
@@ -1299,11 +1298,11 @@ nautilus_file_rename (NautilusFile *file,
 		 * we want to minimize actual changes
 		 */
 		uri = nautilus_file_get_uri (file);
-		old_name = nautilus_link_desktop_file_local_get_text (uri);
+		old_name = nautilus_link_local_get_text (uri);
 		if (old_name != NULL && strcmp (new_name, old_name) == 0) {
 			success = TRUE;
 		} else {
-			success = nautilus_link_desktop_file_local_set_text (uri, new_name);
+			success = nautilus_link_local_set_text (uri, new_name);
 		}
 		g_free (old_name);
 		g_free (uri);

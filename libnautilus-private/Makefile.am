@@ -133,8 +133,6 @@ libnautilus_private_la_SOURCES = \
 	nautilus-keep-last-vertical-box.h \
 	nautilus-lib-self-check-functions.c \
 	nautilus-lib-self-check-functions.h \
-	nautilus-link-desktop-file.c \
-	nautilus-link-desktop-file.h \
 	nautilus-link.c \
 	nautilus-link.h \
 	nautilus-marshal.c \
