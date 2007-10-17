@@ -20,6 +20,8 @@
 
 #include "nautilus-recent.h"
 
+#include <eel/eel-vfs-extensions.h>
+
 #define DEFAULT_APP_EXEC "gnome-open %u"
 
 static GtkRecentManager *
@@ -41,19 +43,17 @@ nautilus_recent_add_file (NautilusFile *file,
 {
 	GtkRecentData recent_data;
 	char *uri;
-	GnomeVFSURI *vfs_uri;
 
 	uri = nautilus_file_get_uri (file);
-	
-	/* Only add real gnome-vfs uris to recent. Not things like
-	   trash:// and x-nautilus-desktop:// */
-	vfs_uri = gnome_vfs_uri_new (uri);
-	if (vfs_uri == NULL) {
+
+	/* do not add trash:// etc */
+	if (eel_uri_is_trash (uri)  ||
+	    eel_uri_is_search (uri) ||
+	    eel_uri_is_desktop (uri)) {
 		g_free (uri);
 		return;
 	}
-	gnome_vfs_uri_unref (vfs_uri);
-	
+
 	recent_data.display_name = NULL;
 	recent_data.description = NULL;
 
