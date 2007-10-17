@@ -76,12 +76,14 @@ nautilus_location_dialog_destroy (GtkObject *object)
 static void
 open_current_location (NautilusLocationDialog *dialog)
 {
+	GFile *location;
 	char *uri;
 	char *user_location;
 	
 	user_location = gtk_editable_get_chars (GTK_EDITABLE (dialog->details->entry), 0, -1);
-	uri = gnome_vfs_make_uri_from_input (user_location);
-	g_free (user_location);
+	location = g_file_parse_name (user_location);
+	uri = g_file_get_uri (location);
+	g_object_unref (location);
 
 	nautilus_window_go_to (dialog->details->window, uri);
 
