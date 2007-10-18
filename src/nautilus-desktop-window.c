@@ -83,10 +83,14 @@ nautilus_desktop_window_delete_event (NautilusDesktopWindow *window)
 void
 nautilus_desktop_window_update_directory (NautilusDesktopWindow *window)
 {
+	GFile *location;
+	
 	g_assert (NAUTILUS_IS_DESKTOP_WINDOW (window));
 	
 	NAUTILUS_SPATIAL_WINDOW (window)->affect_spatial_window_on_next_location_change = TRUE;
-	nautilus_window_go_to (NAUTILUS_WINDOW (window), EEL_DESKTOP_URI);
+	location = g_file_new_for_uri (EEL_DESKTOP_URI);
+	nautilus_window_go_to (NAUTILUS_WINDOW (window), location);
+	g_object_unref (location);
 }
 
 static void

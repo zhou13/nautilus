@@ -119,11 +119,12 @@ struct NautilusWindow {
 GType            nautilus_window_get_type             (void);
 void             nautilus_window_show_window          (NautilusWindow    *window);
 void             nautilus_window_close                (NautilusWindow    *window);
-char *           nautilus_window_get_location         (NautilusWindow    *window);
+char *           nautilus_window_get_location_uri     (NautilusWindow    *window);
+GFile *          nautilus_window_get_location         (NautilusWindow    *window);
 void             nautilus_window_go_to                (NautilusWindow    *window,
-                                                       const char        *location);
+                                                       GFile            *location);
 void             nautilus_window_go_to_with_selection (NautilusWindow    *window,
-                                                       const char        *location,
+                                                       GFile             *location,
                                                        GList             *new_selection);
 void             nautilus_window_go_home              (NautilusWindow    *window);
 void             nautilus_window_go_up                (NautilusWindow    *window,

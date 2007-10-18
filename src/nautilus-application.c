@@ -71,6 +71,7 @@
 #include <gtk/gtkinvisible.h>
 #include <gtk/gtksignal.h>
 #include <gtk/gtkwindow.h>
+#include <gio/gfile.h>
 #include <libgnome/gnome-config.h>
 #include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-authentication-manager.h>
@@ -872,7 +873,7 @@ nautilus_application_get_existing_spatial_window (const char *location)
 	     l != NULL; l = l->next) {
 		char *window_location;
 		
-		window_location = nautilus_window_get_location (NAUTILUS_WINDOW (l->data));
+		window_location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (l->data));
 		if (window_location != NULL &&
 		    strcmp (location, window_location) == 0) {
 			g_free (window_location);
@@ -891,7 +892,7 @@ find_parent_spatial_window (NautilusSpatialWindow *window)
 	char *location;
 	char *desktop_directory;
 
-	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (window));
 	if (location == NULL) {
 		return NULL;
 	}
@@ -1038,7 +1039,7 @@ NautilusWindow *
 nautilus_application_present_spatial_window (NautilusApplication *application,
 					     NautilusWindow      *requesting_window,
 					     const char          *startup_id,
-					     const char          *location,
+					     GFile               *location,
 					     GdkScreen           *screen)
 {
 	return nautilus_application_present_spatial_window_with_selection (application,
@@ -1130,13 +1131,13 @@ NautilusWindow *
 nautilus_application_present_spatial_window_with_selection (NautilusApplication *application,
 							    NautilusWindow      *requesting_window,
 							    const char          *startup_id,
-							    const char          *location,
+							    GFile               *location,
 							    GList		*new_selection,
 							    GdkScreen           *screen)
 {
 	NautilusWindow *window;
 	GList *l;
-	GFile *existing_location_f, *location_f;
+	char *uri;
 
 	g_return_val_if_fail (NAUTILUS_IS_APPLICATION (application), NULL);
 
@@ -1144,7 +1145,7 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 	for (l = nautilus_application_get_spatial_window_list ();
 	     l != NULL; l = l->next) {
 		NautilusWindow *existing_window;
-		char *existing_location;
+		GFile *existing_location;
                	     
 		existing_window = NAUTILUS_WINDOW (l->data);
 		existing_location = existing_window->details->pending_location;
@@ -1153,30 +1154,25 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 			existing_location = existing_window->details->location;
 		}
 		
-		location_f = g_file_new_for_uri (location);
-		existing_location_f = g_file_new_for_uri (existing_location);
-
-		if (g_file_equal (existing_location_f, location_f)) {
+		if (g_file_equal (existing_location, location)) {
 #ifdef HAVE_STARTUP_NOTIFICATION
 			end_startup_notification (GTK_WIDGET (existing_window),
 						  startup_id);
 #endif
 
-			g_object_unref (location_f);
-			g_object_unref (existing_location_f);
 			gtk_window_present (GTK_WINDOW (existing_window));
 			if (new_selection &&
 			    existing_window->content_view != NULL) {
 				nautilus_view_set_selection (existing_window->content_view, new_selection);
 			}
 
+			uri = g_file_get_uri (location);
 			nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 					    "present EXISTING spatial window=%p: %s",
-					    existing_window, location);
+					    existing_window, uri);
+			g_free (uri);
 			return existing_window;
 		}
-		g_object_unref (location_f);
-		g_object_unref (existing_location_f);
 	}
 
 	window = create_window (application, NAUTILUS_TYPE_SPATIAL_WINDOW, startup_id, screen);
@@ -1213,9 +1209,11 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 	
 	nautilus_window_go_to_with_selection (window, location, new_selection);
 
+	uri = g_file_get_uri (location);
 	nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 			    "present NEW spatial window=%p: %s",
-			    window, location);
+			    window, uri);
+	g_free (uri);
 	
 	return window;
 }
@@ -1362,7 +1360,7 @@ volume_unmounted_callback (GVolumeMonitor *monitor,
 	for (node = window_list; node != NULL; node = node->next) {
 		window = NAUTILUS_WINDOW (node->data);
 		if (window != NULL && window_can_be_closed (window)) {
-			uri = nautilus_window_get_location (window);
+			uri = nautilus_window_get_location_uri (window);
 			location = g_file_new_for_uri (uri);
 			
 			if (g_file_contains_file (root, location)) {
@@ -1519,7 +1517,7 @@ save_session_to_file (void)
 			}
 		}
 
-		tmp = nautilus_window_get_location (window);
+		tmp = nautilus_window_get_location_uri (window);
 		xmlNewProp (win_node, "location", tmp);
 		g_free (tmp);
 	}
@@ -1625,7 +1623,8 @@ nautilus_application_load_session (NautilusApplication *application,
 					}
 				} else if (!strcmp (node->name, "window")) {
 					NautilusWindow *window;
-					xmlChar *type, *location;
+					xmlChar *type, *location_uri;
+					GFile *location;
 
 					type = xmlGetProp (node, "type");
 					if (type == NULL) {
@@ -1634,8 +1633,8 @@ nautilus_application_load_session (NautilusApplication *application,
 						continue;
 					}
 
-					location = xmlGetProp (node, "location");
-					if (location == NULL) {
+					location_uri = xmlGetProp (node, "location");
+					if (location_uri == NULL) {
 						g_message ("empty location node while parsing %s", filename);
 						bail = TRUE;
 						xmlFree (type);
@@ -1676,16 +1675,20 @@ nautilus_application_load_session (NautilusApplication *application,
 							gtk_window_set_keep_above (GTK_WINDOW (window), FALSE);
 						}
 
+						location = g_file_new_for_uri (location_uri);
 						nautilus_window_open_location (window, location, FALSE);
+						g_object_unref (location);
 					} else if (!strcmp (type, "spatial")) {
+						location = g_file_new_for_uri (location_uri);
 						window = nautilus_application_present_spatial_window (application, NULL, NULL, location, gdk_screen_get_default ());
+						g_object_unref (location);
 					} else {
 						g_message ("unknown window type \"%s\" while parsing %s", type, filename);
 						bail = TRUE;
 					}
 
 					xmlFree (type);
-					xmlFree (location);
+					xmlFree (location_uri);
 				} else {
 					g_message ("unexpected node %s while parsing %s", node->name, filename);
 					bail = TRUE;

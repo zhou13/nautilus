@@ -124,16 +124,16 @@ static void
 activate_bookmark_in_menu_item (GtkAction *action, gpointer user_data)
 {
         BookmarkHolder *holder;
-        char *uri;
+        GFile *location;
 
         holder = (BookmarkHolder *)user_data;
 
 	if (nautilus_bookmark_uri_known_not_to_exist (holder->bookmark)) {
 		holder->failed_callback (holder->window, holder->bookmark);
 	} else {
-	        uri = nautilus_bookmark_get_uri (holder->bookmark);
-	        nautilus_window_go_to (holder->window, uri);
-	        g_free (uri);
+	        location = nautilus_bookmark_get_location (holder->bookmark);
+	        nautilus_window_go_to (holder->window, location);
+	        g_object_unref (location);
         }
 }
 
@@ -210,7 +210,7 @@ action_connect_to_server_callback (GtkAction *action,
 	NautilusWindow *window = NAUTILUS_WINDOW (user_data);
 	GtkWidget *dialog;
 	char *location;
-	location = nautilus_window_get_location (window);
+	location = nautilus_window_get_location_uri (window);
 	dialog = nautilus_connect_server_dialog_new (window, location);
 	g_free (location);
 
@@ -268,45 +268,60 @@ static void
 action_go_to_computer_callback (GtkAction *action, 
 				gpointer user_data) 
 {
+	GFile *computer;
+	computer = g_file_new_for_uri (COMPUTER_URI);
 	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       COMPUTER_URI);
+			       computer);
+	g_object_unref (computer);
 }
 
 static void
 action_go_to_network_callback (GtkAction *action, 
 				gpointer user_data) 
 {
+	GFile *network;
+	network = g_file_new_for_uri (NETWORK_URI);
 	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       NETWORK_URI);
+			       network);
+	g_object_unref (network);
 }
 
 static void
 action_go_to_templates_callback (GtkAction *action,
 				 gpointer user_data) 
 {
-	char *uri;
+	char *path;
+	GFile *location;
 
-	nautilus_create_templates_directory ();
-	uri = nautilus_get_templates_directory_uri ();
+	path = nautilus_get_templates_directory ();
+	location = g_file_new_for_path (path);
+	g_free (path);
 	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       uri);
-	g_free (uri);
+			       location);
+	g_object_unref (location);
 }
 
 static void
 action_go_to_trash_callback (GtkAction *action, 
 			     gpointer user_data) 
 {
+	GFile *trash;
+	trash = g_file_new_for_uri ("trash:///");
 	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       "trash:///");
+			       trash);
+	g_object_unref (trash);
 }
 
 static void
 action_go_to_burn_cd_callback (GtkAction *action,
 			       gpointer user_data) 
 {
+	GFile *burn;
+	burn = g_file_new_for_uri (BURN_CD_URI);
 	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       BURN_CD_URI);
+			       burn);
+	g_object_unref (burn);
+	
 }
 
 static void

@@ -1,3 +1,31 @@
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-utilities.[ch]:
+	Make compute_title take a GFile
+
+        * libnautilus-private/nautilus-view-factory.[ch]:
+        * libnautilus-private/nautilus-window-info.[ch]:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-application.[ch]:
+        * src/nautilus-bookmark-list.c:
+        * src/nautilus-bookmarks-window.c:
+        * src/nautilus-connect-server-dialog-nonmain.c:
+        * src/nautilus-desktop-window.c:
+        * src/nautilus-history-sidebar.c:
+        * src/nautilus-location-bar.c:
+        * src/nautilus-location-dialog.c:
+        * src/nautilus-navigation-window.c:
+        * src/nautilus-places-sidebar.c:
+        * src/nautilus-shell.c:
+        * src/nautilus-spatial-window.c:
+        * src/nautilus-window-manage-views.[ch]:
+        * src/nautilus-window-menus.c:
+        * src/nautilus-window-private.h:
+        * src/nautilus-window.[ch]:
+	Use GFile * instead of char * uri in all loation handling
+	for windows.
+
 2007-10-18  Paolo Borelli  <pborelli@katamail.com>
 
 	* src/nautilus-image-properties-page.c: port to gio.

@@ -231,20 +231,20 @@ nautilus_window_set_status (NautilusWindow *window, const char *text)
 }
 
 void
-nautilus_window_go_to (NautilusWindow *window, const char *uri)
+nautilus_window_go_to (NautilusWindow *window, GFile *location)
 {
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	nautilus_window_open_location (window, uri, FALSE);
+	nautilus_window_open_location (window, location, FALSE);
 }
 
 
 void
-nautilus_window_go_to_with_selection (NautilusWindow *window, const char *uri, GList *new_selection)
+nautilus_window_go_to_with_selection (NautilusWindow *window, GFile *location, GList *new_selection)
 {
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	nautilus_window_open_location_with_selection (window, uri, new_selection, FALSE);
+	nautilus_window_open_location_with_selection (window, location, new_selection, FALSE);
 }
 
 static gboolean
@@ -257,9 +257,8 @@ nautilus_window_go_up_signal (NautilusWindow *window, gboolean close_behind)
 void
 nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
 {
-	GFile *location, *parent;
+	GFile *parent;
 	GList *selection;
-	char *parent_uri;
 
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
@@ -267,23 +266,19 @@ nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
 		return;
 	}
 	
-	location = g_file_new_for_uri (window->details->location);
-	parent = g_file_get_parent (location);
-	g_object_unref (location);
+	parent = g_file_get_parent (window->details->location);
 
 	if (parent == NULL) {
 		return;
 	}
 	
-	parent_uri = g_file_get_uri (parent);
+	selection = g_list_prepend (NULL, g_object_ref (window->details->location));
+	
+	nautilus_window_open_location_with_selection (window, parent, selection, close_behind);
+	
 	g_object_unref (parent);
-
-	selection = g_list_prepend (NULL, g_strdup (window->details->location));
 	
-	nautilus_window_open_location_with_selection (window, parent_uri, selection, close_behind);
-	
-	g_free (parent_uri);
-	eel_g_list_free_deep (selection);
+	eel_g_object_list_free (selection);
 }
 
 static void
@@ -363,13 +358,13 @@ nautilus_window_allow_reload (NautilusWindow *window, gboolean allow)
 void
 nautilus_window_go_home (NautilusWindow *window)
 {
-	char *home_uri;
+	GFile *home;
 
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	home_uri = nautilus_get_home_directory_uri ();
-	nautilus_window_open_location (window, home_uri, FALSE);
-	g_free (home_uri);
+	home = g_file_new_for_path (g_get_home_dir ());
+	nautilus_window_open_location (window, home, FALSE);
+	g_object_unref (home);
 }
 
 void
@@ -383,11 +378,25 @@ nautilus_window_prompt_for_location (NautilusWindow *window,
 }
 
 char *
+nautilus_window_get_location_uri (NautilusWindow *window)
+{
+	g_return_val_if_fail (NAUTILUS_IS_WINDOW (window), NULL);
+
+	if (window->details->location) {
+		return g_file_get_uri (window->details->location);
+	}
+	return NULL;
+}
+
+GFile *
 nautilus_window_get_location (NautilusWindow *window)
 {
 	g_return_val_if_fail (NAUTILUS_IS_WINDOW (window), NULL);
 
-	return g_strdup (window->details->location);
+	if (window->details->location != NULL) {
+		return g_object_ref (window->details->location);
+	}
+	return NULL;
 }
 
 void
@@ -611,7 +620,9 @@ nautilus_window_finalize (GObject *object)
 
 	free_stored_viewers (window);
 
-	g_free (window->details->location);
+	if (window->details->location) {
+		g_object_ref (window->details->location);
+	}
 	eel_g_list_free_deep (window->details->pending_selection);
 
 	if (window->current_location_bookmark != NULL) {
@@ -1118,7 +1129,7 @@ real_get_title (NautilusWindow *window)
         }
         
 	if (title == NULL) {
-                title = nautilus_compute_title_for_uri (window->details->location);
+                title = nautilus_compute_title_for_location (window->details->location);
         }
 
 	return title;
@@ -1598,7 +1609,7 @@ nautilus_window_info_iface_init (NautilusWindowInfoIface *iface)
 	iface->get_title = nautilus_window_get_cached_title;
 	iface->get_history = nautilus_window_get_history;
 	iface->get_bookmark_list = nautilus_window_get_bookmark_list;
-	iface->get_current_location = nautilus_window_get_location;
+	iface->get_current_location = nautilus_window_get_location_uri;
 	iface->get_ui_manager = nautilus_window_get_ui_manager;
 	iface->get_selection_count = nautilus_window_get_selection_count;
 	iface->get_selection = nautilus_window_get_selection;

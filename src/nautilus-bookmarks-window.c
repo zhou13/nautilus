@@ -543,7 +543,7 @@ open_selected_bookmark (gpointer user_data, GdkScreen *screen)
 {
 	NautilusBookmark *selected;
 	NautilusWindow *window;
-	char *uri = NULL;
+	GFile *location;
 	
 	selected = get_selected_bookmark ();
 
@@ -551,36 +551,35 @@ open_selected_bookmark (gpointer user_data, GdkScreen *screen)
 		return;
 	}
 
-	uri = nautilus_bookmark_get_uri (selected);
-
-	if (!uri) { 
+	location = nautilus_bookmark_get_location (selected);
+	if (location == NULL) { 
 		return;
 	}
 
 	if (NAUTILUS_IS_NAVIGATION_WINDOW (user_data)) {
-		nautilus_window_go_to (NAUTILUS_WINDOW (user_data), uri);
+		nautilus_window_go_to (NAUTILUS_WINDOW (user_data), location);
 	} else if (NAUTILUS_IS_SPATIAL_WINDOW (user_data)) {
 		window = nautilus_application_present_spatial_window (application, 
 								      NULL,
 								      NULL,
-								      uri,
+								      location,
 								      screen);
 	} else { /* window that opened bookmarks window has been closed */
 		if (parent_is_browser_window || eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_BROWSER)) {
 			window = nautilus_application_create_navigation_window (application, 
 										NULL,
 										screen);
-			nautilus_window_go_to (window, uri);
+			nautilus_window_go_to (window, location);
 		} else {
 			window = nautilus_application_present_spatial_window (application, 
 									      NULL,
 									      NULL,
-									      uri,
+									      location,
 									      screen);
 		}
 	}
 
-	g_free (uri);
+	g_object_unref (location);
 }
 
 static void

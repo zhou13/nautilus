@@ -790,7 +790,7 @@ bookmarks_drop_uris (NautilusPlacesSidebar *sidebar,
 		location = g_file_new_for_uri (uri);
 		nautilus_file_unref (file);
 
-		name = nautilus_compute_title_for_uri (uri);
+		name = nautilus_compute_title_for_location (location);
 
 		icon = g_themed_icon_new ("gnome-fs-directory");
 		bookmark = nautilus_bookmark_new_with_icon (location, name,
@@ -1163,6 +1163,7 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 			gboolean	      open_in_new_window)
 {
 	GtkTreeIter iter;
+	GFile *location;
 	char *uri;
 
 	if (!path) {
@@ -1179,19 +1180,22 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 		nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 				    "activate from places sidebar window=%p: %s",
 				    sidebar->window, uri);
+		location = g_file_new_for_uri (uri);
 		/* Navigate to the clicked location */
 		if (!open_in_new_window) {
-			nautilus_window_info_open_location (sidebar->window, uri,
+			nautilus_window_info_open_location (sidebar->window, location,
 							    NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
 							    0, NULL);
 		} else {
 			NautilusWindow *cur, *new;
+			
 			cur = NAUTILUS_WINDOW (sidebar->window);
 			new = nautilus_application_create_navigation_window (cur->application,
 									     NULL,
 									     gtk_window_get_screen (GTK_WINDOW (cur)));
-			nautilus_window_go_to (new, uri);
+			nautilus_window_go_to (new, location);
 		}
+		g_object_unref (location);
 		g_free (uri);
 
 	} else {

@@ -388,24 +388,24 @@ always_use_location_entry_changed (gpointer callback_data)
 
 static int
 bookmark_list_get_uri_index (GList *list,
-			     const char *uri)
+			     GFile *location)
 {
 	NautilusBookmark *bookmark;
 	GList *l;
-	char *tmp;
+	GFile *tmp;
 	int i;
 
-	g_return_val_if_fail (uri != NULL, -1);
+	g_return_val_if_fail (location != NULL, -1);
 
 	for (i = 0, l = list; l != NULL; i++, l = l->next) {
 		bookmark = NAUTILUS_BOOKMARK (l->data);
 
-		tmp = nautilus_bookmark_get_uri (bookmark);
-		if (strcmp (tmp, uri) == 0) {
-			g_free (tmp);
+		tmp = nautilus_bookmark_get_location (bookmark);
+		if (g_file_equal (location, tmp)) {
+			g_object_unref (tmp);
 			return i;
 		}
-		g_free (tmp);
+		g_object_unref (tmp);
 	}
 
 	return -1;
@@ -417,21 +417,16 @@ path_bar_location_changed_callback (GtkWidget *widget,
 				    NautilusNavigationWindow *window)
 {
 	int i;
-	char *uri;
 
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
 
-	uri = g_file_get_uri (location);
-	
 	/* check whether we already visited the target location */
-	i = bookmark_list_get_uri_index (window->back_list, uri);
+	i = bookmark_list_get_uri_index (window->back_list, location);
 	if (i >= 0) {
 		nautilus_navigation_window_back_or_forward (window, TRUE, i);
 	} else {
-		nautilus_window_go_to (NAUTILUS_WINDOW (window), uri);
+		nautilus_window_go_to (NAUTILUS_WINDOW (window), location);
 	}
-
-	g_free (uri);
 }
 
 static void
@@ -470,8 +465,12 @@ navigation_bar_location_changed_callback (GtkWidget *widget,
 					  const char *uri,
 					  NautilusNavigationWindow *window)
 {
+	GFile *location;
+	
 	hide_temporary_bars (window);
-	nautilus_window_go_to (NAUTILUS_WINDOW (window), uri);
+	location = g_file_new_for_uri (uri);
+	nautilus_window_go_to (NAUTILUS_WINDOW (window), location);
+	g_object_unref (location);
 }
 
 static void
@@ -1068,9 +1067,13 @@ search_bar_activate_callback (NautilusSearchBar *bar,
 	NautilusDirectory *directory;
 	NautilusSearchDirectory *search_directory;
 	NautilusQuery *query;
+	GFile *location;
 
 	uri = nautilus_search_directory_generate_new_uri ();
-	directory = nautilus_directory_get_by_uri (uri);
+	location = g_file_new_for_uri (uri);
+	g_free (uri);
+	
+	directory = nautilus_directory_get (location);
 	
 	g_assert (NAUTILUS_IS_SEARCH_DIRECTORY (directory));
 
@@ -1079,7 +1082,7 @@ search_bar_activate_callback (NautilusSearchBar *bar,
 	query = nautilus_search_bar_get_query (NAUTILUS_SEARCH_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->search_bar));
 	if (query != NULL) {
 		if (!nautilus_search_directory_is_indexed (search_directory)) {
-			current_uri = nautilus_window_get_location (window);
+			current_uri = nautilus_window_get_location_uri (window);
 			nautilus_query_set_location (query, current_uri);
 			g_free (current_uri);
 		}
@@ -1087,10 +1090,10 @@ search_bar_activate_callback (NautilusSearchBar *bar,
 		g_object_unref (query);
 	}
 	
-	nautilus_window_go_to (window, uri);
+	nautilus_window_go_to (window, location);
 	
 	nautilus_directory_unref (directory);
-	g_free (uri);
+	g_object_unref (location);
 }
 
 static void

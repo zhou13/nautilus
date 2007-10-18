@@ -134,7 +134,7 @@ static void
 open_window (NautilusShell *shell, const char *uri, const char *startup_id,
 	     const char *geometry, gboolean browser_window)
 {
-	char *home_uri;
+	GFile *location;
 	NautilusWindow *window;
 
 	if (browser_window ||
@@ -145,22 +145,23 @@ open_window (NautilusShell *shell, const char *uri, const char *startup_id,
 		if (uri == NULL) {
 			nautilus_window_go_home (window);
 		} else {
-			nautilus_window_go_to (window, uri);
+			location = g_file_new_for_uri (uri);
+			nautilus_window_go_to (window, location);
+			g_object_unref (location);
 		}
 	} else {
-		home_uri = NULL;
-
 		if (uri == NULL) {
-			home_uri = nautilus_get_home_directory_uri ();
-			uri = home_uri;
+			location = g_file_new_for_path (g_get_home_dir ());
+		} else {
+			location = g_file_new_for_uri (uri);
 		}
 		
 		window = nautilus_application_present_spatial_window (shell->details->application,
 								      NULL,
 								      startup_id,
-								      uri,
+								      location,
 								      gdk_screen_get_default ());
-		g_free (home_uri);
+		g_object_unref (location);
 	}
 	
 	if (geometry != NULL && !GTK_WIDGET_VISIBLE (window)) {
@@ -396,7 +397,7 @@ save_window_states (void)
 		gdk_window = GTK_WIDGET (window)->window;
 		gdk_window_get_root_origin (gdk_window, &x, &y);
 
-		location = nautilus_window_get_location (window);
+		location = nautilus_window_get_location_uri (window);
 
 		screen_num = gdk_screen_get_number (
 					gtk_window_get_screen (GTK_WINDOW (window)));
@@ -468,11 +469,15 @@ restore_one_window_callback (const char *attributes,
 /* don't always create object windows here */
 #endif
 	if (eel_strlen (location) > 0) {
+		GFile *f;
+
+		f = g_file_new_for_uri (location);
 		window = nautilus_application_present_spatial_window (shell->details->application, 
 								      NULL,
 								      NULL,
-								      location,
+								      f,
 								      screen);
+		g_object_unref (f);
 	} else {
 		window = nautilus_application_create_navigation_window (shell->details->application,
 									NULL,

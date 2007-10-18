@@ -84,12 +84,12 @@ unsigned int         nautilus_application_get_n_windows            (void);
 NautilusWindow *     nautilus_application_present_spatial_window     (NautilusApplication *application,
 								      NautilusWindow      *requesting_window,
 								      const char          *startup_id,
-								      const char          *location,
+								      GFile               *location,
 								      GdkScreen           *screen);
 NautilusWindow *     nautilus_application_present_spatial_window_with_selection (NautilusApplication *application,
 										 NautilusWindow      *requesting_window,
 										 const char          *startup_id,
-										 const char          *location,
+										 GFile               *location,
 										 GList		     *new_selection,
 										 GdkScreen           *screen);
 

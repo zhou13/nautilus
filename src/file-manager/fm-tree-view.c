@@ -337,6 +337,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
         FMTreeView *view;
 	GdkScreen *screen;
 	NautilusWindowOpenMode mode;
+	GFile *location;
 	
         view = FM_TREE_VIEW (callback_data);
 
@@ -380,12 +381,14 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 			nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 					    "tree view window_info_open_location window=%p: %s",
 					    view->details->window, uri);
+			location = g_file_new_for_uri (uri);
 			nautilus_window_info_open_location
 				(view->details->window, 
-				 uri, 
+				 location, 
 				 mode,
 				 0,
 				 NULL);
+			g_object_unref (location);
 		} else {
 			nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 					    "tree view launch_application_from_command window=%p: %s",
@@ -404,12 +407,14 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 			nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 					    "tree view window_info_open_location window=%p: %s",
 					    view->details->window, uri);
+			location = g_file_new_for_uri (uri);
 			nautilus_window_info_open_location
 				(view->details->window, 
-				 uri,
+				 location,
 				 mode,
 				 0,
 				 NULL);
+			g_object_unref (location);
 		}
 	}
 

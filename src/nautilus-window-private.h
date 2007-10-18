@@ -68,7 +68,7 @@ struct NautilusWindowDetails
         guint bookmarks_merge_id;
         
         /* Current location. */
-        char *location;
+        GFile *location;
 	char *title;
 	NautilusFile *viewed_file;
         gboolean viewed_file_seen;
@@ -78,7 +78,7 @@ struct NautilusWindowDetails
         /* New location. */
         NautilusLocationChangeType location_change_type;
         guint location_change_distance;
-        char *pending_location;
+        GFile *pending_location;
         char *pending_scroll_to;
         GList *pending_selection;
         NautilusFile *determine_view_file;
@@ -93,7 +93,7 @@ struct NautilusWindowDetails
         char *extra_viewer;
 
         /* Deferred location change. */
-        char *location_to_change_to_at_idle;
+        GFile *location_to_change_to_at_idle;
         guint location_change_at_idle_id;
 
         NautilusWindowShowHiddenFilesMode show_hidden_files_mode;

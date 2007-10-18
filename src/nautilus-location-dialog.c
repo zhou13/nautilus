@@ -77,18 +77,13 @@ static void
 open_current_location (NautilusLocationDialog *dialog)
 {
 	GFile *location;
-	char *uri;
 	char *user_location;
 	
 	user_location = gtk_editable_get_chars (GTK_EDITABLE (dialog->details->entry), 0, -1);
 	location = g_file_parse_name (user_location);
-	g_free (user_location);
-	uri = g_file_get_uri (location);
+	nautilus_window_go_to (dialog->details->window, location);
 	g_object_unref (location);
-
-	nautilus_window_go_to (dialog->details->window, uri);
-
-	g_free (uri);
+	g_free (user_location);
 }
 
 static void
@@ -222,7 +217,7 @@ nautilus_location_dialog_new (NautilusWindow *window)
 	}
 	
 
-	location = nautilus_window_get_location (window);
+	location = nautilus_window_get_location_uri (window);
 	if (location != NULL) {
 		if (NAUTILUS_IS_DESKTOP_WINDOW (window)) {
 			formatted_location = g_strdup_printf ("%s/", g_get_home_dir ());

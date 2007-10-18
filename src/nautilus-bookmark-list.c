@@ -64,16 +64,22 @@ new_bookmark_from_uri (const char *uri, const char *label)
 	gboolean has_label;
 	GFile *location;
 
+	location = NULL;
+	if (uri) {
+		location = g_file_new_for_uri (uri);
+	}
+	
 	has_label = FALSE;
 	if (!label) { 
-		name = nautilus_compute_title_for_uri (uri);
+		name = nautilus_compute_title_for_location (location);
 	} else {
 		name = g_strdup (label);
 		has_label = TRUE;
 	}
 
+	new_bookmark = NULL;
+	
 	if (uri) {
-		location = g_file_new_for_uri (uri);
 		file = nautilus_file_get (location);
 		
 		icon = NULL;
@@ -81,22 +87,20 @@ new_bookmark_from_uri (const char *uri, const char *label)
 						  NAUTILUS_FILE_ATTRIBUTES_FOR_ICON)) {
 			icon = nautilus_file_get_gicon (file, 0);
 		}
+		nautilus_file_unref (file);
+		
 		if (icon == NULL) {
 			icon = g_themed_icon_new ("gnome-fs-directory");
 		}
 
 		new_bookmark = nautilus_bookmark_new_with_icon (location, name, has_label, icon);
 
-		g_object_unref (location);
-		nautilus_file_unref (file);
 		g_object_unref (icon);
-		g_free (name);
 
-		return new_bookmark;
 	}
-	
 	g_free (name);
-	return NULL;
+	g_object_unref (location);
+	return new_bookmark;
 }
 
 static GFile *

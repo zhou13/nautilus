@@ -488,7 +488,7 @@ location_menu_item_activated_callback (GtkWidget *menu_item,
 	GFile *dest;
 	GdkEvent *event;
 
-	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (window));
 	current = g_file_new_for_uri (location);
 	g_free (location);
 
@@ -498,7 +498,6 @@ location_menu_item_activated_callback (GtkWidget *menu_item,
 
 	if (!g_file_equal (current, dest))
 	{
-		char *uri;
 		GFile *child;
 		gboolean close_behind;
 		GList *selection;
@@ -506,14 +505,9 @@ location_menu_item_activated_callback (GtkWidget *menu_item,
 		close_behind = FALSE;
 		selection = NULL;
 
-		uri = g_file_get_uri (dest);
-
 		child = g_object_get_data (G_OBJECT(menu_item), "child_uri");
-
 		if (child != NULL) {
-			char *child_uri;
-			child_uri = g_file_get_uri (child);
-			selection = g_list_prepend (NULL, child_uri);
+			selection = g_list_prepend (NULL, g_object_ref (child));
 		}
 
 		if (event != NULL && ((GdkEventAny *) event)->type == GDK_BUTTON_RELEASE &&
@@ -524,10 +518,9 @@ location_menu_item_activated_callback (GtkWidget *menu_item,
 		}
 
 		nautilus_window_open_location_with_selection (NAUTILUS_WINDOW (window),
-							      uri, selection, close_behind);
+							      dest, selection, close_behind);
 
-		eel_g_list_free_deep (selection);
-		g_free (uri);
+		eel_g_object_list_free (selection);
 	}
 
 	if (event != NULL) {
@@ -637,7 +630,7 @@ location_button_clicked_callback (GtkWidget             *widget,
 	popup = gtk_menu_new ();
 	first_item = NULL;
 
-	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (window));
 	g_return_if_fail (location != NULL);
 
 	uri = g_file_new_for_uri (location);
@@ -763,7 +756,7 @@ get_data_binder (NautilusDragEachSelectedItemDataGet iteratee,
 	g_assert (NAUTILUS_IS_SPATIAL_WINDOW (iterator_context));
 	window = NAUTILUS_SPATIAL_WINDOW (iterator_context);
 
-	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (window));
 	icon_size = get_dnd_icon_size (window);
 
 	iteratee (location,
@@ -869,11 +862,14 @@ action_search_callback (GtkAction *action,
 {
 	NautilusWindow *window;
 	char *uri;
+	GFile *f;
 
 	window = NAUTILUS_WINDOW (user_data);
 
 	uri = nautilus_search_directory_generate_new_uri ();
-	nautilus_window_go_to (window, uri);
+	f = g_file_new_for_uri (uri);
+	nautilus_window_go_to (window, f);
+	g_object_unref (f);
 	g_free (uri);
 }
 

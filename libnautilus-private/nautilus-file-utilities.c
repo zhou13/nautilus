@@ -58,17 +58,20 @@ static void desktop_dir_changed (void);
 
 
 char *
-nautilus_compute_title_for_uri (const char *text_uri)
+nautilus_compute_title_for_location (GFile *location)
 {
 	NautilusFile *file;
+	char *text_uri;
 	GnomeVFSURI *uri;
 	char *title, *displayname;
 	const char *hostname;
 	NautilusDirectory *directory;
 	NautilusQuery *query;
+
 	hostname = NULL;
 
-	if (text_uri) {
+	if (location) {
+		text_uri = g_file_get_uri (location);
 		if (eel_uri_is_search (text_uri)) {
 			directory = nautilus_directory_get_by_uri (text_uri);
 			
@@ -81,14 +84,16 @@ nautilus_compute_title_for_uri (const char *text_uri)
 			} else {
 				title = g_strdup (_("Search"));
 			}
-
+			g_free (text_uri);
 			return title;
 		}
-		file = nautilus_file_get_by_uri (text_uri);
+		file = nautilus_file_get (location);
+		
 		uri = gnome_vfs_uri_new (text_uri);
 		if (uri && strcmp (uri->method_string, "file") != 0) {
 			hostname = gnome_vfs_uri_get_host_name (uri);
 		}
+		
 		displayname = nautilus_file_get_display_name (file);
 		if (hostname) {
 			title = g_strdup_printf (_("%s on %s"), displayname, hostname);
@@ -100,6 +105,7 @@ nautilus_compute_title_for_uri (const char *text_uri)
 			gnome_vfs_uri_unref (uri);
 		}
 		nautilus_file_unref (file);
+		g_free (text_uri);
 	} else {
 		title = g_strdup ("");
 	}
@@ -854,28 +860,29 @@ nautilus_unique_temporary_file_name (void)
 	return file_name;
 }
 
-char *
-nautilus_find_existing_uri_in_hierarchy (const char *uri)
+GFile *
+nautilus_find_existing_uri_in_hierarchy (GFile *location)
 {
-	GnomeVFSURI *vfs_uri, *parent_vfs_uri;
-	char *ret = NULL;
+	GFileInfo *info;
+	GFile *tmp;
 
-	g_assert (uri != NULL);
+	g_assert (location != NULL);
 
-	vfs_uri = gnome_vfs_uri_new (uri);
-
-	while (vfs_uri != NULL) {
-		if (gnome_vfs_uri_exists (vfs_uri)) {
-			ret = gnome_vfs_uri_to_string (vfs_uri, GNOME_VFS_URI_HIDE_NONE);
-			break;
+	location = g_object_ref (location);
+	while (location != NULL) {
+		info = g_file_query_info (location,
+					  "std:name",
+					  0, NULL, NULL);
+		g_object_unref (info);
+		if (info != NULL) {
+			return location;
 		}
-
-		parent_vfs_uri = gnome_vfs_uri_get_parent (vfs_uri);
-		gnome_vfs_uri_unref (vfs_uri);
-		vfs_uri = parent_vfs_uri;
+		tmp = location;
+		location = g_file_get_parent (location);
+		g_object_unref (tmp);
 	}
-
-	return ret;
+	
+	return location;
 }
 
 const char *

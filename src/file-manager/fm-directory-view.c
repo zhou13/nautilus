@@ -817,6 +817,7 @@ open_location (FMDirectoryView *directory_view,
 {
 	NautilusFile *file;
 	GtkWindow *window;
+	GFile *location;
 
 	g_assert (FM_IS_DIRECTORY_VIEW (directory_view));
 	g_assert (new_uri != NULL);
@@ -835,8 +836,10 @@ open_location (FMDirectoryView *directory_view,
 	window = fm_directory_view_get_containing_window (directory_view);
 	nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 			    "directory view open_location window=%p: %s", window, new_uri);
+	location = g_file_new_for_uri (new_uri);
 	nautilus_window_info_open_location (directory_view->details->window,
-					    new_uri, mode, flags, NULL);
+					    location, mode, flags, NULL);
+	g_object_unref (location);
 }
 
 static void

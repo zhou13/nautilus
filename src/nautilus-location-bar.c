@@ -123,6 +123,7 @@ drag_data_received_callback (GtkWidget *widget,
 	gboolean new_windows_for_extras;
 	char *prompt;
 	char *detail;
+	GFile *location;
 
 	g_assert (NAUTILUS_IS_LOCATION_BAR (widget));
 	g_assert (data != NULL);
@@ -184,7 +185,9 @@ drag_data_received_callback (GtkWidget *widget,
 
 		for (i = 1; names[i] != NULL; ++i) {
 			new_window = nautilus_application_create_navigation_window (application, NULL, screen);
-			nautilus_window_go_to (new_window, names[i]);
+			location = g_file_new_for_uri (names[i]);
+			nautilus_window_go_to (new_window, location);
+			g_object_unref (location);
 		}
 	}
 

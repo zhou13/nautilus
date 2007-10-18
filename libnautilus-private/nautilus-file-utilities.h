@@ -60,7 +60,7 @@ void     nautilus_create_templates_directory         (void);
 
 char *   nautilus_get_searches_directory             (void);
 
-char *	 nautilus_compute_title_for_uri		     (const char *text_uri);
+char *	 nautilus_compute_title_for_location	     (GFile *file);
 
 /* This function returns something that needs to be freed with g_free,
  * is not NULL, but is not garaunteed to exist */
@@ -88,7 +88,7 @@ char *   nautilus_ensure_unique_file_name            (const char *directory_uri,
 			                              const char *extension);
 char *   nautilus_unique_temporary_file_name         (void);
 
-char *   nautilus_find_existing_uri_in_hierarchy     (const char *uri);
+GFile *  nautilus_find_existing_uri_in_hierarchy     (GFile *location);
 
 const char *nautilus_get_vfs_method_display_name (char *method);
 char *      nautilus_get_uri_shortname_for_display (GnomeVFSURI *uri);

@@ -56,7 +56,7 @@ const NautilusViewInfo *nautilus_view_factory_lookup            (const char     
 NautilusView *          nautilus_view_factory_create            (const char         *id,
 								 NautilusWindowInfo *window);
 gboolean                nautilus_view_factory_view_supports_uri (const char         *id,
-								 const char         *uri,
+								 GFile              *location,
 								 GFileType          file_type,
 								 const char         *mime_type);
 GList *                 nautilus_view_factory_get_views_for_uri (const char         *uri,
