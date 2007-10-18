@@ -59,6 +59,7 @@
 #include <libxml/xmlsave.h>
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
+#include <gio/gfile.h>
 #include <bonobo/bonobo-main.h>
 #include <bonobo/bonobo-object.h>
 #include <eel/eel-gtk-extensions.h>
@@ -1135,9 +1136,11 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 {
 	NautilusWindow *window;
 	GList *l;
+	GFile *existing_location_f, *location_f;
 
 	g_return_val_if_fail (NAUTILUS_IS_APPLICATION (application), NULL);
 
+	
 	for (l = nautilus_application_get_spatial_window_list ();
 	     l != NULL; l = l->next) {
 		NautilusWindow *existing_window;
@@ -1149,13 +1152,18 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 		if (existing_location == NULL) {
 			existing_location = existing_window->details->location;
 		}
+		
+		location_f = g_file_new_for_uri (location);
+		existing_location_f = g_file_new_for_uri (existing_location);
 
-		if (gnome_vfs_uris_match (existing_location, location)) {
+		if (g_file_equal (existing_location_f, location_f)) {
 #ifdef HAVE_STARTUP_NOTIFICATION
 			end_startup_notification (GTK_WIDGET (existing_window),
 						  startup_id);
 #endif
 
+			g_object_unref (location_f);
+			g_object_unref (existing_location_f);
 			gtk_window_present (GTK_WINDOW (existing_window));
 			if (new_selection &&
 			    existing_window->content_view != NULL) {
@@ -1167,6 +1175,8 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 					    existing_window, location);
 			return existing_window;
 		}
+		g_object_unref (location_f);
+		g_object_unref (existing_location_f);
 	}
 
 	window = create_window (application, NAUTILUS_TYPE_SPATIAL_WINDOW, startup_id, screen);

@@ -1,5 +1,14 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * src/nautilus-application.c:
+        * src/nautilus-window-menus.c:
+        * test/test-nautilus-directory-async.c:
+        * test/test.c:
+	Convert gnome_vfs calls to gio
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
         * src/nautilus-application.[ch]:
 	Convert gnome_vfs calls to gio
 

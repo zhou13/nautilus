@@ -45,21 +45,18 @@
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
-#include <eel/eel-vfs-extensions.h>
 #include <eel/eel-xml-extensions.h>
 #include <libxml/parser.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtkaboutdialog.h>
 #include <gtk/gtkenums.h>
 #include <gtk/gtkversion.h>
+#include <gio/gvfs.h>
 #include <libgnome/gnome-help.h>
 #include <glib/gi18n.h>
 #include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-help.h>
 #include <libgnomeui/gnome-uidefs.h>
-#include <libgnomevfs/gnome-vfs-file-info.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-ui-utilities.h>
@@ -225,13 +222,20 @@ have_burn_uri (void)
 {
 	static gboolean initialized = FALSE;
 	static gboolean res;
-	GnomeVFSURI *uri;
+	GVfs *vfs;
+	int i;
+	const gchar * const * supported_uri_schemes;
 
 	if (!initialized) {
-		uri = gnome_vfs_uri_new ("burn:///");
-		res = uri != NULL;
-		if (uri != NULL) {
-			gnome_vfs_uri_unref (uri);
+		vfs = g_vfs_get_default ();
+		supported_uri_schemes = g_vfs_get_supported_uri_schemes (vfs);
+
+		res = FALSE;
+		for (i = 0; supported_uri_schemes != NULL && supported_uri_schemes[i] != NULL; i++) {
+			if (strcmp ("burn", supported_uri_schemes[i]) == 0) {
+				res = TRUE;
+				break;
+			}
 		}
 		initialized = TRUE;
 	}
@@ -294,7 +298,7 @@ action_go_to_trash_callback (GtkAction *action,
 			     gpointer user_data) 
 {
 	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       EEL_TRASH_URI);
+			       "trash:///");
 }
 
 static void

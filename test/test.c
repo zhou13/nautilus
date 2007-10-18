@@ -8,7 +8,6 @@ test_init (int *argc,
 {
 	gtk_init (argc, argv);
 	gdk_rgb_init ();
-	gnome_vfs_init ();
 
 	eel_make_warnings_and_criticals_stop_in_debugger ();
 }
@@ -16,8 +15,6 @@ test_init (int *argc,
 int
 test_quit (int exit_code)
 {
-        /* gnome_vfs_shutdown (); */
-
 	if (gtk_main_level () > 0) {
 		gtk_main_quit ();
 	}

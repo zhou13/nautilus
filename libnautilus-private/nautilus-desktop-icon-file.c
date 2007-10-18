@@ -36,7 +36,6 @@
 #include "nautilus-desktop-directory.h"
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <string.h>
 
 struct NautilusDesktopIconFileDetails {
@@ -173,6 +172,7 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	NautilusFile *file;
 	NautilusDesktopLink *link;
 	char *display_name;
+	GVolume *volume;
 	
 	file = NAUTILUS_FILE (icon_file);
 	
@@ -186,22 +186,14 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	file->details->mime_type = g_strdup ("application/x-nautilus-link");
 	file->details->type = G_FILE_TYPE_REGULAR;
 	file->details->size = 0;
-	file->details->has_permissions = TRUE;
-	file->details->permissions =
-		GNOME_VFS_PERM_OTHER_WRITE |
-		GNOME_VFS_PERM_GROUP_WRITE |
-		GNOME_VFS_PERM_USER_READ |
-		GNOME_VFS_PERM_OTHER_READ |
-		GNOME_VFS_PERM_GROUP_READ;
+	file->details->has_permissions = FALSE;
 	file->details->can_read = TRUE;
 	file->details->can_write = TRUE;
 
-	/* TODO-gio: We don't really need to set volumes on the file, instead
-	   use mountable files
 	volume = nautilus_desktop_link_get_volume (link);
-	nautilus_file_set_volume (file, volume);
-	gnome_vfs_volume_unref (volume);
-	 */
+	file->details->can_unmount = g_volume_can_unmount (volume);
+	file->details->can_eject = g_volume_can_eject (volume);
+	g_object_unref (volume);
 	
 	file->details->file_info_is_up_to_date = TRUE;
 

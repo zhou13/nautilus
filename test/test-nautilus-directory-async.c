@@ -1,5 +1,4 @@
 #include <gtk/gtk.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-search-directory.h>
 #include <libnautilus-private/nautilus-file.h>
@@ -84,7 +83,6 @@ main (int argc, char **argv)
 	client1 = g_new0 (int, 1);
 	client2 = g_new0 (int, 1);
 
-	gnome_vfs_init ();
 	gtk_init (&argc, &argv);
 
 	query = nautilus_query_new ();
