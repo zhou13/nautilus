@@ -633,7 +633,32 @@ nautilus_is_home_directory_file (GFile *dir,
 	return (g_file_equal (dir, home_dir_dir) &&
 		strcmp (filename, home_dir_filename) == 0);
 }
-					 
+
+gboolean
+nautilus_is_home_directory (GFile *dir)
+{
+	static GFile *home_dir = NULL;
+	
+	if (home_dir == NULL) {
+		home_dir = g_file_new_for_path (g_get_home_dir ());
+	}
+
+	return g_file_equal (dir, home_dir);
+}
+
+gboolean
+nautilus_is_root_directory (GFile *dir)
+{
+	static GFile *root_dir = NULL;
+	
+	if (root_dir == NULL) {
+		root_dir = g_file_new_for_path ("/");
+	}
+
+	return g_file_equal (dir, root_dir);
+}
+		
+		
 gboolean
 nautilus_is_desktop_directory_file (GFile *dir,
 				    const char *file)

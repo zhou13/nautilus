@@ -125,16 +125,17 @@ nautilus_window_report_selection_changed (NautilusWindowInfo *window)
 static void
 set_displayed_location (NautilusWindow *window, const char *location)
 {
-        char *bookmark_uri;
+        GFile *bookmark_location;
         gboolean recreate;
 	GFile *loc;
         
+	loc = g_file_new_for_uri (location);
         if (window->current_location_bookmark == NULL || location == NULL) {
                 recreate = TRUE;
         } else {
-                bookmark_uri = nautilus_bookmark_get_uri (window->current_location_bookmark);
-                recreate = !gnome_vfs_uris_match (bookmark_uri, location);
-                g_free (bookmark_uri);
+                bookmark_location = nautilus_bookmark_get_location (window->current_location_bookmark);
+                recreate = !g_file_equal (bookmark_location, loc);
+                g_object_unref (bookmark_location);
         }
         
         if (recreate) {
@@ -143,25 +144,31 @@ set_displayed_location (NautilusWindow *window, const char *location)
                         g_object_unref (window->last_location_bookmark);
                 }
                 window->last_location_bookmark = window->current_location_bookmark;
-		loc = g_file_new_for_uri (location);
                 window->current_location_bookmark = (location == NULL) ? NULL
                         : nautilus_bookmark_new (loc, location);
-		g_object_unref (loc);
         }
         nautilus_window_update_title (window);
 	nautilus_window_update_icon (window);
+	g_object_unref (loc);
 }
 
 static void
 check_bookmark_location_matches (NautilusBookmark *bookmark, const char *uri)
 {
-	char *bookmark_uri;
+        GFile *bookmark_location;
+	GFile *location;
+        char *bookmark_uri;
+	
+	location = g_file_new_for_uri (uri);
 
-	bookmark_uri = nautilus_bookmark_get_uri (bookmark);
-	if (!gnome_vfs_uris_match (uri, bookmark_uri)) {
+	bookmark_location = nautilus_bookmark_get_location (bookmark);
+	if (!g_file_equal (location, bookmark_location)) {
+		bookmark_uri = g_file_get_uri (bookmark_location);
 		g_warning ("bookmark uri is %s, but expected %s", bookmark_uri, uri);
+		g_free (bookmark_uri);
 	}
-	g_free (bookmark_uri);
+	g_object_unref (bookmark_location);
+	g_object_unref (location);
 }
 
 /* Debugging function used to verify that the last_location_bookmark
@@ -254,19 +261,24 @@ handle_go_forward (NautilusNavigationWindow *window, const char *location)
 }
 
 static void
-handle_go_elsewhere (NautilusWindow *window, const char *location)
+handle_go_elsewhere (NautilusWindow *window, const char *location_uri)
 {
+	GFile *location;
+	GFile *current_location;
+	
 #if !NEW_UI_COMPLETE
-        if (NAUTILUS_IS_NAVIGATION_WINDOW (window)) {        
+        if (NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
+		location = g_file_new_for_uri (location_uri);
                 /* Clobber the entire forward list, and move displayed location to back list */
                 nautilus_navigation_window_clear_forward_list (NAUTILUS_NAVIGATION_WINDOW (window));
                 
                 if (window->details->location != NULL) {
+			current_location = g_file_new_for_uri (window->details->location);
                         /* If we're returning to the same uri somehow, don't put this uri on back list. 
                          * This also avoids a problem where set_displayed_location
                          * didn't update last_location_bookmark since the uri didn't change.
                          */
-                        if (!gnome_vfs_uris_match (window->details->location, location)) {
+                        if (!g_file_equal (current_location, location)) {
                                 /* Store bookmark for current location in back list, unless there is no current location */
                                 check_last_bookmark_location_matches_window (window);
                                 /* Use the first bookmark in the history list rather than creating a new one. */
@@ -274,7 +286,9 @@ handle_go_elsewhere (NautilusWindow *window, const char *location)
                                                                                                  window->last_location_bookmark);
                                 g_object_ref (NAUTILUS_NAVIGATION_WINDOW (window)->back_list->data);
                         }
-                }       
+			g_object_unref (current_location);
+                }
+		g_object_unref (location);
         }
 #endif
 }
@@ -283,15 +297,17 @@ static void
 update_up_button (NautilusWindow *window)
 {
         gboolean allowed;
-        GnomeVFSURI *new_uri;
+	GFile *current_location, *parent;
 
         allowed = FALSE;
         if (window->details->location != NULL) {
-                new_uri = gnome_vfs_uri_new (window->details->location);
-                if (new_uri != NULL) {
-                        allowed = gnome_vfs_uri_has_parent (new_uri);
-                        gnome_vfs_uri_unref (new_uri);
-                }
+                current_location = g_file_new_for_uri (window->details->location);
+		parent = g_file_get_parent (current_location);
+		allowed = parent != NULL;
+		if (parent != NULL) {
+			g_object_unref (parent);
+		}
+		g_object_unref (current_location);
         }
 
         nautilus_window_allow_up (window, allowed);
@@ -889,7 +905,7 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 	NautilusWindow *window;
 	NautilusFile *viewed_file;
 	char *location;
-	char *home_uri;
+	GFile *loc;
 
 	window = callback_data;
 	
@@ -967,19 +983,19 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 				/* the user could have typed in a home directory that doesn't exist,
 				   in which case going home would cause an infinite loop, so we
 				   better test for that */
-				
-				if (!gnome_vfs_uris_match (location, "file:///")) {
-					home_uri = nautilus_get_home_directory_uri ();
-					if (!gnome_vfs_uris_match (home_uri, location)) {	
+
+				loc = g_file_new_for_uri (location);
+				if (!nautilus_is_root_directory (loc)) {
+					if (!nautilus_is_home_directory (loc)) {	
 						nautilus_window_go_home (NAUTILUS_WINDOW (window));
 					} else {
 						/* the last fallback is to go to a known place that can't be deleted! */
 						nautilus_window_go_to (NAUTILUS_WINDOW (window), "file:///");
 					}
-					g_free (home_uri);
 				} else {
 					gtk_object_destroy (GTK_OBJECT (window));
 				}
+				g_object_unref (loc);
 			} else {
 				/* Since this is a window, destroying it will also unref it. */
 				gtk_object_destroy (GTK_OBJECT (window));

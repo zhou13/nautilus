@@ -1,5 +1,13 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-utilities.[ch]:
+	Add nautilus_is_home_directory and nautilus_is_root_directory
+	
+        * src/nautilus-window-manage-views.c:
+	Convert gnome_vfs calls to gio
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
 	* src/nautilus-window.c (nautilus_window_go_up):
 	Use gio to find parent
 
