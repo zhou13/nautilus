@@ -1070,7 +1070,7 @@ search_bar_activate_callback (NautilusSearchBar *bar,
 	NautilusQuery *query;
 
 	uri = nautilus_search_directory_generate_new_uri ();
-	directory = nautilus_directory_get (uri);
+	directory = nautilus_directory_get_by_uri (uri);
 	
 	g_assert (NAUTILUS_IS_SEARCH_DIRECTORY (directory));
 

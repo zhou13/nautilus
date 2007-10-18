@@ -480,7 +480,7 @@ update_desktop_directory (NautilusDesktopDirectory *desktop)
 
 	desktop_path = nautilus_get_desktop_directory ();
 	desktop_uri = g_filename_to_uri (desktop_path, NULL, NULL);
-	real_directory = nautilus_directory_get (desktop_uri);
+	real_directory = nautilus_directory_get_by_uri (desktop_uri);
 	g_free (desktop_uri);
 	g_free (desktop_path);
 

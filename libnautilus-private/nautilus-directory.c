@@ -354,7 +354,7 @@ add_preferences_callbacks (void)
 }
 
 /**
- * nautilus_directory_get:
+ * nautilus_directory_get_by_uri:
  * @uri: URI of directory to get.
  *
  * Get a directory given a uri.
@@ -398,7 +398,7 @@ nautilus_directory_get_internal (GFile *location, gboolean create)
 }
 
 NautilusDirectory *
-nautilus_directory_get (const char *uri)
+nautilus_directory_get_by_uri (const char *uri)
 {
 	NautilusDirectory *directory;
 	GFile *location;
@@ -440,7 +440,7 @@ nautilus_directory_get_for_file (NautilusFile *file)
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
 	uri = nautilus_file_get_uri (file);
-	directory = nautilus_directory_get (uri);
+	directory = nautilus_directory_get_by_uri (uri);
 	g_free (uri);
 	return directory;
 }
@@ -1954,7 +1954,7 @@ nautilus_self_check_directory (void)
 	NautilusDirectory *directory;
 	NautilusFile *file;
 
-	directory = nautilus_directory_get ("file:///etc");
+	directory = nautilus_directory_get_by_uri ("file:///etc");
 	file = nautilus_file_get_by_uri ("file:///etc/passwd");
 
 	EEL_CHECK_INTEGER_RESULT (g_hash_table_size (directories), 1);
@@ -1990,13 +1990,13 @@ nautilus_self_check_directory (void)
 	EEL_CHECK_INTEGER_RESULT (nautilus_file_get_integer_metadata (NULL, "test_integer", 42), 42);
 	EEL_CHECK_INTEGER_RESULT (nautilus_file_get_integer_metadata (file, "nonexistent_key", 42), 42);
 
-	EEL_CHECK_BOOLEAN_RESULT (nautilus_directory_get ("file:///etc") == directory, TRUE);
+	EEL_CHECK_BOOLEAN_RESULT (nautilus_directory_get_by_uri ("file:///etc") == directory, TRUE);
 	nautilus_directory_unref (directory);
 
-	EEL_CHECK_BOOLEAN_RESULT (nautilus_directory_get ("file:///etc/") == directory, TRUE);
+	EEL_CHECK_BOOLEAN_RESULT (nautilus_directory_get_by_uri ("file:///etc/") == directory, TRUE);
 	nautilus_directory_unref (directory);
 
-	EEL_CHECK_BOOLEAN_RESULT (nautilus_directory_get ("file:///etc////") == directory, TRUE);
+	EEL_CHECK_BOOLEAN_RESULT (nautilus_directory_get_by_uri ("file:///etc////") == directory, TRUE);
 	nautilus_directory_unref (directory);
 
 	nautilus_file_unref (file);
@@ -2011,7 +2011,7 @@ nautilus_self_check_directory (void)
 
 	EEL_CHECK_INTEGER_RESULT (g_hash_table_size (directories), 0);
 
-	directory = nautilus_directory_get ("file:///etc");
+	directory = nautilus_directory_get_by_uri ("file:///etc");
 
 	got_metadata_flag = FALSE;
 	nautilus_directory_call_when_ready (directory, NAUTILUS_FILE_ATTRIBUTE_METADATA, TRUE,

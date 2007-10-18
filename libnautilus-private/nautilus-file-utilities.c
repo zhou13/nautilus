@@ -70,7 +70,7 @@ nautilus_compute_title_for_uri (const char *text_uri)
 
 	if (text_uri) {
 		if (eel_uri_is_search (text_uri)) {
-			directory = nautilus_directory_get (text_uri);
+			directory = nautilus_directory_get_by_uri (text_uri);
 			
 			query = nautilus_search_directory_get_query (NAUTILUS_SEARCH_DIRECTORY (directory));
 			nautilus_directory_unref (directory);

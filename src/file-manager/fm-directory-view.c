@@ -1888,13 +1888,13 @@ fm_directory_view_init (FMDirectoryView *view)
 	gtk_scrolled_window_set_vadjustment (GTK_SCROLLED_WINDOW (view), NULL);
 
 	set_up_scripts_directory_global ();
-	scripts_directory = nautilus_directory_get (scripts_directory_uri);
+	scripts_directory = nautilus_directory_get_by_uri (scripts_directory_uri);
 	add_directory_to_scripts_directory_list (view, scripts_directory);
 	nautilus_directory_unref (scripts_directory);
 
 	if (nautilus_should_use_templates_directory ()) {
 		templates_uri = nautilus_get_templates_directory_uri ();
-		templates_directory = nautilus_directory_get (templates_uri);
+		templates_directory = nautilus_directory_get_by_uri (templates_uri);
 		g_free (templates_uri);
 		add_directory_to_templates_directory_list (view, templates_directory);
 		nautilus_directory_unref (templates_directory);
@@ -2292,7 +2292,7 @@ fm_directory_view_load_location (NautilusView *nautilus_view,
 		directory_view->details->allow_moves = TRUE;
 	}
 
-	directory = nautilus_directory_get (location);
+	directory = nautilus_directory_get_by_uri (location);
 	load_directory (directory_view, directory);
 	nautilus_directory_unref (directory);
 }
@@ -5416,7 +5416,7 @@ update_directory_in_scripts_menu (FMDirectoryView *view, NautilusDirectory *dire
 		} else if (nautilus_file_is_directory (file)) {
 			uri = nautilus_file_get_uri (file);
 			if (directory_belongs_in_scripts_menu (uri)) {
-				dir = nautilus_directory_get (uri);
+				dir = nautilus_directory_get_by_uri (uri);
 				add_directory_to_scripts_directory_list (view, dir);
 				nautilus_directory_unref (dir);
 
@@ -5586,7 +5586,7 @@ update_templates_directory (FMDirectoryView *view)
 	
 	if (nautilus_should_use_templates_directory ()) {
 		templates_uri = nautilus_get_templates_directory_uri ();
-		templates_directory = nautilus_directory_get (templates_uri);
+		templates_directory = nautilus_directory_get_by_uri (templates_uri);
 		g_free (templates_uri);
 		add_directory_to_templates_directory_list (view, templates_directory);
 		nautilus_directory_unref (templates_directory);
@@ -5672,7 +5672,7 @@ update_directory_in_templates_menu (FMDirectoryView *view,
 		if (nautilus_file_is_directory (file)) {
 			uri = nautilus_file_get_uri (file);
 			if (directory_belongs_in_templates_menu (templates_directory_uri, uri)) {
-				dir = nautilus_directory_get (uri);
+				dir = nautilus_directory_get_by_uri (uri);
 				add_directory_to_templates_directory_list (view, dir);
 				nautilus_directory_unref (dir);
 

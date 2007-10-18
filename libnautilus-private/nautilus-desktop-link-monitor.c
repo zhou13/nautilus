@@ -358,7 +358,7 @@ nautilus_desktop_link_monitor_init (gpointer object, gpointer klass)
 	monitor->details->volume_monitor = g_volume_monitor_get ();
 
 	/* We keep around a ref to the desktop dir */
-	monitor->details->desktop_dir = nautilus_directory_get (EEL_DESKTOP_URI);
+	monitor->details->desktop_dir = nautilus_directory_get_by_uri (EEL_DESKTOP_URI);
 
 	/* Default links */
 

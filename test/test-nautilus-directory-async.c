@@ -87,7 +87,7 @@ main (int argc, char **argv)
 
 	query = nautilus_query_new ();
 	nautilus_query_set_text (query, "richard hult");
-	directory = nautilus_directory_get ("x-nautilus-search://0/");
+	directory = nautilus_directory_get_by_uri ("x-nautilus-search://0/");
 	nautilus_search_directory_set_query (NAUTILUS_SEARCH_DIRECTORY (directory), query);
 	g_object_unref (query);
 

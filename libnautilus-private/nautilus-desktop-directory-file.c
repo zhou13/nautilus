@@ -458,7 +458,7 @@ nautilus_desktop_directory_file_init (gpointer object, gpointer klass)
 
 	desktop_file = NAUTILUS_DESKTOP_DIRECTORY_FILE (object);
 
-	desktop_directory = NAUTILUS_DESKTOP_DIRECTORY (nautilus_directory_get (EEL_DESKTOP_URI));
+	desktop_directory = NAUTILUS_DESKTOP_DIRECTORY (nautilus_directory_get_by_uri (EEL_DESKTOP_URI));
 
 	desktop_file->details = g_new0 (NautilusDesktopDirectoryFileDetails, 1);
 	desktop_file->details->desktop_directory = desktop_directory;

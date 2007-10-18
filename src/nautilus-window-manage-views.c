@@ -766,7 +766,7 @@ begin_location_change (NautilusWindow *window,
         
         window->details->pending_scroll_to = g_strdup (scroll_pos);
         
-        directory = nautilus_directory_get (location);
+        directory = nautilus_directory_get_by_uri (location);
 
 	/* The code to force a reload is here because if we do it
 	 * after determining an initial view (in the components), then
@@ -1283,7 +1283,7 @@ update_for_new_location (NautilusWindow *window)
 	if (location_really_changed) {
 		remove_extra_location_widgets (window);
 		
-		directory = nautilus_directory_get (window->details->location);
+		directory = nautilus_directory_get_by_uri (window->details->location);
 		if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
 			nautilus_window_set_search_mode (window, TRUE, NAUTILUS_SEARCH_DIRECTORY (directory));
 		} else {

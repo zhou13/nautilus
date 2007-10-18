@@ -1,5 +1,21 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-desktop-directory-file.c:
+        * libnautilus-private/nautilus-desktop-directory.c:
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-desktop-link-monitor.c:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-directory.h:
+        * libnautilus-private/nautilus-file-operations.c:
+        * libnautilus-private/nautilus-file-utilities.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-navigation-window.c:
+        * src/nautilus-window-manage-views.c:
+        * test/test-nautilus-directory-async.c:
+	Rename nautilus_directory_get to nautilus_directory_get_by_uri.
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-link.c:
         * libnautilus-private/nautilus-desktop-icon-file.c:
 	Handle NULL volume

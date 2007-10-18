@@ -3060,7 +3060,7 @@ nautilus_file_operations_unmount_volume (GtkWidget *parent_view,
 	trash_uri_str = get_trash_uri_for_volume (volume);
 	if (trash_uri_str) {
 		NautilusDirectory  *trash_dir;
-		trash_dir = nautilus_directory_get (trash_uri_str);	
+		trash_dir = nautilus_directory_get_by_uri (trash_uri_str);	
 
 		/* Check if the trash on this volume is empty, 
 		* If the trash directory on this volume exists it's monitored 
@@ -3129,7 +3129,7 @@ nautilus_file_operations_unmount_drive (GtkWidget *parent_view,
 			* by the trash monitor so this should give accurate results. */
 			if (trash_is_empty) {
 				NautilusDirectory          *trash_dir;
-				trash_dir = nautilus_directory_get (trash_uri_str);
+				trash_dir = nautilus_directory_get_by_uri (trash_uri_str);
 				trash_is_empty = ! nautilus_directory_is_not_empty (trash_dir);
 			}
 		}
