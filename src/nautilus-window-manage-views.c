@@ -301,6 +301,7 @@ static void
 viewed_file_changed_callback (NautilusFile *file,
                               NautilusWindow *window)
 {
+	GFile *location;
         char *new_location;
 	gboolean is_in_trash, was_in_trash;
 
@@ -389,8 +390,10 @@ viewed_file_changed_callback (NautilusFile *file,
                                 nautilus_navigation_bar_set_location
                                         (NAUTILUS_NAVIGATION_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->navigation_bar),
                                          window->details->location);
+				location = g_file_new_for_uri (window->details->location);
 				nautilus_path_bar_set_path (NAUTILUS_PATH_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->path_bar),
-					    window->details->location);
+							    location);
+				g_object_unref (location);
                         }                  
                         if (NAUTILUS_IS_SPATIAL_WINDOW (window)) {
                                 /* Change the location button to match the current location. */
@@ -1216,6 +1219,7 @@ nautilus_window_show_trash_bar (NautilusWindow *window)
 static void
 update_for_new_location (NautilusWindow *window)
 {
+	GFile *location;
         char *new_location;
         NautilusFile *file;
 	NautilusDirectory *directory;
@@ -1290,8 +1294,10 @@ update_for_new_location (NautilusWindow *window)
                 /* Change the location bar and path bar to match the current location. */
                 nautilus_navigation_bar_set_location (NAUTILUS_NAVIGATION_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->navigation_bar),
                                                       window->details->location);
+		location = g_file_new_for_uri (window->details->location);
 		nautilus_path_bar_set_path (NAUTILUS_PATH_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->path_bar),
-					    window->details->location);
+					    location);
+		g_object_unref (location);
 		nautilus_navigation_window_load_extension_toolbar_items (NAUTILUS_NAVIGATION_WINDOW (window));
         }
         

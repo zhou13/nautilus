@@ -120,7 +120,7 @@ static void navigation_bar_location_changed_callback (GtkWidget                *
 static void navigation_bar_cancel_callback           (GtkWidget                *widget,
 						      NautilusNavigationWindow *window);
 static void path_bar_location_changed_callback       (GtkWidget                *widget,
-						      const char               *uri,
+						      GFile                    *path,
 						      NautilusNavigationWindow *window);
 static void always_use_location_entry_changed        (gpointer                  callback_data);
 
@@ -413,13 +413,16 @@ bookmark_list_get_uri_index (GList *list,
 
 static void
 path_bar_location_changed_callback (GtkWidget *widget,
-				    const char *uri,
+				    GFile *location,
 				    NautilusNavigationWindow *window)
 {
 	int i;
+	char *uri;
 
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
 
+	uri = g_file_get_uri (location);
+	
 	/* check whether we already visited the target location */
 	i = bookmark_list_get_uri_index (window->back_list, uri);
 	if (i >= 0) {
@@ -427,6 +430,8 @@ path_bar_location_changed_callback (GtkWidget *widget,
 	} else {
 		nautilus_window_go_to (NAUTILUS_WINDOW (window), uri);
 	}
+
+	g_free (uri);
 }
 
 static void
