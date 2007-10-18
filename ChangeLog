@@ -1,5 +1,13 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.[ch]:
+        * src/nautilus-application.c:
+	Make nautilus_directory_get_existing take GFile *.
+	Add nautilus_directory_get taking a GFile *
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-directory-file.c:
         * libnautilus-private/nautilus-desktop-directory.c:
         * libnautilus-private/nautilus-desktop-icon-file.c:

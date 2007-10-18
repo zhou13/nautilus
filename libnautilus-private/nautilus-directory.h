@@ -26,6 +26,7 @@
 #define NAUTILUS_DIRECTORY_H
 
 #include <gtk/gtkobject.h>
+#include <gio/gfile.h>
 #include <libgnomevfs/gnome-vfs-types.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 
@@ -151,7 +152,8 @@ GType              nautilus_directory_get_type                 (void);
  * Returns a referenced object, not a floating one. Unref when finished.
  * If two windows are viewing the same uri, the directory object is shared.
  */
-NautilusDirectory *nautilus_directory_get_by_uri                      (const char                *uri);
+NautilusDirectory *nautilus_directory_get                      (GFile                     *location);
+NautilusDirectory *nautilus_directory_get_by_uri               (const char                *uri);
 NautilusDirectory *nautilus_directory_get_for_file             (NautilusFile              *file);
 
 /* Covers for gtk_object_ref and gtk_object_unref that provide two conveniences:

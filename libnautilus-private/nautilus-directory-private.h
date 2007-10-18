@@ -137,7 +137,7 @@ typedef struct {
 	gboolean thumbnail;
 } Request;
 
-NautilusDirectory *nautilus_directory_get_existing                    (const char                *uri);
+NautilusDirectory *nautilus_directory_get_existing                    (GFile                     *location);
 
 /* async. interface */
 void               nautilus_directory_async_state_changed             (NautilusDirectory         *directory);

@@ -398,6 +398,27 @@ nautilus_directory_get_internal (GFile *location, gboolean create)
 }
 
 NautilusDirectory *
+nautilus_directory_get (GFile *location)
+{
+	if (location == NULL) {
+    		return NULL;
+	}
+
+	return nautilus_directory_get_internal (location, TRUE);
+}
+
+NautilusDirectory *
+nautilus_directory_get_existing (GFile *location)
+{
+	if (location == NULL) {
+    		return NULL;
+	}
+
+	return nautilus_directory_get_internal (location, FALSE);
+}
+
+
+NautilusDirectory *
 nautilus_directory_get_by_uri (const char *uri)
 {
 	NautilusDirectory *directory;
@@ -410,23 +431,6 @@ nautilus_directory_get_by_uri (const char *uri)
 	location = g_file_new_for_uri (uri);
 
 	directory = nautilus_directory_get_internal (location, TRUE);
-	g_object_unref (location);
-	return directory;
-}
-
-NautilusDirectory *
-nautilus_directory_get_existing (const char *uri)
-{
-	NautilusDirectory *directory;
-	GFile *location;
-
-	if (uri == NULL) {
-    		return NULL;
-	}
-
-	location = g_file_new_for_uri (uri);
-
-	directory = nautilus_directory_get_internal (location, FALSE);
 	g_object_unref (location);
 	return directory;
 }

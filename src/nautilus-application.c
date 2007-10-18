@@ -1326,13 +1326,10 @@ volume_mounted_callback (GVolumeMonitor *monitor,
 {
 	NautilusDirectory *directory;
 	GFile *root;
-	char *uri;
 		
 	root = g_volume_get_root (volume);
-	uri = g_file_get_uri (root);
+	directory = nautilus_directory_get_existing (root);
 	g_object_unref (root);
-	directory = nautilus_directory_get_existing (uri);
-	g_free (uri);
 	if (directory != NULL) {
 		nautilus_directory_force_reload (directory);
 		nautilus_directory_unref (directory);
