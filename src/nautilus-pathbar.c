@@ -184,15 +184,12 @@ static void
 desktop_location_changed_callback (gpointer user_data)
 {
 	NautilusPathBar *path_bar;
-	char *p;
 	
 	path_bar = NAUTILUS_PATH_BAR (user_data);
 	
 	g_object_unref (path_bar->desktop_path);
 	g_object_unref (path_bar->home_path);
-	p = nautilus_get_desktop_directory ();
-	path_bar->desktop_path = g_file_new_for_path (p);
-	g_free (p);
+	path_bar->desktop_path = nautilus_get_desktop_location ();
 	path_bar->home_path = g_file_new_for_path (g_get_home_dir ());
 	desktop_is_home = g_file_equal (path_bar->home_path, path_bar->desktop_path);
 

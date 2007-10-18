@@ -41,6 +41,7 @@ gboolean nautilus_file_name_matches_backup_pattern   (const char *name_or_relati
 char *   nautilus_get_xdg_dir                        (const char *type);
 char *   nautilus_get_user_directory                 (void);
 char *   nautilus_get_desktop_directory              (void);
+GFile *  nautilus_get_desktop_location               (void);
 char *   nautilus_get_desktop_directory_uri          (void);
 char *   nautilus_get_home_directory_uri             (void);
 gboolean nautilus_is_desktop_directory_file          (GFile *dir,

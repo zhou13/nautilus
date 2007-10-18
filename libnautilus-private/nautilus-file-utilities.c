@@ -479,6 +479,19 @@ nautilus_get_desktop_directory (void)
 	return desktop_directory;
 }
 
+GFile *
+nautilus_get_desktop_location (void)
+{
+	char *desktop_directory;
+	GFile *res;
+	
+	desktop_directory = get_desktop_path ();
+
+	res = g_file_new_for_path (desktop_directory);
+	g_free (desktop_directory);
+	return res;
+}
+
 
 /**
  * nautilus_get_desktop_directory_uri:

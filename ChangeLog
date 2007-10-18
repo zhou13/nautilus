@@ -1,6 +1,18 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-utilities.[ch]:
+        * src/nautilus-pathbar.c:
+        Add & use nautilus_get_desktop_location
+	
+        * libnautilus-private/nautilus-dnd.c:
+	Port code to gio
+	
+        * libnautilus-private/nautilus-icon-dnd.c:
+	Trash is now a real uri location, remove special case
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-utilities.[ch]:
 	Make compute_title take a GFile
 
         * libnautilus-private/nautilus-view-factory.[ch]:

@@ -216,8 +216,7 @@ nautilus_drag_items_local (const char *target_uri_string, const GList *selection
 	 * we should really test each item but that would be slow for large selections
 	 * and currently dropped items can only be from the same container
 	 */
-	GnomeVFSURI *target_uri;
-	GnomeVFSURI *item_uri;
+	GFile *target, *item, *parent;
 	gboolean result;
 
 	/* must have at least one item */
@@ -225,21 +224,17 @@ nautilus_drag_items_local (const char *target_uri_string, const GList *selection
 
 	result = FALSE;
 
-	target_uri = gnome_vfs_uri_new (target_uri_string);
+	target = g_file_new_for_uri (target_uri_string);
 
-	if (target_uri != NULL) {
-		/* get the parent URI of the first item in the selection */
-		item_uri = gnome_vfs_uri_new (((NautilusDragSelectionItem *)selection_list->data)->uri);
-		
-		if (item_uri != NULL) {
-			result = gnome_vfs_uri_is_parent (target_uri, item_uri, FALSE);
-			
-			gnome_vfs_uri_unref (item_uri);
-		}
-		
-		gnome_vfs_uri_unref (target_uri);
+	/* get the parent URI of the first item in the selection */
+	item = g_file_new_for_uri (((NautilusDragSelectionItem *)selection_list->data)->uri);
+	parent = g_file_get_parent (item);
+	g_object_unref (item);
+	
+	if (parent != NULL) {
+		result = g_file_equal (parent, target);
+		g_object_unref (parent);
 	}
-		
 	
 	return result;
 }
@@ -259,8 +254,7 @@ gboolean
 nautilus_drag_items_on_desktop (const GList *selection_list)
 {
 	char *uri;
-	GnomeVFSURI *vfs_uri, *desktop_vfs_uri;
-	char *desktop_uri;
+	GFile *desktop, *item, *parent;
 	gboolean result;
 	
 	/* check if the first item on the list is in trash.
@@ -272,16 +266,20 @@ nautilus_drag_items_on_desktop (const GList *selection_list)
 	if (eel_uri_is_desktop (uri)) {
 		return TRUE;
 	}
+	
+	desktop = nautilus_get_desktop_location ();
+	
+	item = g_file_new_for_uri (uri);
+	parent = g_file_get_parent (item);
+	g_object_unref (item);
 
-	vfs_uri = gnome_vfs_uri_new (uri);
-	desktop_uri = nautilus_get_desktop_directory_uri ();
-	desktop_vfs_uri = gnome_vfs_uri_new (desktop_uri);
-	g_free (desktop_uri);
+	result = FALSE;
 	
-	result = gnome_vfs_uri_is_parent (desktop_vfs_uri, vfs_uri, FALSE);
-	
-	gnome_vfs_uri_unref (desktop_vfs_uri);
-	gnome_vfs_uri_unref (vfs_uri);
+	if (parent) {
+		result = g_file_equal (desktop, parent);
+		g_object_unref (parent);
+	}
+	g_object_unref (desktop);
 	
 	return result;
 	
