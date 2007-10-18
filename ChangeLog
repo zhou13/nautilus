@@ -1,5 +1,15 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-desktop-link.c:
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+	Handle NULL volume
+	
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-icon-dnd.c:
+	Convert gnome_vfs calls to gio
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-icon-file.c:
         * src/nautilus-application.c:
         * src/nautilus-window-menus.c:

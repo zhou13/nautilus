@@ -250,7 +250,10 @@ nautilus_desktop_link_new_from_volume (GVolume *volume)
 GVolume *
 nautilus_desktop_link_get_volume (NautilusDesktopLink *link)
 {
-	return g_object_ref (link->details->volume);
+	if (link->details->volume) {
+		return g_object_ref (link->details->volume);
+	}
+	return NULL;
 }
 
 

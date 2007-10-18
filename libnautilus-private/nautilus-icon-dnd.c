@@ -409,7 +409,7 @@ get_direct_save_filename (GdkDragContext *context)
 static void
 set_direct_save_uri (GtkWidget *widget, GdkDragContext *context, NautilusDragInfo *drag_info, int x, int y)
 {
-	GnomeVFSURI *base, *file_uri;
+	GFile *base, *child;
 	char *filename, *drop_target;
 	gchar *uri;
 	
@@ -433,11 +433,11 @@ set_direct_save_uri (GtkWidget *widget, GdkDragContext *context, NautilusDragInf
 	
 	if (filename != NULL && drop_target != NULL) {
 		/* Resolve relative path */
-		base = gnome_vfs_uri_new (drop_target);
-		file_uri = gnome_vfs_uri_append_file_name (base, (const gchar *) filename);
-		uri = gnome_vfs_uri_to_string (file_uri, GNOME_VFS_URI_HIDE_NONE);
-		gnome_vfs_uri_unref (base);
-		gnome_vfs_uri_unref (file_uri);
+		base = g_file_new_for_uri (drop_target);
+		child = g_file_get_child (base, filename);
+		uri = g_file_get_uri (child);
+		g_object_unref (base);
+		g_object_unref (child);
 		
 		/* Change the uri property */
 		gdk_property_change (GDK_DRAWABLE (context->source_window),

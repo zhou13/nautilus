@@ -1,1 +1,5 @@
 Monitor for UNMOUNT file change event and close window
+
+
+nautilus_directory_get[_existing] -> rename for _by_ur and add GFile version
+Make window location be GFile *

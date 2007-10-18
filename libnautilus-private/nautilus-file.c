@@ -1053,18 +1053,6 @@ nautilus_file_get_uri_scheme (NautilusFile *file)
 }
 
 
-static GnomeVFSURI *
-nautilus_file_get_gnome_vfs_uri (NautilusFile *file)
-{
-	GnomeVFSURI *vfs_uri;
-	char *uri;
-
-	uri = nautilus_file_get_uri (file);
-	vfs_uri = gnome_vfs_uri_new (uri);
-	g_free (uri);
-	return vfs_uri;
-}
-
 static Operation *
 operation_new (NautilusFile *file,
 	       NautilusFileOperationCallback callback,
@@ -1411,30 +1399,17 @@ nautilus_file_cancel (NautilusFile *file,
 gboolean         
 nautilus_file_matches_uri (NautilusFile *file, const char *match_uri)
 {
-	GnomeVFSURI *match_vfs_uri, *file_vfs_uri;
-	char *file_uri;
+	GFile *match_file, *location;
 	gboolean result;
-	
+
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), FALSE);
 	g_return_val_if_fail (match_uri != NULL, FALSE);
-
-	match_vfs_uri = gnome_vfs_uri_new (match_uri);
-	file_vfs_uri = nautilus_file_get_gnome_vfs_uri (file);
-
-	if (match_vfs_uri == NULL || file_vfs_uri == NULL) {
-		file_uri = nautilus_file_get_uri (file);
-		result = strcmp (match_uri, file_uri) == 0;
-		g_free (file_uri);
-	} else {
-		result = gnome_vfs_uri_equal (file_vfs_uri, match_vfs_uri);
-	}
-
-	if (file_vfs_uri != NULL) {
-		gnome_vfs_uri_unref (file_vfs_uri);
-	}
-	if (match_vfs_uri != NULL) {
-		gnome_vfs_uri_unref (match_vfs_uri);
-	}
+	
+	location = nautilus_file_get_location (file);
+	match_file = g_file_new_for_uri (match_uri);
+	result = g_file_equal (location, match_file);
+	g_object_unref (location);
+	g_object_unref (match_file);
 
 	return result;
 }
@@ -4715,25 +4690,25 @@ nautilus_file_get_permissions_as_string (NautilusFile *file)
 	is_link = nautilus_file_is_symbolic_link (file);
 
 	/* We use ls conventions for displaying these three obscure flags */
-	suid = permissions & GNOME_VFS_PERM_SUID;
-	sgid = permissions & GNOME_VFS_PERM_SGID;
-	sticky = permissions & GNOME_VFS_PERM_STICKY;
+	suid = permissions & S_ISGID;
+	sgid = permissions & S_ISGID;
+	sticky = permissions & S_ISVTX;
 
 	return g_strdup_printf ("%c%c%c%c%c%c%c%c%c%c",
 				 is_link ? 'l' : is_directory ? 'd' : '-',
-		 		 permissions & GNOME_VFS_PERM_USER_READ ? 'r' : '-',
-				 permissions & GNOME_VFS_PERM_USER_WRITE ? 'w' : '-',
-				 permissions & GNOME_VFS_PERM_USER_EXEC 
+		 		 permissions & S_IRUSR ? 'r' : '-',
+				 permissions & S_IWUSR ? 'w' : '-',
+				 permissions & S_IXUSR 
 				 	? (suid ? 's' : 'x') 
 				 	: (suid ? 'S' : '-'),
-				 permissions & GNOME_VFS_PERM_GROUP_READ ? 'r' : '-',
-				 permissions & GNOME_VFS_PERM_GROUP_WRITE ? 'w' : '-',
-				 permissions & GNOME_VFS_PERM_GROUP_EXEC
+				 permissions & S_IRGRP ? 'r' : '-',
+				 permissions & S_IWGRP ? 'w' : '-',
+				 permissions & S_IXGRP
 				 	? (sgid ? 's' : 'x') 
 				 	: (sgid ? 'S' : '-'),		
-				 permissions & GNOME_VFS_PERM_OTHER_READ ? 'r' : '-',
-				 permissions & GNOME_VFS_PERM_OTHER_WRITE ? 'w' : '-',
-				 permissions & GNOME_VFS_PERM_OTHER_EXEC
+				 permissions & S_IROTH ? 'r' : '-',
+				 permissions & S_IWOTH ? 'w' : '-',
+				 permissions & S_IXOTH
 				 	? (sticky ? 't' : 'x') 
 				 	: (sticky ? 'T' : '-'));
 }
@@ -4864,9 +4839,8 @@ nautilus_file_get_size_as_string_with_real_size (NautilusFile *file)
 	}
 
 	formated = g_format_file_size_for_display (file->details->size);
-	/* FIXME: We should use GNOME_VFS_SIZE_FORMAT_STR instead of the explicit format here. */
-	formated_plus_real = g_strdup_printf (_("%s (%lld bytes)"), formated,
-					      (long long) file->details->size);
+	formated_plus_real = g_strdup_printf (_("%s (%"G_GUINT64_FORMAT" bytes)"), formated,
+					      (guint64) file->details->size);
 	g_free (formated);
 	return formated_plus_real;
 }
@@ -5594,32 +5568,23 @@ nautilus_file_is_broken_symbolic_link (NautilusFile *file)
 char *
 nautilus_file_get_volume_free_space (NautilusFile *file)
 {
-	char * file_uri;
 	goffset free_space;
-	GnomeVFSResult result;
-	GnomeVFSURI * vfs_uri;
+	GFileInfo *info;
+	GFile *location;
+	char *res;
 
-	file_uri = nautilus_file_get_uri (file);
-
-	if (file_uri == NULL) {
-		return NULL;
+	res = NULL;
+	
+	location = nautilus_file_get_location (file);
+	info = g_file_query_filesystem_info (location, G_FILE_ATTRIBUTE_FS_FREE, NULL, NULL);
+	if (info) {
+		if (g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_FS_FREE)) {
+			free_space = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_FREE);
+			res = g_format_file_size_for_display (free_space);
+		}
 	}
-
-	vfs_uri = gnome_vfs_uri_new (file_uri);
-	g_free (file_uri);
-
-	if (vfs_uri == NULL) {
-		return NULL;
-	}
-
-	result = gnome_vfs_get_volume_free_space (vfs_uri, &free_space);
-	gnome_vfs_uri_unref (vfs_uri);
-
-	if (result == GNOME_VFS_OK) {
-		return g_format_file_size_for_display (free_space);
-	} else {
-		return NULL;
-	}
+	
+	return res;
 }
 
 /**
@@ -5687,24 +5652,30 @@ nautilus_file_get_symbolic_link_target_path (NautilusFile *file)
 char *
 nautilus_file_get_symbolic_link_target_uri (NautilusFile *file)
 {
-	char *file_uri;
-	char *target;
-	char *escaped_name;	
+	GFile *location, *parent, *target;
+	char *target_uri;
 	
         g_return_val_if_fail (nautilus_file_is_symbolic_link (file), NULL);
 
 	if (file->details->symlink_name == NULL) {
 		return NULL;
 	} else {
-		file_uri = nautilus_file_get_uri (file);
-		escaped_name = gnome_vfs_escape_path_string
-			(file->details->symlink_name);
-
-		target = gnome_vfs_uri_make_full_from_relative 
-			(file_uri, escaped_name);
-		g_free (file_uri);
-		g_free (escaped_name);
-		return target;
+		target = NULL;
+		
+		location = nautilus_file_get_location (file);
+		parent = g_file_get_parent (location);
+		g_object_unref (location);
+		if (parent) {
+			target = g_file_resolve_relative_path (parent, file->details->symlink_name);
+			g_object_unref (parent);
+		}
+		
+		target_uri = NULL;
+		if (target) {
+			target_uri = g_file_get_uri (target);
+			g_object_unref (target);
+		}
+		return target_uri;
 	}
 }
 
