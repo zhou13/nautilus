@@ -269,7 +269,7 @@ static GtkWidget *
 location_row_create_widgets (NautilusQueryEditorRow *row)
 {
 	GtkWidget *chooser;
-	
+
 	chooser = gtk_file_chooser_button_new (_("Select folder to search in"),
 					       GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
 	gtk_file_chooser_set_local_only (GTK_FILE_CHOOSER (chooser), TRUE);
@@ -293,9 +293,15 @@ location_row_add_to_query (NautilusQueryEditorRow *row,
 	char *folder, *uri;
 	
 	folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (row->type_widget));
+	if (folder == NULL) {
+		/* I don't know why, but i got NULL here on initial search in browser mode
+		   even with the location set to the homedir in create_widgets... */
+		folder = g_strdup (g_get_home_dir ());
+	}
+	
 	uri = g_filename_to_uri (folder, NULL, NULL);
 	g_free (folder);
-
+		
 	nautilus_query_set_location (query, uri);
 	g_free (uri);
 }

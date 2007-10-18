@@ -217,7 +217,6 @@ visit_directory (GFile *dir, SearchThreadData *data)
 	const char *id;
 	gboolean visited;
 
-	g_print ("Enumerating %s\n", g_file_get_uri (dir));
 	enumerator = g_file_enumerate_children (dir,
 						data->mime_types != NULL ?
 						STD_ATTRIBUTES ","
