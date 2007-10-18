@@ -45,7 +45,6 @@
 #include "nautilus-thumbnails.h"
 #include "nautilus-users-groups-cache.h"
 #include "nautilus-vfs-file.h"
-#include "nautilus-vfs-utils.h"
 #include "nautilus-saved-search-file.h"
 #include <eel/eel-debug.h>
 #include <eel/eel-glib-extensions.h>

@@ -33,7 +33,6 @@
 #include "nautilus-signaller.h"
 #include "nautilus-global-preferences.h"
 #include "nautilus-link.h"
-#include "nautilus-vfs-utils.h"
 #include "nautilus-marshal.h"
 #include "nautilus-metafile.h"
 #include <eel/eel-glib-extensions.h>
