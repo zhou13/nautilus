@@ -1,3 +1,7 @@
+2007-10-18  Paolo Borelli  <pborelli@katamail.com>
+
+	* src/nautilus-image-properties-page.c: port to gio.
+
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-directory-private.h:
