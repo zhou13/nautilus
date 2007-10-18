@@ -1,5 +1,10 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+	* src/nautilus-window.c (nautilus_window_go_up):
+	Use gio to find parent
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
 	* src/nautilus-pathbar.[ch]:
         * src/nautilus-navigation-window.c:
         * src/nautilus-window-manage-views.c:

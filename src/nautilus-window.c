@@ -257,10 +257,9 @@ nautilus_window_go_up_signal (NautilusWindow *window, gboolean close_behind)
 void
 nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
 {
-	GnomeVFSURI *current_uri;
-	GnomeVFSURI *parent_uri;
+	GFile *location, *parent;
 	GList *selection;
-	char *parent_uri_string;
+	char *parent_uri;
 
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
@@ -268,22 +267,22 @@ nautilus_window_go_up (NautilusWindow *window, gboolean close_behind)
 		return;
 	}
 	
-	current_uri = gnome_vfs_uri_new (window->details->location);
-	parent_uri = gnome_vfs_uri_get_parent (current_uri);
-	gnome_vfs_uri_unref (current_uri);
+	location = g_file_new_for_uri (window->details->location);
+	parent = g_file_get_parent (location);
+	g_object_unref (location);
 
-	if (parent_uri == NULL) {
+	if (parent == NULL) {
 		return;
 	}
 	
-	parent_uri_string = gnome_vfs_uri_to_string (parent_uri, GNOME_VFS_URI_HIDE_NONE);
-	gnome_vfs_uri_unref (parent_uri);
+	parent_uri = g_file_get_uri (parent);
+	g_object_unref (parent);
 
 	selection = g_list_prepend (NULL, g_strdup (window->details->location));
 	
-	nautilus_window_open_location_with_selection (window, parent_uri_string, selection, close_behind);
+	nautilus_window_open_location_with_selection (window, parent_uri, selection, close_behind);
 	
-	g_free (parent_uri_string);
+	g_free (parent_uri);
 	eel_g_list_free_deep (selection);
 }
 
