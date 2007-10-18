@@ -1,5 +1,13 @@
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
+        * src/nautilus-application.[ch]:
+	Convert gnome_vfs calls to gio
+
+	* TODO-gio:
+	Document some stuff that needs doing in gio-branch
+
+2007-10-18  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-search-engine-simple.c:
 	Remove spew
 	

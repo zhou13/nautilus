@@ -119,11 +119,11 @@ static GList *nautilus_application_spatial_window_list;
 
 static void     desktop_changed_callback          (gpointer                  user_data);
 static void     desktop_location_changed_callback (gpointer                  user_data);
-static void     volume_unmounted_callback         (GnomeVFSVolumeMonitor    *monitor,
-						   GnomeVFSVolume           *volume,
+static void     volume_unmounted_callback         (GVolumeMonitor           *monitor,
+						   GVolume                  *volume,
 						   NautilusApplication      *application);
-static void     volume_mounted_callback           (GnomeVFSVolumeMonitor    *monitor,
-						   GnomeVFSVolume           *volume,
+static void     volume_mounted_callback           (GVolumeMonitor           *monitor,
+						   GVolume                  *volume,
 						   NautilusApplication      *application);
 static void     update_session                    (gpointer                  callback_data);
 static void     init_session                      (void);
@@ -186,11 +186,13 @@ nautilus_application_instance_init (NautilusApplication *application)
 	 * used anymore */
 
 	/* Watch for volume unmounts so we can close open windows */
-	g_signal_connect_object (gnome_vfs_get_volume_monitor (), "volume_unmounted",
+	/* TODO-gio: This should be using the UNMOUNTED feature of GDirectoryMonitor instead */
+	application->volume_monitor = g_volume_monitor_get ();
+	g_signal_connect_object (application->volume_monitor, "volume_unmounted",
 				 G_CALLBACK (volume_unmounted_callback), application, 0);
-	g_signal_connect_object (gnome_vfs_get_volume_monitor (), "volume_pre_unmount",
+	g_signal_connect_object (application->volume_monitor, "volume_pre_unmount",
 				 G_CALLBACK (volume_unmounted_callback), application, 0);
-	g_signal_connect_object (gnome_vfs_get_volume_monitor (), "volume_mounted",
+	g_signal_connect_object (application->volume_monitor, "volume_mounted",
 				 G_CALLBACK (volume_mounted_callback), application, 0);
 
 	/* register views */
@@ -238,6 +240,11 @@ nautilus_application_destroy (BonoboObject *object)
 	
 	g_object_unref (application->undo_manager);
 
+	if (application->volume_monitor) {
+		g_object_unref (application->volume_monitor);
+		application->volume_monitor = NULL;
+	}
+	
 	if (application->shell_registered) {
 		bonobo_activation_unregister_active_server (SHELL_IID, BONOBO_OBJREF (application->shell));
 	}
@@ -310,6 +317,7 @@ nautilus_make_uri_list_from_shell_strv (const char * const *strv)
 {
 	int length, i;
 	Nautilus_URIList *uri_list;
+	GFile *file;
 	char *translated_uri;
 
 	length = g_strv_length ((char **) strv);
@@ -319,7 +327,9 @@ nautilus_make_uri_list_from_shell_strv (const char * const *strv)
 	uri_list->_length = length;
 	uri_list->_buffer = CORBA_sequence_Nautilus_URI_allocbuf (length);
 	for (i = 0; i < length; i++) {
-		translated_uri = gnome_vfs_make_uri_from_shell_arg (strv[i]);
+		file = g_file_new_for_commandline_arg (strv[i]);
+		translated_uri = g_file_get_uri (file);
+		g_object_unref (file);
 		uri_list->_buffer[i] = CORBA_string_dup (translated_uri);
 		g_free (translated_uri);
 		translated_uri = NULL;
@@ -1300,16 +1310,19 @@ window_can_be_closed (NautilusWindow *window)
 }
 
 static void
-volume_mounted_callback (GnomeVFSVolumeMonitor *monitor,
-			 GnomeVFSVolume *volume,
+volume_mounted_callback (GVolumeMonitor *monitor,
+			 GVolume *volume,
 			 NautilusApplication *application)
 {
-	char *activation_uri;
 	NautilusDirectory *directory;
+	GFile *root;
+	char *uri;
 		
-	activation_uri = gnome_vfs_volume_get_activation_uri (volume);
-	directory = nautilus_directory_get_existing (activation_uri);
-	g_free (activation_uri);
+	root = g_volume_get_root (volume);
+	uri = g_file_get_uri (root);
+	g_object_unref (root);
+	directory = nautilus_directory_get_existing (uri);
+	g_free (uri);
 	if (directory != NULL) {
 		nautilus_directory_force_reload (directory);
 		nautilus_directory_unref (directory);
@@ -1323,48 +1336,35 @@ volume_mounted_callback (GnomeVFSVolumeMonitor *monitor,
  * This is also called on pre_unmount.
  */
 static void
-volume_unmounted_callback (GnomeVFSVolumeMonitor *monitor,
-			   GnomeVFSVolume *volume,
+volume_unmounted_callback (GVolumeMonitor *monitor,
+			   GVolume *volume,
 			   NautilusApplication *application)
 {
 	GList *window_list, *node, *close_list;
 	NautilusWindow *window;
-	char *uri, *activation_uri, *path;
-	GnomeVFSVolumeMonitor *volume_monitor;
-	GnomeVFSVolume *window_volume;
+	char *uri;
+	GFile *root, *location;
 	
 	close_list = NULL;
 	
 	/* Check and see if any of the open windows are displaying contents from the unmounted volume */
 	window_list = nautilus_application_get_window_list ();
 
-	volume_monitor = gnome_vfs_get_volume_monitor ();
-
-	activation_uri = gnome_vfs_volume_get_activation_uri (volume);
+	root = g_volume_get_root (volume);
 	/* Construct a list of windows to be closed. Do not add the non-closable windows to the list. */
 	for (node = window_list; node != NULL; node = node->next) {
 		window = NAUTILUS_WINDOW (node->data);
 		if (window != NULL && window_can_be_closed (window)) {
 			uri = nautilus_window_get_location (window);
-			if (eel_str_has_prefix (uri, activation_uri)) {
+			location = g_file_new_for_uri (uri);
+			
+			if (g_file_contains_file (root, location)) {
 				close_list = g_list_prepend (close_list, window);
-			} else {
-				path = g_filename_from_uri (uri, NULL, NULL);
-				if (path != NULL) {
-					window_volume = gnome_vfs_volume_monitor_get_volume_for_path (volume_monitor,
-												      path);
-					if (window_volume != NULL && window_volume == volume) {
-						close_list = g_list_prepend (close_list, window);
-					}
-					gnome_vfs_volume_unref (window_volume);
-					g_free (path);
-				}
-				
-			}
+			} 
 			g_free (uri);
+			g_object_unref (location);
 		}
 	}
-	g_free (activation_uri);
 		
 	/* Handle the windows in the close list. */
 	for (node = close_list; node != NULL; node = node->next) {
@@ -1695,25 +1695,16 @@ nautilus_application_load_session (NautilusApplication *application,
 	if (bail) {
 		g_message ("failed to load session from %s", filename);
 	} else {
-		char *uri;
-		GnomeVFSFileInfo *info;
+		struct stat buf;
+		
 		/* only remove file if it is regular, user-owned and the user has write access. */
 
-		uri = g_filename_to_uri (filename, NULL, NULL);
-		info = gnome_vfs_file_info_new ();
-		if (uri != NULL &&
-		    gnome_vfs_get_file_info (uri, info, GNOME_VFS_FILE_INFO_DEFAULT) == GNOME_VFS_OK &&
-		    (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_TYPE) &&
-		    (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_PERMISSIONS) &&
-		    (info->valid_fields & GNOME_VFS_FILE_INFO_FIELDS_IDS) &&
-		    info->type == GNOME_VFS_FILE_TYPE_REGULAR &&
-		    (info->permissions & (GNOME_VFS_PERM_USER_WRITE |
-					  GNOME_VFS_PERM_USER_WRITE)) &&
-		    info->uid == geteuid ()) {
+		if (g_stat (filename, &buf) == 0 &&
+		    S_ISREG (buf.st_mode) &&
+		    (buf.st_mode & S_IWUSR) &&
+		    buf.st_uid == geteuid()) {	
 			g_remove (filename);
 		}
-		gnome_vfs_file_info_unref (info);
-		g_free (uri);
 	}
 }
 
