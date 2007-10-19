@@ -1,5 +1,24 @@
 2007-10-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-vfs-file.c:
+	Remove NautilusFileMountCallback and just make
+	NautilusFileOperationCallback take an extra
+	resultant file argument.
+	
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-error-reporting.c:
+        * src/file-manager/fm-list-view.c:
+        * src/file-manager/fm-properties-window.c:
+	Update to API change
+	
+        * src/nautilus-pathbar.c:
+        (get_display_name_for_folder):
+	Fix crash if NULL display name
+
+2007-10-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-icon-file.c:
 	Set can_mount/unmount to FALSE unless set
 	

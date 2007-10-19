@@ -96,11 +96,8 @@ typedef void (*NautilusFileCallback)          (NautilusFile  *file,
 typedef void (*NautilusFileListCallback)      (GList         *file_list,
 				               gpointer       callback_data);
 typedef void (*NautilusFileOperationCallback) (NautilusFile  *file,
+					       GFile         *result_location,
 					       GError        *error,
-					       gpointer       callback_data);
-typedef void (*NautilusFileMountCallback)     (NautilusFile  *file,
-					       GError        *error,
-					       GFile         *mounted_location,
 					       gpointer       callback_data);
 typedef int (*NautilusWidthMeasureCallback)   (const char    *string,
 					       void	     *context);
@@ -252,7 +249,7 @@ gboolean                nautilus_file_can_eject                         (Nautilu
 
 void                    nautilus_file_mount                             (NautilusFile                   *file,
 									 GtkWidget                      *parent,
-									 NautilusFileMountCallback       callback,
+									 NautilusFileOperationCallback   callback,
 									 gpointer                        callback_data);
 void                    nautilus_file_unmount                           (NautilusFile                   *file,
 									 GtkWidget                      *parent,
@@ -480,7 +477,7 @@ typedef struct {
 
 	void                  (* mount)                  (NautilusFile                   *file,
 							  GtkWidget                      *parent,
-							  NautilusFileMountCallback       callback,
+							  NautilusFileOperationCallback   callback,
 							  gpointer                        callback_data);
 	void                 (* unmount)                 (NautilusFile                   *file,
 							  GtkWidget                      *parent,

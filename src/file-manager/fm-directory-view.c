@@ -8013,8 +8013,8 @@ file_was_cancelled (NautilusFile *file)
 	error = nautilus_file_get_file_info_error (file);
 	return
 		error != NULL &&
-		((error->domain == GNOME_VFS_ERROR && error->code == GNOME_VFS_ERROR_CANCELLED) ||
-		 (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_CANCELLED));
+		error->domain == G_IO_ERROR &&
+		error->code == G_IO_ERROR_CANCELLED;
 	
 }
 
@@ -8264,13 +8264,20 @@ activate_callback (GList *files, gpointer callback_data)
 
 static void
 activation_file_mounted_callback (NautilusFile  *file,
-				  GError        *error,
 				  GFile         *mounted_location,
+				  GError        *error,
 				  gpointer       callback_data)
 {
 	ActivateParameters *parameters;
 
 	parameters = callback_data;
+
+	if (error != NULL) {
+		eel_show_error_dialog (_("Unable to mount location"),
+				       error->message, NULL);
+		parameters->files = g_list_remove (parameters->files, file);
+		nautilus_file_unref (file);
+	}
 
 	parameters->mount_success &= error != NULL;
 

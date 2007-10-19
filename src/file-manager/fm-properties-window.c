@@ -752,7 +752,7 @@ name_field_restore_original_name (NautilusEntry *name_field)
 }
 
 static void
-rename_callback (NautilusFile *file, GError *error, gpointer callback_data)
+rename_callback (NautilusFile *file, GFile *res_loc, GError *error, gpointer callback_data)
 {
 	FMPropertiesWindow *window;
 	char *new_name;
@@ -1510,6 +1510,7 @@ attach_ellipsizing_value_field (FMPropertiesWindow *window,
 
 static void
 group_change_callback (NautilusFile *file,
+		       GFile *res_loc,
 		       GError *error,
 		       FMPropertiesWindow *window)
 {
@@ -3192,7 +3193,10 @@ end_long_operation (FMPropertiesWindow *window)
 }
 
 static void
-permission_change_callback (NautilusFile *file, GError *error, gpointer callback_data)
+permission_change_callback (NautilusFile *file,
+			    GFile *res_loc,
+			    GError *error,
+			    gpointer callback_data)
 {
 	FMPropertiesWindow *window;
 	g_assert (callback_data != NULL);

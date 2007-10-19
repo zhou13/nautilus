@@ -1438,7 +1438,7 @@ get_display_name_for_folder (GFile *location)
 				  G_FILE_ATTRIBUTE_STD_DISPLAY_NAME,
 				  0, NULL, NULL);
 	if (info) {
-		name = strdup (g_file_info_get_display_name (info));
+		name = g_strdup (g_file_info_get_display_name (info));
 		g_object_unref (info);
 	}
 

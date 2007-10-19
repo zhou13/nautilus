@@ -154,6 +154,7 @@ static void   fm_list_view_scroll_to_file                  (FMListView        *v
 							    NautilusFile      *file);
 static void   fm_list_view_iface_init                      (NautilusViewIface *iface);
 static void   fm_list_view_rename_callback                 (NautilusFile      *file,
+							    GFile             *result_location,
 							    GError            *error,
 							    gpointer           callback_data);
 
@@ -1604,7 +1605,10 @@ fm_list_view_clear (FMDirectoryView *view)
 }
 
 static void
-fm_list_view_rename_callback (NautilusFile *file, GError *error, gpointer callback_data)
+fm_list_view_rename_callback (NautilusFile *file,
+			      GFile *result_location,
+			      GError *error,
+			      gpointer callback_data)
 {
 	FMListView *view;
 	

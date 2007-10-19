@@ -836,7 +836,7 @@ nautilus_file_can_eject (NautilusFile *file)
 void
 nautilus_file_mount (NautilusFile                   *file,
 		     GtkWidget                      *parent,
-		     NautilusFileMountCallback       callback,
+		     NautilusFileOperationCallback   callback,
 		     gpointer                        callback_data)
 {
 	GError *error;
@@ -846,7 +846,7 @@ nautilus_file_mount (NautilusFile                   *file,
 			error = NULL;
 			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
 				     _("This file cannot be mounted"));
-			callback (file, error, NULL, callback_data);
+			callback (file, NULL, error, callback_data);
 			g_error_free (error);
 		}
 	} else {
@@ -867,7 +867,7 @@ nautilus_file_unmount (NautilusFile                   *file,
 			error = NULL;
 			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
 				     _("This file cannot be unmounted"));
-			callback (file, error, callback_data);
+			callback (file, NULL, error, callback_data);
 			g_error_free (error);
 		}
 	} else {
@@ -888,7 +888,7 @@ nautilus_file_eject (NautilusFile                   *file,
 			error = NULL;
 			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
 				     _("This file cannot be eject"));
-			callback (file, error, callback_data);
+			callback (file, NULL, error, callback_data);
 			g_error_free (error);
 		}
 	} else {
@@ -1117,14 +1117,11 @@ nautilus_file_operation_free (NautilusFileOperation *op)
 	if (op->free_data) {
 		op->free_data (op->data);
 	}
-	if (op->parent) {
-		g_object_unref (op->parent);
-	}
 	g_free (op);
 }
 
 void
-nautilus_file_operation_complete (NautilusFileOperation *op, GError *error)
+nautilus_file_operation_complete (NautilusFileOperation *op, GFile *result_file, GError *error)
 {
 	/* Claim that something changed even if the operation failed.
 	 * This makes it easier for some clients who see the "reverting"
@@ -1133,7 +1130,7 @@ nautilus_file_operation_complete (NautilusFileOperation *op, GError *error)
 	nautilus_file_operation_remove (op);
 	nautilus_file_changed (op->file);
 	if (op->callback) {
-		(* op->callback) (op->file, error, op->callback_data);
+		(* op->callback) (op->file, result_file, error, op->callback_data);
 	}
 	nautilus_file_operation_free (op);
 }
@@ -1211,7 +1208,7 @@ rename_get_info_callback (GObject *source_object,
 		
 		g_object_unref (new_info);
 	}
-	nautilus_file_operation_complete (op, error);
+	nautilus_file_operation_complete (op, NULL, error);
 	if (error) {
 		g_error_free (error);
 	}
@@ -1240,7 +1237,7 @@ rename_callback (GObject *source_object,
 					 op->cancellable,
 					 rename_get_info_callback, op);
 	} else {
-		nautilus_file_operation_complete (op, error);
+		nautilus_file_operation_complete (op, NULL, error);
 		g_error_free (error);
 	}
 }
@@ -1279,7 +1276,7 @@ nautilus_file_rename (NautilusFile *file,
 	if (strstr (new_name, "/") != NULL && !is_renameable_desktop_file) {
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
 				     _("Slashes are not allowed in filenames"));
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;
 	}
@@ -1297,7 +1294,7 @@ nautilus_file_rename (NautilusFile *file,
 		nautilus_file_changed (file);
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
 				     _("File not found"));
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;
 	}
@@ -1307,7 +1304,7 @@ nautilus_file_rename (NautilusFile *file,
 	 * (2) We don't want to send file-changed signal if nothing changed.
 	 */
 	if (name_is (file, new_name)) {
-		(* callback) (file, NULL, callback_data);
+		(* callback) (file, NULL, NULL, callback_data);
 		return;
 	}
 
@@ -1324,7 +1321,7 @@ nautilus_file_rename (NautilusFile *file,
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
 				     _("Toplevel files cannot be renamed"));
 		
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;
 	}
@@ -1337,11 +1334,11 @@ nautilus_file_rename (NautilusFile *file,
 		
 		if (link != NULL &&
 		    nautilus_desktop_link_rename (link, new_name)) {
-			(* callback) (file, NULL, callback_data);
+			(* callback) (file, NULL, NULL, callback_data);
 		} else {
 			error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
 					     _("Unable to rename desktop icon"));
-			(* callback) (file, error, callback_data);
+			(* callback) (file, NULL, error, callback_data);
 			g_error_free (error);
 		}
 		
@@ -1368,12 +1365,12 @@ nautilus_file_rename (NautilusFile *file,
 			nautilus_file_invalidate_attributes (file,
 							     NAUTILUS_FILE_ATTRIBUTE_INFO |
 							     NAUTILUS_FILE_ATTRIBUTE_LINK_INFO);
-			(* callback) (file, NULL, callback_data);
+			(* callback) (file, NULL, NULL, callback_data);
 			return;
 		} else {
 			error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
 					     _("Unable to rename desktop file"));
-			(* callback) (file, error, callback_data);
+			(* callback) (file, NULL, error, callback_data);
 			g_error_free (error);
 			return;
 		}
@@ -3892,7 +3889,7 @@ set_attributes_get_info_callback (GObject *source_object,
 		nautilus_file_update_info (op->file, new_info);
 		g_object_unref (new_info);
 	}
-	nautilus_file_operation_complete (op, error);
+	nautilus_file_operation_complete (op, NULL, error);
 	if (error) {
 		g_error_free (error);
 	}
@@ -3924,7 +3921,7 @@ set_attributes_callback (GObject *source_object,
 					 op->cancellable,
 					 set_attributes_get_info_callback, op);
 	} else {
-		nautilus_file_operation_complete (op, error);
+		nautilus_file_operation_complete (op, NULL, error);
 		g_error_free (error);
 	}
 }
@@ -4043,7 +4040,7 @@ nautilus_file_set_permissions (NautilusFile *file,
 		nautilus_file_changed (file);
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
 				     _("Not allowed to set permissions"));
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;
 	}
@@ -4053,7 +4050,7 @@ nautilus_file_set_permissions (NautilusFile *file,
 	 * nothing changed.
 	 */
 	if (new_permissions == file->details->permissions) {
-		(* callback) (file, NULL, callback_data);
+		(* callback) (file, NULL, NULL, callback_data);
 		return;
 	}
 
@@ -4351,7 +4348,7 @@ nautilus_file_set_owner (NautilusFile *file,
 		nautilus_file_changed (file);
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
 				     _("Not allowed to set owner"));
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;
 	}
@@ -4369,7 +4366,7 @@ nautilus_file_set_owner (NautilusFile *file,
 		nautilus_file_changed (file);
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
 				     _("Specified owner '%s' doesn't exist"), user_name_or_id);
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;		
 	}
@@ -4379,7 +4376,7 @@ nautilus_file_set_owner (NautilusFile *file,
 	 * changed.
 	 */
 	if (new_id == (uid_t) file->details->uid) {
-		(* callback) (file, NULL, callback_data);
+		(* callback) (file, NULL, NULL, callback_data);
 		return;
 	}
 
@@ -4633,7 +4630,7 @@ nautilus_file_set_group (NautilusFile *file,
 		nautilus_file_changed (file);
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
 				     _("Not allowed to set group"));
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;
 	}
@@ -4651,13 +4648,13 @@ nautilus_file_set_group (NautilusFile *file,
 		nautilus_file_changed (file);
 		error = g_error_new (G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
 				     _("Specified group '%s' doesn't exist"), group_name_or_id);
-		(* callback) (file, error, callback_data);
+		(* callback) (file, NULL, error, callback_data);
 		g_error_free (error);
 		return;		
 	}
 
 	if (new_id == (gid_t) file->details->gid) {
-		(* callback) (file, NULL, callback_data);
+		(* callback) (file, NULL, NULL, callback_data);
 		return;
 	}
 

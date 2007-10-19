@@ -204,7 +204,6 @@ typedef struct {
 	NautilusFile *file;
 	GCancellable *cancellable;
 	NautilusFileOperationCallback callback;
-	GtkWidget *parent;
 	gpointer callback_data;
 	gboolean is_rename;
 	
@@ -273,6 +272,7 @@ NautilusFileOperation *nautilus_file_operation_new      (NautilusFile           
 							 gpointer                       callback_data);
 void                   nautilus_file_operation_free     (NautilusFileOperation         *op);
 void                   nautilus_file_operation_complete (NautilusFileOperation         *op,
+							 GFile                         *result_location,
 							 GError                        *error);
 void                   nautilus_file_operation_cancel   (NautilusFileOperation         *op);
 

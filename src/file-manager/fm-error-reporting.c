@@ -251,7 +251,8 @@ fm_rename_data_free (FMRenameData *data)
 }
 
 static void
-rename_callback (NautilusFile *file, GError *error, gpointer callback_data)
+rename_callback (NautilusFile *file, GFile *result_location,
+		 GError *error, gpointer callback_data)
 {
 	FMRenameData *data;
 
@@ -297,7 +298,7 @@ finish_rename (NautilusFile *file, gboolean stop_timer, GError *error)
 	}
 
 	if (data->callback != NULL) {
-		data->callback (file, error, data->callback_data);
+		data->callback (file, NULL, error, data->callback_data);
 	}
 	
 	/* Let go of file name. */
