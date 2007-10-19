@@ -67,6 +67,8 @@
 #include <gtk/gtkviewport.h>
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
+#include <gio/gfile.h>
+#include <gio/gcontenttype.h>
 #include <libgnome/gnome-util.h>
 #include <libgnome/gnome-help.h>
 #include <libgnomeui/gnome-color-picker.h>
@@ -712,30 +714,26 @@ nautilus_property_browser_drag_end (GtkWidget *widget, GdkDragContext *context)
 
 /* utility routine to check if the passed-in uri is an image file */
 static gboolean
-ensure_uri_is_image (const char *uri)
-{	
-	gboolean is_image;
+ensure_file_is_image (GFile *file)
+{
 	GFileInfo *info;
-	GFile *f;
 	const char *mime_type;
-	
-	f = g_file_new_for_uri (uri);
-	info = g_file_query_info (f, G_FILE_ATTRIBUTE_STD_CONTENT_TYPE, 0, NULL, NULL);
+
+	info = g_file_query_info (file, G_FILE_ATTRIBUTE_STD_CONTENT_TYPE, 0, NULL, NULL);
 	if (info == NULL) {
 		return FALSE;
 	}
-	
+
 	mime_type = g_file_info_get_content_type (info);
 	if (mime_type == NULL) {
 		return FALSE;
 	}
-	
-        is_image = eel_istr_has_prefix (mime_type, "image/")
-		&& eel_strcasecmp (mime_type, "image/svg") != 0
-		&& eel_strcasecmp (mime_type, "image/svg+xml") != 0;
-	
+
 	g_object_unref (info);
-	return is_image;
+
+	return  g_content_type_is_a (mime_type, "image/*") &&
+		!g_content_type_equals (mime_type, "image/svg") &&
+		!g_content_type_equals (mime_type, "image/svg+xml");
 }
 
 /* create the appropriate pixbuf for the passed in file */
@@ -1416,17 +1414,18 @@ emblem_dialog_clicked (GtkWidget *dialog, int which_button, NautilusPropertyBrow
 {
 	const char *new_keyword;
 	char *stripped_keyword;
-	char *emblem_path, *emblem_uri;
+	char *emblem_path;
+	GFile *emblem_file;
 	GdkPixbuf *pixbuf;
-	 
+
 	if (which_button == GTK_RESPONSE_OK) {
 
 		/* update the image path from the file entry */
 		if (property_browser->details->file_entry) {
 			emblem_path = gnome_icon_entry_get_filename (GNOME_ICON_ENTRY (property_browser->details->file_entry));
 			if (emblem_path) {
-				emblem_uri = g_filename_to_uri (emblem_path, NULL, NULL);
-				if (ensure_uri_is_image (emblem_uri)) {
+				emblem_file = g_file_new_for_path (emblem_path);
+				if (ensure_file_is_image (emblem_file)) {
 					g_free (property_browser->details->image_path);
 					property_browser->details->image_path = emblem_path;				
 				} else {
@@ -1435,15 +1434,16 @@ emblem_dialog_clicked (GtkWidget *dialog, int which_button, NautilusPropertyBrow
 					eel_show_error_dialog (_("The file is not an image."), message, GTK_WINDOW (property_browser));
 					g_free (message);
 					g_free (emblem_path);
+					g_object_unref (emblem_file);
 					return;
 				}
-				g_free (emblem_uri);
+				g_object_unref (emblem_file);
 			}
 		}
-		
-		emblem_uri = g_filename_to_uri (property_browser->details->image_path, NULL, NULL);
-		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (emblem_uri);
-		g_free (emblem_uri);
+
+		emblem_file = g_file_new_for_path (property_browser->details->image_path);
+		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (emblem_file);
+		g_object_unref (emblem_file);
 
 		if (pixbuf == NULL) {
 			char *message = g_strdup_printf
@@ -1451,7 +1451,7 @@ emblem_dialog_clicked (GtkWidget *dialog, int which_button, NautilusPropertyBrow
 			eel_show_error_dialog (_("The file is not an image."), message, GTK_WINDOW (property_browser));
 			g_free (message);
 		}
-		
+
 		new_keyword = gtk_entry_get_text(GTK_ENTRY(property_browser->details->keyword));		
 		if (new_keyword == NULL) {
 			stripped_keyword = NULL;

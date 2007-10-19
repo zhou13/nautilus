@@ -730,6 +730,7 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 	GdkPixbuf *pixbuf;
 	char *uri, *error, *uri_utf8;
 	char **uris;
+	GFile *f;
 	int i;
 	gboolean had_failure;
 
@@ -757,7 +758,9 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 				continue;
 			}
 
-			pixbuf = nautilus_emblem_load_pixbuf_for_emblem (uri);
+			f = g_file_new_for_uri (uri);
+			pixbuf = nautilus_emblem_load_pixbuf_for_emblem (f);
+			g_object_unref (f);
 
 			if (pixbuf == NULL) {
 				/* this one apparently isn't an image, or
@@ -806,7 +809,9 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 			break;
 		}
 
-		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (uri);
+		f = g_file_new_for_uri (uri);
+		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (f);
+		g_object_unref (f);
 
 		if (pixbuf != NULL) {
 			emblem = g_new (Emblem, 1);
@@ -859,7 +864,9 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 			break;
 		}
 
-		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (uri);
+		f = g_file_new_for_uri (uri);
+		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (f);
+		g_object_unref (f);
 
 		if (pixbuf != NULL) {
 			emblem = g_new (Emblem, 1);

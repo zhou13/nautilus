@@ -27,10 +27,10 @@
 #include <sys/types.h>
 #include <utime.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include "nautilus-file.h"
-#include <eel/eel-string.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-stock-dialogs.h>
@@ -80,23 +80,25 @@ is_reserved_keyword (const char *keyword)
 	char *icon_name;
 	gboolean result;
 
+	g_assert (keyword != NULL);
+
 	/* check intrinsic emblems */
-	if (eel_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_TRASH) == 0) {
+	if (g_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_TRASH) == 0) {
 		return TRUE;
 	}
-	if (eel_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_CANT_READ) == 0) {
+	if (g_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_CANT_READ) == 0) {
 		return TRUE;
 	}
-	if (eel_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_CANT_WRITE) == 0) {
+	if (g_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_CANT_WRITE) == 0) {
 		return TRUE;
 	}
-	if (eel_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_SYMBOLIC_LINK) == 0) {
+	if (g_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_SYMBOLIC_LINK) == 0) {
 		return TRUE;
 	}
-	if (eel_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_NOTE) == 0) {
+	if (g_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_NOTE) == 0) {
 		return TRUE;
 	}
-	if (eel_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_DESKTOP) == 0) {
+	if (g_strcasecmp (keyword, NAUTILUS_FILE_EMBLEM_NAME_DESKTOP) == 0) {
 		return TRUE;
 	}
 
@@ -105,7 +107,7 @@ is_reserved_keyword (const char *keyword)
 	/* see if the keyword already exists */
 	result = g_list_find_custom (availible,
 				     (char *) icon_name,
-				     (GCompareFunc) eel_strcasecmp) != NULL;
+				     (GCompareFunc) g_strcasecmp) != NULL;
 	eel_g_list_free_deep (availible);	
 	g_free (icon_name);
 	return result;
@@ -141,7 +143,7 @@ nautilus_emblem_get_keyword_from_icon_name (const char *emblem)
 {
 	g_return_val_if_fail (emblem != NULL, NULL);
 
-	if (eel_str_has_prefix (emblem, "emblem-")) {
+	if (g_str_has_prefix (emblem, "emblem-")) {
 		return g_strdup (&emblem[7]);
 	} else {
 		return g_strdup (emblem);
@@ -149,19 +151,26 @@ nautilus_emblem_get_keyword_from_icon_name (const char *emblem)
 }
 
 GdkPixbuf *
-nautilus_emblem_load_pixbuf_for_emblem (const char *uri)
+nautilus_emblem_load_pixbuf_for_emblem (GFile *emblem)
 {
+	GInputStream *stream;
 	GdkPixbuf *pixbuf;
 	GdkPixbuf *scaled;
 
-	pixbuf = eel_gdk_pixbuf_load (uri);
+	stream = (GInputStream *) g_file_read (emblem, NULL, NULL);
+	if (!stream) {
+		return NULL;
+	}
 
+	pixbuf = eel_gdk_pixbuf_load_from_stream (stream);
 	g_return_val_if_fail (pixbuf != NULL, NULL);
 
 	scaled = eel_gdk_pixbuf_scale_down_to_fit (pixbuf,
 						   NAUTILUS_ICON_SIZE_STANDARD,
 						   NAUTILUS_ICON_SIZE_STANDARD);
-	g_object_unref (G_OBJECT (pixbuf));
+
+	g_object_unref (pixbuf);
+	g_object_unref (stream);
 
 	return scaled;
 }
