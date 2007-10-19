@@ -190,6 +190,9 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 	file->details->can_read = TRUE;
 	file->details->can_write = TRUE;
 
+	file->details->can_mount = FALSE;
+	file->details->can_unmount = FALSE;
+	file->details->can_eject = FALSE;
 	volume = nautilus_desktop_link_get_volume (link);
 	if (volume) {
 		file->details->can_unmount = g_volume_can_unmount (volume);

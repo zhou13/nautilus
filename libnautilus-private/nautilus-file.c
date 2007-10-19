@@ -108,14 +108,6 @@ typedef enum {
 	SHOW_BACKUP = 1 << 1
 } FilterOptions;
 
-typedef struct {
-	NautilusFile *file;
-	GCancellable *cancellable;
-	NautilusFileOperationCallback callback;
-	gpointer callback_data;
-	gboolean is_rename;
-} Operation;
-
 typedef void (* ModifyListFunction) (GList **list, NautilusFile *file);
 
 enum {
@@ -847,7 +839,19 @@ nautilus_file_mount (NautilusFile                   *file,
 		     NautilusFileMountCallback       callback,
 		     gpointer                        callback_data)
 {
-	/* TODO-gio: Implement */
+	GError *error;
+	
+	if (NAUTILUS_FILE_GET_CLASS (file)->mount == NULL) {
+		if (callback) {
+			error = NULL;
+			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+				     _("This file cannot be mounted"));
+			callback (file, error, NULL, callback_data);
+			g_error_free (error);
+		}
+	} else {
+		NAUTILUS_FILE_GET_CLASS (file)->mount (file, parent, callback, callback_data);
+	}
 }
 
 void
@@ -856,7 +860,19 @@ nautilus_file_unmount (NautilusFile                   *file,
 		       NautilusFileOperationCallback   callback,
 		       gpointer                        callback_data)
 {
-	/* TODO-gio: Implement */
+	GError *error;
+	
+	if (NAUTILUS_FILE_GET_CLASS (file)->unmount == NULL) {
+		if (callback) {
+			error = NULL;
+			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+				     _("This file cannot be unmounted"));
+			callback (file, error, callback_data);
+			g_error_free (error);
+		}
+	} else {
+		NAUTILUS_FILE_GET_CLASS (file)->unmount (file, parent, callback, callback_data);
+	}
 }
 
 void
@@ -865,7 +881,19 @@ nautilus_file_eject (NautilusFile                   *file,
 		     NautilusFileOperationCallback   callback,
 		     gpointer                        callback_data)
 {
-	/* TODO-gio: Implement */
+	GError *error;
+	
+	if (NAUTILUS_FILE_GET_CLASS (file)->eject == NULL) {
+		if (callback) {
+			error = NULL;
+			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+				     _("This file cannot be eject"));
+			callback (file, error, callback_data);
+			g_error_free (error);
+		}
+	} else {
+		NAUTILUS_FILE_GET_CLASS (file)->eject (file, parent, callback, callback_data);
+	}
 }
 
 /**
@@ -1053,14 +1081,14 @@ nautilus_file_get_uri_scheme (NautilusFile *file)
 }
 
 
-static Operation *
-operation_new (NautilusFile *file,
-	       NautilusFileOperationCallback callback,
-	       gpointer callback_data)
+NautilusFileOperation *
+nautilus_file_operation_new (NautilusFile *file,
+			     NautilusFileOperationCallback callback,
+			     gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 
-	op = g_new0 (Operation, 1);
+	op = g_new0 (NautilusFileOperation, 1);
 	op->file = nautilus_file_ref (file);
 	op->callback = callback;
 	op->callback_data = callback_data;
@@ -1073,37 +1101,45 @@ operation_new (NautilusFile *file,
 }
 
 static void
-operation_remove (Operation *op)
+nautilus_file_operation_remove (NautilusFileOperation *op)
 {
 	op->file->details->operations_in_progress = g_list_remove
 		(op->file->details->operations_in_progress, op);
 
 }
 
-static void
-operation_free (Operation *op)
+void
+nautilus_file_operation_free (NautilusFileOperation *op)
 {
-	operation_remove (op);
+	nautilus_file_operation_remove (op);
 	nautilus_file_unref (op->file);
 	g_object_unref (op->cancellable);
+	if (op->free_data) {
+		op->free_data (op->data);
+	}
+	if (op->parent) {
+		g_object_unref (op->parent);
+	}
 	g_free (op);
 }
 
-static void
-operation_complete (Operation *op, GError *error)
+void
+nautilus_file_operation_complete (NautilusFileOperation *op, GError *error)
 {
 	/* Claim that something changed even if the operation failed.
 	 * This makes it easier for some clients who see the "reverting"
 	 * as "changing back".
 	 */
-	operation_remove (op);
+	nautilus_file_operation_remove (op);
 	nautilus_file_changed (op->file);
-	(* op->callback) (op->file, error, op->callback_data);
-	operation_free (op);
+	if (op->callback) {
+		(* op->callback) (op->file, error, op->callback_data);
+	}
+	nautilus_file_operation_free (op);
 }
 
-static void
-operation_cancel (Operation *op)
+void
+nautilus_file_operation_cancel (NautilusFileOperation *op)
 {
 	/* Cancel the operation if it's still in progress. */
 	g_cancellable_cancel (op->cancellable);
@@ -1114,7 +1150,7 @@ rename_get_info_callback (GObject *source_object,
 			  GAsyncResult *res,
 			  gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 	NautilusDirectory *directory;
 	NautilusFile *existing_file;
 	char *old_name;
@@ -1175,7 +1211,7 @@ rename_get_info_callback (GObject *source_object,
 		
 		g_object_unref (new_info);
 	}
-	operation_complete (op, error);
+	nautilus_file_operation_complete (op, error);
 	if (error) {
 		g_error_free (error);
 	}
@@ -1186,7 +1222,7 @@ rename_callback (GObject *source_object,
 		 GAsyncResult *res,
 		 gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 	GFile *new_file;
 	GError *error;
 
@@ -1196,9 +1232,6 @@ rename_callback (GObject *source_object,
 	new_file = g_file_set_display_name_finish (G_FILE (source_object),
 						   res, &error);
 
-	if (new_file == NULL)
-		g_print ("rename Error: %s\n", error->message);
-	
 	if (new_file != NULL) {
 		g_file_query_info_async (new_file,
 					 NAUTILUS_FILE_DEFAULT_ATTRIBUTES,
@@ -1207,7 +1240,7 @@ rename_callback (GObject *source_object,
 					 op->cancellable,
 					 rename_get_info_callback, op);
 	} else {
-		operation_complete (op, error);
+		nautilus_file_operation_complete (op, error);
 		g_error_free (error);
 	}
 }
@@ -1226,7 +1259,7 @@ nautilus_file_rename (NautilusFile *file,
 		      NautilusFileOperationCallback callback,
 		      gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 	char *uri;
 	char *old_name;
 	gboolean success;
@@ -1347,7 +1380,7 @@ nautilus_file_rename (NautilusFile *file,
 	}
 
 	/* Set up a renaming operation. */
-	op = operation_new (file, callback, callback_data);
+	op = nautilus_file_operation_new (file, callback, callback_data);
 	op->is_rename = TRUE;
 
 	/* Do the renaming. */
@@ -1366,7 +1399,7 @@ gboolean
 nautilus_file_rename_in_progress (NautilusFile *file)
 {
 	GList *node;
-	Operation *op;
+	NautilusFileOperation *op;
 
 	for (node = file->details->operations_in_progress; node != NULL; node = node->next) {
 		op = node->data;
@@ -1383,7 +1416,7 @@ nautilus_file_cancel (NautilusFile *file,
 		      gpointer callback_data)
 {
 	GList *node, *next;
-	Operation *op;
+	NautilusFileOperation *op;
 
 	for (node = file->details->operations_in_progress; node != NULL; node = next) {
 		next = node->next;
@@ -1391,7 +1424,7 @@ nautilus_file_cancel (NautilusFile *file,
 
 		g_assert (op->file == file);
 		if (op->callback == callback && op->callback_data == callback_data) {
-			operation_cancel (op);
+			nautilus_file_operation_cancel (op);
 		}
 	}
 }
@@ -3847,7 +3880,7 @@ set_attributes_get_info_callback (GObject *source_object,
 				  GAsyncResult *res,
 				  gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 	GFileInfo *new_info;
 	GError *error;
 	
@@ -3859,7 +3892,7 @@ set_attributes_get_info_callback (GObject *source_object,
 		nautilus_file_update_info (op->file, new_info);
 		g_object_unref (new_info);
 	}
-	operation_complete (op, error);
+	nautilus_file_operation_complete (op, error);
 	if (error) {
 		g_error_free (error);
 	}
@@ -3871,7 +3904,7 @@ set_attributes_callback (GObject *source_object,
 			 GAsyncResult *result,
 			 gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 	GError *error;
 	gboolean res;
 
@@ -3891,7 +3924,7 @@ set_attributes_callback (GObject *source_object,
 					 op->cancellable,
 					 set_attributes_get_info_callback, op);
 	} else {
-		operation_complete (op, error);
+		nautilus_file_operation_complete (op, error);
 		g_error_free (error);
 	}
 }
@@ -3902,10 +3935,10 @@ nautilus_file_set_attributes (NautilusFile *file,
 			      NautilusFileOperationCallback callback,
 			      gpointer callback_data)
 {
-	Operation *op;
+	NautilusFileOperation *op;
 	GFile *location;
 	
-	op = operation_new (file, callback, callback_data);
+	op = nautilus_file_operation_new (file, callback, callback_data);
 
 	location = nautilus_file_get_location (file);
 	g_file_set_attributes_async (location,

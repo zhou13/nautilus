@@ -200,6 +200,19 @@ struct NautilusFileDetails
 	eel_boolean_bit can_eject                     : 1;
 };
 
+typedef struct {
+	NautilusFile *file;
+	GCancellable *cancellable;
+	NautilusFileOperationCallback callback;
+	GtkWidget *parent;
+	gpointer callback_data;
+	gboolean is_rename;
+	
+	gpointer data;
+	GDestroyNotify free_data;
+} NautilusFileOperation;
+
+
 NautilusFile *nautilus_file_new_from_info                  (NautilusDirectory      *directory,
 							    GFileInfo              *info);
 void          nautilus_file_emit_changed                   (NautilusFile           *file);
@@ -254,5 +267,13 @@ void                   nautilus_file_info_providers_done                (Nautilu
 /* Thumbnailing: */
 void          nautilus_file_set_is_thumbnailing            (NautilusFile           *file,
 							    gboolean                is_thumbnailing);
+
+NautilusFileOperation *nautilus_file_operation_new      (NautilusFile                  *file,
+							 NautilusFileOperationCallback  callback,
+							 gpointer                       callback_data);
+void                   nautilus_file_operation_free     (NautilusFileOperation         *op);
+void                   nautilus_file_operation_complete (NautilusFileOperation         *op,
+							 GError                        *error);
+void                   nautilus_file_operation_cancel   (NautilusFileOperation         *op);
 
 #endif

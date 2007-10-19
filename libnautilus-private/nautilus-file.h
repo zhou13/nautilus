@@ -477,6 +477,19 @@ typedef struct {
 							  NautilusDateType        type,
 							  time_t                 *date);
 	char *                (* get_where_string)       (NautilusFile           *file);
+
+	void                  (* mount)                  (NautilusFile                   *file,
+							  GtkWidget                      *parent,
+							  NautilusFileMountCallback       callback,
+							  gpointer                        callback_data);
+	void                 (* unmount)                 (NautilusFile                   *file,
+							  GtkWidget                      *parent,
+							  NautilusFileOperationCallback   callback,
+							  gpointer                        callback_data);
+	void                 (* eject)                   (NautilusFile                   *file,
+							  GtkWidget                      *parent,
+							  NautilusFileOperationCallback   callback,
+							  gpointer                        callback_data);
 } NautilusFileClass;
 
 #endif /* NAUTILUS_FILE_H */

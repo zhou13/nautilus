@@ -1,3 +1,17 @@
+2007-10-19  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+	Set can_mount/unmount to FALSE unless set
+	
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-file.h:
+	Make the Operation object semi-public
+	Move mount ops to virtual functions
+	
+        * libnautilus-private/nautilus-vfs-file.c:
+	Initial work to implement mount op
+
 2007-10-18  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-utilities.[ch]:

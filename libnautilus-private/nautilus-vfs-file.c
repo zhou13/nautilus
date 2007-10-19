@@ -29,6 +29,7 @@
 #include "nautilus-directory-private.h"
 #include "nautilus-file-private.h"
 #include <eel/eel-gtk-macros.h>
+#include <glib/gi18n.h>
 
 static void nautilus_vfs_file_init       (gpointer   object,
 						gpointer   klass);
@@ -220,6 +221,101 @@ vfs_file_get_where_string (NautilusFile *file)
 	return nautilus_file_get_parent_uri_for_display (file);
 }
 
+typedef struct {
+	GMountOperation *mount_operation;
+	NautilusFileMountCallback mount_callback;
+} MountData;
+
+static void
+mount_data_free (MountData *data) {
+	if (data->mount_operation) {
+		g_object_unref (data->mount_operation);
+	}
+	g_free (data);
+}
+
+static void
+vfs_file_mount_callback (GObject *source_object,
+			 GAsyncResult *res,
+			 gpointer callback_data)
+{
+	NautilusFileOperation *op;
+	GFile *mounted_on;
+	GError *error;
+	MountData *data;
+
+	op = callback_data;
+	data = op->data;
+
+	error = NULL;
+	mounted_on = g_file_mount_mountable_finish (G_FILE (source_object),
+						  res, &error);
+	
+	if (mounted_on != NULL) {
+		if (data->mount_callback) {
+			(* data->mount_callback) (op->file, NULL, mounted_on, op->callback_data);
+		}
+		nautilus_file_operation_complete (op, NULL);
+	} else {
+		if (data->mount_callback) {
+			(* data->mount_callback) (op->file, error, NULL, op->callback_data);
+		}
+		nautilus_file_operation_complete (op, error);
+		g_error_free (error);
+	}
+}
+
+
+static void
+vfs_file_mount (NautilusFile                   *file,
+		GtkWidget                      *parent,
+		NautilusFileMountCallback       callback,
+		gpointer                        callback_data)
+{
+	NautilusFileOperation *op;
+	MountData *data;
+	GError *error;
+	GFile *location;
+	
+	if (file->details->type != G_FILE_TYPE_MOUNTABLE) {
+		if (callback) {
+			error = NULL;
+			g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+				     _("This file cannot be mounted"));
+			callback (file, error, NULL, callback_data);
+			g_error_free (error);
+		}
+		return;
+	}
+
+	op = nautilus_file_operation_new (file, NULL, callback_data);
+	if (parent) {
+		op->parent = g_object_ref (parent);
+	}
+
+	data = g_new0 (MountData, 1);
+	op->data = data;
+	op->free_data = (GDestroyNotify) mount_data_free;
+	data->mount_operation = g_mount_operation_new();
+
+	location = nautilus_file_get_location (file);
+	g_file_mount_mountable (location,
+				data->mount_operation,
+				op->cancellable,
+				vfs_file_mount_callback,
+				op);
+	g_object_unref (location);
+}
+
+static void
+vfs_file_unmount (NautilusFile                   *file,
+		  GtkWidget                      *parent,
+		  NautilusFileOperationCallback   callback,
+		  gpointer                        callback_data)
+{
+}
+
+
 static void
 nautilus_vfs_file_init (gpointer object, gpointer klass)
 {
@@ -245,4 +341,6 @@ nautilus_vfs_file_class_init (gpointer klass)
 	file_class->get_deep_counts = vfs_file_get_deep_counts;
 	file_class->get_date = vfs_file_get_date;
 	file_class->get_where_string = vfs_file_get_where_string;
+	file_class->mount = vfs_file_mount;
+	file_class->unmount = vfs_file_unmount;
 }
