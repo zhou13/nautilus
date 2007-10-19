@@ -208,6 +208,10 @@ nautilus_file_set_display_name (NautilusFile *file,
 				gboolean custom)
 {
 	gboolean changed;
+
+	if (display_name == NULL) {
+		return FALSE;
+	}
 	
 	if (!custom && file->details->got_custom_display_name) {
 		return FALSE;

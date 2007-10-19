@@ -1,5 +1,11 @@
 2007-10-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+        (nautilus_file_set_display_name):
+	Don't crash on NULL display name
+
+2007-10-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.[ch]:
         * libnautilus-private/nautilus-vfs-file.c:
