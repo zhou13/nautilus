@@ -39,24 +39,13 @@
 #include "nautilus-window-private.h"
 #include "nautilus-desktop-window.h"
 #include "nautilus-search-bar.h"
-#include <eel/eel-debug.h>
-#include <eel/eel-glib-extensions.h>
-#include <eel/eel-gnome-extensions.h>
-#include <eel/eel-gtk-extensions.h>
-#include <eel/eel-stock-dialogs.h>
-#include <eel/eel-string.h>
-#include <eel/eel-xml-extensions.h>
-#include <libxml/parser.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtkaboutdialog.h>
 #include <gtk/gtkenums.h>
 #include <gtk/gtkversion.h>
 #include <gio/gvfs.h>
-#include <libgnome/gnome-help.h>
 #include <glib/gi18n.h>
-#include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-help.h>
-#include <libgnomeui/gnome-uidefs.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-ui-utilities.h>
@@ -65,6 +54,7 @@
 #include <libnautilus-private/nautilus-search-directory.h>
 #include <libnautilus-private/nautilus-search-engine.h>
 #include <libnautilus-private/nautilus-signaller.h>
+#include <string.h>
 
 #define MENU_PATH_EXTENSION_ACTIONS                     "/MenuBar/File/Extension Actions"
 #define POPUP_PATH_EXTENSION_ACTIONS                     "/background/Before Zoom Items/Extension Actions"

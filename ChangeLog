@@ -1,5 +1,14 @@
 2007-10-19  Paolo Borelli  <pborelli@katamail.com>
 
+	* src/file-manager/fm-icon-view.c:
+	* src/file-manager/fm-directory-view.c:
+	use g_content_type_equals instead of strcasecmp on the mime type.
+
+	* src/nautilus-window-menus.c:
+	Remove unneeded includes
+
+2007-10-19  Paolo Borelli  <pborelli@katamail.com>
+
 	* libnautilus-private/nautilus-emblem-utils.h:
 	* libnautilus-private/nautilus-emblem-utils.c:
 	* src/nautilus-emblem-sidebar.c:

@@ -48,12 +48,9 @@
 #include <gtk/gtkwindow.h>
 #include <gtk/gtkstock.h>
 #include <glib/gi18n.h>
-#include <libgnome/gnome-config.h>
-#include <libgnome/gnome-desktop-item.h>
-#include <libgnome/gnome-macros.h>
+#include <gio/gcontenttype.h>
 #include <libgnomevfs/gnome-vfs-ops.h>
 #include <libgnomevfs/gnome-vfs-async-ops.h>
-#include <libgnomevfs/gnome-vfs-mime-utils.h>
 #include <libgnomevfs/gnome-vfs-uri.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libgnomevfs/gnome-vfs-xfer.h>
@@ -1768,14 +1765,14 @@ play_file (gpointer callback_data)
 
 	audio_device = g_getenv ("AUDIODEV");
 	icon_view = FM_ICON_VIEW (callback_data);
-	
+
 	file = icon_view->details->audio_preview_file;
 	file_uri = nautilus_file_get_uri (file);
 	mime_type = nautilus_file_get_mime_type (file);
-	is_mp3 = eel_strcasecmp (mime_type, "audio/mpeg") == 0;
-	is_ogg = eel_strcasecmp (mime_type, "application/ogg") == 0 ||
-                eel_strcasecmp (mime_type, "application/x-ogg") == 0;
-	
+	is_mp3 = g_content_type_equals (mime_type, "audio/mpeg");
+	is_ogg = g_content_type_equals (mime_type, "application/ogg") ||
+		 g_content_type_equals (mime_type, "application/x-ogg");
+
 	mp3_pid = fork ();
 	if (mp3_pid == (pid_t) 0) {
 		/* Set the group (session) id to this process for future killing. */
@@ -1949,18 +1946,18 @@ icon_container_preview_callback (NautilusIconContainer *container,
 	if (should_preview_sound (file)) {
 		mime_type = nautilus_file_get_mime_type (file);
 
-		if ((eel_istr_has_prefix (mime_type, "audio/")
-		     || eel_istr_has_prefix (mime_type, "application/ogg")
-		     || eel_istr_has_prefix (mime_type, "application/x-ogg"))
-		    && eel_strcasecmp (mime_type, "audio/x-pn-realaudio") != 0
-		    && eel_strcasecmp (mime_type, "audio/x-mpegurl") != 0
-		    && can_play_sound ()) {
+		if ((g_content_type_is_a (mime_type, "audio/*") ||
+		     g_content_type_equals (mime_type, "application/ogg") ||
+		     g_content_type_equals (mime_type, "application/x-ogg")) &&
+		    !g_content_type_equals (mime_type, "audio/x-mpegurl") &&
+		    !g_content_type_equals (mime_type, "audio/x-pn-realaudio") &&
+		    can_play_sound ()) {
 			result = 1;
 			preview_audio (icon_view, file, start_flag);
-		}	
+		}
 		g_free (mime_type);
 	}
-	
+
 	/* Display file name in status area at low zoom levels, since
 	 * the name is not displayed or hard to read in the icon view.
 	 */

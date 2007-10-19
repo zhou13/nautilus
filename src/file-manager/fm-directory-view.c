@@ -8307,10 +8307,8 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	GList *not_yet_mounted;
 	GList *l, *next;
 	NautilusFile *file;
-	NautilusFile *actual_file;
 	NautilusFileAttributes attributes;
-	char *uri;
-	
+
 	parameters = callback_data;
 	not_yet_mounted = NULL;
 
@@ -8360,25 +8358,27 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	}
 
 	for (l = parameters->files; l != NULL; l = l->next) {
+		char *uri;
 		file = NAUTILUS_FILE (l->data);
 
 		/* We want the file for the activation URI since we care
 		 * about the attributes for that, not for the original file.
 		 */
-		actual_file = NULL;
 		uri = nautilus_file_get_activation_uri (file);
-		if (!(eel_str_has_prefix (uri, NAUTILUS_DESKTOP_COMMAND_SPECIFIER) ||
-		      eel_str_has_prefix (uri, NAUTILUS_COMMAND_SPECIFIER))) {
+		if (uri != NULL &&
+		    !(g_str_has_prefix (uri, NAUTILUS_DESKTOP_COMMAND_SPECIFIER) ||
+		      g_str_has_prefix (uri, NAUTILUS_COMMAND_SPECIFIER))) {
+			NautilusFile *actual_file;
+
 			actual_file = nautilus_file_get_by_uri (uri);
+			if (actual_file != NULL) {
+				nautilus_file_unref (file);
+				l->data = actual_file;
+			}
 		}
 		g_free (uri);
-		
-		if (actual_file != NULL) {
-			nautilus_file_unref (file);
-			l->data = actual_file;
-		}
 	}
-	
+
 	/* get the parameters for the actual file */	
 	attributes = nautilus_mime_actions_get_minimum_file_attributes () | 
 		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
@@ -9476,22 +9476,22 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 		f = g_file_new_for_uri (url);
 		info = g_file_query_info (f, G_FILE_ATTRIBUTE_STD_CONTENT_TYPE, 0, NULL, NULL);
 		mime_type = NULL;
-		
+
 		if (info) {
 			mime_type = g_file_info_get_content_type (info);
 		}
-		
-		if (eel_strcasecmp (mime_type, "text/html") == 0 ||
-		    eel_strcasecmp (mime_type, "text/xml") == 0 ||
-		    eel_strcasecmp (mime_type, "application/xhtml+xml") == 0) {
+
+		if (g_content_type_equals (mime_type, "text/html") ||
+		    g_content_type_equals (mime_type, "text/xml")  ||
+		    g_content_type_equals (mime_type, "application/xhtml+xml")) {
 			action = GDK_ACTION_LINK;
-		} else if (eel_strcasecmp (mime_type, "text/plain") == 0) {
+		} else if (g_content_type_equals (mime_type, "text/plain")) {
 			action = ask_link_action (view);
 		} else {
 			action = GDK_ACTION_COPY;
 		}
 		g_object_unref (info);
-		
+
 		if (action == 0) {
 			g_free (container_uri);
 			return;
