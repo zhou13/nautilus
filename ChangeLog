@@ -1,5 +1,16 @@
 2007-10-22  Alexander Larsson  <alexl@redhat.com>
 
+        * src/nautilus-application.c:
+        * src/nautilus-information-panel.c:
+        * src/nautilus-spatial-window.c:
+        * src/nautilus-spatial-window.h:
+        * src/nautilus-window-manage-views.c:
+	Use GFile * instead of uris in some more places
+	
+	Patch from Paolo Borelli
+
+2007-10-22  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-desktop-icon-file.c:
         * libnautilus-private/nautilus-file.c:
         * libnautilus-private/nautilus-saved-search-file.c:

@@ -46,6 +46,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
 #include "nautilus-desktop-window.h"
 #include "nautilus-first-time-druid.h"
 #include "nautilus-main.h"
@@ -66,22 +67,12 @@
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string-list.h>
-#include <eel/eel-string.h>
 #include <gdk/gdkx.h>
-#include <gtk/gtkinvisible.h>
-#include <gtk/gtksignal.h>
 #include <gtk/gtkwindow.h>
 #include <gio/gfile.h>
 #include <libgnome/gnome-config.h>
-#include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-authentication-manager.h>
 #include <libgnomeui/gnome-client.h>
-#include <libgnomeui/gnome-messagebox.h>
-#include <libgnomeui/gnome-stock-icons.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libnautilus-private/nautilus-debug-log.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
@@ -865,21 +856,22 @@ nautilus_application_close_all_navigation_windows (void)
 }
 
 static NautilusSpatialWindow *
-nautilus_application_get_existing_spatial_window (const char *location)
+nautilus_application_get_existing_spatial_window (GFile *location)
 {
 	GList *l;
-	
+
 	for (l = nautilus_application_get_spatial_window_list ();
 	     l != NULL; l = l->next) {
-		char *window_location;
-		
-		window_location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (l->data));
-		if (window_location != NULL &&
-		    strcmp (location, window_location) == 0) {
-			g_free (window_location);
-			return NAUTILUS_SPATIAL_WINDOW (l->data);
+		GFile *window_location;
+
+		window_location = nautilus_window_get_location (NAUTILUS_WINDOW (l->data));
+		if (window_location != NULL) {
+			if (g_file_equal (location, window_location)) {
+				g_object_unref (window_location);
+				return NAUTILUS_SPATIAL_WINDOW (l->data);
+			}
+			g_object_unref (window_location);
 		}
-		g_free (window_location);
 	}
 	return NULL;
 }
@@ -889,41 +881,35 @@ find_parent_spatial_window (NautilusSpatialWindow *window)
 {
 	NautilusFile *file;
 	NautilusFile *parent_file;
-	char *location;
-	char *desktop_directory;
+	GFile *location;
 
-	location = nautilus_window_get_location_uri (NAUTILUS_WINDOW (window));
+	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
 	if (location == NULL) {
 		return NULL;
 	}
-	file = nautilus_file_get_by_uri (location);
+	file = nautilus_file_get (location);
 	g_free (location);
 
 	if (!file) {
 		return NULL;
 	}
-	
-	desktop_directory = nautilus_get_desktop_directory_uri ();	
-	
+
 	parent_file = nautilus_file_get_parent (file);
 	nautilus_file_unref (file);
 	while (parent_file) {
 		NautilusSpatialWindow *parent_window;
-		
-		location = nautilus_file_get_uri (parent_file);
 
 		/* Stop at the desktop directory, as this is the
 		 * conceptual root of the spatial windows */
-		if (!strcmp (location, desktop_directory)) {
-			g_free (location);
-			g_free (desktop_directory);
+		if (nautilus_file_is_desktop_directory (parent_file)) {
 			nautilus_file_unref (parent_file);
 			return NULL;
 		}
 
+		location = nautilus_file_get_location (parent_file);
 		parent_window = nautilus_application_get_existing_spatial_window (location);
-		g_free (location);
-		
+		g_object_unref (location);
+
 		if (parent_window) {
 			nautilus_file_unref (parent_file);
 			return parent_window;
@@ -932,7 +918,6 @@ find_parent_spatial_window (NautilusSpatialWindow *window)
 		parent_file = nautilus_file_get_parent (file);
 		nautilus_file_unref (file);
 	}
-	g_free (desktop_directory);
 
 	return NULL;
 }
@@ -1140,7 +1125,6 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 	char *uri;
 
 	g_return_val_if_fail (NAUTILUS_IS_APPLICATION (application), NULL);
-
 	
 	for (l = nautilus_application_get_spatial_window_list ();
 	     l != NULL; l = l->next) {
@@ -1347,9 +1331,8 @@ volume_unmounted_callback (GVolumeMonitor *monitor,
 {
 	GList *window_list, *node, *close_list;
 	NautilusWindow *window;
-	char *uri;
-	GFile *root, *location;
-	
+	GFile *root;
+
 	close_list = NULL;
 	
 	/* Check and see if any of the open windows are displaying contents from the unmounted volume */
@@ -1360,17 +1343,17 @@ volume_unmounted_callback (GVolumeMonitor *monitor,
 	for (node = window_list; node != NULL; node = node->next) {
 		window = NAUTILUS_WINDOW (node->data);
 		if (window != NULL && window_can_be_closed (window)) {
-			uri = nautilus_window_get_location_uri (window);
-			location = g_file_new_for_uri (uri);
-			
+			GFile *location;
+
+			location = nautilus_window_get_location (window);
+
 			if (g_file_contains_file (root, location)) {
 				close_list = g_list_prepend (close_list, window);
 			} 
-			g_free (uri);
 			g_object_unref (location);
 		}
 	}
-		
+
 	/* Handle the windows in the close list. */
 	for (node = close_list; node != NULL; node = node->next) {
 		window = NAUTILUS_WINDOW (node->data);
@@ -1380,10 +1363,9 @@ volume_unmounted_callback (GVolumeMonitor *monitor,
 			nautilus_window_go_home (window);
 		}
 	}
-		
+
 	g_list_free (close_list);
 }
-
 
 static void
 removed_from_session (GnomeClient *client, gpointer data)
@@ -1429,7 +1411,6 @@ icon_from_string (const char *string)
 	}
 	return NULL;
 }
-
 
 static char *
 save_session_to_file (void)

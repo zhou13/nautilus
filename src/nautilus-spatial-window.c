@@ -783,14 +783,14 @@ location_button_drag_data_get_callback (GtkWidget             *widget,
 
 void
 nautilus_spatial_window_set_location_button  (NautilusSpatialWindow *window,
-					      const char            *location)
+					      GFile                 *location)
 {
 	if (location != NULL) {
 		NautilusFile *file;
 		char *name;
 		GError *error;
 
-		file = nautilus_file_get_by_uri (location);
+		file = nautilus_file_get (location);
 
 		/* FIXME: monitor for name change... */
 		name = nautilus_file_get_display_name (file);

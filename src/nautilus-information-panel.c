@@ -40,10 +40,6 @@
 #include <gtk/gtkhbox.h>
 #include <glib/gi18n.h>
 #include <libgnomeui/gnome-uidefs.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs-types.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-private/nautilus-dnd.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-file-dnd.h>
@@ -63,7 +59,6 @@ struct NautilusInformationPanelDetails {
 	GtkHBox *button_box_centerer;
 	GtkVBox *button_box;
 	gboolean has_buttons;
-	char *uri;
 	NautilusFile *file;
 	guint file_changed_connection;
 	gboolean background_connected;
@@ -298,7 +293,6 @@ nautilus_information_panel_finalize (GObject *object)
 		nautilus_file_unref (information_panel->details->file);
 	}
 	
-	g_free (information_panel->details->uri);
 	g_free (information_panel->details->default_background_color);
 	g_free (information_panel->details->default_background_image);
 	g_free (information_panel->details->current_background_color);
@@ -1043,24 +1037,20 @@ nautilus_information_panel_set_uri (NautilusInformationPanel *information_panel,
 	g_return_if_fail (initial_title != NULL);
 
 	/* there's nothing to do if the uri is the same as the current one */ 
-	if (eel_strcmp (information_panel->details->uri, new_uri) == 0) {
+	if (information_panel->details->file != NULL &&
+	    nautilus_file_matches_uri (information_panel->details->file, new_uri)) {
 		return;
 	}
-	
-	g_free (information_panel->details->uri);
-	information_panel->details->uri = g_strdup (new_uri);
-		
+
 	if (information_panel->details->file != NULL) {
 		g_signal_handler_disconnect (information_panel->details->file, 
 					     information_panel->details->file_changed_connection);
 		nautilus_file_monitor_remove (information_panel->details->file, information_panel);
 	}
 
-
-	file = nautilus_file_get_by_uri (information_panel->details->uri);
+	file = nautilus_file_get_by_uri (new_uri);
 
 	nautilus_file_unref (information_panel->details->file);
-
 	information_panel->details->file = file;
 	
 	information_panel->details->file_changed_connection =

@@ -49,7 +49,6 @@
 #include <gtk/gtksignal.h>
 #include <gdk/gdkx.h>
 #include <glib/gi18n.h>
-#include <libgnomeui/gnome-dialog-util.h>
 #include <libgnomeui/gnome-icon-theme.h>
 #include <libgnomevfs/gnome-vfs-async-ops.h>
 #include <libgnomevfs/gnome-vfs-uri.h>
@@ -391,12 +390,12 @@ viewed_file_changed_callback (NautilusFile *file,
                                          uri);
 				nautilus_path_bar_set_path (NAUTILUS_PATH_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->path_bar),
 							    window->details->location);
-                        }                  
+                        }
                         if (NAUTILUS_IS_SPATIAL_WINDOW (window)) {
                                 /* Change the location button to match the current location. */
                                 nautilus_spatial_window_set_location_button
                                         (NAUTILUS_SPATIAL_WINDOW (window),
-                                         uri);
+                                         window->details->location);
                         }                  
 			g_free (uri);
 #endif
@@ -1323,13 +1322,11 @@ update_for_new_location (NautilusWindow *window)
 					    window->details->location);
 		nautilus_navigation_window_load_extension_toolbar_items (NAUTILUS_NAVIGATION_WINDOW (window));
         }
-        
+
 	if (NAUTILUS_IS_SPATIAL_WINDOW (window)) {
 		/* Change the location button to match the current location. */
-		uri = g_file_get_uri (window->details->location);
-		nautilus_spatial_window_set_location_button
-			(NAUTILUS_SPATIAL_WINDOW (window), uri);
-		g_free (uri);
+		nautilus_spatial_window_set_location_button (NAUTILUS_SPATIAL_WINDOW (window),
+							     window->details->location);
 	}                  
 #endif
 }
@@ -1426,7 +1423,6 @@ cancel_location_change (NautilusWindow *window)
 				   TRUE,
 				   FALSE);
 		eel_g_object_list_free (selection);
-				   
         }
 
         end_location_change (window);
