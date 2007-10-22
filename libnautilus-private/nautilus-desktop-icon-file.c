@@ -32,9 +32,7 @@
 #include "nautilus-file-private.h"
 #include "nautilus-file-utilities.h"
 #include <eel/eel-glib-extensions.h>
-#include <eel/eel-gtk-macros.h>
 #include "nautilus-desktop-directory.h"
-#include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <string.h>
 
@@ -42,13 +40,8 @@ struct NautilusDesktopIconFileDetails {
 	NautilusDesktopLink *link;
 };
 
-static void nautilus_desktop_icon_file_init       (gpointer   object,
-						   gpointer   klass);
-static void nautilus_desktop_icon_file_class_init (gpointer   klass);
+G_DEFINE_TYPE(NautilusDesktopIconFile, nautilus_desktop_icon_file, NAUTILUS_TYPE_FILE)
 
-EEL_CLASS_BOILERPLATE (NautilusDesktopIconFile,
-		       nautilus_desktop_icon_file,
-		       NAUTILUS_TYPE_FILE)
 
 static void
 desktop_icon_file_monitor_add (NautilusFile *file,
@@ -68,13 +61,11 @@ desktop_icon_file_monitor_remove (NautilusFile *file,
 		(file->details->directory, file, client);
 }
 
-
 static void
 desktop_icon_file_call_when_ready (NautilusFile *file,
 				   NautilusFileAttributes attributes,
 				   NautilusFileCallback callback,
 				   gpointer callback_data)
-
 {
 	nautilus_directory_call_when_ready_internal
 		(file->details->directory, file,
@@ -157,14 +148,12 @@ desktop_icon_file_get_where_string (NautilusFile *file)
 }
 
 static void
-nautilus_desktop_icon_file_init (gpointer object, gpointer klass)
+nautilus_desktop_icon_file_init (NautilusDesktopIconFile *desktop_file)
 {
-	NautilusDesktopIconFile *desktop_file;
-
-	desktop_file = NAUTILUS_DESKTOP_ICON_FILE (object);
-
-	desktop_file->details = g_new0 (NautilusDesktopIconFileDetails, 1);
-}	
+	desktop_file->details =	G_TYPE_INSTANCE_GET_PRIVATE (desktop_file,
+							     NAUTILUS_TYPE_DESKTOP_ICON_FILE,
+							     NautilusDesktopIconFileDetails);
+}
 
 static void
 update_info_from_link (NautilusDesktopIconFile *icon_file)
@@ -182,8 +171,8 @@ update_info_from_link (NautilusDesktopIconFile *icon_file)
 		return;
 	}
 
-	g_free (file->details->mime_type);
-	file->details->mime_type = g_strdup ("application/x-nautilus-link");
+	eel_ref_str_unref (file->details->mime_type);
+	file->details->mime_type = eel_ref_str_get_unique ("application/x-nautilus-link");
 	file->details->type = G_FILE_TYPE_REGULAR;
 	file->details->size = 0;
 	file->details->has_permissions = FALSE;
@@ -261,7 +250,6 @@ nautilus_desktop_icon_file_remove (NautilusDesktopIconFile *icon_file)
 	nautilus_file_unref (file);
 }
 
-
 NautilusDesktopIconFile *
 nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 {
@@ -298,7 +286,6 @@ nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 	return icon_file;
 }
 
-
 /* Note: This can return NULL if the link was recently removed (i.e. unmounted) */
 NautilusDesktopLink *
 nautilus_desktop_icon_file_get_link (NautilusDesktopIconFile *icon_file)
@@ -310,27 +297,13 @@ nautilus_desktop_icon_file_get_link (NautilusDesktopIconFile *icon_file)
 }
 
 static void
-desktop_icon_file_finalize (GObject *object)
-{
-	NautilusDesktopIconFile *desktop_file;
-
-	desktop_file = NAUTILUS_DESKTOP_ICON_FILE (object);
-
-	g_free (desktop_file->details);
-
-	EEL_CALL_PARENT (G_OBJECT_CLASS, finalize, (object));
-}
-
-static void
-nautilus_desktop_icon_file_class_init (gpointer klass)
+nautilus_desktop_icon_file_class_init (NautilusDesktopIconFileClass *klass)
 {
 	GObjectClass *object_class;
 	NautilusFileClass *file_class;
 
 	object_class = G_OBJECT_CLASS (klass);
 	file_class = NAUTILUS_FILE_CLASS (klass);
-	
-	object_class->finalize = desktop_icon_file_finalize;
 
 	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
 	
@@ -343,4 +316,6 @@ nautilus_desktop_icon_file_class_init (gpointer klass)
 	file_class->get_deep_counts = desktop_icon_file_get_deep_counts;
 	file_class->get_date = desktop_icon_file_get_date;
 	file_class->get_where_string = desktop_icon_file_get_where_string;
+
+	g_type_class_add_private (object_class, sizeof(NautilusDesktopIconFileDetails));
 }

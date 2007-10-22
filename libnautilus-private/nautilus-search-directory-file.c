@@ -32,23 +32,17 @@
 #include "nautilus-file-private.h"
 #include "nautilus-file-utilities.h"
 #include <eel/eel-glib-extensions.h>
-#include <eel/eel-gtk-macros.h>
 #include "nautilus-search-directory.h"
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <string.h>
 
-static void nautilus_search_directory_file_init       (gpointer   object,
-						       gpointer   klass);
-static void nautilus_search_directory_file_class_init (gpointer   klass);
-
-EEL_CLASS_BOILERPLATE (NautilusSearchDirectoryFile,
-		       nautilus_search_directory_file,
-		       NAUTILUS_TYPE_FILE);
-
 struct NautilusSearchDirectoryFileDetails {
 	NautilusSearchDirectory *search_directory;
 };
+
+G_DEFINE_TYPE(NautilusSearchDirectoryFile, nautilus_search_directory_file, NAUTILUS_TYPE_FILE);
+
 
 static void
 search_directory_file_monitor_add (NautilusFile *file,
@@ -84,7 +78,6 @@ search_directory_file_cancel_call_when_ready (NautilusFile *file,
 {
 	/* Do nothing here, we don't have any pending calls */
 }
-
 
 static gboolean
 search_directory_file_check_if_ready (NautilusFile *file,
@@ -168,16 +161,14 @@ search_directory_file_get_where_string (NautilusFile *file)
 }
     
 static void
-nautilus_search_directory_file_init (gpointer object, gpointer klass)
+nautilus_search_directory_file_init (NautilusSearchDirectoryFile *search_file)
 {
-	NautilusSearchDirectoryFile *search_file;
 	NautilusFile *file;
 
-	search_file = NAUTILUS_SEARCH_DIRECTORY_FILE (object);
-	file = NAUTILUS_FILE(object);
+	file = NAUTILUS_FILE (search_file);
 
 	file->details->got_file_info = TRUE;
-	file->details->mime_type = g_strdup ("x-directory/normal");
+	file->details->mime_type = eel_ref_str_get_unique ("x-directory/normal");
 	file->details->type = G_FILE_TYPE_DIRECTORY;
 	file->details->size = 0;
 	file->details->permissions =
@@ -186,10 +177,10 @@ nautilus_search_directory_file_init (gpointer object, gpointer klass)
 		GNOME_VFS_PERM_USER_READ |
 		GNOME_VFS_PERM_OTHER_READ |
 		GNOME_VFS_PERM_GROUP_READ;
-	
+
 	file->details->file_info_is_up_to_date = TRUE;
 
-	file->details->display_name = g_strdup (_("Search"));
+	file->details->display_name = eel_ref_str_get_unique (_("Search"));
 	file->details->custom_icon = NULL;
 	file->details->activation_location = NULL;
 	file->details->got_link_info = TRUE;
@@ -201,7 +192,7 @@ nautilus_search_directory_file_init (gpointer object, gpointer klass)
 }
 
 static void
-nautilus_search_directory_file_class_init (gpointer klass)
+nautilus_search_directory_file_class_init (NautilusSearchDirectoryFileClass *klass)
 {
 	GObjectClass *object_class;
 	NautilusFileClass *file_class;
@@ -210,7 +201,7 @@ nautilus_search_directory_file_class_init (gpointer klass)
 	file_class = NAUTILUS_FILE_CLASS (klass);
 
 	file_class->default_file_type = G_FILE_TYPE_DIRECTORY;
-	
+
 	file_class->monitor_add = search_directory_file_monitor_add;
 	file_class->monitor_remove = search_directory_file_monitor_remove;
 	file_class->call_when_ready = search_directory_file_call_when_ready;

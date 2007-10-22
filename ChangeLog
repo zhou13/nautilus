@@ -1,3 +1,15 @@
+2007-10-22  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-desktop-icon-file.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-saved-search-file.c:
+        * libnautilus-private/nautilus-search-directory-file.c:
+	Fix handling of mimetype as refstring
+	Fix leak of GFile
+	Code cleanups
+
+	Patch from Paolo Borelli
+
 2007-10-19  Paolo Borelli  <pborelli@katamail.com>
 
 	* src/file-manager/fm-icon-view.c:

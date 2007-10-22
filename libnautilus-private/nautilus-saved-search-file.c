@@ -25,27 +25,20 @@
 #include <config.h>
 #include "nautilus-saved-search-file.h"
 #include "nautilus-file-private.h"
-#include <eel/eel-gtk-macros.h>
 
-static void nautilus_saved_search_file_init (gpointer object, gpointer klass);
-static void nautilus_saved_search_file_class_init (gpointer klass);
-
-EEL_CLASS_BOILERPLATE (NautilusSavedSearchFile,
-		       nautilus_saved_search_file,
-		       NAUTILUS_TYPE_VFS_FILE)
-
+G_DEFINE_TYPE(NautilusSavedSearchFile, nautilus_saved_search_file, NAUTILUS_TYPE_VFS_FILE)
 
 
 static void
-nautilus_saved_search_file_init (gpointer object, gpointer klass)
+nautilus_saved_search_file_init (NautilusSavedSearchFile *search_file)
 {
 	NautilusFile *file;
 
-	file = NAUTILUS_FILE (object);
+	file = NAUTILUS_FILE (search_file);
 }
 
 static void
-nautilus_saved_search_file_class_init (gpointer klass)
+nautilus_saved_search_file_class_init (NautilusSavedSearchFileClass * klass)
 {
 	NautilusFileClass *file_class;
 

@@ -506,6 +506,8 @@ nautilus_file_get_internal (GFile *location, gboolean create)
 	/* Get object that represents the directory. */
 	directory = nautilus_directory_get_internal (parent, create);
 
+	g_object_unref (parent);
+
 	/* Get the name for the file. */
 	if (self_owned && directory != NULL) {
 		basename = nautilus_directory_get_name_for_self_as_new_file (directory);
@@ -751,7 +753,6 @@ nautilus_file_get_parent (NautilusFile *file)
 
 	return nautilus_directory_get_corresponding_file (file->details->directory);
 }
-
 
 /**
  * nautilus_file_can_read:
@@ -1084,7 +1085,6 @@ nautilus_file_get_uri_scheme (NautilusFile *file)
 	return scheme;
 }
 
-
 NautilusFileOperation *
 nautilus_file_operation_new (NautilusFile *file,
 			     NautilusFileOperationCallback callback,
@@ -1109,7 +1109,6 @@ nautilus_file_operation_remove (NautilusFileOperation *op)
 {
 	op->file->details->operations_in_progress = g_list_remove
 		(op->file->details->operations_in_progress, op);
-
 }
 
 void
@@ -1329,7 +1328,6 @@ nautilus_file_rename (NautilusFile *file,
 		g_error_free (error);
 		return;
 	}
-
 
 	if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
 		NautilusDesktopLink *link;
@@ -1816,7 +1814,6 @@ update_name_internal (NautilusFile *file,
 
 	return TRUE;
 }
-
 
 gboolean
 nautilus_file_update_name (NautilusFile *file, const char *name)
