@@ -1,5 +1,10 @@
 2007-10-22  Alexander Larsson  <alexl@redhat.com>
 
+        * src/nautilus-location-entry.c:
+	Use GFilenameCompleter
+
+2007-10-22  Alexander Larsson  <alexl@redhat.com>
+
         * src/nautilus-application.c:
         * src/nautilus-information-panel.c:
         * src/nautilus-spatial-window.c:
