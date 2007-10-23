@@ -1,5 +1,11 @@
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-program-choosing.c:
+        (nautilus_launch_application_from_command):
+	Use gdk_spawn instead of eel
+
+2007-10-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-dnd.c:
         * libnautilus-private/nautilus-file.c:
         * libnautilus-private/nautilus-program-choosing.c:
