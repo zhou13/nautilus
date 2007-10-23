@@ -161,6 +161,7 @@ GFile *                 nautilus_file_get_location                      (Nautilu
 char *                  nautilus_file_get_uri                           (NautilusFile                   *file);
 char *                  nautilus_file_get_uri_scheme                    (NautilusFile                   *file);
 NautilusFile *          nautilus_file_get_parent                        (NautilusFile                   *file);
+GFile *                 nautilus_file_get_parent_location               (NautilusFile                   *file);
 char *                  nautilus_file_get_parent_uri                    (NautilusFile                   *file);
 char *                  nautilus_file_get_parent_uri_for_display        (NautilusFile                   *file);
 gboolean                nautilus_file_can_get_size                      (NautilusFile                   *file);

@@ -706,14 +706,18 @@ nautilus_file_unref (NautilusFile *file)
 char *
 nautilus_file_get_parent_uri_for_display (NautilusFile *file) 
 {
-	char *raw_uri;
+	GFile *parent;
 	char *result;
 
 	g_assert (NAUTILUS_IS_FILE (file));
 	
-	raw_uri = nautilus_file_get_parent_uri (file);
-	result = eel_format_uri_for_display (raw_uri);
-	g_free (raw_uri);
+	parent = nautilus_file_get_parent_location (file);
+	if (parent) {
+		result = g_file_get_parse_name (parent);
+		g_object_unref (parent);
+	} else {
+		result = g_strdup ("");
+	}
 
 	return result;
 }
@@ -741,6 +745,19 @@ nautilus_file_get_parent_uri (NautilusFile *file)
 	}
 
 	return nautilus_directory_get_uri (file->details->directory);
+}
+
+GFile *
+nautilus_file_get_parent_location (NautilusFile *file) 
+{
+	g_assert (NAUTILUS_IS_FILE (file));
+	
+	if (nautilus_file_is_self_owned (file)) {
+		/* Callers expect an empty string, not a NULL. */
+		return NULL;
+	}
+
+	return nautilus_directory_get_location (file->details->directory);
 }
 
 NautilusFile *

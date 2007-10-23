@@ -276,14 +276,14 @@ nautilus_navigation_window_remove_go_menu_items (NautilusNavigationWindow *windo
 
 static void
 show_bogus_history_window (NautilusWindow *window,
-			    NautilusBookmark *bookmark)
+			   NautilusBookmark *bookmark)
 {
-	char *uri;
+	GFile *file;
 	char *uri_for_display;
 	char *detail;
 
-	uri = nautilus_bookmark_get_uri (bookmark);
-	uri_for_display = eel_format_uri_for_display (uri);
+	file = nautilus_bookmark_get_location (bookmark);
+	uri_for_display = g_file_get_parse_name (file);
 	
 	detail = g_strdup_printf (_("The location \"%s\" does not exist."), uri_for_display);
 
@@ -291,7 +291,7 @@ show_bogus_history_window (NautilusWindow *window,
 				 detail,
 				 GTK_WINDOW (window));
 
-	g_free (uri);
+	g_object_unref (file);
 	g_free (uri_for_display);
 	g_free (detail);
 }

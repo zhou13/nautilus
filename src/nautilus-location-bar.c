@@ -479,6 +479,7 @@ nautilus_location_bar_set_location (NautilusNavigationBar *navigation_bar,
 {
 	NautilusLocationBar *bar;
 	char *formatted_location;
+	GFile *file;
 
 	g_assert (location != NULL);
 	
@@ -491,7 +492,9 @@ nautilus_location_bar_set_location (NautilusNavigationBar *navigation_bar,
 		nautilus_location_entry_set_special_text (NAUTILUS_LOCATION_ENTRY (bar->details->entry),
 							  "");
 	} else {
-		formatted_location = eel_format_uri_for_display (location);
+		file = g_file_new_for_uri (location);
+		formatted_location = g_file_get_parse_name (file);
+		g_object_unref (file);
 		nautilus_entry_set_text (NAUTILUS_ENTRY (bar->details->entry),
 					 formatted_location);
 		set_position_and_selection_to_end (GTK_EDITABLE (bar->details->entry));

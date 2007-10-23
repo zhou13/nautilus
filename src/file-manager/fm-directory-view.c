@@ -5828,6 +5828,7 @@ convert_file_list_to_string (GList *files,
 	GString *uris;
 	GList *node;
 	char *uri, *tmp;
+	GFile *f;
 
 	if (format_for_text) {
 		uris = g_string_new (NULL);
@@ -5839,7 +5840,9 @@ convert_file_list_to_string (GList *files,
 		uri = node->data;
 		
 		if (format_for_text) {
-			tmp = eel_format_uri_for_display (uri);
+			f = g_file_new_for_uri (uri);
+			tmp = g_file_get_parse_name (f);
+			g_object_unref (f);
 			
 			if (tmp != NULL) {
 				g_string_append (uris, tmp);

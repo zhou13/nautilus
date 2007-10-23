@@ -1,5 +1,23 @@
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-directory.[ch]:
+        Add nautilus_directory_get_location
+
+        * libnautilus-private/nautilus-file.[ch]:
+	Add nautilus_file_get_parent_location.
+	Port from eel_format_uri_for_display to gio parse names
+	
+        * libnautilus-private/nautilus-program-choosing.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-emblem-sidebar.c:
+        * src/nautilus-location-bar.c:
+        * src/nautilus-location-dialog.c:
+        * src/nautilus-navigation-window-menus.c:
+        * src/nautilus-window-bookmarks.c:
+	Port from eel_format_uri_for_display to gio parse names
+
+2007-10-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-utilities.c:
         (nautilus_ensure_unique_file_name):
 	Port from gnome-vfs

@@ -811,7 +811,6 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 
 		f = g_file_new_for_uri (uri);
 		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (f);
-		g_object_unref (f);
 
 		if (pixbuf != NULL) {
 			emblem = g_new (Emblem, 1);
@@ -824,7 +823,7 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 
 			show_add_emblems_dialog (emblem_sidebar, emblems);
 		} else {
-			uri_utf8 = eel_format_uri_for_display (uri);
+			uri_utf8 = g_file_get_parse_name (f);
 
 			if (uri_utf8) {
 				error = g_strdup_printf (_("The file '%s' does not appear to be a valid image."), uri_utf8);
@@ -837,6 +836,7 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 			g_free (uri_utf8);
 		}
 
+		g_object_unref (f);
 		g_free (uri);
 		
 		break;	

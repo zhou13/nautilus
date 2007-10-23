@@ -531,6 +531,13 @@ nautilus_directory_get_uri (NautilusDirectory *directory)
 	return g_file_get_uri (directory->details->location);
 }
 
+GFile *
+nautilus_directory_get_location (NautilusDirectory  *directory)
+{
+	g_return_val_if_fail (NAUTILUS_IS_DIRECTORY (directory), NULL);
+
+	return g_object_ref (directory->details->location);
+}
 
 static NautilusDirectory *
 nautilus_directory_new (GFile *location)

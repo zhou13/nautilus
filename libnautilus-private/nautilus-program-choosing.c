@@ -463,6 +463,7 @@ nautilus_launch_show_file (NautilusFile *file,
         char *uri_for_display;
 	GnomeVFSURI *vfs_uri;
 	GError *error;
+	GFile *location;
 #ifdef HAVE_STARTUP_NOTIFICATION
 	SnLauncherContext *sn_context;
 	SnDisplay *sn_display;
@@ -571,8 +572,12 @@ nautilus_launch_show_file (NautilusFile *file,
 	
 	sn_display_unref (sn_display);
 #endif /* HAVE_STARTUP_NOTIFICATION */
+
+
+	location = g_file_new_for_uri (uri);
+	full_uri_for_display = g_file_get_parse_name (location);
+	g_object_unref (location);
 	
-	full_uri_for_display = eel_format_uri_for_display (uri);
 	/* Truncate the URI so it doesn't get insanely wide. Note that even
 	 * though the dialog uses wrapped text, if the URI doesn't contain
 	 * white space then the text-wrapping code is too stupid to wrap it.

@@ -165,6 +165,7 @@ void               nautilus_directory_unref                    (NautilusDirector
 
 /* Access to a URI. */
 char *             nautilus_directory_get_uri                  (NautilusDirectory         *directory);
+GFile *            nautilus_directory_get_location             (NautilusDirectory         *directory);
 
 /* Is this file still alive and in this directory? */
 gboolean           nautilus_directory_contains_file            (NautilusDirectory         *directory,
