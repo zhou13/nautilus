@@ -9481,16 +9481,20 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 			mime_type = g_file_info_get_content_type (info);
 		}
 
-		if (g_content_type_equals (mime_type, "text/html") ||
-		    g_content_type_equals (mime_type, "text/xml")  ||
-		    g_content_type_equals (mime_type, "application/xhtml+xml")) {
+		if (mime_type != NULL &&
+		    (g_content_type_equals (mime_type, "text/html") ||
+		     g_content_type_equals (mime_type, "text/xml")  ||
+		     g_content_type_equals (mime_type, "application/xhtml+xml"))) {
 			action = GDK_ACTION_LINK;
-		} else if (g_content_type_equals (mime_type, "text/plain")) {
+		} else if (mime_type != NULL &&
+			   g_content_type_equals (mime_type, "text/plain")) {
 			action = ask_link_action (view);
 		} else {
 			action = GDK_ACTION_COPY;
 		}
-		g_object_unref (info);
+		if (info) {
+			g_object_unref (info);
+		}
 
 		if (action == 0) {
 			g_free (container_uri);
