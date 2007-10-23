@@ -61,52 +61,19 @@ char *
 nautilus_compute_title_for_location (GFile *location)
 {
 	NautilusFile *file;
-	char *text_uri;
-	GnomeVFSURI *uri;
-	char *title, *displayname;
-	const char *hostname;
-	NautilusDirectory *directory;
-	NautilusQuery *query;
+	char *title;
 
-	hostname = NULL;
-
+	/* TODO-gio: This doesn't really work all that great if the
+	   info about the file isn't known atm... */
+	
+	title = NULL;
 	if (location) {
-		text_uri = g_file_get_uri (location);
-		if (eel_uri_is_search (text_uri)) {
-			directory = nautilus_directory_get_by_uri (text_uri);
-			
-			query = nautilus_search_directory_get_query (NAUTILUS_SEARCH_DIRECTORY (directory));
-			nautilus_directory_unref (directory);
-			
-			if (query != NULL) {
-				title = nautilus_query_to_readable_string (query);
-				g_object_unref (query);
-			} else {
-				title = g_strdup (_("Search"));
-			}
-			g_free (text_uri);
-			return title;
-		}
 		file = nautilus_file_get (location);
-		
-		uri = gnome_vfs_uri_new (text_uri);
-		if (uri && strcmp (uri->method_string, "file") != 0) {
-			hostname = gnome_vfs_uri_get_host_name (uri);
-		}
-		
-		displayname = nautilus_file_get_display_name (file);
-		if (hostname) {
-			title = g_strdup_printf (_("%s on %s"), displayname, hostname);
-			g_free (displayname);
-		} else {
-			title = displayname;
-		}
-		if (uri) {
-			gnome_vfs_uri_unref (uri);
-		}
+		title = nautilus_file_get_display_name (file);
 		nautilus_file_unref (file);
-		g_free (text_uri);
-	} else {
+	}
+
+	if (title == NULL) {
 		title = g_strdup ("");
 	}
 	

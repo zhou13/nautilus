@@ -1189,8 +1189,7 @@ location_has_really_changed (NautilusWindow *window)
 
 	if (location_copy != NULL) {
 		uri = g_file_get_uri (location_copy);
-		g_signal_emit_by_name (window, "loading_uri",
-				       location_copy);
+		g_signal_emit_by_name (window, "loading_uri",  uri);
 		g_free (uri);
 		g_object_unref (location_copy);
 	}

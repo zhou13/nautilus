@@ -1,5 +1,22 @@
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-utilities.c:
+        (nautilus_compute_title_for_location):
+	Make this use only display name.
+	
+        * libnautilus-private/nautilus-icon-info.c:
+        (nautilus_icon_info_lookup):
+	Don't free filename before use
+	
+        * libnautilus-private/nautilus-search-directory-file.[ch]:
+        * libnautilus-private/nautilus-search-directory.c:
+	Create nice display name for search directories, and keep it updated.
+	
+        * src/nautilus-window-manage-views.c:
+	Fix wrong type of argument passed to signal
+
+2007-10-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.c:
 	Replace some gnome vfs calls
 

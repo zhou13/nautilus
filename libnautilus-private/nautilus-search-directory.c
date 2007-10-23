@@ -22,6 +22,7 @@
 
 #include <config.h>
 #include "nautilus-search-directory.h"
+#include "nautilus-search-directory-file.h"
 
 #include "nautilus-directory-private.h"
 #include "nautilus-file.h"
@@ -752,12 +753,9 @@ char *
 nautilus_search_directory_generate_new_uri (void)
 {
 	static int counter = 0;
-	struct timeval tv;
 	char *uri;
 
-	gettimeofday (&tv, NULL);
-
-	uri = g_strdup_printf (EEL_SEARCH_URI"///%ld-%ld-%d/", tv.tv_sec, tv.tv_usec, counter++);
+	uri = g_strdup_printf (EEL_SEARCH_URI"//%d/", counter++);
 
 	return uri;
 }
@@ -767,10 +765,13 @@ void
 nautilus_search_directory_set_query (NautilusSearchDirectory *search,
 				     NautilusQuery *query)
 {
+	NautilusDirectory *dir;
+	NautilusFile *as_file;
+
 	if (search->details->query != query) {
 		search->details->modified = TRUE;
 	}
-	
+
 	if (query) {
 		g_object_ref (query);
 	}
@@ -780,6 +781,12 @@ nautilus_search_directory_set_query (NautilusSearchDirectory *search,
 	}
 
 	search->details->query = query;
+
+	dir = NAUTILUS_DIRECTORY (search);
+	as_file = dir->details->as_file;
+	if (as_file != NULL) {
+		nautilus_search_directory_file_update_display_name (NAUTILUS_SEARCH_DIRECTORY_FILE (as_file));
+	}
 }
 
 NautilusQuery *

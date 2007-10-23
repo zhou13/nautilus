@@ -402,10 +402,11 @@ nautilus_icon_info_lookup (GIcon *icon,
 		}
 		
 		icon_info = nautilus_icon_info_new_for_icon_info (gtkicon_info);
-		gtk_icon_info_free (gtkicon_info);
-
+		
 		key = themed_icon_key_new (filename, size);
 		g_hash_table_insert (themed_icon_cache, key, icon_info);
+
+		gtk_icon_info_free (gtkicon_info);
 
 		return g_object_ref (icon_info);
 	} 

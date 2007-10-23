@@ -51,6 +51,9 @@ search_directory_file_monitor_add (NautilusFile *file,
 {
 	/* No need for monitoring, we always emit changed when files
 	   are added/removed, and no other metadata changes */
+
+	/* Update display name, in case this didn't happen yet */
+	nautilus_search_directory_file_update_display_name (NAUTILUS_SEARCH_DIRECTORY_FILE (file));
 }
 
 static void
@@ -67,6 +70,9 @@ search_directory_file_call_when_ready (NautilusFile *file,
 				       gpointer callback_data)
 
 {
+	/* Update display name, in case this didn't happen yet */
+	nautilus_search_directory_file_update_display_name (NAUTILUS_SEARCH_DIRECTORY_FILE (file));
+	
 	/* All data for directory-as-file is always uptodate */
 	(* callback) (file, callback_data);
 }
@@ -159,7 +165,39 @@ search_directory_file_get_where_string (NautilusFile *file)
 {
 	return g_strdup (_("Search"));
 }
-    
+
+void
+nautilus_search_directory_file_update_display_name (NautilusSearchDirectoryFile *search_file)
+{
+	NautilusFile *file;
+	NautilusSearchDirectory *search_dir;
+	NautilusQuery *query;
+	char *display_name;
+	gboolean changed;
+
+	
+	display_name = NULL;
+	file = NAUTILUS_FILE (search_file);
+	if (file->details->directory) {
+		search_dir = NAUTILUS_SEARCH_DIRECTORY (file->details->directory);
+		query = nautilus_search_directory_get_query (search_dir);
+	
+		if (query != NULL) {
+			display_name = nautilus_query_to_readable_string (query);
+			g_object_unref (query);
+		} 
+	}
+
+	if (display_name == NULL) {
+		display_name = g_strdup (_("Search"));
+	}
+
+	changed = nautilus_file_set_display_name (file, display_name, NULL, FALSE);
+	if (changed) {
+		nautilus_file_emit_changed (file);
+	}
+}
+
 static void
 nautilus_search_directory_file_init (NautilusSearchDirectoryFile *search_file)
 {
@@ -171,16 +209,9 @@ nautilus_search_directory_file_init (NautilusSearchDirectoryFile *search_file)
 	file->details->mime_type = eel_ref_str_get_unique ("x-directory/normal");
 	file->details->type = G_FILE_TYPE_DIRECTORY;
 	file->details->size = 0;
-	file->details->permissions =
-		GNOME_VFS_PERM_OTHER_WRITE |
-		GNOME_VFS_PERM_GROUP_WRITE |
-		GNOME_VFS_PERM_USER_READ |
-		GNOME_VFS_PERM_OTHER_READ |
-		GNOME_VFS_PERM_GROUP_READ;
 
 	file->details->file_info_is_up_to_date = TRUE;
 
-	file->details->display_name = eel_ref_str_get_unique (_("Search"));
 	file->details->custom_icon = NULL;
 	file->details->activation_location = NULL;
 	file->details->got_link_info = TRUE;
@@ -189,6 +220,8 @@ nautilus_search_directory_file_init (NautilusSearchDirectoryFile *search_file)
 	file->details->directory_count = 0;
 	file->details->got_directory_count = TRUE;
 	file->details->directory_count_is_up_to_date = TRUE;
+
+	nautilus_file_set_display_name (file, _("Search"), NULL, FALSE);
 }
 
 static void
