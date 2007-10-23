@@ -193,10 +193,10 @@ typedef struct {
 
 static void
 canvas_rect_world_to_widget (EelCanvas *canvas,
-			     ArtDRect *world_rect,
-			     ArtIRect *widget_rect)
+			     EelDRect *world_rect,
+			     EelIRect *widget_rect)
 {
-	ArtDRect window_rect;
+	EelDRect window_rect;
 	
 	eel_canvas_world_to_window (canvas,
 				    world_rect->x0, world_rect->y0,
@@ -225,8 +225,8 @@ static gboolean
 icon_get_data_binder (NautilusIcon *icon, gpointer data)
 {
 	IconGetDataBinderContext *context;
-	ArtDRect world_rect;
-	ArtIRect widget_rect;
+	EelDRect world_rect;
+	EelIRect widget_rect;
 	char *uri;
 	NautilusIconContainer *container;
 
@@ -246,11 +246,11 @@ icon_get_data_binder (NautilusIcon *icon, gpointer data)
 		return TRUE;
 	}
 
-	widget_rect = eel_art_irect_offset_by (widget_rect, 
+	widget_rect = eel_irect_offset_by (widget_rect, 
 		- container->details->dnd_info->drag_info.start_x,
 		- container->details->dnd_info->drag_info.start_y);
 
-	widget_rect = eel_art_irect_scale_by (widget_rect, 
+	widget_rect = eel_irect_scale_by (widget_rect, 
 		1 / EEL_CANVAS (container)->pixels_per_unit);
 	
 	/* pass the uri, mouse-relative x/y and icon width/height */
@@ -541,8 +541,8 @@ nautilus_icon_container_item_at (NautilusIconContainer *container,
 {
 	GList *p;
 	int size;
-	ArtDRect point;
-	ArtIRect canvas_point;
+	EelDRect point;
+	EelIRect canvas_point;
 
 	/* build the hit-test rectangle. Base the size on the scale factor to ensure that it is
 	 * non-empty even at the smallest scale factor

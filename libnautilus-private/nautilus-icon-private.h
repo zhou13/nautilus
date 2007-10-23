@@ -74,7 +74,7 @@ typedef struct {
 	guint timer_id;
 
 	guint prev_x, prev_y;
-	ArtDRect prev_rect;
+	EelDRect prev_rect;
 	int last_adj_y;
 } NautilusIconRubberbandInfo;
 

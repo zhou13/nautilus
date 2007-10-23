@@ -1,5 +1,15 @@
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
+        * configure.in:
+        * libnautilus-private/nautilus-icon-canvas-item.[ch]:
+        * libnautilus-private/nautilus-icon-container.c:
+        * libnautilus-private/nautilus-icon-dnd.c:
+        * libnautilus-private/nautilus-icon-private.h:
+        * test/test.c:
+	Remove libart dependency, use eel rect and point types
+
+2007-10-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-program-choosing.c:
         (nautilus_launch_application_from_command):
 	Use gdk_spawn instead of eel

@@ -158,7 +158,7 @@ test_pixbuf_draw_rectangle_tiled (GdkPixbuf *pixbuf,
 				  int y1,
 				  int opacity)
 {
-	ArtIRect area;
+	EelIRect area;
 	GdkPixbuf *tile_pixbuf;
 
 	g_return_if_fail (eel_gdk_pixbuf_is_valid (pixbuf));
@@ -173,7 +173,7 @@ test_pixbuf_draw_rectangle_tiled (GdkPixbuf *pixbuf,
 	if (x0 == -1 && y0 == -1 && x1 == -1 && y1 == -1) {
 		EelDimensions dimensions;
 		dimensions = eel_gdk_pixbuf_get_dimensions (pixbuf);
-		area = eel_art_irect_assign_dimensions (0, 0, dimensions);
+		area = eel_irect_assign_dimensions (0, 0, dimensions);
 	} else {
 		g_return_if_fail (x0 >= 0);
 		g_return_if_fail (y0 >= 0);

@@ -41,6 +41,7 @@
 #include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-gtk-extensions.h>
+#include <eel/eel-art-extensions.h>
 #include <eel/eel-editable-label.h>
 #include <eel/eel-marshal.h>
 #include <eel/eel-string.h>
@@ -574,9 +575,9 @@ set_pending_icon_to_reveal (NautilusIconContainer *container, NautilusIcon *icon
 }
 
 static void
-item_get_canvas_bounds (EelCanvasItem *item, ArtIRect *bounds)
+item_get_canvas_bounds (EelCanvasItem *item, EelIRect *bounds)
 {
-	ArtDRect world_rect;
+	EelDRect world_rect;
 	
 	eel_canvas_item_get_bounds (item,
 				    &world_rect.x0,
@@ -608,7 +609,7 @@ reveal_icon (NautilusIconContainer *container,
 	NautilusIconContainerDetails *details;
 	GtkAllocation *allocation;
 	GtkAdjustment *hadj, *vadj;
-	ArtIRect bounds;
+	EelIRect bounds;
 
 	if (!icon_is_positioned (icon)) {
 		set_pending_icon_to_reveal (container, icon);
@@ -986,9 +987,9 @@ lay_down_icons_horizontal (NautilusIconContainer *container,
 	double canvas_width, y, canvas_height;
 	GArray *positions;
 	IconPositions *position;
-	ArtDRect bounds;
-	ArtDRect icon_bounds;
-	ArtDRect text_bounds;
+	EelDRect bounds;
+	EelDRect icon_bounds;
+	EelDRect text_bounds;
 	EelCanvasItem *item;
 	double max_height_above, max_height_below;
 	double height_above, height_below;
@@ -1152,7 +1153,7 @@ snap_position (NautilusIconContainer *container,
 	int baseline_y;
 	int icon_width;
 	int icon_height;
-	ArtDRect icon_position;
+	EelDRect icon_position;
 	
 	icon_position = nautilus_icon_canvas_item_get_icon_rectangle (icon->item);
 	icon_width = icon_position.x1 - icon_position.x0;
@@ -1246,7 +1247,7 @@ placement_grid_free (PlacementGrid *grid)
 }
 
 static gboolean
-placement_grid_position_is_free (PlacementGrid *grid, ArtIRect pos)
+placement_grid_position_is_free (PlacementGrid *grid, EelIRect pos)
 {
 	int x, y;
 	
@@ -1267,7 +1268,7 @@ placement_grid_position_is_free (PlacementGrid *grid, ArtIRect pos)
 }
 
 static void
-placement_grid_mark (PlacementGrid *grid, ArtIRect pos)
+placement_grid_mark (PlacementGrid *grid, EelIRect pos)
 {
 	int x, y;
 	
@@ -1285,8 +1286,8 @@ placement_grid_mark (PlacementGrid *grid, ArtIRect pos)
 
 static void
 canvas_position_to_grid_position (PlacementGrid *grid,
-				  ArtIRect canvas_position,
-				  ArtIRect *grid_position)
+				  EelIRect canvas_position,
+				  EelIRect *grid_position)
 {
 	/* The first causes minimal moving around during a snap, but
 	 * can end up with partially overlapping icons.  The second one won't
@@ -1313,8 +1314,8 @@ canvas_position_to_grid_position (PlacementGrid *grid,
 static void
 placement_grid_mark_icon (PlacementGrid *grid, NautilusIcon *icon)
 {
-	ArtIRect icon_pos;
-	ArtIRect grid_pos;
+	EelIRect icon_pos;
+	EelIRect grid_pos;
 	
 	icon_get_bounding_box (icon, 
 			       &icon_pos.x0, &icon_pos.y0,
@@ -1337,8 +1338,8 @@ find_empty_location (NautilusIconContainer *container,
 	double icon_width, icon_height;
 	int canvas_width;
 	int canvas_height;
-	ArtIRect icon_position;
-	ArtDRect pixbuf_rect;
+	EelIRect icon_position;
+	EelDRect pixbuf_rect;
 	gboolean collision;
 
 	/* Get container dimensions */
@@ -1368,7 +1369,7 @@ find_empty_location (NautilusIconContainer *container,
 	icon_position.y1 = icon_position.y0 + icon_height;
 
 	do {
-		ArtIRect grid_position;
+		EelIRect grid_position;
 
 		collision = FALSE;
 		
@@ -1447,7 +1448,7 @@ lay_down_icons_tblr (NautilusIconContainer *container, GList *icons)
 	NautilusIcon *icon;
 	int width, height, max_width, column_width, icon_width, icon_height;
 	int x, y, x1, x2, y1, y2;
-	ArtDRect icon_rect;
+	EelDRect icon_rect;
 
 	/* Get container dimensions */
 	width  = GTK_WIDGET (container)->allocation.width /
@@ -1701,7 +1702,7 @@ reload_icon_positions (NautilusIconContainer *container)
 	NautilusIcon *icon;
 	gboolean have_stored_position;
 	NautilusIconPosition position;
-	ArtDRect bounds;
+	EelDRect bounds;
 	double bottom;
 	EelCanvasItem *item;
 
@@ -1914,13 +1915,13 @@ nautilus_icon_container_move_icon (NautilusIconContainer *container,
 /* Implementation of rubberband selection.  */
 static void
 rubberband_select (NautilusIconContainer *container,
-		   const ArtDRect *previous_rect,
-		   const ArtDRect *current_rect)
+		   const EelDRect *previous_rect,
+		   const EelDRect *current_rect)
 {
 	GList *p;
 	gboolean selection_changed, is_in, canvas_rect_calculated;
 	NautilusIcon *icon;
-	ArtIRect canvas_rect;
+	EelIRect canvas_rect;
 	EelCanvas *canvas;
 			
 	selection_changed = FALSE;
@@ -1975,7 +1976,7 @@ rubberband_timeout_callback (gpointer data)
 	int adj_y;
 	gboolean adj_changed;
 	
-	ArtDRect selection_rect;
+	EelDRect selection_rect;
 
 	widget = GTK_WIDGET (data);
 	container = NAUTILUS_ICON_CONTAINER (data);
@@ -2254,7 +2255,7 @@ compare_icons_by_uri (NautilusIconContainer *container,
 
 static int
 get_cmp_point_x (NautilusIconContainer *container,
-		 ArtDRect icon_rect)
+		 EelDRect icon_rect)
 {
 	if (container->details->label_position == NAUTILUS_ICON_LABEL_POSITION_BESIDE) {
 		if (gtk_widget_get_direction (GTK_WIDGET (container)) == GTK_TEXT_DIR_RTL) {
@@ -2269,7 +2270,7 @@ get_cmp_point_x (NautilusIconContainer *container,
 
 static int
 get_cmp_point_y (NautilusIconContainer *container,
-		 ArtDRect icon_rect)
+		 EelDRect icon_rect)
 {
 	if (container->details->label_position == NAUTILUS_ICON_LABEL_POSITION_BESIDE) {
 		return (icon_rect.y0 + icon_rect.y1)/2;
@@ -2283,7 +2284,7 @@ compare_icons_horizontal_first (NautilusIconContainer *container,
 				NautilusIcon *icon_a,
 				NautilusIcon *icon_b)
 {
-	ArtDRect world_rect;
+	EelDRect world_rect;
 	int ax, ay, bx, by;
 
 	world_rect = nautilus_icon_canvas_item_get_icon_rectangle (icon_a->item);
@@ -2321,7 +2322,7 @@ compare_icons_vertical_first_reverse_horizontal (NautilusIconContainer *containe
 						 NautilusIcon *icon_a,
 						 NautilusIcon *icon_b)
 {
-	ArtDRect world_rect;
+	EelDRect world_rect;
 	int ax, ay, bx, by;
 
 	world_rect = nautilus_icon_canvas_item_get_icon_rectangle (icon_a->item);
@@ -2360,7 +2361,7 @@ compare_icons_vertical_first (NautilusIconContainer *container,
 			      NautilusIcon *icon_a,
 			      NautilusIcon *icon_b)
 {
-	ArtDRect world_rect;
+	EelDRect world_rect;
 	int ax, ay, bx, by;
 
 	world_rect = nautilus_icon_canvas_item_get_icon_rectangle (icon_a->item);
@@ -2584,7 +2585,7 @@ closest_in_90_degrees (NautilusIconContainer *container,
 		       NautilusIcon *candidate,
 		       void *data)
 {
-	ArtDRect world_rect;
+	EelDRect world_rect;
 	int x, y;
 	int dx, dy;
 	int dist;
@@ -2647,13 +2648,13 @@ closest_in_90_degrees (NautilusIconContainer *container,
 	return FALSE;
 }
 
-static ArtDRect 
+static EelDRect 
 get_rubberband (NautilusIcon *icon1,
 		NautilusIcon *icon2)
 {
-	ArtDRect rect1;
-	ArtDRect rect2;
-	ArtDRect ret;
+	EelDRect rect1;
+	EelDRect rect2;
+	EelDRect ret;
 
 	eel_canvas_item_get_bounds (EEL_CANVAS_ITEM (icon1->item),
 				    &rect1.x0, &rect1.y0, 
@@ -2662,7 +2663,7 @@ get_rubberband (NautilusIcon *icon1,
 				    &rect2.x0, &rect2.y0, 
 				    &rect2.x1, &rect2.y1);
 
-	art_drect_union (&ret, &rect1, &rect2);
+	eel_drect_union (&ret, &rect1, &rect2);
 
 	return ret;
 }
@@ -2685,7 +2686,7 @@ keyboard_move_to (NautilusIconContainer *container,
 		container->details->keyboard_rubberband_start = NULL;
 	} else if ((event->state & GDK_SHIFT_MASK) != 0) {
 		/* Do rubberband selection */		
-		ArtDRect rect;
+		EelDRect rect;
 
 		if (from && !container->details->keyboard_rubberband_start) {
 			set_keyboard_rubberband_start (container, from);
@@ -2757,7 +2758,7 @@ record_arrow_key_start (NautilusIconContainer *container,
 			NautilusIcon *icon,
 			GtkDirectionType direction)
 {
-	ArtDRect world_rect;
+	EelDRect world_rect;
 
 	world_rect = nautilus_icon_canvas_item_get_icon_rectangle (icon->item);
 	eel_canvas_w2c
@@ -3373,7 +3374,7 @@ start_stretching (NautilusIconContainer *container)
 {
 	NautilusIconContainerDetails *details;
 	NautilusIcon *icon;
-	ArtPoint world_point;
+	EelDPoint world_point;
 	GtkWidget *toplevel;
 	GtkCornerType corner;
 	GdkCursor *cursor;
@@ -6872,7 +6873,7 @@ nautilus_icon_container_start_renaming_selected_item (NautilusIconContainer *con
 {
 	NautilusIconContainerDetails *details;
 	NautilusIcon *icon;
-	ArtDRect icon_rect;
+	EelDRect icon_rect;
 	PangoContext *context;
 	PangoFontDescription *desc;
 	const char *editable_text;
