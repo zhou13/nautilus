@@ -929,6 +929,7 @@ nautilus_launch_desktop_file (GdkScreen   *screen,
 	const GList *p;
 	int total, count;
 	char **envp;
+	GFile *file;
 #ifdef HAVE_STARTUP_NOTIFICATION
 	Time timestamp;
 #endif
@@ -943,8 +944,9 @@ nautilus_launch_desktop_file (GdkScreen   *screen,
 	 * nfs are treated as remote) to partially mitigate the security
 	 * risk of executing arbitrary commands.
 	 */
-	if (!eel_vfs_has_capability (desktop_file_uri,
-				     EEL_VFS_CAPABILITY_SAFE_TO_EXECUTE)) {
+	file = g_file_new_for_uri (desktop_file_uri);
+	if (!g_file_is_native (file)) {
+		g_object_unref (file);
 		eel_show_error_dialog
 			(_("Sorry, but you can't execute commands from "
 			   "a remote site."), 
@@ -953,6 +955,7 @@ nautilus_launch_desktop_file (GdkScreen   *screen,
 			 
 		return;
 	}
+	g_object_unref (file);
 	
 	error = NULL;
 	ditem = gnome_desktop_item_new_from_uri (desktop_file_uri, 0,

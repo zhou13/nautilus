@@ -523,8 +523,11 @@ fm_properties_window_drag_data_received (GtkWidget *widget, GdkDragContext *cont
 	} else {		
 		if (uri_is_local_image (uris[0])) {			
 			set_icon (uris[0], FM_PROPERTIES_WINDOW (window));
-		} else {	
-			if (eel_is_remote_uri (uris[0])) {
+		} else {
+			GFile *f;
+
+			f = g_file_new_for_uri (uris[0]);
+			if (!g_file_is_native (f)) {
 				eel_show_error_dialog
 					(_("The file that you dropped is not local."),
 					 _("You can only use local images as custom icons."), 
@@ -536,6 +539,7 @@ fm_properties_window_drag_data_received (GtkWidget *widget, GdkDragContext *cont
 					 _("You can only use local images as custom icons."),
 					 window);
 			}
+			g_object_unref (f);
 		}		
 	}
 	g_strfreev (uris);

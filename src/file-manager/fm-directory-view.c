@@ -3907,7 +3907,7 @@ trash_or_delete_files_common (FMDirectoryView *view,
 	for (file_node = file_uris; file_node != NULL; file_node = file_node->next) {
 		file_uri = (char *) file_node->data;
 		
-		if (delete_if_all_already_in_trash && eel_uri_is_in_trash (file_uri)) {
+		if (delete_if_all_already_in_trash && eel_uri_is_trash (file_uri)) {
 			in_trash_uris = g_list_prepend (in_trash_uris, g_strdup (file_uri));
 		} else if (can_delete_uri_without_confirm (file_uri)) {
 			no_confirm_uris = g_list_prepend (no_confirm_uris, g_strdup (file_uri));
@@ -9435,6 +9435,7 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 	GArray *points;
 	char **bits;
 	GList *uri_list = NULL;
+	GFile *f;
 
 	if (encoded_url == NULL) {
 		return;
@@ -9446,14 +9447,16 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 		g_assert (container_uri != NULL);
 	}
 
-	if (eel_vfs_has_capability (target_uri != NULL ? target_uri : container_uri,
-				    EEL_VFS_CAPABILITY_IS_REMOTE_AND_SLOW)) {
+	f = g_file_new_for_uri (target_uri != NULL ? target_uri : container_uri);
+	if (!g_file_is_native (f)) {
 		eel_show_warning_dialog (_("Drag and drop is not supported."),
 					 _("Drag and drop is only supported on local file systems."),
 					 fm_directory_view_get_containing_window (view));
+		g_object_unref (f);
 		g_free (container_uri);
 		return;
 	}
+	g_object_unref (f);
 
 	/* _NETSCAPE_URL_ works like this: $URL\n$TITLE */
 	bits = g_strsplit (encoded_url, "\n", 0);
@@ -9520,7 +9523,11 @@ fm_directory_view_handle_netscape_url_drop (FMDirectoryView  *view,
 
 	if (action == GDK_ACTION_LINK) {
 		if (eel_str_is_empty (title)) {
-			link_name = eel_uri_get_basename (url);
+			GFile *f;
+
+			f = g_file_new_for_uri (url);
+			link_name = g_file_get_basename (f);
+			g_object_unref (f);
 		} else {
 			link_name = g_strdup (title);
 		}
@@ -9619,22 +9626,13 @@ fm_directory_view_handle_uri_list_drop (FMDirectoryView  *view,
 		return;
 	}
 
-	/* Most of what comes in here is not really URIs, but rather paths that
-	 * have a file: prefix in them.  We try to sanitize the uri list as a
-	 * result.
-	 */
 	n_uris = 0;
 	uri_list = g_uri_list_extract_uris (item_uris);
 	for (i = 0; uri_list[i] != NULL; i++) {
-		char *sanitized_uri;
-
-		sanitized_uri = eel_make_uri_from_half_baked_uri (uri_list[i]);
-		if (sanitized_uri != NULL) {
-			n_uris++;
-			real_uri_list = g_list_append (real_uri_list, sanitized_uri);
-		}
+		real_uri_list = g_list_append (real_uri_list, uri_list[i]);
+		n_uris++;
 	}
-	g_strfreev (uri_list);
+	g_free (uri_list);
 
 	/* do nothing if no real uris are left */
 	if (n_uris == 0) {

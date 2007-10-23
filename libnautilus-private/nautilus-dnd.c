@@ -247,7 +247,7 @@ nautilus_drag_items_in_trash (const GList *selection_list)
 	 * we should really test each item but that would be slow for large selections
 	 * and currently dropped items can only be from the same container
 	 */
-	return eel_uri_is_in_trash (((NautilusDragSelectionItem *)selection_list->data)->uri);
+	return eel_uri_is_trash (((NautilusDragSelectionItem *)selection_list->data)->uri);
 }
 
 gboolean

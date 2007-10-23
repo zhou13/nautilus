@@ -951,13 +951,12 @@ is_desktop_file (NautilusFile *file)
 static gboolean
 can_rename_desktop_file (NautilusFile *file)
 {
-	char *uri;
+	GFile *location;
 	gboolean res;
 
-	uri = nautilus_file_get_uri (file);
-	res = !eel_vfs_has_capability (uri, 
-				       EEL_VFS_CAPABILITY_IS_REMOTE_AND_SLOW);
-	g_free (uri);
+	location = nautilus_file_get_location (file);
+	res = g_file_is_native (location);
+	g_object_unref (location);
 	return res;
 }
 
@@ -3015,17 +3014,19 @@ nautilus_file_get_drop_target_uri (NautilusFile *file)
 	}
 	
 	uri = nautilus_file_get_uri (file);
-	
+			
 	/* Check for Nautilus link */
 	if (nautilus_file_is_nautilus_link (file)) {
+		location = nautilus_file_get_location (file);
 		/* FIXME bugzilla.gnome.org 43020: This does sync. I/O and works only locally. */
-		if (!eel_vfs_has_capability (uri, EEL_VFS_CAPABILITY_IS_REMOTE_AND_SLOW)) {
+		if (g_file_is_native (location)) {
 			target_uri = nautilus_link_local_get_link_uri (uri);
 			if (target_uri != NULL) {
 				g_free (uri);
 				uri = target_uri;
 			}
 		}
+		g_object_unref (location);
 	}
 
 	return uri;

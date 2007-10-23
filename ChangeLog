@@ -1,5 +1,16 @@
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-dnd.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-program-choosing.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/nautilus-emblem-sidebar.c:
+        * src/nautilus-information-panel.c:
+	Don't use removed eel gnome-vfs functions
+
+2007-10-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory.[ch]:
         Add nautilus_directory_get_location
 

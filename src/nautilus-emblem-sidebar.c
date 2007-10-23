@@ -752,29 +752,25 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 		}
 
 		for (i = 0; uris[i] != NULL; ++i) {
-			uri = eel_make_uri_canonical (uris[i]);
-			if (uri == NULL) {
-				had_failure = TRUE;
-				continue;
-			}
-
-			f = g_file_new_for_uri (uri);
+			f = g_file_new_for_uri (uris[i]);
 			pixbuf = nautilus_emblem_load_pixbuf_for_emblem (f);
-			g_object_unref (f);
 
 			if (pixbuf == NULL) {
 				/* this one apparently isn't an image, or
 				 * at least not one that we know how to read
 				 */
 				had_failure = TRUE;
+				g_object_unref (f);
 				continue;
 			}
 
 			emblem = g_new (Emblem, 1);
-			emblem->uri = uri;
+			emblem->uri = g_file_get_uri (f);
 			emblem->name = NULL; /* created later on by the user */
 			emblem->keyword = NULL;
 			emblem->pixbuf = pixbuf;
+			
+			g_object_unref (f);
 
 			emblems = g_slist_prepend (emblems, emblem);
 		}
@@ -803,11 +799,6 @@ nautilus_emblem_sidebar_drag_received_cb (GtkWidget *widget,
 		}
 
 		uri = g_strndup (data->data, data->length);
-
-		if (!eel_is_valid_uri (uri)) {
-			eel_show_error_dialog (_("The emblem cannot be added."), _("The dragged text was not a valid file location."), NULL);
-			break;
-		}
 
 		f = g_file_new_for_uri (uri);
 		pixbuf = nautilus_emblem_load_pixbuf_for_emblem (f);
