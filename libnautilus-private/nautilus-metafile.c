@@ -36,6 +36,7 @@
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
 #include <eel/eel-xml-extensions.h>
+#include <gio/gurifuncs.h>
 #include <libxml/parser.h>
 #include <gtk/gtkmain.h>
 #include <libgnomevfs/gnome-vfs-file-info.h>
@@ -137,7 +138,6 @@ struct NautilusMetafileDetails {
 
 	char *private_uri;
 	char *directory_uri;
-	GnomeVFSURI *directory_vfs_uri;
 };
 
 static GHashTable *metafiles;
@@ -162,9 +162,6 @@ finalize (GObject *object)
 	async_read_cancel (metafile);
 	g_assert (metafile->details->read_state == NULL);
 
-	if (metafile->details->directory_vfs_uri != NULL) {
-		gnome_vfs_uri_unref (metafile->details->directory_vfs_uri);
-	}
 
 	g_hash_table_remove (metafiles, metafile->details->directory_uri);
 	
@@ -182,6 +179,43 @@ finalize (GObject *object)
 }
 
 static char *
+escape_slashes (const char *str)
+{
+	int n_reserved;
+	const char *p;
+	char *escaped, *e;
+
+	n_reserved = 0;
+	for (p = str; *p != 0; p++) {
+		if (*p == '%' || *p == '/') {
+			n_reserved++;
+		}
+	}
+
+	escaped = g_malloc (strlen (str) + 2*n_reserved + 1);
+
+	e = escaped;
+	
+	for (p = str; *p != 0; p++) {
+		if (*p == '%') {
+			*e++ = '%';
+			*e++ = '2';
+			*e++ = '5';
+		} else if (*p == '/') {
+			*e++ = '%';
+			*e++ = '2';
+			*e++ = 'f';
+		} else {
+			*e++ = *p;
+		}
+	}
+	*e = 0;
+
+	return escaped;
+}
+	
+
+static char *
 construct_private_metafile_uri (const char *uri)
 {
 	char *user_directory, *metafiles_directory;
@@ -195,7 +229,7 @@ construct_private_metafile_uri (const char *uri)
 	mkdir (metafiles_directory, 0700);
 
 	/* Construct a file name from the URI. */
-	escaped_uri = gnome_vfs_escape_slashes (uri);
+	escaped_uri = escape_slashes (uri);
 	file_name = g_strconcat (escaped_uri, ".xml", NULL);
 	g_free (escaped_uri);
 
@@ -219,11 +253,6 @@ nautilus_metafile_set_directory_uri (NautilusMetafile *metafile,
 
 	g_free (metafile->details->directory_uri);
 	metafile->details->directory_uri = g_strdup (directory_uri);
-
-	if (metafile->details->directory_vfs_uri != NULL) {
-		gnome_vfs_uri_unref (metafile->details->directory_vfs_uri);
-	}
-	metafile->details->directory_vfs_uri = gnome_vfs_uri_new (directory_uri);
 
 	g_free (metafile->details->private_uri);
 	metafile->details->private_uri
@@ -1009,7 +1038,7 @@ get_file_node (NautilusMetafile *metafile,
 	if (create) {
 		root = create_metafile_root (metafile);
 		node = xmlNewChild (root, NULL, "file", NULL);
-		escaped_file_name = gnome_vfs_escape_string (file_name);
+		escaped_file_name = g_uri_escape_string (file_name, NULL, 0);
 		xmlSetProp (node, "name", escaped_file_name);
 		g_free (escaped_file_name);
 		g_hash_table_insert (hash, xmlMemStrdup (file_name), node);
@@ -1535,7 +1564,7 @@ metafile_get_file_uri (NautilusMetafile *metafile,
 	g_return_val_if_fail (NAUTILUS_IS_METAFILE (metafile), NULL);
 	g_return_val_if_fail (file_name != NULL, NULL);
 	
-	escaped_file_name = gnome_vfs_escape_path_string (file_name);
+	escaped_file_name = g_uri_escape_string (file_name, G_URI_RESERVED_CHARS_ALLOWED_IN_PATH, FALSE);
 	
 	uri = g_build_filename (metafile->details->directory_uri, escaped_file_name, NULL);
 	g_free (escaped_file_name);
@@ -1573,7 +1602,7 @@ rename_file_metadata (NautilusMetafile *metafile,
 			xmlFree (key);
 			g_hash_table_insert (hash,
 					     xmlMemStrdup (new_file_name), value);
-			escaped = gnome_vfs_escape_string (new_file_name);
+			escaped = g_uri_escape_string (new_file_name, NULL, FALSE);
 			xmlSetProp (file_node, "name", escaped);
 			g_free (escaped);
 			directory_request_write_metafile (metafile);
@@ -1693,7 +1722,7 @@ real_copy_file_metadata (NautilusMetafile *source_metafile,
 		node = xmlCopyNode (source_node, TRUE);
 		root = create_metafile_root (destination_metafile);
 		xmlAddChild (root, node);
-		escaped = gnome_vfs_escape_string (destination_file_name);
+		escaped = g_uri_escape_string (destination_file_name, NULL, FALSE);
 		xmlSetProp (node, "name", escaped);
 		g_free (escaped);
 		set_file_node_timestamp (node);
@@ -1839,7 +1868,7 @@ set_metafile_contents (NautilusMetafile *metafile,
 	     node != NULL; node = node->next) {
 		if (strcmp (node->name, "file") == 0) {
 			name = xmlGetProp (node, "name");
-			unescaped_name = gnome_vfs_unescape_string (name, "/");
+			unescaped_name = g_uri_unescape_string (name, "/");
 			if (unescaped_name == NULL ||
 			    g_hash_table_lookup (hash, unescaped_name) != NULL) {
 				xmlFree (name);
