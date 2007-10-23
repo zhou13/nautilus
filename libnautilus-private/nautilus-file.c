@@ -56,6 +56,7 @@
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <gio/gcontenttype.h>
+#include <gio/gurifuncs.h>
 #include <libgnome/gnome-macros.h>
 #include <libgnomevfs/gnome-vfs-file-info.h>
 #include <libgnomevfs/gnome-vfs-mime-handlers.h>
@@ -1080,7 +1081,7 @@ nautilus_file_get_uri_scheme (NautilusFile *file)
 	}
 
 	uri = nautilus_directory_get_uri (file->details->directory);
-	scheme = gnome_vfs_get_uri_scheme (uri);
+	scheme = g_uri_get_scheme (uri);
 	g_free (uri);
 	return scheme;
 }
@@ -1303,7 +1304,7 @@ nautilus_file_rename (NautilusFile *file,
 	}
 
 	/* Test the name-hasn't-changed case explicitly, for two reasons.
-	 * (1) gnome_vfs_async_xfer returns an error if new & old are same.
+	 * (1) rename returns an error if new & old are same.
 	 * (2) We don't want to send file-changed signal if nothing changed.
 	 */
 	if (name_is (file, new_name)) {
@@ -2890,7 +2891,7 @@ nautilus_file_peek_display_name (NautilusFile *file)
 							NULL,
 							FALSE);
 		} else {
-			escaped_name = gnome_vfs_escape_path_string (name);
+			escaped_name = g_uri_escape_string (name, G_URI_RESERVED_CHARS_ALLOWED_IN_PATH, TRUE);
 			nautilus_file_set_display_name (file,
 							escaped_name,
 							NULL,
@@ -3013,13 +3014,41 @@ nautilus_file_get_drop_target_uri (NautilusFile *file)
 	return uri;
 }
 
+static gboolean
+is_uri_relative (const char *uri)
+{
+	char *scheme;
+
+	scheme = g_uri_get_scheme (uri);
+	g_free (scheme);
+	return scheme == NULL;
+}
+
+static char *
+get_custom_icon_metadata_uri (NautilusFile *file)
+{
+	char *custom_icon_uri;
+	char *uri;
+	char *dir_uri;
+	
+	uri = nautilus_file_get_metadata (file, NAUTILUS_METADATA_KEY_CUSTOM_ICON, NULL);
+	if (uri != NULL &&
+	    nautilus_file_is_directory (file) &&
+	    is_uri_relative (uri)) {
+		dir_uri = nautilus_file_get_uri (file);
+		custom_icon_uri = g_build_filename (dir_uri, uri, NULL);
+		g_free (dir_uri);
+		g_free (uri);
+	} else {
+		custom_icon_uri = uri;
+	}
+	return custom_icon_uri;
+}
+
 static GIcon *
 get_custom_icon (NautilusFile *file)
 {
-	char *uri;
-	char *dir_uri;
 	char *custom_icon_uri;
-	char *tmp;
 	GFile *icon_file;
 	GIcon *icon;
 
@@ -3030,22 +3059,7 @@ get_custom_icon (NautilusFile *file)
 	icon = NULL;
 	
 	/* Metadata takes precedence */
-	uri = nautilus_file_get_metadata (file, NAUTILUS_METADATA_KEY_CUSTOM_ICON, NULL);
-	if (uri != NULL && nautilus_file_is_directory (file)) {
-		/* The relative concatenation code will truncate
-		 * the URI basename without a trailing "/".
-		 * */
-		tmp = nautilus_file_get_uri (file);
-		dir_uri = g_strconcat (tmp, "/", NULL);
-		g_free (tmp);
-
-		custom_icon_uri = gnome_vfs_uri_make_full_from_relative (dir_uri, uri);
-
-		g_free (dir_uri);
-		g_free (uri);
-	} else {
-		custom_icon_uri = uri;
-	}
+	custom_icon_uri = get_custom_icon_metadata_uri (file);
 
 	if (custom_icon_uri) {
 		icon_file = g_file_new_for_uri (custom_icon_uri);
@@ -3297,32 +3311,14 @@ nautilus_file_get_icon_pixbuf (NautilusFile *file,
 char *
 nautilus_file_get_custom_icon (NautilusFile *file)
 {
-	char *uri;
-	char *dir_uri;
 	char *custom_icon;
-	char *tmp;
 
 	if (file == NULL) {
 		return NULL;
 	}
 
 	/* Metadata takes precedence */
-	uri = nautilus_file_get_metadata (file, NAUTILUS_METADATA_KEY_CUSTOM_ICON, NULL);
-	if (uri != NULL && nautilus_file_is_directory (file)) {
-		/* The relative concatenation code will truncate
-		 * the URI basename without a trailing "/".
-		 * */
-		tmp = nautilus_file_get_uri (file);
-		dir_uri = g_strconcat (tmp, "/", NULL);
-		g_free (tmp);
-
-		custom_icon = gnome_vfs_uri_make_full_from_relative (dir_uri, uri);
-
-		g_free (dir_uri);
-		g_free (uri);
-	} else {
-		custom_icon = uri;
-	}
+	custom_icon = get_custom_icon_metadata_uri (file);
  
 	if (custom_icon == NULL && file->details->got_link_info) {
 		custom_icon = g_strdup (file->details->custom_icon);

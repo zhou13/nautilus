@@ -1,5 +1,10 @@
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+	Replace some gnome vfs calls
+
+2007-10-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-metafile.c:
 	Use new gio uri escape functions instead of gnome-vfs
 
