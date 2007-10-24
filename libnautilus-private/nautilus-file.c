@@ -2154,7 +2154,7 @@ compare_by_directory_name (NautilusFile *file_1, NautilusFile *file_2)
 	directory_1 = nautilus_file_get_parent_uri_for_display (file_1);
 	directory_2 = nautilus_file_get_parent_uri_for_display (file_2);
 
-	compare = eel_strcoll (directory_1, directory_2);
+	compare = g_utf8_collate (directory_1, directory_2);
 
 	g_free (directory_1);
 	g_free (directory_2);
@@ -2263,7 +2263,7 @@ compare_by_emblems (NautilusFile *file_1, NautilusFile *file_2)
 	keyword_cache_1 = file_1->details->compare_by_emblem_cache->emblem_keywords;
 	keyword_cache_2 = file_2->details->compare_by_emblem_cache->emblem_keywords;
 	for (; *keyword_cache_1 != '\0' && *keyword_cache_2 != '\0';) {
-		compare_result = eel_strcoll (keyword_cache_1, keyword_cache_2);
+		compare_result = g_utf8_collate (keyword_cache_1, keyword_cache_2);
 		if (compare_result != 0) {
 			return compare_result;
 		}
@@ -2325,7 +2325,7 @@ compare_by_type (NautilusFile *file_1, NautilusFile *file_2)
 	type_string_1 = nautilus_file_get_type_as_string (file_1);
 	type_string_2 = nautilus_file_get_type_as_string (file_2);
 
-	result = eel_strcoll (type_string_1, type_string_2);
+	result = g_utf8_collate (type_string_1, type_string_2);
 
 	g_free (type_string_1);
 	g_free (type_string_2);
@@ -2601,7 +2601,7 @@ nautilus_file_compare_display_name (NautilusFile *file,
 	g_return_val_if_fail (pattern != NULL, -1);
 
 	name = nautilus_file_peek_display_name (file);
-	result = eel_strcoll (name, pattern);
+	result = g_utf8_collate (name, pattern);
 	return result;
 }
 

@@ -1,5 +1,10 @@
 2007-10-24  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.c:
+	Use g_utf8_collate, not eel_strcoll.
+
+2007-10-24  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-canvas-item.c:
         * test/test.c:
 	Update for eel changes
