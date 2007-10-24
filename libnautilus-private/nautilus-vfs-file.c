@@ -29,6 +29,7 @@
 #include "nautilus-directory-private.h"
 #include "nautilus-file-private.h"
 #include <eel/eel-gtk-macros.h>
+#include <eel/eel-mount-operation.h>
 #include <glib/gi18n.h>
 
 static void nautilus_vfs_file_init       (gpointer   object,
@@ -248,16 +249,13 @@ vfs_file_mount_callback (GObject *source_object,
 
 static void
 vfs_file_mount (NautilusFile                   *file,
-		GtkWidget                      *parent,
+		GMountOperation                *mount_op,
 		NautilusFileOperationCallback   callback,
 		gpointer                        callback_data)
 {
 	NautilusFileOperation *op;
 	GError *error;
 	GFile *location;
-	GMountOperation *mount_operation;
-
-	
 	
 	if (file->details->type != G_FILE_TYPE_MOUNTABLE) {
 		if (callback) {
@@ -272,13 +270,9 @@ vfs_file_mount (NautilusFile                   *file,
 
 	op = nautilus_file_operation_new (file, callback, callback_data);
 
-	mount_operation = g_mount_operation_new();
-	op->data = mount_operation;
-	op->free_data = (GDestroyNotify) g_object_unref;
-
 	location = nautilus_file_get_location (file);
 	g_file_mount_mountable (location,
-				mount_operation,
+				mount_op,
 				op->cancellable,
 				vfs_file_mount_callback,
 				op);
@@ -287,7 +281,6 @@ vfs_file_mount (NautilusFile                   *file,
 
 static void
 vfs_file_unmount (NautilusFile                   *file,
-		  GtkWidget                      *parent,
 		  NautilusFileOperationCallback   callback,
 		  gpointer                        callback_data)
 {

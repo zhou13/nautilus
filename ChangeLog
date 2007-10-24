@@ -1,5 +1,16 @@
 2007-10-24  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-vfs-file.c:
+	Pass GMountOperation instead of parent to mount.
+	Nothing for unmount/eject
+	
+        * src/file-manager/fm-directory-view.c:
+	Pass in a mount operation for mount.
+	Disable timeout when mount operation is active
+
+2007-10-24  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.c:
 	Use g_utf8_collate, not eel_strcoll.
 

@@ -249,15 +249,13 @@ gboolean                nautilus_file_can_unmount                       (Nautilu
 gboolean                nautilus_file_can_eject                         (NautilusFile                   *file);
 
 void                    nautilus_file_mount                             (NautilusFile                   *file,
-									 GtkWidget                      *parent,
+									 GMountOperation                *mount_op,
 									 NautilusFileOperationCallback   callback,
 									 gpointer                        callback_data);
 void                    nautilus_file_unmount                           (NautilusFile                   *file,
-									 GtkWidget                      *parent,
 									 NautilusFileOperationCallback   callback,
 									 gpointer                        callback_data);
 void                    nautilus_file_eject                             (NautilusFile                   *file,
-									 GtkWidget                      *parent,
 									 NautilusFileOperationCallback   callback,
 									 gpointer                        callback_data);
 
@@ -477,15 +475,13 @@ typedef struct {
 	char *                (* get_where_string)       (NautilusFile           *file);
 
 	void                  (* mount)                  (NautilusFile                   *file,
-							  GtkWidget                      *parent,
+							  GMountOperation                *mount_op,
 							  NautilusFileOperationCallback   callback,
 							  gpointer                        callback_data);
 	void                 (* unmount)                 (NautilusFile                   *file,
-							  GtkWidget                      *parent,
 							  NautilusFileOperationCallback   callback,
 							  gpointer                        callback_data);
 	void                 (* eject)                   (NautilusFile                   *file,
-							  GtkWidget                      *parent,
 							  NautilusFileOperationCallback   callback,
 							  gpointer                        callback_data);
 } NautilusFileClass;

@@ -40,6 +40,7 @@
 
 #include <libgnome/gnome-url.h>
 #include <eel/eel-alert-dialog.h>
+#include <eel/eel-mount-operation.h>
 #include <eel/eel-background.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gnome-extensions.h>
@@ -305,6 +306,7 @@ typedef struct {
 	gboolean mount_success;
 	unsigned int pending_mounts;
 	gboolean cancelled;
+	char *timed_wait_prompt;
 } ActivateParameters;
 
 typedef struct {
@@ -461,7 +463,6 @@ typedef struct {
 	NautilusFile *file;
 	FMDirectoryView *directory_view;
 } CreateTemplateParameters;
-
 
 
 static GList *
@@ -6173,7 +6174,6 @@ action_rename_select_all_callback (GtkAction *action,
 	real_action_rename (FM_DIRECTORY_VIEW (callback_data), TRUE);
 }
 
-
 static void
 action_mount_volume_callback (GtkAction *action,
 			      gpointer data)
@@ -6181,6 +6181,7 @@ action_mount_volume_callback (GtkAction *action,
 	NautilusFile *file;
 	GList *selection, *l;
 	FMDirectoryView *view;
+	GMountOperation *mount_op;
 
         view = FM_DIRECTORY_VIEW (data);
 	
@@ -6189,8 +6190,10 @@ action_mount_volume_callback (GtkAction *action,
 		file = NAUTILUS_FILE (l->data);
 		
 		if (nautilus_file_can_mount (file)) {
-			nautilus_file_mount (file, GTK_WIDGET (view),
+			mount_op = eel_mount_operation_new (fm_directory_view_get_containing_window (view));
+			nautilus_file_mount (file, mount_op,
 					     NULL, NULL);
+			g_object_unref (mount_op);
 		}
 	}
 	nautilus_file_list_free (selection);
@@ -6211,7 +6214,7 @@ action_unmount_volume_callback (GtkAction *action,
 	for (l = selection; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
 		if (nautilus_file_can_unmount (file)) {
-			nautilus_file_unmount (file, GTK_WIDGET (view),
+			nautilus_file_unmount (file, 
 					       NULL, NULL);
 		}
 	}
@@ -6256,8 +6259,7 @@ action_eject_volume_callback (GtkAction *action,
 		file = NAUTILUS_FILE (l->data);
 		
 		if (nautilus_file_can_eject (file)) {
-			nautilus_file_eject (file, GTK_WIDGET (view),
-					     NULL, NULL);
+			nautilus_file_eject (file, NULL, NULL);
 		}
 	}	
 	nautilus_file_list_free (selection);
@@ -6269,6 +6271,7 @@ action_self_mount_volume_callback (GtkAction *action,
 {
 	NautilusFile *file;
 	FMDirectoryView *view;
+	GMountOperation *mount_op;
 
 	view = FM_DIRECTORY_VIEW (data);
 
@@ -6277,7 +6280,9 @@ action_self_mount_volume_callback (GtkAction *action,
 		return;
 	}
 
-	nautilus_file_mount (file, GTK_WIDGET (view), NULL, NULL);
+	mount_op = eel_mount_operation_new (fm_directory_view_get_containing_window (view));
+	nautilus_file_mount (file, mount_op, NULL, NULL);
+	g_object_unref (mount_op);
 }
 
 static void
@@ -6294,7 +6299,7 @@ action_self_unmount_volume_callback (GtkAction *action,
 		return;
 	}
 
-	nautilus_file_unmount (file, GTK_WIDGET (view), NULL, NULL);
+	nautilus_file_unmount (file, NULL, NULL);
 }
 
 static void
@@ -6311,7 +6316,7 @@ action_self_eject_volume_callback (GtkAction *action,
 		return;
 	}
 	
-	nautilus_file_eject (file, GTK_WIDGET (view), NULL, NULL);
+	nautilus_file_eject (file, NULL, NULL);
 }
 
 static void 
@@ -7885,6 +7890,7 @@ cancel_activate (gpointer callback_data)
 	if (parameters->pending_mounts == 0) {
 		nautilus_file_list_cancel_call_when_ready (parameters->files_handle);
 		nautilus_file_list_free (parameters->files);
+		g_free (parameters->timed_wait_prompt);
 		g_free (parameters);
 	}
 }
@@ -8303,6 +8309,23 @@ activation_file_mounted_callback (NautilusFile  *file,
 }
 
 static void
+activate_mount_op_active (EelMountOperation *operation,
+			  gboolean is_active,
+			  ActivateParameters *parameters)
+{
+	if (is_active) {
+		eel_timed_wait_stop (cancel_activate_callback, parameters);
+	} else {
+		eel_timed_wait_start_with_duration
+			(DELAY_UNTIL_CANCEL_MSECS,
+			 cancel_activate_callback,
+			 parameters,
+			 parameters->timed_wait_prompt,
+			 fm_directory_view_get_containing_window (parameters->view));
+	}
+}
+
+static void
 activate_activation_uris_ready_callback (GList *files_ignore,
 					 gpointer callback_data)
 {
@@ -8311,6 +8334,7 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	GList *l, *next;
 	NautilusFile *file;
 	NautilusFileAttributes attributes;
+	GMountOperation *mount_op;
 
 	parameters = callback_data;
 	not_yet_mounted = NULL;
@@ -8350,8 +8374,11 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 		not_yet_mounted = g_list_reverse (not_yet_mounted);
 		for (l = not_yet_mounted; l != NULL; l = l->next) {
 			file = l->data;
-			nautilus_file_mount (file, GTK_WIDGET (parameters->view),
+			mount_op = eel_mount_operation_new (fm_directory_view_get_containing_window (parameters->view));
+			g_signal_connect (mount_op, "active_changed", (GCallback)activate_mount_op_active, parameters);
+			nautilus_file_mount (file, mount_op,
 					     activation_file_mounted_callback, callback_data);
+			g_object_unref (mount_op);
 		}
 		g_list_free (not_yet_mounted);
 
@@ -8440,7 +8467,6 @@ fm_directory_view_activate_files (FMDirectoryView *view,
 	NautilusFile *file;
 	NautilusFileAttributes attributes;
 	char *file_name;
-	char *timed_wait_prompt;
 	int file_count;
 	GtkWindow *window;
 
@@ -8483,22 +8509,21 @@ fm_directory_view_activate_files (FMDirectoryView *view,
 
 	if (file_count == 1) {
 		file_name = nautilus_file_get_display_name (files->data);
-		timed_wait_prompt = g_strdup_printf (_("Opening \"%s\"."), file_name);
+		parameters->timed_wait_prompt = g_strdup_printf (_("Opening \"%s\"."), file_name);
 		g_free (file_name);
 	} else {
-		timed_wait_prompt = g_strdup_printf (ngettext ("Opening %d item.",
-							       "Opening %d items.",
-							       file_count),
-						     file_count);
+		parameters->timed_wait_prompt = g_strdup_printf (ngettext ("Opening %d item.",
+									   "Opening %d items.",
+									   file_count),
+								 file_count);
 	}
 	
 	eel_timed_wait_start_with_duration
 		(DELAY_UNTIL_CANCEL_MSECS,
 		 cancel_activate_callback,
 		 parameters,
-		 timed_wait_prompt,
+		 parameters->timed_wait_prompt,
 		 fm_directory_view_get_containing_window (view));
-	g_free (timed_wait_prompt);
 
 	g_object_weak_ref (G_OBJECT (view), activate_weak_notify, parameters);
 

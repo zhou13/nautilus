@@ -858,7 +858,7 @@ nautilus_file_can_eject (NautilusFile *file)
 
 void
 nautilus_file_mount (NautilusFile                   *file,
-		     GtkWidget                      *parent,
+		     GMountOperation                *mount_op,
 		     NautilusFileOperationCallback   callback,
 		     gpointer                        callback_data)
 {
@@ -873,13 +873,12 @@ nautilus_file_mount (NautilusFile                   *file,
 			g_error_free (error);
 		}
 	} else {
-		NAUTILUS_FILE_GET_CLASS (file)->mount (file, parent, callback, callback_data);
+		NAUTILUS_FILE_GET_CLASS (file)->mount (file, mount_op, callback, callback_data);
 	}
 }
 
 void
 nautilus_file_unmount (NautilusFile                   *file,
-		       GtkWidget                      *parent,
 		       NautilusFileOperationCallback   callback,
 		       gpointer                        callback_data)
 {
@@ -894,13 +893,12 @@ nautilus_file_unmount (NautilusFile                   *file,
 			g_error_free (error);
 		}
 	} else {
-		NAUTILUS_FILE_GET_CLASS (file)->unmount (file, parent, callback, callback_data);
+		NAUTILUS_FILE_GET_CLASS (file)->unmount (file, callback, callback_data);
 	}
 }
 
 void
 nautilus_file_eject (NautilusFile                   *file,
-		     GtkWidget                      *parent,
 		     NautilusFileOperationCallback   callback,
 		     gpointer                        callback_data)
 {
@@ -915,7 +913,7 @@ nautilus_file_eject (NautilusFile                   *file,
 			g_error_free (error);
 		}
 	} else {
-		NAUTILUS_FILE_GET_CLASS (file)->eject (file, parent, callback, callback_data);
+		NAUTILUS_FILE_GET_CLASS (file)->eject (file, callback, callback_data);
 	}
 }
 
