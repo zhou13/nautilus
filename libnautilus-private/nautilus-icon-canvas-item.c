@@ -785,7 +785,7 @@ nautilus_icon_canvas_item_update_bounds (NautilusIconCanvasItem *item,
 	item->details->emblem_rect.y1 = 0;
 	emblem_layout_reset (&emblem_layout, item, item->details->canvas_rect);
 	while (emblem_layout_next (&emblem_layout, &emblem_pixbuf, &emblem_rect)) {
-		_eel_irect_union (&item->details->emblem_rect, &item->details->emblem_rect, &emblem_rect);
+		eel_irect_union (&item->details->emblem_rect, &item->details->emblem_rect, &emblem_rect);
 	}
 
 	/* queue a redraw. */
@@ -2014,7 +2014,7 @@ hit_test_pixbuf (GdkPixbuf *pixbuf, EelIRect pixbuf_location, EelIRect probe_rec
 	pixbuf_rect.y0 = 0;
 	pixbuf_rect.x1 = gdk_pixbuf_get_width (pixbuf);
 	pixbuf_rect.y1 = gdk_pixbuf_get_height (pixbuf);
-	_eel_irect_intersect (&relative_rect, &relative_rect, &pixbuf_rect);
+	eel_irect_intersect (&relative_rect, &relative_rect, &pixbuf_rect);
 	if (eel_irect_is_empty (&relative_rect)) {
 		return FALSE;
 	}
@@ -2160,7 +2160,7 @@ nautilus_icon_canvas_item_bounds (EelCanvasItem *item,
 		text_rect = compute_text_rectangle (icon_item, icon_rect, FALSE);
 		
 		/* Compute total rectangle, adding in emblem rectangles. */
-		_eel_irect_union (&total_rect, &icon_rect, &text_rect);
+		eel_irect_union (&total_rect, &icon_rect, &text_rect);
 		emblem_layout_reset (&emblem_layout, icon_item, icon_rect);
 		while (emblem_layout_next (&emblem_layout, &emblem_pixbuf, &emblem_rect)) {
 			emblem_rect.x0 = floor (emblem_rect.x0 / pixels_per_unit);
@@ -2168,7 +2168,7 @@ nautilus_icon_canvas_item_bounds (EelCanvasItem *item,
 			emblem_rect.x1 = ceil (emblem_rect.x1 / pixels_per_unit);
 			emblem_rect.y1 = ceil (emblem_rect.y1 / pixels_per_unit);
 
-			_eel_irect_union (&total_rect, &total_rect, &emblem_rect);
+			eel_irect_union (&total_rect, &total_rect, &emblem_rect);
 		}
 
 		details->bounds_cache = total_rect;

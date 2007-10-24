@@ -1,3 +1,9 @@
+2007-10-24  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-icon-canvas-item.c:
+        * test/test.c:
+	Update for eel changes
+
 2007-10-23  Alexander Larsson  <alexl@redhat.com>
 
         * configure.in:
