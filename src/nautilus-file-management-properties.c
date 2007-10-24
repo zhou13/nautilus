@@ -44,7 +44,6 @@
 #include <eel/eel-gconf-extensions.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-preferences-glade.h>
-#include <eel/eel-string-list.h>
 
 #include <libnautilus-private/nautilus-column-chooser.h>
 #include <libnautilus-private/nautilus-column-utilities.h>
@@ -282,16 +281,23 @@ columns_changed_callback (NautilusColumnChooser *chooser,
 }
 
 static void
+free_column_names_array (GPtrArray *column_names)
+{
+	g_ptr_array_foreach (column_names, (GFunc) g_free, NULL);
+	g_ptr_array_free (column_names, TRUE);
+}
+
+static void
 create_icon_caption_combo_box_items (GtkComboBox *combo_box,
 			             GList *columns)
 {
 	GList *l;
-	EelStringList *column_names;
+	GPtrArray *column_names;
 
-	column_names = eel_string_list_new (FALSE);
-	
+	column_names = g_ptr_array_new ();
+
 	gtk_combo_box_append_text (combo_box, _("None"));
-	eel_string_list_insert (column_names, "none");
+	g_ptr_array_add (column_names, g_strdup ("none"));
 
 	for (l = columns; l != NULL; l = l->next) {
 		NautilusColumn *column;
@@ -299,7 +305,7 @@ create_icon_caption_combo_box_items (GtkComboBox *combo_box,
 		char *label;
 
 		column = NAUTILUS_COLUMN (l->data);
-		
+
 		g_object_get (G_OBJECT (column), 
 			      "name", &name, "label", &label, 
 			      NULL);
@@ -310,16 +316,15 @@ create_icon_caption_combo_box_items (GtkComboBox *combo_box,
 			g_free (label);
 			continue;
 		}
-		
-		gtk_combo_box_append_text (combo_box, label);
-		eel_string_list_insert (column_names, name);
 
-		g_free (name);
+		gtk_combo_box_append_text (combo_box, label);
+		g_ptr_array_add (column_names, name);
+
 		g_free (label);
 	}
 	g_object_set_data_full (G_OBJECT (combo_box), "column_names",
 			        column_names,
-			        (GDestroyNotify) eel_string_list_free);
+			        (GDestroyNotify) free_column_names_array);
 }
 
 static void
@@ -337,17 +342,18 @@ icon_captions_changed_callback (GtkComboBox *combo_box,
 	for (i = 0; icon_captions_components[i] != NULL; i++) {
 		GtkWidget *combo_box;
 		int active;
-		EelStringList *column_names;
+		GPtrArray *column_names;
 		char *name;
-		
+
 		combo_box = glade_xml_get_widget
 			    (GLADE_XML (xml), icon_captions_components[i]);
 		active = gtk_combo_box_get_active (GTK_COMBO_BOX (combo_box));
 
-		column_names = g_object_get_data (G_OBJECT (combo_box), "column_names");
-		
-		name = eel_string_list_nth (column_names, active);
-		captions = g_list_prepend (captions, name);
+		column_names = g_object_get_data (G_OBJECT (combo_box),
+						  "column_names");
+
+		name = g_ptr_array_index (column_names, active);
+		captions = g_list_prepend (captions, g_strdup (name));
 	}
 	captions = g_list_reverse (captions);
 	eel_preferences_set_string_glist (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS, captions);
@@ -361,8 +367,8 @@ update_caption_combo_box (GladeXML *xml,
 {
 	GtkWidget *combo_box;
 	int i;
-	EelStringList *column_names;
-	
+	GPtrArray *column_names;
+
 	combo_box = glade_xml_get_widget (xml, combo_box_name);
 
 	g_signal_handlers_block_by_func
@@ -373,8 +379,8 @@ update_caption_combo_box (GladeXML *xml,
 	column_names = g_object_get_data (G_OBJECT (combo_box), 
 					  "column_names");
 
-	for (i = 0; i < eel_string_list_get_length (column_names); i++) {
-		if (!strcmp (name, eel_string_list_peek_nth (column_names, i))) {
+	for (i = 0; i < column_names->len; ++i) {
+		if (!strcmp (name, g_ptr_array_index (column_names, i))) {
 			gtk_combo_box_set_active (GTK_COMBO_BOX (combo_box), i);
 			break;
 		}
