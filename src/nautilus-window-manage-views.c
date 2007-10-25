@@ -1168,6 +1168,8 @@ location_has_really_changed (NautilusWindow *window)
 	GFile *location_copy;
 	char *uri;
 
+	location_copy = NULL;
+
 	if (window->new_content_view != NULL) {
 		widget = nautilus_view_get_widget (window->new_content_view);
 		/* Switch to the new content view. */
@@ -1179,8 +1181,8 @@ location_has_really_changed (NautilusWindow *window)
 		window->new_content_view = NULL;
 	}
 
-	location_copy = g_object_ref (window->details->pending_location);
         if (window->details->pending_location != NULL) {
+		location_copy = g_object_ref (window->details->pending_location);
                 /* Tell the window we are finished. */
                 update_for_new_location (window);
 	}

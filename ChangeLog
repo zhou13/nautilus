@@ -1,5 +1,10 @@
 2007-10-25  Paolo Borelli  <pborelli@katamail.com>
 
+	* src/nautilus-window-manage-view.c (location_has_really_changed):
+	Fix a warning when switching view.
+
+2007-10-25  Paolo Borelli  <pborelli@katamail.com>
+
 	* src/nautilus-application.c:
 	* src/nautilus-property-browser.c:
 	* src/nautilus-shell.c:
