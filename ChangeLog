@@ -1,5 +1,12 @@
 2007-10-25  Paolo Borelli  <pborelli@katamail.com>
 
+	* src/file-manager/fm-list-view.c:
+	* libnautilus-private/nautilus-icon-info.c:
+	* libnautilus-private/nautilus-file.c:
+	Plug some minor memory leaks.
+
+2007-10-25  Paolo Borelli  <pborelli@katamail.com>
+
 	* src/nautilus-window-manage-view.c (location_has_really_changed):
 	Fix a warning when switching view.
 

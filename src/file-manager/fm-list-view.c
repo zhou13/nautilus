@@ -1208,6 +1208,7 @@ apply_columns_settings (FMListView *list_view, GList *column_order, GList *visib
 		gtk_tree_view_move_column_after (list_view->details->tree_view, l->data, prev_view_column);
 		prev_view_column = l->data;
 	}
+	g_list_free (view_columns);
 }
 
 static void

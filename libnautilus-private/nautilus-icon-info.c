@@ -146,7 +146,7 @@ nautilus_icon_info_new_for_icon_info (GtkIconInfo *icon_info)
 
 	if (gtk_icon_info_get_attach_points (icon_info, &points, &n_points)) {
 		icon->n_attach_points = n_points;
-		icon->attach_points = g_memdup (points, n_points * sizeof (GdkPoint));
+		icon->attach_points = points;
 	}
 
 	icon->display_name = g_strdup (gtk_icon_info_get_display_name (icon_info));

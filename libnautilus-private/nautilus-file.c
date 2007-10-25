@@ -358,8 +358,7 @@ nautilus_file_new_from_filename (NautilusDirectory *directory,
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_VFS_FILE, NULL));
 	}
 
-	nautilus_directory_ref (directory);
-	file->details->directory = directory;
+	file->details->directory = nautilus_directory_ref (directory);
 
 	file->details->name = eel_ref_str_new (filename);
 
@@ -472,11 +471,9 @@ nautilus_file_new_from_info (NautilusDirectory *directory,
 		file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_VFS_FILE, NULL));
 	}
 
-	nautilus_directory_ref (directory);
-	file->details->directory = directory;
+	file->details->directory = nautilus_directory_ref (directory);
 
 	update_info_and_name (file, info);
-
 
 #ifdef NAUTILUS_FILE_DEBUG_REF
 	DEBUG_REF_PRINTF("%10p ref'd", file);
@@ -1878,8 +1875,7 @@ nautilus_file_update_name_and_directory (NautilusFile *file,
 	monitors = nautilus_directory_remove_file_monitors (old_directory, file);
 	nautilus_directory_remove_file (old_directory, file);
 
-	nautilus_directory_ref (new_directory);
-	file->details->directory = new_directory;
+	file->details->directory = nautilus_directory_ref (new_directory);
 	nautilus_directory_unref (old_directory);
 
 	if (name) {
@@ -5617,7 +5613,7 @@ nautilus_file_get_volume_free_space (NautilusFile *file)
 	char *res;
 
 	res = NULL;
-	
+
 	location = nautilus_file_get_location (file);
 	info = g_file_query_filesystem_info (location, G_FILE_ATTRIBUTE_FS_FREE, NULL, NULL);
 	if (info) {
@@ -5625,8 +5621,10 @@ nautilus_file_get_volume_free_space (NautilusFile *file)
 			free_space = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_FREE);
 			res = g_format_file_size_for_display (free_space);
 		}
+		g_object_unref (info);
 	}
-	
+	g_object_unref (location);
+
 	return res;
 }
 
