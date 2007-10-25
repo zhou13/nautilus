@@ -73,14 +73,6 @@
 #include <libgnome/gnome-util.h>
 #include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-help.h>
-#include <libgnomevfs/gnome-vfs-async-ops.h>
-#include <libgnomevfs/gnome-vfs-file-info.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
-#include <libgnomevfs/gnome-vfs-result.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libnautilus-private/nautilus-recent.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-private/nautilus-clipboard-monitor.h>
@@ -336,14 +328,12 @@ static void     fm_directory_view_init                         (FMDirectoryView 
 static void     fm_directory_view_duplicate_selection          (FMDirectoryView      *view,
 								GList                *files,
 								GArray               *item_locations);
-static gboolean fm_directory_view_confirm_deletion             (GtkWindow            *parent_window,
-								GList                *uris,
-								gboolean              all);
 static void     fm_directory_view_create_links_for_files       (FMDirectoryView      *view,
 								GList                *files,
 								GArray               *item_locations);
 static void     trash_or_delete_files                          (GtkWindow            *parent_window,
-								const GList          *files);
+								const GList          *files,
+								gboolean              delete_if_all_already_in_trash);
 static void     fm_directory_view_activate_file                (FMDirectoryView      *view,
 								NautilusFile         *file,
 								NautilusWindowOpenMode mode,
@@ -903,7 +893,7 @@ trash_or_delete_selected_files (FMDirectoryView *view)
 	 */
 	if (!view->details->selection_was_removed) {
 		selection = fm_directory_view_get_selection_for_file_transfer (view);
-		trash_or_delete_files (fm_directory_view_get_containing_window (view), selection);					 
+		trash_or_delete_files (fm_directory_view_get_containing_window (view), selection, TRUE);
 		nautilus_file_list_free (selection);
 		view->details->selection_was_removed = TRUE;
 	}
@@ -1762,9 +1752,10 @@ fm_directory_view_get_selection_uris (NautilusView *view)
 }
 
 static GList *
-file_list_from_uri_list (GList *uri_list)
+file_list_from_uri_list (const GList *uri_list)
 {
-	GList *file_list, *node;
+	GList *file_list;
+	const GList *node;
 
 	file_list = NULL;
 	for (node = uri_list; node != NULL; node = node->next) {
@@ -1773,6 +1764,22 @@ file_list_from_uri_list (GList *uri_list)
 			 nautilus_file_get_by_uri (node->data));
 	}
 	return g_list_reverse (file_list);
+}
+
+static GList *
+location_list_from_uri_list (const GList *uris)
+{
+	const GList *l;
+	GList *files;
+	GFile *f;
+
+	files = NULL;
+	for (l = uris; l != NULL; l = l->next) {
+		f = g_file_new_for_uri (l->data);
+		files = g_list_prepend (files, f);
+	}
+
+	return g_list_reverse (files);
 }
 
 static void
@@ -3664,46 +3671,6 @@ desktop_or_home_dir_in_selection (FMDirectoryView *view)
 }
 
 static gboolean
-can_move_uri_to_trash (GtkWindow *parent_window, const char *file_uri_string)
-{
-	/* Return TRUE if we can get a trash directory on the same volume as this file. */
-	GnomeVFSURI *file_uri;
-	GnomeVFSURI *directory_uri;
-	GnomeVFSURI *trash_dir_uri;
-	gboolean result;
-
-	g_return_val_if_fail (file_uri_string != NULL, FALSE);
-
-	file_uri = gnome_vfs_uri_new (file_uri_string);
-
-	if (file_uri == NULL) {
-		return FALSE;
-	}
-
-	/* FIXME: Why can't we just pass file_uri to gnome_vfs_find_directory? */
-	directory_uri = gnome_vfs_uri_get_parent (file_uri);
-	gnome_vfs_uri_unref (file_uri);
-
-	if (directory_uri == NULL) {
-		return FALSE;
-	}
-
-	/*
-	 * Create a new trash if needed but don't go looking for an old Trash.
-	 * Passing 0 permissions as gnome-vfs would override the permissions 
-	 * passed with 700 while creating .Trash directory
-	 */
-	result = gnome_vfs_find_directory (directory_uri, GNOME_VFS_DIRECTORY_KIND_TRASH,
-					   &trash_dir_uri, TRUE, FALSE, 0) == GNOME_VFS_OK;
-	if (result) {
-		gnome_vfs_uri_unref (trash_dir_uri);
-	}
-	gnome_vfs_uri_unref (directory_uri);
-
-	return result;
-}
-
-static gboolean
 can_delete_uri_without_confirm (const char *file_uri_string)
 {
 	if (eel_istr_has_prefix (file_uri_string, "burn:") != FALSE) {
@@ -3726,193 +3693,28 @@ file_name_from_uri (const char *uri)
 	return file_name;	
 }
 
-static gboolean
-fm_directory_view_confirm_deletion (GtkWindow *parent_window, GList *uris, gboolean all)
-{
-	GtkDialog *dialog;
-	char *prompt;
-	char *detail;
-	int uri_count;
-	char *uri;
-	char *file_name;
-	int response;
 
-	uri_count = g_list_length (uris);
-	g_assert (uri_count > 0);
-	
-	if (uri_count == 1) {
-		uri = (char *) uris->data;
-		if (eel_uri_is_desktop (uri)) {
-			/* Don't ask for desktop icons */
-			return TRUE;
-		}
-		file_name = file_name_from_uri (uri);
-		prompt = _("Cannot move file to trash, do you want to delete immediately?");
-		detail = g_strdup_printf (_("The file \"%s\" cannot be moved to the trash."), file_name);
-		g_free (file_name);
-	} else {
-		if (all) {
-			prompt = _("Cannot move items to trash, do you want to delete them immediately?");
-			detail = g_strdup_printf (ngettext("The selected item could not be moved to the Trash",
-							   "The %d selected items could not be moved to the Trash",
-							    uri_count),
-						  uri_count);
-		} else {
-			prompt = _("Cannot move some items to trash, do you want to delete these immediately?");
-			detail = g_strdup_printf (_("%d of the selected items cannot be moved to the Trash"), uri_count);
-		}
-	}
-
-	dialog = eel_show_yes_no_dialog
-		(prompt,
-		 detail, GTK_STOCK_DELETE, GTK_STOCK_CANCEL,
-		 parent_window);
-	
-	g_free (detail);
-
-	response = gtk_dialog_run (dialog);
-	gtk_object_destroy (GTK_OBJECT (dialog));
-
-	return response == GTK_RESPONSE_YES;
-}
-
-static gboolean
-confirm_delete_from_trash (GtkWindow *parent_window, GList *uris)
-{
-	GtkDialog *dialog;
-	char *prompt;
-	char *file_name;
-	int uri_count;
-	int response;
-
-	/* Just Say Yes if the preference says not to confirm. */
-	if (!confirm_trash_auto_value) {
-		return TRUE;
-	}
-
-	uri_count = g_list_length (uris);
-	g_assert (uri_count > 0);
-
-	if (uri_count == 1) {
-		file_name = file_name_from_uri ((char *) uris->data);
-		prompt = g_strdup_printf (_("Are you sure you want to permanently delete \"%s\" "
-					    "from the trash?"), file_name);
-		g_free (file_name);
-	} else {
-		prompt = g_strdup_printf (ngettext("Are you sure you want to permanently delete "
-						   "the %d selected item from the trash?",
-						   "Are you sure you want to permanently delete "
-						   "the %d selected items from the trash?",
-						   uri_count), 
-					  uri_count);
-	}
-
-	dialog = GTK_DIALOG (eel_alert_dialog_new (parent_window,
-						   0, GTK_MESSAGE_WARNING, GTK_BUTTONS_NONE,
-						   prompt,
-						  _("If you delete an item, it will be permanently lost.")));
-	gtk_dialog_add_button (dialog, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
-	gtk_dialog_add_button (dialog, GTK_STOCK_DELETE, GTK_RESPONSE_YES);
-
-	gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_YES);
-
-	g_free (prompt);
-	
-	response = gtk_dialog_run (dialog);
-	gtk_object_destroy (GTK_OBJECT (dialog));
-
-	return response == GTK_RESPONSE_YES;
-}
-
-static void
-trash_or_delete_files_common (GtkWindow *parent_window,
-			      const GList *file_uris,
-			      GArray *relative_item_points,
-			      gboolean delete_if_all_already_in_trash)
-{
-	const GList *file_node;
-	char *file_uri;
-	GList *moveable_uris;
-	GList *unmoveable_uris;
-	GList *in_trash_uris;
-	GList *no_confirm_uris;
-
-	/* Collect three lists: (1) items that can be moved to trash,
-	 * (2) items that can only be deleted in place, and (3) items that
-	 * are already in trash. 
-	 * 
-	 * Always move (1) to trash if non-empty.
-	 * Delete (3) only if (1) and (2) are non-empty, otherwise ignore (3).
-	 * Ask before deleting (2) if non-empty.
-	 * Ask before deleting (3) if non-empty.
-	 */
-
-	moveable_uris = NULL;
-	unmoveable_uris = NULL;
-	in_trash_uris = NULL;
-	no_confirm_uris = NULL;
-	
-	for (file_node = file_uris; file_node != NULL; file_node = file_node->next) {
-		file_uri = (char *) file_node->data;
-		
-		if (delete_if_all_already_in_trash && eel_uri_is_trash (file_uri)) {
-			in_trash_uris = g_list_prepend (in_trash_uris, g_strdup (file_uri));
-		} else if (can_delete_uri_without_confirm (file_uri)) {
-			no_confirm_uris = g_list_prepend (no_confirm_uris, g_strdup (file_uri));
-		} else if (can_move_uri_to_trash (parent_window, file_uri)) {
-			moveable_uris = g_list_prepend (moveable_uris, g_strdup (file_uri));
-		} else {
-			unmoveable_uris = g_list_prepend (unmoveable_uris, g_strdup (file_uri));
-		}
-	}
-
-	if (in_trash_uris != NULL && moveable_uris == NULL && unmoveable_uris == NULL) {
-		if (confirm_delete_from_trash (parent_window, in_trash_uris)) {
-			nautilus_file_operations_delete (in_trash_uris, GTK_WIDGET (parent_window), 
-								NULL, NULL);
-		}
-	} else {
-		if (no_confirm_uris != NULL) {
-			nautilus_file_operations_delete (no_confirm_uris,
-							 GTK_WIDGET (parent_window), NULL, NULL);
-		}
-		if (moveable_uris != NULL) {
-			nautilus_file_operations_copy_move (moveable_uris, relative_item_points, 
-							    EEL_TRASH_URI, GDK_ACTION_MOVE, GTK_WIDGET (parent_window),
-							    NULL, NULL);
-		}
-		if (unmoveable_uris != NULL) {
-			if (fm_directory_view_confirm_deletion (parent_window, 
-								unmoveable_uris,
-								moveable_uris == NULL)) {
-				nautilus_file_operations_delete (unmoveable_uris, 
-								 GTK_WIDGET (parent_window), NULL, NULL);
-			}
-		}
-	}
-	
-	eel_g_list_free_deep (in_trash_uris);
-	eel_g_list_free_deep (moveable_uris);
-	eel_g_list_free_deep (unmoveable_uris);
-	eel_g_list_free_deep (no_confirm_uris);
-}
 
 static void
 trash_or_delete_files (GtkWindow *parent_window,
-		       const GList *files)
+		       const GList *files,
+		       gboolean delete_if_all_already_in_trash)
 {
-	GList *file_uris;
+	GList *locations;
 	const GList *node;
 	
-	file_uris = NULL;
+	locations = NULL;
 	for (node = files; node != NULL; node = node->next) {
-		file_uris = g_list_prepend (file_uris,
-					    nautilus_file_get_uri ((NautilusFile *) node->data));
+		locations = g_list_prepend (locations,
+					    nautilus_file_get_location ((NautilusFile *) node->data));
 	}
 	
-	file_uris = g_list_reverse (file_uris);
-	trash_or_delete_files_common (parent_window, file_uris, NULL, TRUE);
-	eel_g_list_free_deep (file_uris);
+	locations = g_list_reverse (locations);
+
+	nautilus_file_operations_trash_or_delete (locations,
+						  parent_window,
+						  NULL, NULL);
+	eel_g_object_list_free (locations);
 }
 
 static gboolean
@@ -6483,7 +6285,7 @@ action_location_trash_callback (GtkAction *action,
 	g_return_if_fail (file != NULL);
 
 	files = g_list_append (NULL, file);
-	trash_or_delete_files (fm_directory_view_get_containing_window (view), files);
+	trash_or_delete_files (fm_directory_view_get_containing_window (view), files, TRUE);
 	g_list_free (files);
 }
 
@@ -7819,7 +7621,7 @@ report_broken_symbolic_link (GtkWindow *parent_window, NautilusFile *file)
 		file_as_list.data = file;
 		file_as_list.next = NULL;
 		file_as_list.prev = NULL;
-	        trash_or_delete_files (parent_window, &file_as_list);					 
+	        trash_or_delete_files (parent_window, &file_as_list, TRUE);
 	}
 
 out:
@@ -9349,7 +9151,10 @@ fm_directory_view_move_copy_items (const GList *item_uris,
 	}
 
 	if (eel_uri_is_trash (target_uri) && copy_action == GDK_ACTION_MOVE) {
-		trash_or_delete_files_common (fm_directory_view_get_containing_window (view), item_uris, relative_item_points, FALSE);
+		GList *locations;
+		locations = location_list_from_uri_list (item_uris);
+		trash_or_delete_files (fm_directory_view_get_containing_window (view), locations, FALSE);
+		eel_g_object_list_free (locations);
 	} else {
 		nautilus_file_operations_copy_move
 			(item_uris, relative_item_points, 

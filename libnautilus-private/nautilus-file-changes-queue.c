@@ -167,7 +167,7 @@ nautilus_file_changes_queue_file_changed (const char *uri)
 }
 
 void
-nautilus_file_changes_queue_file_removed (const char *uri)
+nautilus_file_changes_queue_file_removed_by_uri (const char *uri)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -177,6 +177,20 @@ nautilus_file_changes_queue_file_removed (const char *uri)
 	new_item = g_new0 (NautilusFileChange, 1);
 	new_item->kind = CHANGE_FILE_REMOVED;
 	new_item->from_uri = g_strdup (uri);
+	nautilus_file_changes_queue_add_common (queue, new_item);
+}
+
+void
+nautilus_file_changes_queue_file_removed (GFile *location)
+{
+	NautilusFileChange *new_item;
+	NautilusFileChangesQueue *queue;
+
+	queue = nautilus_file_changes_queue_get();
+
+	new_item = g_new0 (NautilusFileChange, 1);
+	new_item->kind = CHANGE_FILE_REMOVED;
+	new_item->from_uri = g_file_get_uri (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -197,7 +211,7 @@ nautilus_file_changes_queue_file_moved (const char *from, const char *to)
 
 void
 nautilus_file_changes_queue_schedule_metadata_copy (const char *from_uri,
-	const char *to_uri)
+						    const char *to_uri)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -213,7 +227,7 @@ nautilus_file_changes_queue_schedule_metadata_copy (const char *from_uri,
 
 void
 nautilus_file_changes_queue_schedule_metadata_move (const char *from_uri,
-	const char *to_uri)
+						    const char *to_uri)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -228,7 +242,7 @@ nautilus_file_changes_queue_schedule_metadata_move (const char *from_uri,
 }
 
 void
-nautilus_file_changes_queue_schedule_metadata_remove (const char *uri)
+nautilus_file_changes_queue_schedule_metadata_remove_by_uri (const char *uri)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -238,6 +252,20 @@ nautilus_file_changes_queue_schedule_metadata_remove (const char *uri)
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_METADATA_REMOVED;
 	new_item->from_uri = g_strdup (uri);
+	nautilus_file_changes_queue_add_common (queue, new_item);
+}
+
+void
+nautilus_file_changes_queue_schedule_metadata_remove (GFile *location)
+{
+	NautilusFileChange *new_item;
+	NautilusFileChangesQueue *queue;
+
+	queue = nautilus_file_changes_queue_get ();
+
+	new_item = g_new (NautilusFileChange, 1);
+	new_item->kind = CHANGE_METADATA_REMOVED;
+	new_item->from_uri = g_file_get_uri (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 

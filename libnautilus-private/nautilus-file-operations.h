@@ -72,10 +72,14 @@ void nautilus_file_operations_new_file_from_template (GtkWidget               *p
 						      NautilusNewFileCallback  done_callback,
 						      gpointer                 data);
 
-void nautilus_file_operations_delete      (const GList               *item_uris,
-					   GtkWidget                 *parent_view,
-					   NautilusDeleteCallback done_callback,
-					   gpointer done_callback_data);
+void nautilus_file_operations_delete          (const GList            *item_uris,
+					       GtkWidget              *parent_view,
+					       NautilusDeleteCallback  done_callback,
+					       gpointer                done_callback_data);
+void nautilus_file_operations_trash_or_delete (GList                  *files,
+					       GtkWindow              *parent_window,
+					       NautilusDeleteCallback  done_callback,
+					       gpointer                done_callback_data);
 
 void nautilus_file_set_permissions_recursive (const char                     *directory,
 					      GnomeVFSFilePermissions         file_permissions,

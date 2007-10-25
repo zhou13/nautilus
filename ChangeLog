@@ -1,5 +1,19 @@
 2007-10-25  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-changes-queue.[ch]:
+        * libnautilus-private/nautilus-monitor.c:
+	Rename some file change queue functions to _by_uri
+	add GFile based version with the original name
+	
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Add gio based nautilus_file_operations_trash_or_delete() call.
+	
+        * src/file-manager/fm-directory-view.c:
+	Call nautilus_file_operations_trash_or_delete()
+	Remove unused code
+
+2007-10-25  Alexander Larsson  <alexl@redhat.com>
+
         * src/file-manager/fm-directory-view.[ch]:
 	Make file activation handle mounting of mountables and non-mounted
 	locations. Also general cleanup of activation.
