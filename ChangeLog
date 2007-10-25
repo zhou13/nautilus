@@ -1,3 +1,10 @@
+2007-10-25  Alexander Larsson  <alexl@redhat.com>
+
+        * src/file-manager/fm-directory-view.[ch]:
+	Make file activation handle mounting of mountables and non-mounted
+	locations. Also general cleanup of activation.
+	Cancellation not handled yet.
+
 2007-10-25  Paolo Borelli  <pborelli@katamail.com>
 
 	* src/file-manager/fm-list-view.c:

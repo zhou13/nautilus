@@ -1,1 +1,10 @@
 Monitor for UNMOUNT file change event and close window
+
+Break out file activation from fm-directory-view.c
+File actication cancellation not implemented yet
+
+"translate" gnome-vfs errors and update error handling
+
+fm-directory-view.c: pre_copy_move stuff leaks as it waits for uris that are not in the target directory.
+
+

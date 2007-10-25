@@ -378,7 +378,7 @@ void                fm_directory_view_activate_files                   (FMDirect
 									NautilusWindowOpenFlags flags);
 void                fm_directory_view_start_batching_selection_changes (FMDirectoryView  *view);
 void                fm_directory_view_stop_batching_selection_changes  (FMDirectoryView  *view);
-gboolean            fm_directory_view_confirm_multiple_windows         (FMDirectoryView  *view,
+gboolean            fm_directory_view_confirm_multiple_windows         (GtkWindow        *parent_window,
 									int               window_count);
 void                fm_directory_view_queue_file_change                (FMDirectoryView  *view,
 									NautilusFile     *file);
