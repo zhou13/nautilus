@@ -1,3 +1,11 @@
+2007-10-25  Paolo Borelli  <pborelli@katamail.com>
+
+	* src/nautilus-application.c:
+	* src/nautilus-property-browser.c:
+	* src/nautilus-shell.c:
+
+	Do not use EelStringList.
+
 2007-10-24  Paolo Borelli  <pborelli@katamail.com>
 
 	* src/nautilus-file-management-properties.c:

@@ -66,7 +66,6 @@
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-stock-dialogs.h>
-#include <eel/eel-string-list.h>
 #include <gdk/gdkx.h>
 #include <gtk/gtkwindow.h>
 #include <gio/gfile.h>
@@ -251,58 +250,68 @@ check_required_directories (NautilusApplication *application)
 {
 	char *user_directory;
 	char *desktop_directory;
-	EelStringList *directories;
-	char *directories_as_string;
-	char *error_string;
-	char *detail_string;
-	GtkDialog *dialog;
-	int failed_count;
-	
+	GSList *directories;
+	gboolean ret;
+
 	g_assert (NAUTILUS_IS_APPLICATION (application));
+
+	ret = TRUE;
 
 	user_directory = nautilus_get_user_directory ();
 	desktop_directory = nautilus_get_desktop_directory ();
 
-	directories = eel_string_list_new (TRUE);
-	
+	directories = NULL;
+
 	if (!g_file_test (user_directory, G_FILE_TEST_IS_DIR)) {
-		eel_string_list_insert (directories, user_directory);
+		directories = g_slist_prepend (directories, user_directory);
 	}
-	g_free (user_directory);	    
-	    
+
 	if (!g_file_test (desktop_directory, G_FILE_TEST_IS_DIR)) {
-		eel_string_list_insert (directories, desktop_directory);
+		directories = g_slist_prepend (directories, desktop_directory);
 	}
-	g_free (desktop_directory);
 
-	failed_count = eel_string_list_get_length (directories);
+	if (directories != NULL) {
+		int failed_count;
+		GString *directories_as_string;
+		GSList *l;
+		char *error_string;
+		const char *detail_string;
+		GtkDialog *dialog;
 
-	if (failed_count != 0) {
-		directories_as_string = eel_string_list_as_string (directories, ", ", EEL_STRING_LIST_ALL_STRINGS);
+		ret = FALSE;
+
+		failed_count = g_slist_length (directories);
+
+		directories_as_string = g_string_new ((const char *)directories->data);
+		for (l = directories->next; l != NULL; l = l->next) {
+			g_string_append_printf (directories_as_string, ", %s", (const char *)l->data);
+		}
 
 		if (failed_count == 1) {
 			error_string = g_strdup_printf (_("Nautilus could not create the required folder \"%s\"."),
-							directories_as_string);
+							directories_as_string->str);
 			detail_string = _("Before running Nautilus, please create the following folder, or "
 					  "set permissions such that Nautilus can create it.");
 		} else {
 			error_string = g_strdup_printf (_("Nautilus could not create the following required folders: "
-							  "%s."), directories_as_string);
-  			detail_string = _("Before running Nautilus, please create these folders, or "
+							  "%s."), directories_as_string->str);
+			detail_string = _("Before running Nautilus, please create these folders, or "
 					  "set permissions such that Nautilus can create them.");
 		}
-		
+
 		dialog = eel_show_error_dialog (error_string, detail_string, NULL);
 		/* We need the main event loop so the user has a chance to see the dialog. */
 		nautilus_main_event_loop_register (GTK_OBJECT (dialog));
 
-		g_free (directories_as_string);
+		g_string_free (directories_as_string, TRUE);
 		g_free (error_string);
 	}
 
-	eel_string_list_free (directories);
+	g_slist_free (directories);
+	g_free (user_directory);
+	g_free (desktop_directory);
 
-	return failed_count == 0;
+	return ret;
 }
 
 static Nautilus_URIList *

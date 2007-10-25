@@ -1784,7 +1784,7 @@ make_properties_from_directories (NautilusPropertyBrowser *property_browser)
 			
 			/* Keep track of ERASE objects to place them prominently later */
 			if (property_browser->details->category_type == NAUTILUS_PROPERTY_PATTERN
-			    && eel_str_is_equal (object_name, RESET_IMAGE_NAME)) {
+			    && !eel_strcmp (object_name, RESET_IMAGE_NAME)) {
 				g_assert (reset_object == NULL);
 				reset_object = property_image;
 			}

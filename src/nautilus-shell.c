@@ -381,7 +381,7 @@ save_window_states (void)
 	char *window_attributes;
 	int x, y, width, height;
 	char *location;
-	EelStringList *states;
+	GList *states;
 	int screen_num = -1;
 
 	states = NULL;
@@ -408,19 +408,17 @@ save_window_states (void)
 						     location,
 						     screen_num);
 		g_free (location);
-		
-		if (states == NULL) {
-			states = eel_string_list_new (TRUE);
-		}
-		eel_string_list_insert (states, window_attributes);
-		g_free (window_attributes);
+
+		states = g_list_prepend (states, window_attributes);
 	}
 
 	if (eel_preferences_key_is_writable (START_STATE_CONFIG)) {
-		eel_preferences_set_string_list (START_STATE_CONFIG, states);
+		states = g_list_reverse (states);
+		eel_preferences_set_string_glist (START_STATE_CONFIG, states);
 	}
 
-	eel_string_list_free (states);
+	eel_g_list_free_deep (states);
+	g_list_free (states);
 }
 
 static void
@@ -428,7 +426,8 @@ restore_one_window_callback (const char *attributes,
 			     gpointer callback_data)
 {
 	NautilusShell *shell;
-	EelStringList *attribute_list;
+	char **attrs;
+	int attrs_len;
 	int x;
 	int y;
 	int width;
@@ -436,30 +435,42 @@ restore_one_window_callback (const char *attributes,
 	char *location;
 	NautilusWindow *window;
 	GdkScreen *screen = NULL;
-	int screen_num;
-	int list_length;
 
-	g_return_if_fail (eel_strlen (attributes) > 0);
+	g_return_if_fail (!eel_str_is_empty (attributes));
 	g_return_if_fail (NAUTILUS_IS_SHELL (callback_data));
 
 	shell = NAUTILUS_SHELL (callback_data);
 
-	attribute_list = eel_string_list_new_from_tokens (attributes, ",", TRUE);
+	attrs = g_strsplit (attributes, ",", -1);
+	attrs_len = g_strv_length (attrs);
 
-	list_length = eel_string_list_get_length (attribute_list);
+	x = 0;
+	y = 0;
+	width = 0;
+	height= 0;
+	location = NULL;
 
-	eel_string_list_nth_as_integer (attribute_list, WINDOW_STATE_ATTRIBUTE_WIDTH, &width);
-	eel_string_list_nth_as_integer (attribute_list, WINDOW_STATE_ATTRIBUTE_HEIGHT, &height);
-	eel_string_list_nth_as_integer (attribute_list, WINDOW_STATE_ATTRIBUTE_X, &x);
-	eel_string_list_nth_as_integer (attribute_list, WINDOW_STATE_ATTRIBUTE_Y, &y);
-	location = eel_string_list_nth (attribute_list, WINDOW_STATE_ATTRIBUTE_LOCATION);
+	if (attrs_len > WINDOW_STATE_ATTRIBUTE_WIDTH) {
+		eel_str_to_int (attrs[WINDOW_STATE_ATTRIBUTE_WIDTH], &width);
+	}
+	if (attrs_len > WINDOW_STATE_ATTRIBUTE_HEIGHT) {
+		eel_str_to_int (attrs[WINDOW_STATE_ATTRIBUTE_HEIGHT], &width);
+	}
+	if (attrs_len > WINDOW_STATE_ATTRIBUTE_X) {
+		eel_str_to_int (attrs[WINDOW_STATE_ATTRIBUTE_X], &x);
+	}
+	if (attrs_len > WINDOW_STATE_ATTRIBUTE_Y) {
+		eel_str_to_int (attrs[WINDOW_STATE_ATTRIBUTE_Y], &y);
+	}
+	if (attrs_len > WINDOW_STATE_ATTRIBUTE_LOCATION) {
+		location = g_strdup (attrs[WINDOW_STATE_ATTRIBUTE_LOCATION]);
+	}
 
 	/* Support sessions with no screen number for backwards compat.
 	 */
-	if (list_length >= WINDOW_STATE_ATTRIBUTE_SCREEN + 1) {
-		eel_string_list_nth_as_integer (
-			attribute_list, WINDOW_STATE_ATTRIBUTE_SCREEN, &screen_num);
-
+	if (attrs_len > WINDOW_STATE_ATTRIBUTE_SCREEN) {
+		int screen_num;
+		eel_str_to_int (attrs[WINDOW_STATE_ATTRIBUTE_SCREEN], &screen_num);
 		screen = gdk_display_get_screen (gdk_display_get_default (), screen_num);
 	} else {
 		screen = gdk_screen_get_default ();
@@ -489,23 +500,26 @@ restore_one_window_callback (const char *attributes,
 	gtk_widget_set_size_request (GTK_WIDGET (window), width, height);
 
 	g_free (location);
-	eel_string_list_free (attribute_list);
+	g_strfreev (attrs);
 }
 
 /* returns TRUE if there was state info which has been used to create new windows */
 static gboolean
 restore_window_states (NautilusShell *shell)
 {
-	EelStringList *states;
+	GList *states;
 	gboolean result;
 
-	states = eel_preferences_get_string_list (START_STATE_CONFIG);
-	result = eel_string_list_get_length (states) > 0;
-	eel_string_list_for_each (states, restore_one_window_callback, shell);
-	eel_string_list_free (states);
+	states = eel_preferences_get_string_glist (START_STATE_CONFIG);
+	result = g_list_length (states) > 0;
+	g_list_foreach (states, (GFunc) restore_one_window_callback, shell);
 	if (eel_preferences_key_is_writable (START_STATE_CONFIG)) {
-		eel_preferences_set_string_list (START_STATE_CONFIG, NULL);
+		eel_preferences_set_string_glist (START_STATE_CONFIG, NULL);
 	}
+
+	eel_g_list_free_deep (states);
+	g_list_free (states);
+
 	return result;
 }
 
