@@ -30,9 +30,6 @@
 #include "nautilus-directory.h"
 #include "nautilus-file-attributes.h"
 #include <eel/eel-debug.h>
-#include <eel/eel-gtk-macros.h>
-#include <eel/eel-vfs-extensions.h>
-#include <gtk/gtksignal.h>
 #include <gio/gthemedicon.h>
 #include <gio/gfilemonitor.h>
 #include <string.h>
@@ -51,11 +48,7 @@ enum {
 static guint signals[LAST_SIGNAL];
 static NautilusTrashMonitor *nautilus_trash_monitor = NULL;
 
-static void nautilus_trash_monitor_class_init (NautilusTrashMonitorClass *klass);
-static void nautilus_trash_monitor_init       (gpointer                   object,
-					       gpointer                   klass);
-
-EEL_CLASS_BOILERPLATE (NautilusTrashMonitor, nautilus_trash_monitor, G_TYPE_OBJECT)
+G_DEFINE_TYPE(NautilusTrashMonitor, nautilus_trash_monitor, G_TYPE_OBJECT)
 
 static void
 nautilus_trash_monitor_finalize (GObject *object)
@@ -70,6 +63,8 @@ nautilus_trash_monitor_finalize (GObject *object)
 	if (trash_monitor->details->file_monitor) {
 		g_object_unref (trash_monitor->details->file_monitor);
 	}
+
+	G_OBJECT_CLASS (nautilus_trash_monitor_parent_class)->finalize (object);
 }
 
 static void
@@ -80,7 +75,7 @@ nautilus_trash_monitor_class_init (NautilusTrashMonitorClass *klass)
 	object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = nautilus_trash_monitor_finalize;
-	
+
 	signals[TRASH_STATE_CHANGED] = g_signal_new
 		("trash_state_changed",
 		 G_TYPE_FROM_CLASS (object_class),
@@ -90,6 +85,8 @@ nautilus_trash_monitor_class_init (NautilusTrashMonitorClass *klass)
 		 g_cclosure_marshal_VOID__BOOLEAN,
 		 G_TYPE_NONE, 1,
 		 G_TYPE_BOOLEAN);
+
+	g_type_class_add_private (object_class, sizeof(NautilusTrashMonitorDetails));
 }
 
 static void
@@ -162,19 +159,19 @@ file_changed (GDirectoryMonitor* monitor,
 	NautilusTrashMonitor *trash_monitor;
 
 	trash_monitor = NAUTILUS_TRASH_MONITOR (user_data);
-	
+
 	schedule_update_info (trash_monitor);
 }
 
 static void
-nautilus_trash_monitor_init (gpointer object, gpointer klass)
+nautilus_trash_monitor_init (NautilusTrashMonitor *trash_monitor)
 {
-	NautilusTrashMonitor *trash_monitor;
 	GFile *location;
 
-	trash_monitor = NAUTILUS_TRASH_MONITOR (object);
+	trash_monitor->details = G_TYPE_INSTANCE_GET_PRIVATE (trash_monitor,
+							      NAUTILUS_TYPE_TRASH_MONITOR,
+							      NautilusTrashMonitorDetails);
 
-	trash_monitor->details = g_new0 (NautilusTrashMonitorDetails, 1);
 	trash_monitor->details->empty = TRUE;
 	trash_monitor->details->icon = g_themed_icon_new ("user-trash");
 
@@ -184,13 +181,11 @@ nautilus_trash_monitor_init (gpointer object, gpointer klass)
 
 	g_signal_connect (trash_monitor->details->file_monitor, "changed",
 			  (GCallback)file_changed, trash_monitor);
-	
+
 	g_object_unref (location);
 
 	schedule_update_info (trash_monitor);
 }
-
-
 
 static void
 unref_trash_monitor (void)

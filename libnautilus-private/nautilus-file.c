@@ -2877,11 +2877,11 @@ static const char *
 nautilus_file_peek_display_name_collation_key (NautilusFile *file)
 {
 	const char *res;
-	
-	res = eel_ref_str_peek (file->details->display_name_collation_key);
+
+	res = file->details->display_name_collation_key;
 	if (res == NULL)
 		res = "";
-	
+
 	return res;
 }
 

@@ -28,10 +28,6 @@
 #include "nautilus-desktop-icon-file.h"
 #include "nautilus-directory-private.h"
 #include "nautilus-desktop-directory.h"
-
-#include <eel/eel-gtk-macros.h>
-#include <eel/eel-vfs-extensions.h>
-#include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <gio/gthemedicon.h>
 #include <gio/gvolume.h>
@@ -57,22 +53,38 @@ struct NautilusDesktopLinkDetails {
 	GVolume *volume;
 };
 
-static void nautilus_desktop_link_init       (gpointer              object,
-					      gpointer              klass);
-static void nautilus_desktop_link_class_init (gpointer              klass);
-static void trash_state_changed_callback     (NautilusTrashMonitor *trash_monitor,
-					      gboolean              state,
-					      gpointer              callback_data);
-static void nautilus_desktop_link_changed    (NautilusDesktopLink  *link);
-
-EEL_CLASS_BOILERPLATE (NautilusDesktopLink,
-		       nautilus_desktop_link,
-		       G_TYPE_OBJECT)
+G_DEFINE_TYPE(NautilusDesktopLink, nautilus_desktop_link, G_TYPE_OBJECT)
 
 static void
 create_icon_file (NautilusDesktopLink *link)
 {
 	link->details->icon_file = nautilus_desktop_icon_file_new (link);
+}
+
+static void
+nautilus_desktop_link_changed (NautilusDesktopLink *link)
+{
+	if (link->details->icon_file != NULL) {
+		nautilus_desktop_icon_file_update (link->details->icon_file);
+	}
+}
+
+static void
+trash_state_changed_callback (NautilusTrashMonitor *trash_monitor,
+			      gboolean state,
+			      gpointer callback_data)
+{
+	NautilusDesktopLink *link;
+
+	link = NAUTILUS_DESKTOP_LINK (callback_data);
+	g_assert (link->details->type == NAUTILUS_DESKTOP_LINK_TRASH);
+
+	if (link->details->icon) {
+		g_object_unref (link->details->icon);
+	}
+	link->details->icon = nautilus_trash_monitor_get_icon ();
+
+	nautilus_desktop_link_changed (link);
 }
 
 static void
@@ -124,12 +136,10 @@ network_name_changed (gpointer callback_data)
 	link = NAUTILUS_DESKTOP_LINK (callback_data);
 	g_assert (link->details->type == NAUTILUS_DESKTOP_LINK_NETWORK);
 
-	
 	g_free (link->details->display_name);
 	link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_NETWORK_NAME);
 	nautilus_desktop_link_changed (link);
 }
-
 
 NautilusDesktopLink *
 nautilus_desktop_link_new (NautilusDesktopLinkType type)
@@ -154,9 +164,7 @@ nautilus_desktop_link_new (NautilusDesktopLinkType type)
 		
 	case NAUTILUS_DESKTOP_LINK_COMPUTER:
 		link->details->filename = g_strdup ("computer");
-
 		link->details->display_name = eel_preferences_get (NAUTILUS_PREFERENCES_DESKTOP_COMPUTER_NAME);
-		
 		link->details->activation_location = g_file_new_for_uri ("computer:///");
 		/* TODO: This might need a different icon: */
 		link->details->icon = g_themed_icon_new ("gnome-fs-client");
@@ -207,7 +215,7 @@ nautilus_desktop_link_new_from_volume (GVolume *volume)
 {
 	NautilusDesktopLink *link;
 	GDrive *drive;
-	char *name, *filename, *p;
+	char *name, *filename;
 
 	link = NAUTILUS_DESKTOP_LINK (g_object_new (NAUTILUS_TYPE_DESKTOP_LINK, NULL));
 	
@@ -226,11 +234,7 @@ nautilus_desktop_link_new_from_volume (GVolume *volume)
 	}
 
 	/* Replace slashes in name */
-	while ((p = strchr (name, '/')) != NULL) {
-		*p = '-';
-	}
-	
-	filename = g_strconcat (name, ".volume", NULL);
+	filename = g_strconcat (g_strdelimit (name, "/", '-'), ".volume", NULL);
 	link->details->filename =
 		nautilus_desktop_link_monitor_make_filename_unique (nautilus_desktop_link_monitor_get (),
 								    filename);
@@ -256,11 +260,10 @@ nautilus_desktop_link_get_volume (NautilusDesktopLink *link)
 	return NULL;
 }
 
-
 NautilusDesktopLinkType
-nautilus_desktop_link_get_link_type  (NautilusDesktopLink *link)
+nautilus_desktop_link_get_link_type (NautilusDesktopLink *link)
 {
-  return link->details->type;
+	return link->details->type;
 }
 
 char *
@@ -299,32 +302,6 @@ nautilus_desktop_link_get_date (NautilusDesktopLink *link,
 				time_t               *date)
 {
 	return FALSE;
-}
-
-static void
-nautilus_desktop_link_changed (NautilusDesktopLink *link)
-{
-	if (link->details->icon_file != NULL) {
-		nautilus_desktop_icon_file_update (link->details->icon_file);
-	}
-}
-
-static void
-trash_state_changed_callback (NautilusTrashMonitor *trash_monitor,
-			      gboolean state,
-			      gpointer callback_data)
-{
-	NautilusDesktopLink *link;
-
-	link = NAUTILUS_DESKTOP_LINK (callback_data);
-	g_assert (link->details->type == NAUTILUS_DESKTOP_LINK_TRASH);
-
-	if (link->details->icon) {
-		g_object_unref (link->details->icon);
-	}
-	link->details->icon = nautilus_trash_monitor_get_icon ();
-
-	nautilus_desktop_link_changed (link);
 }
 
 gboolean
@@ -367,16 +344,13 @@ nautilus_desktop_link_rename (NautilusDesktopLink     *link,
 	return TRUE;
 }
 
-
 static void
-nautilus_desktop_link_init (gpointer object, gpointer klass)
+nautilus_desktop_link_init (NautilusDesktopLink *link)
 {
-	NautilusDesktopLink *link;
-
-	link = NAUTILUS_DESKTOP_LINK (object);
-
-	link->details = g_new0 (NautilusDesktopLinkDetails, 1);
-}	
+	link->details = G_TYPE_INSTANCE_GET_PRIVATE (link,
+						     NAUTILUS_TYPE_DESKTOP_LINK,
+						     NautilusDesktopLinkDetails);
+}
 
 static void
 desktop_link_finalize (GObject *object)
@@ -432,18 +406,18 @@ desktop_link_finalize (GObject *object)
 	if (link->details->icon) {
 		g_object_unref (link->details->icon);
 	}
-	g_free (link->details);
 
-	EEL_CALL_PARENT (G_OBJECT_CLASS, finalize, (object));
+	G_OBJECT_CLASS (nautilus_desktop_link_parent_class)->finalize (object);
 }
 
 static void
-nautilus_desktop_link_class_init (gpointer klass)
+nautilus_desktop_link_class_init (NautilusDesktopLinkClass *klass)
 {
 	GObjectClass *object_class;
 
 	object_class = G_OBJECT_CLASS (klass);
-	
+
 	object_class->finalize = desktop_link_finalize;
 
+	g_type_class_add_private (object_class, sizeof(NautilusDesktopLinkDetails));
 }

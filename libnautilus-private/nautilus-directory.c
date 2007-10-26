@@ -142,7 +142,6 @@ nautilus_directory_init (gpointer object, gpointer klass)
 	directory->details->low_priority_queue = nautilus_file_queue_new ();
 	directory->details->extension_queue = nautilus_file_queue_new ();
 	directory->details->idle_queue = nautilus_idle_queue_new ();
-
 }
 
 NautilusDirectory *
@@ -608,20 +607,23 @@ nautilus_directory_are_all_files_seen (NautilusDirectory *directory)
 static void
 add_to_hash_table (NautilusDirectory *directory, NautilusFile *file, GList *node)
 {
+	const char *name;
+
+	name = eel_ref_str_peek (file->details->name);
+
 	g_assert (node != NULL);
 	g_assert (g_hash_table_lookup (directory->details->file_hash,
-				       file->details->name) == NULL);
-	g_hash_table_insert (directory->details->file_hash,
-			     file->details->name, node);
+				       name) == NULL);
+	g_hash_table_insert (directory->details->file_hash, (char *) name, node);
 }
 
 static GList *
 extract_from_hash_table (NautilusDirectory *directory, NautilusFile *file)
 {
-	char *name;
+	const char *name;
 	GList *node;
 
-	name = file->details->name;
+	name = eel_ref_str_peek (file->details->name);
 	if (name == NULL) {
 		return NULL;
 	}
@@ -1072,7 +1074,6 @@ uri_pairs_to_file_pairs (GList *uri_pairs)
 	}
 	return g_list_reverse (file_pair_list);
 }
-
 
 void
 nautilus_directory_notify_files_added_by_uri (GList *uris)

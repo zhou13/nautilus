@@ -257,7 +257,8 @@ nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 	NautilusDirectory *directory;
 	NautilusDesktopIconFile *icon_file;
 	GList list;
-	
+	char *name;
+
 	directory = nautilus_directory_get_by_uri (EEL_DESKTOP_URI);
 
 	file = NAUTILUS_FILE (g_object_new (NAUTILUS_TYPE_DESKTOP_ICON_FILE, NULL));
@@ -272,10 +273,12 @@ nautilus_desktop_icon_file_new (NautilusDesktopLink *link)
 	icon_file = NAUTILUS_DESKTOP_ICON_FILE (file);
 	icon_file->details->link = link;
 
-	file->details->name = nautilus_desktop_link_get_file_name (link);
+	name = nautilus_desktop_link_get_file_name (link);
+	file->details->name = eel_ref_str_new (name);
+	g_free (name);
 
 	update_info_from_link (icon_file);
-	
+
 	nautilus_directory_add_file (directory, file);
 
 	list.data = file;

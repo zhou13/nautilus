@@ -539,8 +539,7 @@ nautilus_bookmark_new_with_icon (GFile *location, const char *name, gboolean has
 	NautilusBookmark *new_bookmark;
 
 	new_bookmark = NAUTILUS_BOOKMARK (g_object_new (NAUTILUS_TYPE_BOOKMARK, NULL));
-	g_object_ref (new_bookmark);
-	gtk_object_sink (GTK_OBJECT (new_bookmark));
+	g_object_ref_sink (new_bookmark);
 
 	new_bookmark->details->name = g_strdup (name);
 	new_bookmark->details->location = g_object_ref (location);

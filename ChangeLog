@@ -1,5 +1,15 @@
 2007-10-26  Paolo Borelli  <pborelli@katamail.com>
 
+	* libnautilus-private/nautilus-directory.c:
+	* libnautilus-private/nautilus-desktop-link.c:
+	* libnautilus-private/nautilus-desktop-icon-file.c:
+	* libnautilus-private/nautilus-bookmark.c:
+	* libnautilus-private/nautilus-trash-monitor.c:
+	* libnautilus-private/nautilus-file.c:
+	Plug minor memory leaks and improper uses of eel_ref_str_*
+
+2007-10-26  Paolo Borelli  <pborelli@katamail.com>
+
 	* libnautilus-private/nautilus-desktop-link.c: unref the icon instead
 	of freeing it to avoid memory corruption.
 
