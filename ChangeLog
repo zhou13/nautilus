@@ -1,5 +1,10 @@
 2007-10-26  Paolo Borelli  <pborelli@katamail.com>
 
+        * libnautilus-private/nautilus-module.c:
+	Fix valgrind warning on shutdown (#346401, ported from trunk).
+
+2007-10-26  Paolo Borelli  <pborelli@katamail.com>
+
 	* libnautilus-private/nautilus-directory.c:
 	* libnautilus-private/nautilus-desktop-link.c:
 	* libnautilus-private/nautilus-desktop-icon-file.c:
