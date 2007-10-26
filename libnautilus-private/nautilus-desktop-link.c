@@ -429,7 +429,9 @@ desktop_link_finalize (GObject *object)
 	if (link->details->activation_location) {
 		g_object_unref (link->details->activation_location);
 	}
-	g_free (link->details->icon);
+	if (link->details->icon) {
+		g_object_unref (link->details->icon);
+	}
 	g_free (link->details);
 
 	EEL_CALL_PARENT (G_OBJECT_CLASS, finalize, (object));
