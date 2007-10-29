@@ -426,6 +426,81 @@ create_transfer_dialog (const GnomeVFSXferProgressInfo *progress_info,
 	}
 }
 
+/* TODO: This should really use the gio display name */
+static const char *
+get_vfs_method_display_name (char *method)
+{
+	if (g_ascii_strcasecmp (method, "computer") == 0 ) {
+		return _("Computer");
+	} else if (g_ascii_strcasecmp (method, "network") == 0 ) {
+		return _("Network");
+	} else if (g_ascii_strcasecmp (method, "fonts") == 0 ) {
+		return _("Fonts");
+	} else if (g_ascii_strcasecmp (method, "themes") == 0 ) {
+		return _("Themes");
+	} else if (g_ascii_strcasecmp (method, "burn") == 0 ) {
+		return _("CD/DVD Creator");
+	} else if (g_ascii_strcasecmp (method, "smb") == 0 ) {
+		return _("Windows Network");
+	} else if (g_ascii_strcasecmp (method, "dns-sd") == 0 ) {
+		/* translators: this is the title of the "dns-sd:///" location */
+		return _("Services in");
+	}
+	return NULL;
+}
+
+/* TODO: This should really use the gio display name */
+static char *
+get_uri_shortname_for_display (GnomeVFSURI *uri)
+{
+	char *utf8_name, *name, *tmp;
+	char *text_uri, *local_file;
+	gboolean validated;
+	const char *method;
+
+	
+	validated = FALSE;
+	name = gnome_vfs_uri_extract_short_name (uri);
+	if (name == NULL) {
+		name = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_PASSWORD);
+	} else if (g_ascii_strcasecmp (uri->method_string, "file") == 0) {
+		text_uri = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_PASSWORD);
+		local_file = g_filename_from_uri (text_uri, NULL, NULL);
+		g_free (name);
+		if (local_file == NULL) { /* Happens for e.g. file:///# */
+			local_file = g_strdup ("/");
+		}
+		name = g_filename_display_basename (local_file);
+		g_free (local_file);
+		g_free (text_uri);
+		validated = TRUE;
+	} else if (!gnome_vfs_uri_has_parent (uri)) {
+		/* Special-case the display name for roots that are not local files */
+		method = get_vfs_method_display_name (uri->method_string);
+		if (method == NULL) {
+			method = uri->method_string;
+		}
+		
+		if (name == NULL ||
+		    strcmp (name, GNOME_VFS_URI_PATH_STR) == 0) {
+			g_free (name);
+			name = g_strdup (method);
+		} else {
+			tmp = name;
+			name = g_strdup_printf ("%s: %s", method, name);
+			g_free (tmp);
+		}
+	}
+
+	if (!validated && !g_utf8_validate (name, -1, NULL)) {
+		utf8_name = eel_make_valid_utf8 (name);
+		g_free (name);
+		name = utf8_name;
+	}
+
+	return name;
+}
+
 static void
 progress_dialog_set_to_from_item_text (NautilusFileOperationsProgress *dialog,
 				       const char *progress_verb,
@@ -453,7 +528,7 @@ progress_dialog_set_to_from_item_text (NautilusFileOperationsProgress *dialog,
 
 	if (from_uri != NULL) {
 		uri = gnome_vfs_uri_new (from_uri);
-		item = nautilus_get_uri_shortname_for_display (uri);
+		item = get_uri_shortname_for_display (uri);
 		from_path = gnome_vfs_uri_extract_dirname (uri);
 		hostname = NULL;
 

@@ -667,46 +667,6 @@ get_clipboard (GtkWidget *widget)
 }
 
 static gboolean
-can_move_uri_to_trash (const char *file_uri_string)
-{
-	/* Return TRUE if we can get a trash directory on the same volume as this file. */
-	GnomeVFSURI *file_uri;
-	GnomeVFSURI *directory_uri;
-	GnomeVFSURI *trash_dir_uri;
-	gboolean result;
-
-	g_return_val_if_fail (file_uri_string != NULL, FALSE);
-
-	file_uri = gnome_vfs_uri_new (file_uri_string);
-
-	if (file_uri == NULL) {
-		return FALSE;
-	}
-
-	/* FIXME: Why can't we just pass file_uri to gnome_vfs_find_directory? */
-	directory_uri = gnome_vfs_uri_get_parent (file_uri);
-	gnome_vfs_uri_unref (file_uri);
-
-	if (directory_uri == NULL) {
-		return FALSE;
-	}
-
-	/*
-	 * Create a new trash if needed but don't go looking for an old Trash.
-	 * Passing 0 permissions as gnome-vfs would override the permissions 
-	 * passed with 700 while creating .Trash directory
-	 */
-	result = gnome_vfs_find_directory (directory_uri, GNOME_VFS_DIRECTORY_KIND_TRASH,
-					   &trash_dir_uri, TRUE, FALSE, 0) == GNOME_VFS_OK;
-	if (result) {
-		gnome_vfs_uri_unref (trash_dir_uri);
-	}
-	gnome_vfs_uri_unref (directory_uri);
-
-	return result;
-}
-
-static gboolean
 is_parent_writable (NautilusFile *file)
 {
 	NautilusFile *parent;
@@ -730,7 +690,6 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 			 FMTreeView *view)
 {
 	GtkTreePath *path, *cursor_path;
-	char *uri;
 	gboolean parent_file_is_writable;
 	gboolean file_is_home_or_desktop;
 	gboolean file_is_special_link;
@@ -755,7 +714,6 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 		gtk_tree_view_get_cursor (view->details->tree_widget, &cursor_path, NULL);
 		gtk_tree_view_set_cursor (view->details->tree_widget, path, NULL, FALSE);
 		gtk_tree_path_free (path);
-		uri = nautilus_file_get_uri (view->details->popup_file);
 		
 		gtk_widget_set_sensitive (view->details->popup_open_in_new_window,
 			nautilus_file_is_directory (view->details->popup_file));
@@ -769,9 +727,8 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 							copied_files_atom,
 							clipboard_contents_received_callback, view);
 		}
-		can_move_file_to_trash = can_move_uri_to_trash (uri);
+		can_move_file_to_trash = nautilus_file_can_trash (view->details->popup_file);
 		gtk_widget_set_sensitive (view->details->popup_trash, can_move_file_to_trash);
-		g_free (uri);
 		
 		if (show_delete_command_auto_value) {
 			parent_file_is_writable = is_parent_writable (view->details->popup_file);
@@ -1064,27 +1021,6 @@ fm_tree_view_paste_cb (GtkWidget *menu_item,
 					paste_into_clipboard_received_callback, view);
 }
 
-static void
-fm_tree_view_trash_cb (GtkWidget *menu_item,
-		       FMTreeView *view)
-{
-	GList *list;
-	char *directory_uri;
-
-	directory_uri = nautilus_file_get_uri (view->details->popup_file);
-	
-	if (can_move_uri_to_trash (directory_uri))
-	{
-		list = g_list_prepend (NULL, g_strdup (directory_uri));
-	
-		nautilus_file_operations_copy_move (list, NULL, 
-						    EEL_TRASH_URI, GDK_ACTION_MOVE, GTK_WIDGET (view->details->tree_widget),
-						    NULL, NULL);
-	}
-	
-	g_free (directory_uri);
-}
-
 static GtkWindow *
 fm_tree_view_get_containing_window (FMTreeView *view)
 {
@@ -1098,6 +1034,25 @@ fm_tree_view_get_containing_window (FMTreeView *view)
 	}
 
 	return GTK_WINDOW (window);
+}
+
+static void
+fm_tree_view_trash_cb (GtkWidget *menu_item,
+		       FMTreeView *view)
+{
+	GList *list;
+
+	if (!nautilus_file_can_trash (view->details->popup_file)) {
+		return;
+	}
+	
+	list = g_list_prepend (NULL,
+			       nautilus_file_get_location (view->details->popup_file));
+	
+	nautilus_file_operations_trash_or_delete (list, 
+						  fm_tree_view_get_containing_window (view),
+						  NULL, NULL);
+	eel_g_object_list_free (list);
 }
 
 static void

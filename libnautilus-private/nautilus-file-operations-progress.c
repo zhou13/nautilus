@@ -40,6 +40,7 @@
 #include <gtk/gtktable.h>
 #include <gtk/gtkvbox.h>
 #include <glib/gi18n.h>
+#include <gio/gurifuncs.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include "nautilus-file-operations-progress-icons.h"
 
@@ -190,7 +191,7 @@ set_text_unescaped_trimmed (GtkLabel *label, const char *text)
 		return;
 	}
 	
-	unescaped_text = gnome_vfs_unescape_string_for_display (text);
+	unescaped_text = g_uri_unescape_string (text, G_URI_RESERVED_CHARS_ALLOWED_IN_PATH);
 	unescaped_utf8 = eel_make_valid_utf8 (unescaped_text);
 	gtk_label_set_text (label, unescaped_utf8);
 	g_free (unescaped_utf8);

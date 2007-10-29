@@ -222,15 +222,13 @@ static void
 xdg_dir_changed (NautilusFile *file,
 		 XdgDirEntry *dir)
 {
-	char *file_uri;
-	char *dir_uri;
+	GFile *location, *dir_location;
 	char *path;
-	
-	file_uri = nautilus_file_get_uri (file);
-	dir_uri = g_filename_to_uri (dir->path, NULL, NULL);
-	if (file_uri && dir_uri &&
-	    !gnome_vfs_uris_match (dir_uri, file_uri)) {
-		path = g_filename_from_uri (file_uri, NULL, NULL);
+
+	location = nautilus_file_get_location (file);
+	dir_location = g_file_new_for_path (dir->path);
+	if (!g_file_equal (location, dir_location)) {
+		path = g_file_get_path (location);
 
 		if (path) {
 			char *argv[5];
@@ -261,8 +259,8 @@ xdg_dir_changed (NautilusFile *file,
 			desktop_dir_changed ();
 		}
 	}
-	g_free (file_uri);
-	g_free (dir_uri);
+	g_object_unref (location);
+	g_object_unref (dir_location);
 }
 
 static void 
@@ -848,79 +846,6 @@ nautilus_find_existing_uri_in_hierarchy (GFile *location)
 	}
 	
 	return location;
-}
-
-const char *
-nautilus_get_vfs_method_display_name (char *method)
-{
-	if (g_ascii_strcasecmp (method, "computer") == 0 ) {
-		return _("Computer");
-	} else if (g_ascii_strcasecmp (method, "network") == 0 ) {
-		return _("Network");
-	} else if (g_ascii_strcasecmp (method, "fonts") == 0 ) {
-		return _("Fonts");
-	} else if (g_ascii_strcasecmp (method, "themes") == 0 ) {
-		return _("Themes");
-	} else if (g_ascii_strcasecmp (method, "burn") == 0 ) {
-		return _("CD/DVD Creator");
-	} else if (g_ascii_strcasecmp (method, "smb") == 0 ) {
-		return _("Windows Network");
-	} else if (g_ascii_strcasecmp (method, "dns-sd") == 0 ) {
-		/* translators: this is the title of the "dns-sd:///" location */
-		return _("Services in");
-	}
-	return NULL;
-}
-
-char *
-nautilus_get_uri_shortname_for_display (GnomeVFSURI *uri)
-{
-	char *utf8_name, *name, *tmp;
-	char *text_uri, *local_file;
-	gboolean validated;
-	const char *method;
-
-	
-	validated = FALSE;
-	name = gnome_vfs_uri_extract_short_name (uri);
-	if (name == NULL) {
-		name = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_PASSWORD);
-	} else if (g_ascii_strcasecmp (uri->method_string, "file") == 0) {
-		text_uri = gnome_vfs_uri_to_string (uri, GNOME_VFS_URI_HIDE_PASSWORD);
-		local_file = g_filename_from_uri (text_uri, NULL, NULL);
-		g_free (name);
-		if (local_file == NULL) { /* Happens for e.g. file:///# */
-			local_file = g_strdup ("/");
-		}
-		name = g_filename_display_basename (local_file);
-		g_free (local_file);
-		g_free (text_uri);
-		validated = TRUE;
-	} else if (!gnome_vfs_uri_has_parent (uri)) {
-		/* Special-case the display name for roots that are not local files */
-		method = nautilus_get_vfs_method_display_name (uri->method_string);
-		if (method == NULL) {
-			method = uri->method_string;
-		}
-		
-		if (name == NULL ||
-		    strcmp (name, GNOME_VFS_URI_PATH_STR) == 0) {
-			g_free (name);
-			name = g_strdup (method);
-		} else {
-			tmp = name;
-			name = g_strdup_printf ("%s: %s", method, name);
-			g_free (tmp);
-		}
-	}
-
-	if (!validated && !g_utf8_validate (name, -1, NULL)) {
-		utf8_name = eel_make_valid_utf8 (name);
-		g_free (name);
-		name = utf8_name;
-	}
-
-	return name;
 }
 
 #if !defined (NAUTILUS_OMIT_SELF_CHECK)

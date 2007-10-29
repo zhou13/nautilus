@@ -26,7 +26,6 @@
 #define NAUTILUS_FILE_UTILITIES_H
 
 #include <gio/gfile.h>
-#include <libgnomevfs/gnome-vfs-types.h>
 
 #define NAUTILUS_SAVED_SEARCH_EXTENSION ".savedSearch"
 #define NAUTILUS_SAVED_SEARCH_MIMETYPE "application/x-gnome-saved-search"
@@ -90,8 +89,5 @@ char *   nautilus_ensure_unique_file_name            (const char *directory_uri,
 char *   nautilus_unique_temporary_file_name         (void);
 
 GFile *  nautilus_find_existing_uri_in_hierarchy     (GFile *location);
-
-const char *nautilus_get_vfs_method_display_name (char *method);
-char *      nautilus_get_uri_shortname_for_display (GnomeVFSURI *uri);
 
 #endif /* NAUTILUS_FILE_UTILITIES_H */
