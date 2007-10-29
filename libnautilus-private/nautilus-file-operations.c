@@ -536,10 +536,12 @@ handle_transfer_ok (const GnomeVFSXferProgressInfo *progress_info,
 		    && strcmp (progress_info->source_name, progress_info->target_name) != 0
 		    && progress_info->bytes_total != progress_info->bytes_copied) {
 			GList *delete_me;
+			GtkWidget *toplevel;
 
-			delete_me = g_list_prepend (NULL, progress_info->target_name);
-			nautilus_file_operations_delete (delete_me, transfer_info->parent_view, NULL, NULL);
-			g_list_free (delete_me);
+			delete_me = g_list_prepend (NULL, g_file_new_for_uri (progress_info->target_name));
+			toplevel = gtk_widget_get_toplevel (transfer_info->parent_view);
+			nautilus_file_operations_delete (delete_me, GTK_WINDOW (toplevel), NULL, NULL);
+			eel_g_object_list_free (delete_me);
 		}
 
 		return 0;
@@ -2770,93 +2772,6 @@ nautilus_file_operations_new_file (GtkWidget *parent_view,
 	g_free (target_filename);
 }
 
-void 
-nautilus_file_operations_delete (const GList *item_uris, 
-				 GtkWidget *parent_view,
-				 NautilusDeleteCallback done_callback, 
-				 gpointer done_callback_data)
-{
-	GList *uri_list;
-	const GList *p;
-	const char *item_uri;
-	NautilusFile *file;
-	TransferInfo *transfer_info;
-
-	nautilus_debug_log_with_uri_list (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER, item_uris,
-					  "delete files:");
-
-	uri_list = NULL;
-	for (p = item_uris; p != NULL; p = p->next) {
-		item_uri = (const char *) p->data;
-
-		if (eel_uri_is_desktop (item_uri)) {
-			file = nautilus_file_get_existing_by_uri (item_uri);
-			if (file != NULL) {
-				if (NAUTILUS_IS_DESKTOP_ICON_FILE (file)) {
-					NautilusDesktopLink *link;
-
-					link = nautilus_desktop_icon_file_get_link (NAUTILUS_DESKTOP_ICON_FILE (file));
-
-					if (link != NULL) {
-						nautilus_desktop_link_monitor_delete_link (nautilus_desktop_link_monitor_get (),
-											   link,
-											   parent_view);
-						g_object_unref (link);
-					}
-				}
-				nautilus_file_unref (file);
-			}
-		} else {
-			uri_list = g_list_prepend (uri_list, 
-						   gnome_vfs_uri_new (item_uri));
-		}
-	}
-	uri_list = g_list_reverse (uri_list);
-
-	if (uri_list == NULL) {
-		return;
-	}
-
-	transfer_info = transfer_info_new (parent_view);
-
-	/* localizers: progress dialog title */
-	transfer_info->operation_title = _("Deleting files");
-	/* localizers: label prepended to the progress count */
-	transfer_info->action_label =_("Files deleted:");
-	/* localizers: label prepended to the name of the current file deleted */
-	transfer_info->progress_verb =_("Deleting");
-	transfer_info->preparation_name =_("Preparing to Delete files...");
-	transfer_info->cleanup_name ="";
-
-	transfer_info->error_mode = GNOME_VFS_XFER_ERROR_MODE_QUERY;
-	transfer_info->overwrite_mode = GNOME_VFS_XFER_OVERWRITE_MODE_REPLACE;
-	transfer_info->kind = TRANSFER_DELETE;
-	
-	transfer_info->done_callback = done_callback;
-	transfer_info->done_callback_data = done_callback_data;
-	transfer_info->debuting_uris = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-
-	gnome_vfs_async_xfer (&transfer_info->handle, uri_list,  NULL,
-	      		      GNOME_VFS_XFER_DELETE_ITEMS | GNOME_VFS_XFER_RECURSIVE,
-	      		      GNOME_VFS_XFER_ERROR_MODE_QUERY, 
-	      		      GNOME_VFS_XFER_OVERWRITE_MODE_REPLACE,
-			      GNOME_VFS_PRIORITY_DEFAULT,
-	      		      update_transfer_callback, transfer_info,
-	      		      sync_transfer_callback, NULL);
-
-	gnome_vfs_uri_list_free (uri_list);
-}
-
-#if 0
-void
-nautilus_file_operations_delete (const GList            *files, 
-				 GtkWidget              *parent_view,
-				 NautilusDeleteCallback  done_callback,
-				 gpointer                done_callback_data)
-{
-}
-#endif
-
 typedef struct {
 	GList *files;
 	GtkWindow *parent_window;
@@ -2874,6 +2789,22 @@ can_delete_without_confirm (GFile *file)
 	}
 
 	return FALSE;
+}
+
+static gboolean
+can_delete_files_without_confirm (GList *files)
+{
+	g_assert (files != NULL);
+
+	while (files != NULL) {
+		if (!can_delete_without_confirm (files->data)) {
+			return FALSE;
+		}
+
+		files = files->next;
+	}
+
+	return TRUE;
 }
 
 static gboolean
@@ -2938,7 +2869,7 @@ delete_files (GList *files, GCancellable  *cancellable, GtkWindow *parent_window
 
 		error = NULL;
 		if (!g_file_delete (file, cancellable, &error)) {
-			/* TODO-gio */
+			/* TODO-gio: Dialog here, and handle recursive deletes */
 			g_print ("Error deleting file: %s\n", error->message);
 		} else {
 			nautilus_file_changes_queue_schedule_metadata_remove (file);
@@ -2959,7 +2890,7 @@ trash_files (GList *files, GCancellable  *cancellable, GtkWindow *parent_window)
 
 		error = NULL;
 		if (!g_file_trash (file, cancellable, &error)) {
-			/* TODO-gio */
+			/* TODO-gio: Dialog here, allow delete instead of trash, etc */
 			g_print ("Error trashing file: %s\n", error->message);
 		} else {
 			nautilus_file_changes_queue_schedule_metadata_remove (file);
@@ -3161,6 +3092,49 @@ confirm_deletion (GIOJob *job,
 	return (response == GTK_RESPONSE_YES);
 }
 
+static gboolean
+confirm_delete_directly (GIOJob *job,
+			 GtkWindow *parent_window,
+			 GList *files)
+{
+	char *prompt;
+	char *file_name;
+	int file_count;
+	int response;
+
+	/* Just Say Yes if the preference says not to confirm. */
+	if (!confirm_trash_auto_value) {
+		return TRUE;
+	}
+
+	file_count = g_list_length (files);
+	g_assert (file_count > 0);
+
+	if (can_delete_files_without_confirm (files)) {
+		return TRUE;
+	}
+
+	if (file_count == 1) {
+		file_name = get_display_name (files->data, NULL);
+		prompt = g_strdup_printf (_("Are you sure you want to permanently delete \"%s\"?"), 
+					  file_name);
+		g_free (file_name);
+	} else {
+		prompt = g_strdup_printf (ngettext("Are you sure you want to permanently delete "
+						   "the %d selected item?",
+						   "Are you sure you want to permanently delete "
+						   "the %d selected items?", file_count), file_count);
+	}
+
+	response = run_alert_in_main (job, parent_window,
+				      prompt,
+				      _("If you delete an item, it will be permanently lost."),
+				      GTK_STOCK_DELETE);
+
+	return response == GTK_RESPONSE_YES;
+}
+
+
 static void delete_job_done (gpointer data);
 
 static void
@@ -3175,6 +3149,7 @@ delete_job (GIOJob *io_job,
 	GList *no_confirm_files;
 	GList *l;
 	GFile *file;
+	gboolean confirmed;
 
 	/* Collect three lists: (1) items that can be moved to trash,
 	 * (2) items that can only be deleted in place, and (3) items that
@@ -3191,23 +3166,21 @@ delete_job (GIOJob *io_job,
 	in_trash_files = NULL;
 	no_confirm_files = NULL;
 
-	if (job->try_trash) {
-		for (l = job->files; l != NULL; l = l->next) {
-			file = l->data;
-			
-			if (job->delete_if_all_already_in_trash && g_file_has_uri_scheme (file, "trash")) {
-				in_trash_files = g_list_prepend (in_trash_files, file);
-			} else if (can_delete_without_confirm (file)) {
-				no_confirm_files = g_list_prepend (no_confirm_files, file);
-			} else if (can_trash_file (file, NULL)) {
-				trashable_files = g_list_prepend (trashable_files, file);
-			} else {
-				untrashable_files = g_list_prepend (untrashable_files, file);
-			}
-		}
-	} else {
-		no_confirm_files = g_list_copy (job->files);
+	for (l = job->files; l != NULL; l = l->next) {
+		file = l->data;
 		
+		if (job->try_trash &&
+		    job->delete_if_all_already_in_trash &&
+		    g_file_has_uri_scheme (file, "trash")) {
+			in_trash_files = g_list_prepend (in_trash_files, file);
+		} else if (can_delete_without_confirm (file)) {
+			no_confirm_files = g_list_prepend (no_confirm_files, file);
+		} else if (job->try_trash &&
+			   can_trash_file (file, NULL)) {
+			trashable_files = g_list_prepend (trashable_files, file);
+		} else {
+			untrashable_files = g_list_prepend (untrashable_files, file);
+		}
 	}
 
 	if (in_trash_files != NULL && trashable_files == NULL && untrashable_files == NULL) {
@@ -3222,7 +3195,14 @@ delete_job (GIOJob *io_job,
 			trash_files (trashable_files, NULL, job->parent_window);
 		}
 		if (untrashable_files != NULL) {
-			if (confirm_deletion (io_job, job->parent_window, untrashable_files, trashable_files == NULL)) {
+			if (job->try_trash) {
+				confirmed = confirm_deletion (io_job, job->parent_window,
+							      untrashable_files, trashable_files == NULL);
+			} else {
+				confirmed = confirm_delete_directly (io_job, job->parent_window, untrashable_files);
+			}
+				
+			if (confirmed) {
 				delete_files (untrashable_files, NULL, job->parent_window);
 			}
 		}
@@ -3259,22 +3239,25 @@ delete_job_done (gpointer user_data)
 	nautilus_file_changes_consume_changes (TRUE);
 }
 
-void
-nautilus_file_operations_trash_or_delete (GList                  *files,
-					  GtkWindow              *parent_window,
-					  NautilusDeleteCallback  done_callback,
-					  gpointer                done_callback_data)
+static void
+trash_or_delete_internal (GList                  *files,
+			  GtkWindow              *parent_window,
+			  gboolean                try_trash,			  
+			  NautilusDeleteCallback  done_callback,
+			  gpointer                done_callback_data)
 {
 	DeleteJob *job;
 
 	setup_autos ();
 
 	/* TODO: special case desktop icon link files ... */
+
+	/* TODO: Progress dialog, cancellation */
 	
 	job = g_new0 (DeleteJob, 1);
 	job->files = eel_g_object_list_copy (files);
 	job->parent_window = g_object_ref (parent_window);
-	job->try_trash = TRUE;
+	job->try_trash = try_trash;
 	job->done_callback = done_callback;
 	job->done_callback_data = done_callback_data;
 	
@@ -3283,6 +3266,28 @@ nautilus_file_operations_trash_or_delete (GList                  *files,
 			   NULL,
 			   0,
 			   NULL);
+}
+
+void
+nautilus_file_operations_trash_or_delete (GList                  *files,
+					  GtkWindow              *parent_window,
+					  NautilusDeleteCallback  done_callback,
+					  gpointer                done_callback_data)
+{
+	trash_or_delete_internal (files, parent_window,
+				  TRUE,			  
+				  done_callback,  done_callback_data);
+}
+
+void
+nautilus_file_operations_delete (GList                  *files, 
+				 GtkWindow              *parent_window,
+				 NautilusDeleteCallback  done_callback,
+				 gpointer                done_callback_data)
+{
+	trash_or_delete_internal (files, parent_window,
+				  FALSE,			  
+				  done_callback,  done_callback_data);
 }
 
 static void
@@ -3533,17 +3538,19 @@ nautilus_file_operations_unmount_volume (GtkWidget *parent_view,
 			{
 				GList                         *trash_dir_list;
 				NautilusUnmountCallback       *unmount_cb;
+				GtkWidget *toplevel;
 
 				trash_dir_list = NULL;
 				unmount_cb = g_new (NautilusUnmountCallback, 1);
 				unmount_cb->volume = gnome_vfs_volume_ref (volume);
 				unmount_cb->callback = callback;
 				unmount_cb->user_data = user_data;
-				trash_dir_list = g_list_append (trash_dir_list, trash_uri_str);
-				nautilus_file_operations_delete (trash_dir_list, parent_view, 
+				trash_dir_list = g_list_append (trash_dir_list, g_file_new_for_uri (trash_uri_str));
+				toplevel = gtk_widget_get_toplevel (parent_view);
+				nautilus_file_operations_delete (trash_dir_list, GTK_WINDOW (toplevel), 
 				                             (NautilusDeleteCallback) delete_callback,
 				                             unmount_cb);
-				g_list_free (trash_dir_list);
+				eel_g_object_list_free (trash_dir_list);
 				/* volume is unmounted in the callback */
 				break;
 			}
@@ -3579,7 +3586,7 @@ nautilus_file_operations_unmount_drive (GtkWidget *parent_view,
 		volume = it->data;
 		trash_uri_str = get_trash_uri_for_volume (volume);
 		if (trash_uri_str) {
-			trash_dir_list = g_list_prepend (trash_dir_list, trash_uri_str);
+			trash_dir_list = g_list_prepend (trash_dir_list, g_file_new_for_uri (trash_uri_str));
 			/* Check if any of the volumes have trash on them.
 			* If the trash directories on the volumes exist they are monitored 
 			* by the trash monitor so this should give accurate results. */
@@ -3600,22 +3607,19 @@ nautilus_file_operations_unmount_drive (GtkWidget *parent_view,
 			case GTK_RESPONSE_ACCEPT:
 			{				
 				NautilusUnmountCallback            *unmount_cb;
-				gchar                              *temp;
+				GtkWidget *toplevel;
 
 				unmount_cb = g_new (NautilusUnmountCallback, 1);
 				unmount_cb->volume = gnome_vfs_drive_ref (drive);
 				unmount_cb->callback = callback;
 				unmount_cb->user_data = user_data;
 				trash_dir_list = g_list_reverse (trash_dir_list);
-				nautilus_file_operations_delete (trash_dir_list, parent_view, 
-				                            (NautilusDeleteCallback) delete_callback,
-				                            unmount_cb);
+				toplevel = gtk_widget_get_toplevel (parent_view);
+				nautilus_file_operations_delete (trash_dir_list, GTK_WINDOW (toplevel), 
+								 (NautilusDeleteCallback) delete_callback,
+								 unmount_cb);
 
-				for (it = trash_dir_list; it != NULL; it = g_list_next (it)) {
-					temp = it->data;
-					g_free (temp);
-				}
-				g_list_free (trash_dir_list);
+				eel_g_object_list_free (trash_dir_list);
 				/* volume is unmounted in the callback */
 				break;
 			}

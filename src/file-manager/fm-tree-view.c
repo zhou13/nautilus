@@ -1100,75 +1100,21 @@ fm_tree_view_get_containing_window (FMTreeView *view)
 	return GTK_WINDOW (window);
 }
 
-static char *
-file_name_from_uri (const char *uri)
-{
-	NautilusFile *file;
-	char *file_name;
-	
-	file = nautilus_file_get_by_uri (uri);
-	file_name = nautilus_file_get_display_name (file);
-	nautilus_file_unref (file);
-
-	return file_name;	
-}
-
-static gboolean
-confirm_delete_directly (FMTreeView *view,
-			 const char *directory_uri)
-{
-	GtkDialog *dialog;
-	char *file_name;
-	char *prompt;
-	int response;
-
-	file_name = file_name_from_uri (directory_uri);
-	
-	prompt = g_strdup_printf (_("Are you sure you want to permanently delete \"%s\"?"), 
-				  file_name);
-	g_free (file_name);
-
-	dialog = GTK_DIALOG (eel_alert_dialog_new (fm_tree_view_get_containing_window (view),
-				                   0,
-						   GTK_MESSAGE_WARNING,
-						   GTK_BUTTONS_NONE,
-						   prompt,
-						   _("If you delete an item, it is permanently lost.")));
-
-	gtk_dialog_add_button (dialog, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
-	gtk_dialog_add_button (dialog, GTK_STOCK_DELETE, GTK_RESPONSE_YES);
-	gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_YES);
-	
-	g_free (prompt);
-	
-	response = gtk_dialog_run (dialog);
-	
-	gtk_object_destroy (GTK_OBJECT(dialog));	
-	
-	return (response == GTK_RESPONSE_YES);
-}
-
 static void
 fm_tree_view_delete_cb (GtkWidget *menu_item,
 		        FMTreeView *view)
 {
-	GList *uri_list;
-	char *directory_uri;
+	GList *location_list;
 		
 	if (!show_delete_command_auto_value) {
 		return;
 	}
 	
-	directory_uri = nautilus_file_get_uri (view->details->popup_file);
+	location_list = g_list_prepend (NULL,
+					nautilus_file_get_location (view->details->popup_file));
 	
-	if (confirm_delete_directly (view, directory_uri)) {
-		uri_list = NULL;
-		uri_list = g_list_prepend (uri_list, g_strdup (directory_uri));
-		
-		nautilus_file_operations_delete (uri_list, GTK_WIDGET (view), NULL, NULL);
-		eel_g_list_free_deep (uri_list);
-	}
-	g_free (directory_uri);
+	nautilus_file_operations_delete (location_list, fm_tree_view_get_containing_window (view), NULL, NULL);
+	eel_g_object_list_free (location_list);
 }
 
 static void

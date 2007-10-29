@@ -342,7 +342,6 @@ static void     load_directory                                 (FMDirectoryView 
 								NautilusDirectory    *directory);
 static void     fm_directory_view_merge_menus                  (FMDirectoryView      *view);
 static void     fm_directory_view_init_show_hidden_files       (FMDirectoryView      *view);
-static char *   file_name_from_uri                             (const char           *uri);
 static void     fm_directory_view_load_location                (NautilusView         *nautilus_view,
 								const char           *location);
 static void     fm_directory_view_stop_loading                 (NautilusView         *nautilus_view);
@@ -373,7 +372,6 @@ static void     fm_directory_view_select_file                  (FMDirectoryView 
 static void     create_scripts_directory                       (void);
 static void     activate_activation_uris_ready_callback        (GList                *files,
 								gpointer              callback_data);
-static gboolean can_delete_uri_without_confirm                 (const char           *uri);
 
 static GdkDragAction ask_link_action                           (FMDirectoryView      *view);
 static void     update_templates_directory                     (FMDirectoryView *view);
@@ -913,102 +911,28 @@ action_trash_callback (GtkAction *action,
         trash_or_delete_selected_files (FM_DIRECTORY_VIEW (callback_data));
 }
 
-static gboolean
-can_delete_uris_without_confirm (GList *uris)
-{
-	g_assert (uris != NULL);
-
-	while (uris != NULL) {
-		if (!can_delete_uri_without_confirm (uris->data)) {
-			return FALSE;
-		}
-
-		uris = uris->next;
-	}
-
-	return TRUE;
-}
-
-static gboolean
-confirm_delete_directly (FMDirectoryView *view, 
-			 GList *uris)
-{
-	GtkDialog *dialog;
-	char *prompt;
-	char *file_name;
-	int uri_count;
-	int response;
-
-	g_assert (FM_IS_DIRECTORY_VIEW (view));
-
-	/* Just Say Yes if the preference says not to confirm. */
-	if (!confirm_trash_auto_value) {
-		return TRUE;
-	}
-
-	uri_count = g_list_length (uris);
-	g_assert (uri_count > 0);
-
-	if (can_delete_uris_without_confirm (uris)) {
-		return TRUE;
-	}
-
-	if (uri_count == 1) {
-		file_name = file_name_from_uri ((char *) uris->data);
-		prompt = g_strdup_printf (_("Are you sure you want to permanently delete \"%s\"?"), 
-					  file_name);
-		g_free (file_name);
-	} else {
-		prompt = g_strdup_printf (ngettext("Are you sure you want to permanently delete "
-						   "the %d selected item?",
-						   "Are you sure you want to permanently delete "
-						   "the %d selected items?", uri_count), uri_count);
-	}
-
-	dialog = GTK_DIALOG (eel_alert_dialog_new (fm_directory_view_get_containing_window (view),
-		                                   0,
-		                                   GTK_MESSAGE_WARNING,
-		                                   GTK_BUTTONS_NONE,
-		                                   prompt,
-		                                   _("If you delete an item, it is permanently lost.")));
-							
-	gtk_dialog_add_button (dialog, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
-	gtk_dialog_add_button (dialog, GTK_STOCK_DELETE, GTK_RESPONSE_YES);
-	gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_YES);
-
-	g_free (prompt);
-
-	response = gtk_dialog_run (dialog);
-	gtk_object_destroy (GTK_OBJECT (dialog));
-
-	return response == GTK_RESPONSE_YES;
-}
-
 static void
 delete_selected_files (FMDirectoryView *view)
 {
         GList *selection;
 	GList *node;
-	GList *file_uris;
+	GList *locations;
 
 	selection = fm_directory_view_get_selection_for_file_transfer (view);
 	if (selection == NULL) {
 		return;
 	}
 
-	file_uris = NULL;
+	locations = NULL;
 	for (node = selection; node != NULL; node = node->next) {
-		file_uris = g_list_prepend (file_uris,
-					    nautilus_file_get_uri ((NautilusFile *) node->data));
+		locations = g_list_prepend (locations,
+					    nautilus_file_get_location ((NautilusFile *) node->data));
 	}
-	file_uris = g_list_reverse (file_uris);
+	locations = g_list_reverse (locations);
 
-	if (confirm_delete_directly (view, 
-				     file_uris)) {
-		nautilus_file_operations_delete (file_uris, GTK_WIDGET (view), NULL, NULL);
-	}
+	nautilus_file_operations_delete (locations, fm_directory_view_get_containing_window (view), NULL, NULL);
 	
-	eel_g_list_free_deep (file_uris);
+	eel_g_object_list_free (locations);
         nautilus_file_list_free (selection);
 }
 
@@ -3670,31 +3594,6 @@ desktop_or_home_dir_in_selection (FMDirectoryView *view)
 	return saw_desktop_or_home_dir;
 }
 
-static gboolean
-can_delete_uri_without_confirm (const char *file_uri_string)
-{
-	if (eel_istr_has_prefix (file_uri_string, "burn:") != FALSE) {
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
-static char *
-file_name_from_uri (const char *uri)
-{
-	NautilusFile *file;
-	char *file_name;
-	
-	file = nautilus_file_get_by_uri (uri);
-	file_name = nautilus_file_get_display_name (file);
-	nautilus_file_unref (file);
-
-	return file_name;	
-}
-
-
-
 static void
 trash_or_delete_files (GtkWindow *parent_window,
 		       const GList *files,
@@ -6295,7 +6194,7 @@ action_location_delete_callback (GtkAction *action,
 {
 	FMDirectoryView *view;
 	NautilusFile *file;
-	char *file_uri;
+	GFile *location;
 	GList *files;
 
 	view = FM_DIRECTORY_VIEW (callback_data);
@@ -6303,16 +6202,13 @@ action_location_delete_callback (GtkAction *action,
 	file = fm_directory_view_get_directory_as_file (view);
 	g_return_if_fail (file != NULL);
 
-	file_uri = nautilus_file_get_uri (file);
+	location = nautilus_file_get_location (file);
 
-	files = g_list_append (NULL, file_uri);
-	if (confirm_delete_directly (view, files)) {
-		nautilus_file_operations_delete (files, GTK_WIDGET (view),
-							NULL, NULL);
-	}
+	files = g_list_append (NULL, location);
+	nautilus_file_operations_delete (files, fm_directory_view_get_containing_window (view),
+					 NULL, NULL);
 
-	g_free (file_uri);
-	g_list_free (files);
+	eel_g_object_list_free (files);
 }
 
 static void

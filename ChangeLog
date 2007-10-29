@@ -1,3 +1,12 @@
+2007-10-29  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Move nautilus_file_operations_delete to the gio code.
+
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-tree-view.c:
+	Update to use new nautilus_file_operations_delete
+
 2007-10-26  Paolo Borelli  <pborelli@katamail.com>
 
         * libnautilus-private/nautilus-module.c:
