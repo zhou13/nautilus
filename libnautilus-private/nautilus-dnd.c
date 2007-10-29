@@ -304,8 +304,8 @@ nautilus_drag_default_drop_action_for_netscape_url (GdkDragContext *context)
 
 void
 nautilus_drag_default_drop_action_for_icons (GdkDragContext *context,
-	const char *target_uri_string, const GList *items,
-	int *action)
+					     const char *target_uri_string, const GList *items,
+					     int *action)
 {
 	gboolean same_fs;
 	gboolean target_is_source_parent;
@@ -338,20 +338,9 @@ nautilus_drag_default_drop_action_for_icons (GdkDragContext *context,
 	 * passed with 700 while creating .Trash directory
 	 */
 	if (eel_uri_is_trash (target_uri_string)) {
-		result = gnome_vfs_find_directory (NULL, GNOME_VFS_DIRECTORY_KIND_TRASH,
-						   &target_uri, TRUE, FALSE, 0);
-		if (result != GNOME_VFS_OK) {
-			*action = 0;
-			return;
-		}
-
 		/* Only move to Trash */
 		if (actions & GDK_ACTION_MOVE) {
 			*action = GDK_ACTION_MOVE;
-		}
-
-		if (target_uri) {
-			gnome_vfs_uri_unref (target_uri);
 		}
 
 		return;

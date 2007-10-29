@@ -1,5 +1,10 @@
 2007-10-29  Alexander Larsson  <alexl@redhat.com>
 
+	* libnautilus-private/nautilus-dnd.c:
+	Remove gnome-vfs code
+
+2007-10-29  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-utilities.[ch]:
         * libnautilus-private/nautilus-file-operations.c:
 	Move public gnome-vfs functions from file-utilities to internal
