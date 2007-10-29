@@ -312,7 +312,6 @@ nautilus_drag_default_drop_action_for_icons (GdkDragContext *context,
 	GnomeVFSURI *target_uri;
 	GnomeVFSURI *dropped_uri;
 	GdkDragAction actions;
-	GnomeVFSResult result;
 
 	if (target_uri_string == NULL) {
 		*action = 0;
