@@ -1531,9 +1531,6 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 			break;
 			
 		case GNOME_VFS_ERROR_NOT_SUPPORTED:
-			/* Can't create a vfs_uri and get the method from that, because 
-			 * gnome_vfs_uri_new might return NULL.
-			 */
 			uri = g_file_get_uri (location);
 			scheme_string = eel_str_get_prefix (uri, ":");
 			g_free (uri);
