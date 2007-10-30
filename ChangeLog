@@ -1,5 +1,11 @@
 2007-10-30  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-program-choosing.c:
+        (nautilus_launch_show_file):
+	Avoid gnome_vfs calls
+
+2007-10-30  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-icon-canvas-item.c:
         (real_map_pixbuf):
 	Fix indentation

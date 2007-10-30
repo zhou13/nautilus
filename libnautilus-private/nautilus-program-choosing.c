@@ -461,7 +461,6 @@ nautilus_launch_show_file (NautilusFile *file,
 	char *error_message, *detail_message;
         char *full_uri_for_display;
         char *uri_for_display;
-	GnomeVFSURI *vfs_uri;
 	GError *error;
 	GFile *location;
 #ifdef HAVE_STARTUP_NOTIFICATION
@@ -644,12 +643,9 @@ nautilus_launch_show_file (NautilusFile *file,
 			break;
 		case GNOME_VFS_ERROR_INVALID_HOST_NAME:
 		case GNOME_VFS_ERROR_HOST_NOT_FOUND:
-			vfs_uri = gnome_vfs_uri_new (uri);
-			error_message = g_strdup_printf (_("Couldn't display \"%s\", because no host \"%s\" could be found."),
-							 uri_for_display,
-							 gnome_vfs_uri_get_host_name (vfs_uri));
+			error_message = g_strdup_printf (_("Couldn't display \"%s\", because the host could not be found."),
+							 uri_for_display);
 			detail_message = g_strdup (_("Check that the spelling is correct and that your proxy settings are correct."));
-			gnome_vfs_uri_unref (vfs_uri);
 			break;
 		case GNOME_VFS_ERROR_INVALID_URI:
 			error_message = g_strdup_printf
