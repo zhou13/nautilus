@@ -1,3 +1,15 @@
+2007-10-30  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-icon-canvas-item.c:
+        (real_map_pixbuf):
+	Fix indentation
+	
+        * src/file-manager/Makefile.am:
+        * src/file-manager/fm-icon-view.c:
+        * src/file-manager/nautilus-audio-mime-types.h:
+	Replace audio preview code with new one based
+	on gst-launch, removing all the gnome-vfs code
+
 2007-10-29  Alexander Larsson  <alexl@redhat.com>
 
 	* libnautilus-private/nautilus-dnd.c:

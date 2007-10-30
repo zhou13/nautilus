@@ -49,6 +49,7 @@
 #include <gtk/gtkstock.h>
 #include <glib/gi18n.h>
 #include <gio/gcontenttype.h>
+#include <gio/gsocketoutputstream.h>
 #include <libgnomevfs/gnome-vfs-ops.h>
 #include <libgnomevfs/gnome-vfs-async-ops.h>
 #include <libgnomevfs/gnome-vfs-uri.h>
@@ -75,8 +76,7 @@
 #include <unistd.h>
 #include <esd.h>
 
-#define USE_OLD_AUDIO_PREVIEW 1
-#define READ_CHUNK_SIZE 16384
+#include "nautilus-audio-mime-types.h"
 
 #define POPUP_PATH_ICON_APPEARANCE		"/selection/Icon Appearance Items"
 
@@ -109,6 +109,8 @@ struct FMIconViewDetails
 	
 	int audio_preview_timeout;
 	NautilusFile *audio_preview_file;
+	int audio_preview_child_watch;
+	GPid audio_preview_child_pid;
 
 	gboolean filter_by_screen;
 	int num_screens;
@@ -159,11 +161,6 @@ static const SortCriterion sort_criteria[] = {
 
 static gboolean default_sort_in_reverse_order = FALSE;
 static int preview_sound_auto_value;
-static gboolean gnome_esd_enabled_auto_value;
-
-#if USE_OLD_AUDIO_PREVIEW
-static pid_t audio_preview_pid = 0;
-#endif
 
 static void                 fm_icon_view_set_directory_sort_by        (FMIconView           *icon_view,
 								       NautilusFile         *file,
@@ -1741,6 +1738,39 @@ band_select_ended_callback (NautilusIconContainer *container,
 
 /* handle the preview signal by inspecting the mime type.  For now, we only preview local sound files. */
 
+static char **
+get_preview_argv (char *uri)
+{
+	char *command;
+	char **argv;
+
+	command = g_find_program_in_path ("gst-launch-0.10");
+	if (command) {
+		argv = g_new (char *, 4);
+		argv[0] = command;
+		argv[1] = g_strdup ("playbin");
+		argv[2] = g_strconcat ("uri=", uri, NULL);
+		argv[3] = NULL;
+		
+		return argv;
+	}
+
+	return NULL;
+}
+
+static void
+audio_child_died (GPid     pid,
+		  gint     status,
+		  gpointer data)
+{
+	FMIconView *icon_view;
+
+	icon_view = FM_ICON_VIEW (data);
+
+	icon_view->details->audio_preview_child_watch = 0;
+	icon_view->details->audio_preview_child_pid = 0;
+}
+
 /* here's the timer task that actually plays the file using mpg123, ogg123 or play. */
 /* FIXME bugzilla.gnome.org 41258: we should get the application from our mime-type stuff */
 static gboolean
@@ -1748,105 +1778,46 @@ play_file (gpointer callback_data)
 {
 	NautilusFile *file;
 	FMIconView *icon_view;
-	FILE *sound_process;
-	char *file_uri;
-	char *suffix;
-	char *mime_type;
-	const char *command_str;
-	gboolean is_mp3;
-	gboolean is_ogg;
-	pid_t mp3_pid;
-	
-	GnomeVFSResult result;
-	GnomeVFSHandle *handle;
-	char *buffer;
-	const char *audio_device = NULL;
-	goffset bytes_read;
+	GPid child_pid;
+	char **argv;
+	GError *error;
+	char *uri;
 
-	audio_device = g_getenv ("AUDIODEV");
 	icon_view = FM_ICON_VIEW (callback_data);
+	
+	/* Stop timeout */
+	icon_view->details->audio_preview_timeout = 0;
 
 	file = icon_view->details->audio_preview_file;
-	file_uri = nautilus_file_get_uri (file);
-	mime_type = nautilus_file_get_mime_type (file);
-	is_mp3 = g_content_type_equals (mime_type, "audio/mpeg");
-	is_ogg = g_content_type_equals (mime_type, "application/ogg") ||
-		 g_content_type_equals (mime_type, "application/x-ogg");
-
-	mp3_pid = fork ();
-	if (mp3_pid == (pid_t) 0) {
-		/* Set the group (session) id to this process for future killing. */
-		setsid();
-		if (is_mp3) {
-			command_str = "mpg123 -y -q -";
-		} else if (is_ogg) {
-			command_str = "ogg123 -q -";
-		} else {
-			suffix = strrchr(file_uri, '.');
-			if (suffix == NULL) {
-				suffix = "wav";
-			} else {
-				suffix += 1; /* skip the period */
-			}
-			if (audio_device) {
-				command_str = g_strdup_printf("play -d %s -t %s -", audio_device, suffix);
-			} else {
-				command_str = g_strdup_printf("play -t %s -", suffix);
-			}
-		}
-
-		/* read the file with gnome-vfs, feeding it to the sound player's standard input */
-		/* First, open the file. */
-		result = gnome_vfs_open (&handle, file_uri, GNOME_VFS_OPEN_READ);
-		if (result != GNOME_VFS_OK) {
-			_exit (0);
-		}
-			
-		/* since the uri could be local or remote, we launch the sound player with popen and feed it
-		 * the data by fetching it with gnome_vfs
-		 */
-		sound_process = popen(command_str, "w");
-		if (sound_process == 0) {
-			/* Close the file. */
-			result = gnome_vfs_close (handle);			
-			_exit (0);
-		}
-			
-		/* allocate a buffer. */
-		buffer = g_malloc(READ_CHUNK_SIZE);
-			
-		/* read and write a chunk at a time, until we're done */
-		do {
-			result = gnome_vfs_read (handle,
-					buffer,
-					READ_CHUNK_SIZE,
-					&bytes_read);
-			if (result != GNOME_VFS_OK && result != GNOME_VFS_ERROR_EOF) {
-				break;
-			}
-
-			/* pass the data the buffer to the sound process by writing to it */
-			fwrite(buffer, 1, bytes_read, sound_process);
-
-		} while (result == GNOME_VFS_OK);
-
-		/* Close the file. */
-		result = gnome_vfs_close (handle);			
-		g_free(buffer);
-		pclose(sound_process);
-		_exit (0);
-	} else if (mp3_pid > (pid_t) 0) {
-		if (audio_preview_pid > 0) {
-			kill (-audio_preview_pid, SIGTERM);
-			waitpid (audio_preview_pid, NULL, 0);
-		}
-		audio_preview_pid = mp3_pid;
+	uri = nautilus_file_get_uri (file);
+	argv = get_preview_argv (uri);
+	g_free (uri);
+	if (argv == NULL) {
+		return FALSE;
 	}
-		
-	g_free (file_uri);
-	g_free (mime_type);
 
-	icon_view->details->audio_preview_timeout = 0;
+	error = NULL;
+	if (!g_spawn_async_with_pipes (NULL,
+				       argv,
+				       NULL, 
+				       G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL,
+				       NULL,
+				       NULL /* user_data */,
+				       &child_pid,
+				       NULL, NULL, NULL,
+				       &error)) {
+		g_strfreev (argv);
+		g_warning ("Error spawning sound preview: %s\n", error->message);
+		g_error_free (error);
+		return FALSE;
+	}
+	g_strfreev (argv);
+
+	icon_view->details->audio_preview_child_watch =
+		g_child_watch_add (child_pid,
+				   audio_child_died, NULL);
+	icon_view->details->audio_preview_child_pid = child_pid;
+	
 	return FALSE;
 }
 
@@ -1862,11 +1833,13 @@ static void
 preview_audio (FMIconView *icon_view, NautilusFile *file, gboolean start_flag)
 {		
 	/* Stop current audio playback */
-	if (audio_preview_pid > 0) {
-		kill (-audio_preview_pid, SIGTERM);
-		waitpid (audio_preview_pid, NULL, 0);
-		audio_preview_pid = 0;
+	if (icon_view->details->audio_preview_child_pid != 0) {
+		kill (icon_view->details->audio_preview_child_pid, SIGTERM);
+		g_source_remove (icon_view->details->audio_preview_child_watch);
+		waitpid (icon_view->details->audio_preview_child_pid, NULL, 0);
+		icon_view->details->audio_preview_child_pid = 0;
 	}
+	
 	if (icon_view->details->audio_preview_timeout != 0) {
 		g_source_remove (icon_view->details->audio_preview_timeout);
 		icon_view->details->audio_preview_timeout = 0;
@@ -1879,21 +1852,38 @@ preview_audio (FMIconView *icon_view, NautilusFile *file, gboolean start_flag)
 }
 
 static gboolean
+sound_preview_type_supported (NautilusFile *file)
+{
+	char *mime_type;
+	guint i;
+	
+	mime_type = nautilus_file_get_mime_type (file);
+	if (mime_type == NULL) {
+ 		return FALSE;
+	}
+	for (i = 0; i < G_N_ELEMENTS (audio_mime_types); i++) {
+		if (g_content_type_is_a (mime_type, audio_mime_types[i])) {
+			g_free (mime_type);
+			return TRUE;
+		}
+	}
+	
+	g_free (mime_type);
+	return FALSE;
+}
+
+
+static gboolean
 should_preview_sound (NautilusFile *file)
 {
-	char *uri;
+	GFile *location;
 
-	/* Check gnome config sound preference */
-	if (!gnome_esd_enabled_auto_value) {
+	location = nautilus_file_get_location (file);
+	if (g_file_has_uri_scheme (location, "burn")) {
+		g_object_unref (location);
 		return FALSE;
 	}
-
-	uri = nautilus_file_get_uri (file);
-	if (uri && eel_istr_has_prefix (uri, "burn:")) {
-		g_free (uri);
-		return FALSE;
-	}
-	g_free (uri);
+	g_object_unref (location);
 
 	/* Check user performance preference */	
 	if (preview_sound_auto_value == NAUTILUS_SPEED_TRADEOFF_NEVER) {
@@ -1907,29 +1897,6 @@ should_preview_sound (NautilusFile *file)
 	return nautilus_file_is_local (file);
 }
 
-static inline gboolean
-can_play_sound (void)
-{
-	int open_result;
-
-#if USE_OLD_AUDIO_PREVIEW			
-	/* first see if there's already one in progress; if so, return true */
-	if (audio_preview_pid > 0) {
-		return TRUE;
-	}
-#endif
-
-	/* Now check and see if system has audio out capabilites */
-        open_result = esd_open_sound (NULL);
-        if (open_result == -1) {
-                return FALSE;
-        }
-
-	esd_close (open_result);
-
-	return TRUE;
-}
-
 static int
 icon_container_preview_callback (NautilusIconContainer *container,
 				 NautilusFile *file,
@@ -1937,25 +1904,17 @@ icon_container_preview_callback (NautilusIconContainer *container,
 				 FMIconView *icon_view)
 {
 	int result;
-	char *mime_type, *file_name, *message;
+	char *file_name, *message;
 		
 	result = 0;
 	
 	/* preview files based on the mime_type. */
 	/* at first, we just handle sounds */
 	if (should_preview_sound (file)) {
-		mime_type = nautilus_file_get_mime_type (file);
-
-		if ((g_content_type_is_a (mime_type, "audio/*") ||
-		     g_content_type_equals (mime_type, "application/ogg") ||
-		     g_content_type_equals (mime_type, "application/x-ogg")) &&
-		    !g_content_type_equals (mime_type, "audio/x-mpegurl") &&
-		    !g_content_type_equals (mime_type, "audio/x-pn-realaudio") &&
-		    can_play_sound ()) {
+		if (sound_preview_type_supported (file)) {
 			result = 1;
 			preview_audio (icon_view, file, start_flag);
 		}
-		g_free (mime_type);
 	}
 
 	/* Display file name in status area at low zoom levels, since
@@ -2663,10 +2622,6 @@ fm_icon_view_init (FMIconView *icon_view)
 	if (!setup_sound_preview) {
 		eel_preferences_add_auto_enum (NAUTILUS_PREFERENCES_PREVIEW_SOUND,
 					       &preview_sound_auto_value);
-
-		eel_preferences_monitor_directory ("/desktop/gnome/sound");
-		eel_preferences_add_auto_boolean ("/desktop/gnome/sound/enable_esd",
-						  &gnome_esd_enabled_auto_value);
 		
 		setup_sound_preview = TRUE;
 	}

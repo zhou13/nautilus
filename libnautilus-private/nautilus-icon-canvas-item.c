@@ -1582,9 +1582,9 @@ real_map_pixbuf (NautilusIconCanvasItem *icon_item)
 			audio_filename = nautilus_pixmap_file ("audio.svg");
 			if (audio_filename != NULL) {
 				audio_pixbuf = rsvg_pixbuf_from_file_at_zoom_with_max (audio_filename, zoom, zoom,
-																	   NAUTILUS_ICON_MAXIMUM_SIZE,
-																	   NAUTILUS_ICON_MAXIMUM_SIZE,
-																	   NULL);
+										       NAUTILUS_ICON_MAXIMUM_SIZE,
+										       NAUTILUS_ICON_MAXIMUM_SIZE,
+										       NULL);
 			} else {
 				audio_pixbuf = NULL;
 			}
