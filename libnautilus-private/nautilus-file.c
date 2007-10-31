@@ -5639,29 +5639,21 @@ nautilus_file_get_volume_free_space (NautilusFile *file)
 char *
 nautilus_file_get_volume_name (NautilusFile *file)
 {
-	char *local_path;
-	char *file_uri;
-	char *volume_name;
-	GnomeVFSVolume *volume;
-	file_uri = nautilus_file_get_uri (file);
+	GFile *location;
+	char *res;
+	GVolume *volume;
 
-	volume = NULL;
-
-	local_path = g_filename_from_uri (file_uri, NULL, NULL);
-	if (local_path != NULL) {
-		volume = gnome_vfs_volume_monitor_get_volume_for_path (gnome_vfs_get_volume_monitor (), local_path);
-	}
+	res = NULL;
 	
-	g_free (file_uri);
-	g_free (local_path);
-
-	if (volume != NULL) {
-		volume_name = gnome_vfs_volume_get_display_name (volume);
-		gnome_vfs_volume_unref (volume);
-		return volume_name;
-	} else {
-		return NULL;
+	location = nautilus_file_get_location (file);
+	volume = g_file_find_enclosing_volume (location, NULL, NULL);
+	if (volume) {
+		res = g_strdup (g_volume_get_name (volume));
+		g_object_unref (volume);
 	}
+	g_object_unref (location);
+
+	return res;
 }
 
 /**

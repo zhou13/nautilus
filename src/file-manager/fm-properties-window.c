@@ -1327,18 +1327,6 @@ file_list_get_string_attribute (GList *file_list,
 }
 
 
-static gboolean 
-file_list_all_local (GList *file_list)
-{
-	GList *l;
-	for (l = file_list; l != NULL; l = l->next) {
-		if (!nautilus_file_is_local (NAUTILUS_FILE (l->data))) {
-			return FALSE;
-		}
-	}
-	return TRUE;
-}
-
 static gboolean
 file_list_all_directories (GList *file_list)
 {
@@ -2620,8 +2608,7 @@ should_show_link_target (FMPropertiesWindow *window)
 static gboolean
 should_show_free_space (FMPropertiesWindow *window)
 {
-	if (file_list_all_local (window->details->target_files)
-	    && file_list_all_directories (window->details->target_files)) {
+	if (file_list_all_directories (window->details->target_files)) {
 		return TRUE;
 	}
 
@@ -2828,12 +2815,14 @@ create_pie_widget (FMPropertiesWindow *window)
 	location = g_file_new_for_uri (uri);
 	info = g_file_query_filesystem_info (location, G_FILE_ATTRIBUTE_FS_TYPE,
 					     NULL, NULL);
-	
-	fs_type = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_FS_TYPE);
-	if (fs_type != NULL) {
-		gtk_label_set_text (GTK_LABEL (fstype_label), g_strconcat (_("Filesytem type: "), fs_type, NULL));
+	if (info) {
+		fs_type = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_FS_TYPE);
+		if (fs_type != NULL) {
+			gtk_label_set_text (GTK_LABEL (fstype_label), g_strconcat (_("Filesytem type: "), fs_type, NULL));
+		}
+		
+		g_object_unref (info);
 	}
-	g_object_unref (info);
 	g_object_unref (location);
 	
 	g_free (uri);
@@ -2874,11 +2863,17 @@ create_volume_usage_widget (FMPropertiesWindow *window)
 
 	location = g_file_new_for_uri (uri);
 	info = g_file_query_filesystem_info (location, "fs:*", NULL, NULL);
-	
-	window->details->volume_capacity = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_SIZE);
-	window->details->volume_free = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_FREE);
 
-	g_object_unref (info);
+	if (info) {
+		window->details->volume_capacity = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_SIZE);
+		window->details->volume_free = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FS_FREE);
+
+		g_object_unref (info);
+	} else {
+		window->details->volume_capacity = 0;		
+		window->details->volume_free = 0;		
+	}
+	
 	g_object_unref (location);
 	
 	piewidget = create_pie_widget (window);
@@ -2971,12 +2966,12 @@ create_basic_page (FMPropertiesWindow *window)
 					    _("--"),
 					    TRUE);
 	
+	append_title_and_ellipsizing_value (window, table, 
+					    _("Volume:"), 
+					    "volume",
+					    _("--"),
+					    FALSE);
 	if (should_show_free_space (window)) {
-		append_title_and_ellipsizing_value (window, table, 
-						    _("Volume:"), 
-						    "volume",
-						    _("--"),
-						    FALSE);
 		append_title_value_pair (window, table, _("Free space:"), 
 					 "free_space",
 					 _("--"),

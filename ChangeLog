@@ -1,3 +1,17 @@
+2007-10-31  Alexander Larsson  <alexl@redhat.com>
+
+	* src/file-manager/fm-icon-view.c (play_file):
+	Use a better pipeline for audio preview (doesn't play videos)
+	Add back totem preview app.
+
+        * libnautilus-private/nautilus-file.c:
+        (nautilus_file_get_volume_name):
+	Get volume name using gio
+	
+        * src/file-manager/fm-properties-window.c:
+	Show volume name for non local files too
+	Avoid crashes if query fsinfo fails
+
 2007-10-30  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-program-choosing.c:

@@ -1743,15 +1743,32 @@ get_preview_argv (char *uri)
 {
 	char *command;
 	char **argv;
+	int i;
 
+	command = g_find_program_in_path ("totem-audio-preview");
+	if (command) {
+		argv = g_new (char *, 3);
+		argv[0] = command;
+		argv[1] = g_strdup (uri);
+		argv[2] = NULL;
+
+		return argv;
+	}
+		
 	command = g_find_program_in_path ("gst-launch-0.10");
 	if (command) {
-		argv = g_new (char *, 4);
-		argv[0] = command;
-		argv[1] = g_strdup ("playbin");
-		argv[2] = g_strconcat ("uri=", uri, NULL);
-		argv[3] = NULL;
-		
+		argv = g_new (char *, 10);
+		i = 0;
+		argv[i++] = command;
+		argv[i++] = g_strdup ("uridecodebin");
+		argv[i++] = g_strconcat ("uri=", uri, NULL);
+		argv[i++] = g_strdup ("!");
+		argv[i++] = g_strdup ("audioconvert");
+		argv[i++] = g_strdup ("!");
+		argv[i++] = g_strdup ("audioresample");
+		argv[i++] = g_strdup ("!");
+		argv[i++] = g_strdup ("autoaudiosink");
+		argv[i++] = NULL;
 		return argv;
 	}
 
