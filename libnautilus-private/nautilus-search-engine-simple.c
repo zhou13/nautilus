@@ -201,7 +201,7 @@ send_batch (SearchThreadData *data)
 	G_FILE_ATTRIBUTE_STD_DISPLAY_NAME "," \
 	G_FILE_ATTRIBUTE_STD_IS_HIDDEN "," \
 	G_FILE_ATTRIBUTE_STD_TYPE "," \
-	G_FILE_ATTRIBUTE_ID_VALUE
+	G_FILE_ATTRIBUTE_ID_FILE
 
 static void
 visit_directory (GFile *dir, SearchThreadData *data)
@@ -277,7 +277,7 @@ visit_directory (GFile *dir, SearchThreadData *data)
 		}
 
 		if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
-			id = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_ID_VALUE);
+			id = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_ID_FILE);
 			visited = FALSE;
 			if (id) {
 				if (g_hash_table_lookup_extended (data->visited,
@@ -314,9 +314,9 @@ search_thread_func (gpointer user_data)
 
 	/* Insert id for toplevel directory into visited */
 	dir = g_queue_peek_head (data->directories);
-	info = g_file_query_info (dir, G_FILE_ATTRIBUTE_ID_VALUE, 0, data->cancellable, NULL);
+	info = g_file_query_info (dir, G_FILE_ATTRIBUTE_ID_FILE, 0, data->cancellable, NULL);
 	if (info) {
-		id = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_ID_VALUE);
+		id = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_ID_FILE);
 		if (id) {
 			g_hash_table_insert (data->visited, g_strdup (id), NULL);
 		}

@@ -1,5 +1,10 @@
 2007-10-31  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-search-engine-simple.c:
+	Update to changed gio API
+
+2007-10-31  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-vfs-utils.[ch]:
 	Remove more unused gnome-vfs helpers
 
