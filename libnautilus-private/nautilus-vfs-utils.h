@@ -12,6 +12,4 @@ GQuark          gnome_vfs_error_quark      (void);
 
 #define GNOME_VFS_ERROR gnome_vfs_error_quark()
 
-GError *gnome_vfs_result_to_error (GnomeVFSResult result);
-
 #endif /* __NAUTILUS_VFS_UTILS_H__ */
