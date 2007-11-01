@@ -39,7 +39,6 @@
 #include "libnautilus-private/nautilus-open-with-dialog.h"
 
 #include <libgnome/gnome-url.h>
-#include <eel/eel-alert-dialog.h>
 #include <eel/eel-mount-operation.h>
 #include <eel/eel-background.h>
 #include <eel/eel-glib-extensions.h>
@@ -50,6 +49,7 @@
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
 #include <eel/eel-marshal.h>
+#include <gdk/gdkkeysyms.h>
 #include <gtk/gtkcheckmenuitem.h>
 #include <gtk/gtkclipboard.h>
 #include <gtk/gtkiconfactory.h>
@@ -57,7 +57,6 @@
 #include <gtk/gtkmain.h>
 #include <gtk/gtkmenu.h>
 #include <gtk/gtkselection.h>
-#include <gtk/gtksignal.h>
 #include <gtk/gtkstock.h>
 #include <gtk/gtktable.h>
 #include <gtk/gtkmessagedialog.h>
@@ -70,8 +69,6 @@
 #include <glib/gi18n.h>
 #include <gio/gioerror.h>
 #include <gio/gcontenttype.h>
-#include <libgnome/gnome-util.h>
-#include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-help.h>
 #include <libnautilus-private/nautilus-recent.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
@@ -155,6 +152,8 @@
  */
 #define MAX_URI_IN_DIALOG_LENGTH 60
 
+/* Directory where user scripts are placed */
+#define NAUTILUS_SCRIPTS_DIR ".gnome2/nautilus-scripts"
 
 enum {
 	ADD_FILE,
@@ -377,7 +376,6 @@ static void     fm_directory_view_trash_state_changed_callback (NautilusTrashMon
 								gpointer              callback_data);
 static void     fm_directory_view_select_file                  (FMDirectoryView      *view,
 								NautilusFile         *file);
-static void     create_scripts_directory                       (void);
 static void     activate_activation_uris_ready_callback        (GList                *files,
 								gpointer              callback_data);
 
@@ -1496,26 +1494,16 @@ set_up_scripts_directory_global (void)
 		return;
 	}
 
-	scripts_directory_path = gnome_util_home_file ("nautilus-scripts");
+	scripts_directory_path = g_build_filename (g_get_home_dir (),
+						   NAUTILUS_SCRIPTS_DIR,
+						   NULL);
 
-	scripts_directory_uri = g_filename_to_uri (scripts_directory_path, NULL, NULL);
-	scripts_directory_uri_length = strlen (scripts_directory_uri);
-
-	if (!g_file_test (scripts_directory_path, G_FILE_TEST_EXISTS)) {
-		create_scripts_directory ();
+	if (g_mkdir_with_parents (scripts_directory_path, 0755) == 0) {
+		scripts_directory_uri = g_filename_to_uri (scripts_directory_path, NULL, NULL);
+		scripts_directory_uri_length = strlen (scripts_directory_uri);
 	}
-	
+
 	g_free (scripts_directory_path);
-}
-
-static void
-create_scripts_directory (void)
-{
-	GFile *dir;
-
-	dir = g_file_new_for_uri (scripts_directory_uri);
-	g_file_make_directory (dir, NULL, NULL);
-	g_object_unref (dir);
 }
 
 static void
@@ -2757,7 +2745,6 @@ fm_directory_view_unfreeze_updates (FMDirectoryView *view)
 	}
 }
 
-
 static gboolean
 display_selection_info_idle_callback (gpointer data)
 {
@@ -3400,7 +3387,6 @@ fm_directory_view_get_selection_for_file_transfer (FMDirectoryView *view)
 		(FM_DIRECTORY_VIEW_CLASS, view,
 		 get_selection_for_file_transfer, (view));
 }
-
 
 guint
 fm_directory_view_get_item_count (FMDirectoryView *view)

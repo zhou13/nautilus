@@ -1,3 +1,9 @@
+2007-11-01  Paolo Borelli  <pborelli@katamail.com>
+
+        * src/file-manager/fm-directory-view.c: do not use the deprecated
+	gnome_util_home_file and make sure tha ~/.gnome2 is created if it
+	doesn't exist.
+
 2007-11-01  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.[ch]:
