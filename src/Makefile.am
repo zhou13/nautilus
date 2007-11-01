@@ -65,9 +65,6 @@ nautilus_SOURCES = \
 	nautilus-bookmark-list.h		\
 	nautilus-bookmarks-window.c		\
 	nautilus-bookmarks-window.h		\
-	nautilus-connect-server-dialog.c	\
-	nautilus-connect-server-dialog.h	\
-	nautilus-connect-server-dialog-nonmain.c\
 	nautilus-desktop-window.c		\
 	nautilus-desktop-window.h		\
 	nautilus-emblem-sidebar.c		\

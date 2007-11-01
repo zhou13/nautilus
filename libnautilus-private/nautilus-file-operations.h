@@ -30,9 +30,6 @@
 #include <gdk/gdkdnd.h>
 #include <gtk/gtkwidget.h>
 #include <gio/gvolume.h>
-#include <libgnomevfs/gnome-vfs-types.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
 
 typedef void (* NautilusCopyCallback)      (GHashTable *debuting_uris,
 					    gpointer    callback_data);
@@ -85,10 +82,10 @@ void nautilus_file_operations_trash_or_delete (GList                  *files,
 					       gpointer                done_callback_data);
 
 void nautilus_file_set_permissions_recursive (const char                     *directory,
-					      GnomeVFSFilePermissions         file_permissions,
-					      GnomeVFSFilePermissions         file_mask,
-					      GnomeVFSFilePermissions         folder_permissions,
-					      GnomeVFSFilePermissions         folder_mask,
+					      guint32                         file_permissions,
+					      guint32                         file_mask,
+					      guint32                         folder_permissions,
+					      guint32                         folder_mask,
 					      NautilusSetPermissionsCallback  callback,
 					      gpointer                        callback_data);
 

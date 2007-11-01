@@ -68,8 +68,8 @@ fm_report_error_loading_directory (NautilusFile *file,
 			break;
 		default:
 			/* We should invent decent error messages for every case we actually experience. */
-			g_warning ("Hit unhandled case %d (%s) in fm_report_error_loading_directory", 
-				   error->code, gnome_vfs_result_to_string (error->code));
+			g_warning ("Hit unhandled case %d in fm_report_error_loading_directory", 
+				   error->code);
 			message = g_strdup_printf (_("Sorry, couldn't display all the contents of \"%s\"."), file_name);
 		}
 	} else {

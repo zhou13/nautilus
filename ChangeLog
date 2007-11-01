@@ -1,3 +1,20 @@
+2007-11-01  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Stub out all gnome-vfs using operations with a
+	dialog saying this isn't supported yet.
+	
+        * src/Makefile.am:
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-shell-ui.xml:
+        * src/nautilus-window-menus.c:
+	Remove all connect to server use for now
+	Not sure what to do with it in the gvfs world
+	
+        * src/file-manager/fm-error-reporting.c:
+        * src/nautilus-main.c:
+	Remove gnome_vfs uses
+
 2007-11-01  Paolo Borelli  <pborelli@katamail.com>
 
         * src/file-manager/fm-directory-view.c: do not use the deprecated

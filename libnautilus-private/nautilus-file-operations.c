@@ -70,6 +70,8 @@
 
 static gboolean confirm_trash_auto_value;
 
+#ifdef GIO_CONVERSION_DONE
+
 typedef enum   TransferKind         TransferKind;
 typedef struct TransferInfo         TransferInfo;
 typedef struct IconPositionIterator IconPositionIterator;
@@ -133,6 +135,8 @@ transfer_info_destroy (TransferInfo *transfer_info)
 	g_free (transfer_info);
 }
 
+#endif /* GIO_CONVERSION_DONE */
+
 static void
 setup_autos (void)
 {
@@ -143,6 +147,8 @@ setup_autos (void)
 						  &confirm_trash_auto_value);
 	}
 }
+
+#ifdef GIO_CONVERSION_DONE
 
 /* Struct used to control applying icon positions to 
  * top level items during a copy, drag, new folder creation and
@@ -2847,6 +2853,9 @@ nautilus_file_operations_new_file (GtkWidget *parent_view,
 	g_free (target_filename);
 }
 
+#endif /* GIO_CONVERSION_DONE */
+
+
 typedef struct {
 	GList *files;
 	GtkWindow *parent_window;
@@ -3365,6 +3374,8 @@ nautilus_file_operations_delete (GList                  *files,
 				  done_callback,  done_callback_data);
 }
 
+#ifdef GIO_CONVERSION_DONE
+
 static void
 do_empty_trash (GtkWidget *parent_view)
 {
@@ -3485,8 +3496,6 @@ nautilus_file_operations_empty_trash (GtkWidget *parent_view)
 		do_empty_trash (parent_view);
 	}
 }
-
-#ifdef GIO_CONVERSION_DONE
 
 static gchar* 
 get_trash_uri_for_volume (GnomeVFSVolume *volume)
@@ -3684,28 +3693,30 @@ nautilus_file_operations_unmount_volume (GtkWindow                      *parent_
 			  data);
 }
 
+#ifdef GIO_CONVERSION_DONE
+
 struct RecursivePermissionsInfo {
 	GnomeVFSAsyncHandle *handle;
 	GnomeVFSURI *current_dir;
 	GnomeVFSURI *current_file;
 	GList *files;
 	GList *directories;
-	GnomeVFSFilePermissions file_permissions;
-	GnomeVFSFilePermissions file_mask;
-	GnomeVFSFilePermissions dir_permissions;
-	GnomeVFSFilePermissions dir_mask;
+	guint32 file_permissions;
+	guint32 file_mask;
+	guint32 dir_permissions;
+	guint32 dir_mask;
 	NautilusSetPermissionsCallback callback;
 	gpointer callback_data;
 };
 
 struct FileInfo {
 	char *name;
-	GnomeVFSFilePermissions permissions;
+	guint32 permissions;
 };
 
 struct DirInfo {
 	GnomeVFSURI *uri;
-	GnomeVFSFilePermissions permissions;
+	guint32 permissions;
 };
 
 static void set_permissions_run (struct RecursivePermissionsInfo *info);
@@ -3885,10 +3896,10 @@ set_permissions_run (struct RecursivePermissionsInfo *info)
 	
 void
 nautilus_file_set_permissions_recursive (const char                     *directory,
-					 GnomeVFSFilePermissions         file_permissions,
-					 GnomeVFSFilePermissions         file_mask,
-					 GnomeVFSFilePermissions         dir_permissions,
-					 GnomeVFSFilePermissions         dir_mask,
+					 guint32         file_permissions,
+					 guint32         file_mask,
+					 guint32         dir_permissions,
+					 guint32         dir_mask,
 					 NautilusSetPermissionsCallback  callback,
 					 gpointer                        callback_data)
 {
@@ -3916,6 +3927,87 @@ nautilus_file_set_permissions_recursive (const char                     *directo
 	set_permissions_load_dir (NULL, GNOME_VFS_OK, NULL, info);
 }
 
+#endif /* GIO_CONVERSION_DONE */
+
+
+static void
+not_supported_yet (void)
+{
+	eel_show_warning_dialog ("This operation isn't supported with the gio-based nautilus",
+				 "This is work in progress. Please be patient",
+				 NULL);
+}
+
+void
+nautilus_file_set_permissions_recursive (const char                     *directory,
+					 guint32         file_permissions,
+					 guint32         file_mask,
+					 guint32         dir_permissions,
+					 guint32         dir_mask,
+					 NautilusSetPermissionsCallback  callback,
+					 gpointer                        callback_data)
+{
+	/* TODO-gio: Implement */
+	not_supported_yet ();
+}
+
+void
+nautilus_file_operations_copy_move (const GList *item_uris,
+				    GArray *relative_item_points,
+				    const char *target_dir,
+				    GdkDragAction copy_action,
+				    GtkWidget *parent_view,
+				    void (*done_callback) (GHashTable *debuting_uris, gpointer data),
+				    gpointer done_callback_data)
+{
+	/* TODO-gio: Implement */
+	not_supported_yet ();
+}
+
+void 
+nautilus_file_operations_new_folder (GtkWidget *parent_view, 
+				     GdkPoint *target_point,
+				     const char *parent_dir,
+				     NautilusNewFolderCallback done_callback,
+				     gpointer data)
+{
+	/* TODO-gio: Implement */
+	not_supported_yet ();
+}
+
+void 
+nautilus_file_operations_new_file_from_template (GtkWidget *parent_view, 
+						 GdkPoint *target_point,
+						 const char *parent_dir,
+						 const char *target_filename,
+						 const char *template_uri,
+						 NautilusNewFileCallback done_callback,
+						 gpointer data)
+{
+	/* TODO-gio: Implement */
+	not_supported_yet ();
+}
+
+void 
+nautilus_file_operations_new_file (GtkWidget *parent_view, 
+				   GdkPoint *target_point,
+				   const char *parent_dir,
+				   const char *initial_contents,
+				   NautilusNewFileCallback done_callback,
+				   gpointer data)
+{
+	/* TODO-gio: Implement */
+	not_supported_yet ();
+}
+
+
+void 
+nautilus_file_operations_empty_trash (GtkWidget *parent_view)
+{
+	/* TODO-gio: Implement */
+	not_supported_yet ();
+}
+
 
 #if !defined (NAUTILUS_OMIT_SELF_CHECK)
 
@@ -3924,6 +4016,8 @@ nautilus_self_check_file_operations (void)
 {
 	setlocale (LC_MESSAGES, "C");
 
+#ifdef GIO_CONVERSION_DONE
+	
 	/* test the next duplicate name generator */
 	EEL_CHECK_STRING_RESULT (get_duplicate_name (" (copy)", 1), " (another copy)");
 	EEL_CHECK_STRING_RESULT (get_duplicate_name ("foo", 1), "foo (copy)");
@@ -3967,6 +4061,8 @@ nautilus_self_check_file_operations (void)
 	EEL_CHECK_STRING_RESULT (get_duplicate_name ("foo (123rd copy)", 1), "foo (124th copy)");
 	EEL_CHECK_STRING_RESULT (get_duplicate_name ("foo (123rd copy).txt", 1), "foo (124th copy).txt");
 
+#endif /* GIO_CONVERSION_DONE */
+	
 	setlocale (LC_MESSAGES, "");
 }
 

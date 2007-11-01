@@ -6002,7 +6002,9 @@ connect_to_server_response_callback (GtkDialog *dialog,
 		uri = g_object_get_data (G_OBJECT (dialog), "link-uri");
 		icon = g_object_get_data (G_OBJECT (dialog), "link-icon");
 		name = gtk_entry_get_text (entry);
+#ifdef GIO_CONVERSION_DONE
 		gnome_vfs_connect_to_server (uri, (char *)name, icon);
+#endif
 		gtk_widget_destroy (GTK_WIDGET (dialog));
 		break;
 	case GTK_RESPONSE_NONE:
