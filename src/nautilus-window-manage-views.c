@@ -1484,7 +1484,6 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 	char *scheme_string;
 	GtkDialog *dialog;
 	GError *error;
-	char *uri;
 
 	error = nautilus_file_get_file_info_error (file);
 	
@@ -1529,11 +1528,9 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 			detail_message = g_strdup 
 				(_("Please check the spelling and try again."));
 			break;
-			
+
 		case GNOME_VFS_ERROR_NOT_SUPPORTED:
-			uri = g_file_get_uri (location);
-			scheme_string = eel_str_get_prefix (uri, ":");
-			g_free (uri);
+			scheme_string = g_file_get_uri_scheme (location);
 			g_assert (scheme_string != NULL);  /* Shouldn't have gotten this error unless there's a : separator. */
 			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 							 uri_for_display);
@@ -1541,7 +1538,7 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 							  scheme_string);
 			g_free (scheme_string);
 			break;
-			
+
 		case GNOME_VFS_ERROR_LOGIN_FAILED:
 			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 							 uri_for_display);

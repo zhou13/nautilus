@@ -17,6 +17,11 @@
 
 2007-11-01  Paolo Borelli  <pborelli@katamail.com>
 
+        * src/nautilus-window-manage-views.c: use g_file_get_uri_scheme
+	instead of a hand rolled version.
+
+2007-11-01  Paolo Borelli  <pborelli@katamail.com>
+
         * src/file-manager/fm-directory-view.c: do not use the deprecated
 	gnome_util_home_file and make sure tha ~/.gnome2 is created if it
 	doesn't exist.
