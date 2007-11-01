@@ -1,3 +1,21 @@
+2007-11-01  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
+        (nautilus_file_get_uri_scheme):
+	Better get_uri_scheme implementation
+	
+        * libnautilus-private/nautilus-mime-actions.[ch]:
+	Remove the open_with versions (not needed anymore)
+	Add support for uri_handlers
+	
+        * libnautilus-private/nautilus-program-choosing.[ch]:
+	Remove now unused function nautilus_launch_show_file
+	
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-information-panel.c:
+        * src/nautilus-window.c:
+	Update for above api changes
+
 2007-10-31  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-dnd.c:

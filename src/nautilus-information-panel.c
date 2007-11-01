@@ -1015,7 +1015,7 @@ background_metadata_changed_callback (NautilusInformationPanel *information_pane
 	NautilusFileAttributes attributes;
 	gboolean ready;
 
-	attributes = nautilus_mime_actions_get_minimum_file_attributes ();
+	attributes = nautilus_mime_actions_get_required_file_attributes ();
 	ready = nautilus_file_check_if_ready (information_panel->details->file, attributes);
 
 	if (ready) {
@@ -1062,7 +1062,7 @@ nautilus_information_panel_set_uri (NautilusInformationPanel *information_panel,
 					 G_CALLBACK (background_metadata_changed_callback),
 					 information_panel, G_CONNECT_SWAPPED);
 
-	attributes = nautilus_mime_actions_get_minimum_file_attributes ();
+	attributes = nautilus_mime_actions_get_required_file_attributes ();
 	nautilus_file_monitor_add (information_panel->details->file, information_panel, attributes);
 
 	background_metadata_changed_callback (information_panel);

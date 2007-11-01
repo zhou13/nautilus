@@ -74,49 +74,23 @@ filter_non_uri_apps (GList *apps)
 
 
 static gboolean
-nautilus_mime_actions_check_if_minimum_attributes_ready (NautilusFile *file)
+nautilus_mime_actions_check_if_required_attributes_ready (NautilusFile *file)
 {
 	NautilusFileAttributes attributes;
 	gboolean ready;
 
-	attributes = nautilus_mime_actions_get_minimum_file_attributes ();
+	attributes = nautilus_mime_actions_get_required_file_attributes ();
 	ready = nautilus_file_check_if_ready (file, attributes);
 
 	return ready;
 }
 
 NautilusFileAttributes 
-nautilus_mime_actions_get_minimum_file_attributes (void)
+nautilus_mime_actions_get_required_file_attributes (void)
 {
 	return NAUTILUS_FILE_ATTRIBUTE_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
 		NAUTILUS_FILE_ATTRIBUTE_METADATA;
-}
-
-static NautilusFileAttributes 
-nautilus_mime_actions_get_open_with_file_attributes (void)
-{
-	return NAUTILUS_FILE_ATTRIBUTE_INFO |
-		NAUTILUS_FILE_ATTRIBUTE_LINK_INFO |
-		NAUTILUS_FILE_ATTRIBUTE_METADATA;
-}
-
-static gboolean
-nautilus_mime_actions_check_if_open_with_attributes_ready (NautilusFile *file)
-{
-	NautilusFileAttributes attributes;
-	gboolean ready;
-
-	attributes = nautilus_mime_actions_get_open_with_file_attributes ();
-	ready = nautilus_file_check_if_ready (file, attributes);
-
-	return ready;
-}
-
-NautilusFileAttributes 
-nautilus_mime_actions_get_full_file_attributes (void)
-{
-	return nautilus_mime_actions_get_minimum_file_attributes ();
 }
 
 static gboolean
@@ -126,7 +100,8 @@ file_has_local_path (NautilusFile *file)
 	char *path;
 	gboolean res;
 
-	
+	/* Don't check _is_native, because we want to support
+	   using the fuse path */
 	location = nautilus_file_get_location (file);
 	path = g_file_get_path (location);
 
@@ -143,15 +118,23 @@ nautilus_mime_get_default_application_for_file (NautilusFile *file)
 {
 	GAppInfo *app;
 	char *mime_type;
+	char *uri_scheme;
 
-	if (!nautilus_mime_actions_check_if_open_with_attributes_ready (file)) {
+	if (!nautilus_mime_actions_check_if_required_attributes_ready (file)) {
 		return NULL;
 	}
 
 	mime_type = nautilus_file_get_mime_type (file);
 	app = g_app_info_get_default_for_type (mime_type, file_has_local_path (file));
-	
 	g_free (mime_type);
+
+	if (app == NULL) {
+		uri_scheme = nautilus_file_get_uri_scheme (file);
+		if (uri_scheme != NULL) {
+			app = g_app_info_get_default_for_uri_scheme (uri_scheme);
+			g_free (uri_scheme);
+		}
+	}
 	
 	return app;
 }
@@ -207,56 +190,34 @@ application_compare_by_id (const GAppInfo *app_a,
 			       g_app_info_get_id ((GAppInfo *)app_b));
 }
 
-static GList *
-get_open_with_mime_applications (NautilusFile *file)
-{
-	char *mime_type;
-	GList *apps;
-
-	mime_type = nautilus_file_get_mime_type (file);
-
-	apps = g_app_info_get_all_for_type (mime_type);
-	if (!file_has_local_path (file)) {
-		/* Filter out non-uri supporting apps */
-		apps = filter_non_uri_apps (apps);
-	}
-		
-	apps = g_list_sort (apps, (GCompareFunc) application_compare_by_name);
-
-	g_free (mime_type);
-	
-	return apps;
-}
-
-/* Get a list of applications for the Open With menu.  This is 
- * different than nautilus_mime_get_applications_for_file()
- * because this function will merge the lists of the fast and slow
- * mime types for the file (not any more...) */
-GList *
-nautilus_mime_get_open_with_applications_for_file (NautilusFile *file)
-{
-	GList *result;
-
-	if (!nautilus_mime_actions_check_if_open_with_attributes_ready (file)) {
-		return NULL;
-	}
-
-	result = get_open_with_mime_applications (file);
-
-	return filter_nautilus_handler (result);
-}
-
 GList *
 nautilus_mime_get_applications_for_file (NautilusFile *file)
 {
 	char *mime_type;
+	char *uri_scheme;
 	GList *result;
+	GAppInfo *uri_handler;
 
-	if (!nautilus_mime_actions_check_if_minimum_attributes_ready (file)) {
+	if (!nautilus_mime_actions_check_if_required_attributes_ready (file)) {
 		return NULL;
 	}
 	mime_type = nautilus_file_get_mime_type (file);
 	result = g_app_info_get_all_for_type (mime_type);
+
+	uri_scheme = nautilus_file_get_uri_scheme (file);
+	if (uri_scheme != NULL) {
+		uri_handler = g_app_info_get_default_for_uri_scheme (uri_scheme);
+		if (uri_handler) {
+			result = g_list_prepend (result, uri_handler);
+		}
+		g_free (uri_scheme);
+	}
+	
+	if (!file_has_local_path (file)) {
+		/* Filter out non-uri supporting apps */
+		result = filter_non_uri_apps (result);
+	}
+	
 	result = g_list_sort (result, (GCompareFunc) application_compare_by_name);
 	g_free (mime_type);
 
@@ -269,10 +230,22 @@ nautilus_mime_has_any_applications_for_file (NautilusFile *file)
 	GList *apps;
 	char *mime_type;
 	gboolean result;
+	char *uri_scheme;
+	GAppInfo *uri_handler;
 
 	mime_type = nautilus_file_get_mime_type (file);
 	
 	apps = g_app_info_get_all_for_type (mime_type);
+
+	uri_scheme = nautilus_file_get_uri_scheme (file);
+	if (uri_scheme != NULL) {
+		uri_handler = g_app_info_get_default_for_uri_scheme (uri_scheme);
+		if (uri_handler) {
+			apps = g_list_prepend (apps, uri_handler);
+		}
+		g_free (uri_scheme);
+	}
+	
 	if (!file_has_local_path (file)) {
 		/* Filter out non-uri supporting apps */
 		apps = filter_non_uri_apps (apps);
@@ -384,7 +357,7 @@ intersect_application_lists (GList *a,
 }
 
 GList *
-nautilus_mime_get_open_with_applications_for_files (GList *files)
+nautilus_mime_get_applications_for_files (GList *files)
 {
 	GList *l, *sorted_files;
 	NautilusFile *file;
@@ -401,47 +374,6 @@ nautilus_mime_get_open_with_applications_for_files (GList *files)
 		if (l->prev &&
 		    file_compare_by_mime_type (file, l->prev->data) == 0 &&
 		    file_compare_by_parent_uri (file, l->prev->data) == 0) {
-			continue;
-		}
-
-		one_ret = nautilus_mime_get_open_with_applications_for_file (file);
-		one_ret = g_list_sort (one_ret, (GCompareFunc) application_compare_by_id);
-		
-		if (ret != NULL) {
-			ret = intersect_application_lists (ret, one_ret);
-		} else {
-			ret = one_ret;
-		}
-
-		if (ret == NULL) {
-			break;
-		}
-	}
-
-	g_list_free (sorted_files);
-	
-	ret = g_list_sort (ret, (GCompareFunc) application_compare_by_name);
-
-	return ret;
-}
-
-GList *
-nautilus_mime_get_applications_for_files (GList *files)
-{
-	GList *l, *sorted_files;
-	NautilusFile *file;
-	GList *one_ret, *ret;
-
-	g_assert (files != NULL);
-
-	sorted_files = g_list_sort (g_list_copy (files), (GCompareFunc) file_compare_by_mime_type);
-
-	ret = NULL;
-	for (l = sorted_files; l != NULL; l = l->next) {
-		file = l->data;
-
-		if (l->prev &&
-		    file_compare_by_mime_type (file, l->prev->data) == 0) {
 			continue;
 		}
 

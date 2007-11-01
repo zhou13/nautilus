@@ -29,15 +29,12 @@
 
 #include <libnautilus-private/nautilus-file.h>
 
-NautilusFileAttributes   nautilus_mime_actions_get_minimum_file_attributes	(void);
-NautilusFileAttributes   nautilus_mime_actions_get_full_file_attributes		(void);
+NautilusFileAttributes   nautilus_mime_actions_get_required_file_attributes	(void);
 
 GAppInfo *               nautilus_mime_get_default_application_for_file		(NautilusFile *file);
-GList *                  nautilus_mime_get_open_with_applications_for_file	(NautilusFile *file);
 GList *			 nautilus_mime_get_applications_for_file		(NautilusFile *file);
 
 GAppInfo *               nautilus_mime_get_default_application_for_files	(GList        *files);
-GList *                  nautilus_mime_get_open_with_applications_for_files	(GList        *files);
 GList *			 nautilus_mime_get_applications_for_files		(GList        *file);
 
 gboolean                 nautilus_mime_has_any_applications_for_file		(NautilusFile *file);

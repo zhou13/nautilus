@@ -1081,7 +1081,7 @@ nautilus_file_get_uri (NautilusFile *file)
 char *
 nautilus_file_get_uri_scheme (NautilusFile *file)
 {
-	char *uri;
+	GFile *loc;
 	char *scheme;
 	
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
@@ -1091,9 +1091,10 @@ nautilus_file_get_uri_scheme (NautilusFile *file)
 		return NULL;
 	}
 
-	uri = nautilus_directory_get_uri (file->details->directory);
-	scheme = g_uri_get_scheme (uri);
-	g_free (uri);
+	loc = nautilus_directory_get_location (file->details->directory);
+	scheme = g_file_get_uri_scheme (loc);
+	g_object_unref (loc);
+	
 	return scheme;
 }
 

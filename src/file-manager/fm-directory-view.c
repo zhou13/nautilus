@@ -148,6 +148,14 @@
 #define MAX_MENU_LEVELS 5
 #define TEMPLATE_LIMIT 30
 
+/* This number controls a maximum character count for a URL that is
+ * displayed as part of a dialog. It's fairly arbitrary -- big enough
+ * to allow most "normal" URIs to display in full, but small enough to
+ * prevent the dialog from getting insanely wide.
+ */
+#define MAX_URI_IN_DIALOG_LENGTH 60
+
+
 enum {
 	ADD_FILE,
 	BEGIN_FILE_CHANGES,
@@ -4326,7 +4334,7 @@ reset_open_with_menu (FMDirectoryView *view, GList *selection)
 
 	applications = NULL;
 	if (other_applications_visible) {
-		applications = nautilus_mime_get_open_with_applications_for_files (selection);
+		applications = nautilus_mime_get_applications_for_files (selection);
 	}
 
 	num_applications = g_list_length (applications);
@@ -7889,16 +7897,34 @@ activate_files (ActivateParameters *parameters)
 	}
 
 	for (l = unhandled_open_in_app_files; l != NULL; l = l->next) {
+		GFile *location;
+		char *full_uri_for_display;
+		char *uri_for_display;
+		char *error_message;
+		
 		file = NAUTILUS_FILE (l->data);
 
-		nautilus_launch_show_file
-			(file, parameters->parent_window);
+		location = nautilus_file_get_location (file);
+		full_uri_for_display = g_file_get_parse_name (location);
+		g_object_unref (location);
 
-		/* We should not add trash and directory uris.*/
-		if ((!nautilus_file_is_in_trash (file)) && 
-		    (!nautilus_file_is_directory (file))) {
-			nautilus_recent_add_file (file, NULL);
-		}
+		/* Truncate the URI so it doesn't get insanely wide. Note that even
+		 * though the dialog uses wrapped text, if the URI doesn't contain
+		 * white space then the text-wrapping code is too stupid to wrap it.
+		 */
+		uri_for_display = eel_str_middle_truncate
+			(full_uri_for_display, MAX_URI_IN_DIALOG_LENGTH);
+		g_free (full_uri_for_display);
+	
+		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
+						 uri_for_display);
+		
+		g_free (uri_for_display);
+
+		eel_show_error_dialog (error_message,
+				       _("There is no application installed for this file type"),
+				       parameters->parent_window);
+		g_free (error_message);
 	}
 
 	if (open_in_app_parameters != NULL ||
@@ -7981,7 +8007,7 @@ activation_mount_not_mounted (ActivateParameters *parameters)
 	parameters->tried_mounting = TRUE;
 	nautilus_file_list_call_when_ready
 		(parameters->files,
-		 nautilus_mime_actions_get_minimum_file_attributes () | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO,
+		 nautilus_mime_actions_get_required_file_attributes () | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO,
 		 &parameters->files_handle,
 		 activate_callback, parameters);
 }
@@ -8087,7 +8113,7 @@ activate_activation_uris_ready_callback (GList *files_ignore,
 	/* get the parameters for the actual files */	
 	nautilus_file_list_call_when_ready
 		(parameters->files,
-		 nautilus_mime_actions_get_minimum_file_attributes () | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO,
+		 nautilus_mime_actions_get_required_file_attributes () | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO,
 		 &parameters->files_handle,
 		 activate_callback, parameters);
 }
