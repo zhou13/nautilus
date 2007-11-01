@@ -1,5 +1,14 @@
 2007-11-01  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Convert unmount volume to gio
+	Remove unmount drive (makes no sense!)
+	
+        * src/nautilus-places-sidebar.c:
+	Use new APIs
+
+2007-11-01  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.c:
         (nautilus_file_get_uri_scheme):
 	Better get_uri_scheme implementation

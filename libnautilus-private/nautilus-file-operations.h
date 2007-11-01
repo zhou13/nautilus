@@ -29,6 +29,7 @@
 
 #include <gdk/gdkdnd.h>
 #include <gtk/gtkwidget.h>
+#include <gio/gvolume.h>
 #include <libgnomevfs/gnome-vfs-types.h>
 #include <libgnomevfs/gnome-vfs-utils.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
@@ -42,6 +43,8 @@ typedef void (* NautilusNewFileCallback)   (const char *new_file_uri,
 typedef void (* NautilusSetPermissionsCallback) (gpointer    callback_data);
 typedef void (* NautilusDeleteCallback)      (GHashTable *debuting_uris,
 					    gpointer    callback_data);
+typedef void (* NautilusUnmountCallback)    (GError     *error,
+					     gpointer    callback_data);
 
 /* FIXME: int copy_action should be an enum */
 
@@ -89,14 +92,9 @@ void nautilus_file_set_permissions_recursive (const char                     *di
 					      NautilusSetPermissionsCallback  callback,
 					      gpointer                        callback_data);
 
-void nautilus_file_operations_unmount_volume (GtkWidget                      *parent_view,
-								GnomeVFSVolume *volume,
-								GnomeVFSVolumeOpCallback callback,
-								gpointer user_data);
+void nautilus_file_operations_unmount_volume (GtkWindow                      *parent_window,
+					      GVolume                        *volume,
+					      NautilusUnmountCallback         callback,
+					      gpointer                        user_data);
 								
-void nautilus_file_operations_unmount_drive (GtkWidget 						 *parent_view,
-								GnomeVFSDrive *drive, 
-								GnomeVFSVolumeOpCallback callback,
-								gpointer user_data);								
-
 #endif /* NAUTILUS_FILE_OPERATIONS_H */
