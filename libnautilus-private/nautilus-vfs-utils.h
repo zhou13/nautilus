@@ -3,7 +3,7 @@
 
 #include <glib/gerror.h>
 #include <gio/gfileinfo.h>
-#include <libgnomevfs/gnome-vfs-file-info.h>
+#include <libgnomevfs/gnome-vfs-result.h>
 
 /* This file has helper tools in the conversion from gnome-vfs to gio */
 

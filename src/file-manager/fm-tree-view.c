@@ -40,7 +40,6 @@
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-preferences.h>
 #include <eel/eel-stock-dialogs.h>
-#include <eel/eel-vfs-extensions.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtkcellrendererpixbuf.h>
 #include <gtk/gtkcellrenderertext.h>
@@ -61,8 +60,6 @@
 #include <gio/gthemedicon.h>
 #include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-popup-menu.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libnautilus-private/nautilus-clipboard-monitor.h>
 #include <libnautilus-private/nautilus-desktop-icon-file.h>
 #include <libnautilus-private/nautilus-debug-log.h>

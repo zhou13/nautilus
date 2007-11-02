@@ -33,7 +33,6 @@
 #include "nautilus-file-utilities.h"
 #include "nautilus-global-preferences.h"
 #include <eel/eel-glib-extensions.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtksignal.h>
 #include <libgnome/gnome-macros.h>

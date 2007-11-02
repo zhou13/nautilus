@@ -24,9 +24,6 @@
 
 #include <gio/gfile.h>
 #include <eel/eel-vfs-extensions.h>
-#include <libgnomevfs/gnome-vfs-file-info.h>
-#include <libgnomevfs/gnome-vfs-types.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
 #include <libnautilus-private/nautilus-directory-metafile-monitor.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-file-queue.h>
@@ -102,9 +99,6 @@ struct NautilusDirectoryDetails
 
 	NautilusFile *get_info_file;
 	GetInfoState *get_info_in_progress;
-
-	NautilusFile *slow_mime_type_file;
-	GnomeVFSAsyncHandle *slow_mime_type_in_progress;
 
 	NautilusFile *extension_info_file;
 	NautilusInfoProvider *extension_info_provider;

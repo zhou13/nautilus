@@ -38,10 +38,6 @@
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-string.h>
 #include <gtk/gtkmain.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-mime-monitor.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <libxml/parser.h>
 #include <stdio.h>
 #include <stdlib.h>

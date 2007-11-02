@@ -64,7 +64,6 @@
 #include <libgnomeui/gnome-help.h>
 #include <libgnomeui/gnome-thumbnail.h>
 #include <libgnomeui/gnome-uidefs.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-extension/nautilus-property-page-provider.h>
 #include <libnautilus-private/nautilus-customization-data.h>
 #include <libnautilus-private/nautilus-entry.h>
@@ -3211,8 +3210,8 @@ permission_change_callback (NautilusFile *file,
 
 static void
 update_permissions (FMPropertiesWindow *window,
-		    GnomeVFSFilePermissions vfs_new_perm,
-		    GnomeVFSFilePermissions vfs_mask,
+		    guint32 vfs_new_perm,
+		    guint32 vfs_mask,
 		    gboolean is_folder,
 		    gboolean apply_to_both_folder_and_dir,
 		    gboolean use_original)
@@ -3221,7 +3220,7 @@ update_permissions (FMPropertiesWindow *window,
 	
 	for (l = window->details->target_files; l != NULL; l = l->next) {
 		NautilusFile *file;
-		GnomeVFSFilePermissions permissions;
+		guint32 permissions;
 
 		file = NAUTILUS_FILE (l->data);
 
@@ -3257,19 +3256,19 @@ update_permissions (FMPropertiesWindow *window,
 
 static gboolean
 initial_permission_state_consistent (FMPropertiesWindow *window,
-				     GnomeVFSFilePermissions mask,
+				     guint32 mask,
 				     gboolean is_folder,
 				     gboolean both_folder_and_dir)
 {
 	GList *l;
 	gboolean first;
-	GnomeVFSFilePermissions first_permissions;
+	guint32 first_permissions;
 
 	first = TRUE;
 	first_permissions = 0;
 	for (l = window->details->target_files; l != NULL; l = l->next) {
 		NautilusFile *file;
-		GnomeVFSFilePermissions permissions;
+		guint32 permissions;
 
 		file = l->data;
 		
@@ -3305,7 +3304,7 @@ permission_button_toggled (GtkToggleButton *button,
 			   FMPropertiesWindow *window)
 {
 	gboolean is_folder, is_special;
-	GnomeVFSFilePermissions permission_mask;
+	guint32 permission_mask;
 	gboolean inconsistent;
 	gboolean on;
 	
@@ -3367,7 +3366,7 @@ permission_button_update (FMPropertiesWindow *window,
 	gboolean is_folder, is_special;
 	gboolean no_match;
 	gboolean sensitive;
-	GnomeVFSFilePermissions button_permission;
+	guint32 button_permission;
 
 	if (gtk_toggle_button_get_inconsistent (button) &&
 	    window->details->has_recursive_apply) {
@@ -3391,7 +3390,7 @@ permission_button_update (FMPropertiesWindow *window,
 	no_match = TRUE;
 	for (l = window->details->target_files; l != NULL; l = l->next) {
 		NautilusFile *file;
-		GnomeVFSFilePermissions file_permissions;
+		guint32 file_permissions;
 
 		file = NAUTILUS_FILE (l->data);
 
@@ -3450,7 +3449,7 @@ permission_button_update (FMPropertiesWindow *window,
 static void
 set_up_permissions_checkbox (FMPropertiesWindow *window,
 			     GtkWidget *check_button, 
-			     GnomeVFSFilePermissions permission,
+			     guint32 permission,
 			     gboolean is_folder)
 {
 	/* Load up the check_button with data we'll need when updating its state. */
@@ -3476,7 +3475,7 @@ add_permissions_checkbox_with_label (FMPropertiesWindow *window,
 				     GtkTable *table, 
 				     int row, int column,
 				     const char *label,
-				     GnomeVFSFilePermissions permission_to_check,
+				     guint32 permission_to_check,
 				     GtkLabel *label_for,
 				     gboolean is_folder)
 {
@@ -3507,7 +3506,7 @@ static void
 add_permissions_checkbox (FMPropertiesWindow *window,
 			  GtkTable *table, 
 			  int row, int column, 
-			  GnomeVFSFilePermissions permission_to_check,
+			  guint32 permission_to_check,
 			  GtkLabel *label_for,
 			  gboolean is_folder)
 {
@@ -3529,6 +3528,24 @@ add_permissions_checkbox (FMPropertiesWindow *window,
 					     is_folder);
 }
 
+enum {
+	UNIX_PERM_SUID = S_ISUID,
+	UNIX_PERM_SGID = S_ISGID,	
+	UNIX_PERM_STICKY = 01000,	/* S_ISVTX not defined on all systems */
+	UNIX_PERM_USER_READ = S_IRUSR,
+	UNIX_PERM_USER_WRITE = S_IWUSR,
+	UNIX_PERM_USER_EXEC = S_IXUSR,
+	UNIX_PERM_USER_ALL = S_IRUSR | S_IWUSR | S_IXUSR,
+	UNIX_PERM_GROUP_READ = S_IRGRP,
+	UNIX_PERM_GROUP_WRITE = S_IWGRP,
+	UNIX_PERM_GROUP_EXEC = S_IXGRP,
+	UNIX_PERM_GROUP_ALL = S_IRGRP | S_IWGRP | S_IXGRP,
+	UNIX_PERM_OTHER_READ = S_IROTH,
+	UNIX_PERM_OTHER_WRITE = S_IWOTH,
+	UNIX_PERM_OTHER_EXEC = S_IXOTH,
+	UNIX_PERM_OTHER_ALL = S_IROTH | S_IWOTH | S_IXOTH
+};
+
 typedef enum {
 	PERMISSION_READ  = (1<<0),
 	PERMISSION_WRITE = (1<<1),
@@ -3541,16 +3558,16 @@ typedef enum {
 	PERMISSION_OTHER
 } PermissionType;
 
-static GnomeVFSFilePermissions vfs_perms[3][3] = {
-	{GNOME_VFS_PERM_USER_READ, GNOME_VFS_PERM_USER_WRITE, GNOME_VFS_PERM_USER_EXEC},
-	{GNOME_VFS_PERM_GROUP_READ, GNOME_VFS_PERM_GROUP_WRITE, GNOME_VFS_PERM_GROUP_EXEC},
-	{GNOME_VFS_PERM_OTHER_READ, GNOME_VFS_PERM_OTHER_WRITE, GNOME_VFS_PERM_OTHER_EXEC},
+static guint32 vfs_perms[3][3] = {
+	{UNIX_PERM_USER_READ, UNIX_PERM_USER_WRITE, UNIX_PERM_USER_EXEC},
+	{UNIX_PERM_GROUP_READ, UNIX_PERM_GROUP_WRITE, UNIX_PERM_GROUP_EXEC},
+	{UNIX_PERM_OTHER_READ, UNIX_PERM_OTHER_WRITE, UNIX_PERM_OTHER_EXEC},
 };
 
-static GnomeVFSFilePermissions 
+static guint32 
 permission_to_vfs (PermissionType type, PermissionValue perm)
 {
-	GnomeVFSFilePermissions vfs_perm;
+	guint32 vfs_perm;
 	g_assert (type >= 0 && type < 3);
 
 	vfs_perm = 0;
@@ -3569,7 +3586,7 @@ permission_to_vfs (PermissionType type, PermissionValue perm)
 
 
 static PermissionValue
-permission_from_vfs (PermissionType type, GnomeVFSFilePermissions vfs_perm)
+permission_from_vfs (PermissionType type, guint32 vfs_perm)
 {
 	PermissionValue perm;
 	g_assert (type >= 0 && type < 3);
@@ -3596,7 +3613,7 @@ permission_combo_changed (GtkWidget *combo, FMPropertiesWindow *window)
 	gboolean is_folder, use_original;
 	PermissionType type;
 	int new_perm, mask;
-	GnomeVFSFilePermissions vfs_new_perm, vfs_mask;
+	guint32 vfs_new_perm, vfs_mask;
 
 	is_folder = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (combo), "is-folder"));
 	type = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (combo), "permission-type"));
@@ -3693,7 +3710,7 @@ permission_combo_update (FMPropertiesWindow *window,
 	
 	for (l = window->details->target_files; l != NULL; l = l->next) {
 		NautilusFile *file;
-		GnomeVFSFilePermissions file_permissions;
+		guint32 file_permissions;
 
 		file = NAUTILUS_FILE (l->data);
 
@@ -3909,7 +3926,7 @@ static GtkWidget *
 append_special_execution_checkbox (FMPropertiesWindow *window,
 				   GtkTable *table,
 				   const char *label_text,
-				   GnomeVFSFilePermissions permission_to_check)
+				   guint32 permission_to_check)
 {
 	GtkWidget *check_button;
 	guint last_row;
@@ -3939,12 +3956,12 @@ static void
 append_special_execution_flags (FMPropertiesWindow *window, GtkTable *table)
 {
 	append_special_execution_checkbox 
-		(window, table, _("Set _user ID"), GNOME_VFS_PERM_SUID);
+		(window, table, _("Set _user ID"), UNIX_PERM_SUID);
 
 	attach_title_field (table, table->nrows - 1, _("Special flags:"));
 
-	append_special_execution_checkbox (window, table, _("Set gro_up ID"), GNOME_VFS_PERM_SGID);
-	append_special_execution_checkbox (window, table, _("_Sticky"), GNOME_VFS_PERM_STICKY);
+	append_special_execution_checkbox (window, table, _("Set gro_up ID"), UNIX_PERM_SGID);
+	append_special_execution_checkbox (window, table, _("_Sticky"), UNIX_PERM_STICKY);
 
 	gtk_table_set_row_spacing (table, table->nrows - 1, 18);
 }
@@ -3993,7 +4010,7 @@ get_initial_permissions (GList *file_list)
 				g_direct_equal);
 	
 	for (l = file_list; l != NULL; l = l->next) {
-		GnomeVFSFilePermissions permissions;
+		guint32 permissions;
 		NautilusFile *file;
 		
 		file = NAUTILUS_FILE (l->data);
@@ -4109,7 +4126,7 @@ create_simple_permissions (FMPropertiesWindow *window, GtkTable *page_table)
 	add_permissions_checkbox_with_label (window, page_table,
 					     last_row, 1,
 					     _("Allow _executing file as program"),
-					     GNOME_VFS_PERM_USER_EXEC|GNOME_VFS_PERM_GROUP_EXEC|GNOME_VFS_PERM_OTHER_EXEC,
+					     UNIX_PERM_USER_EXEC|UNIX_PERM_GROUP_EXEC|UNIX_PERM_OTHER_EXEC,
 					     execute_label, FALSE);
 	
 }
@@ -4145,7 +4162,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_OWNER_ROW,
 				  PERMISSIONS_CHECKBOXES_READ_COLUMN,
-				  GNOME_VFS_PERM_USER_READ,
+				  UNIX_PERM_USER_READ,
 				  owner_perm_label,
 				  is_folder);
 	
@@ -4153,7 +4170,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_OWNER_ROW,
 				  PERMISSIONS_CHECKBOXES_WRITE_COLUMN,
-				  GNOME_VFS_PERM_USER_WRITE,
+				  UNIX_PERM_USER_WRITE,
 				  owner_perm_label,
 				  is_folder);
 	
@@ -4161,7 +4178,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_OWNER_ROW,
 				  PERMISSIONS_CHECKBOXES_EXECUTE_COLUMN,
-				  GNOME_VFS_PERM_USER_EXEC,
+				  UNIX_PERM_USER_EXEC,
 				  owner_perm_label,
 				  is_folder);
 	
@@ -4169,7 +4186,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_GROUP_ROW,
 				  PERMISSIONS_CHECKBOXES_READ_COLUMN,
-				  GNOME_VFS_PERM_GROUP_READ,
+				  UNIX_PERM_GROUP_READ,
 				  group_perm_label,
 				  is_folder);
 	
@@ -4177,7 +4194,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_GROUP_ROW,
 				  PERMISSIONS_CHECKBOXES_WRITE_COLUMN,
-				  GNOME_VFS_PERM_GROUP_WRITE,
+				  UNIX_PERM_GROUP_WRITE,
 				  group_perm_label,
 				  is_folder);
 	
@@ -4185,7 +4202,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_GROUP_ROW,
 				  PERMISSIONS_CHECKBOXES_EXECUTE_COLUMN,
-				  GNOME_VFS_PERM_GROUP_EXEC,
+				  UNIX_PERM_GROUP_EXEC,
 				  group_perm_label,
 				  is_folder);
 	
@@ -4193,7 +4210,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_OTHERS_ROW,
 				  PERMISSIONS_CHECKBOXES_READ_COLUMN,
-				  GNOME_VFS_PERM_OTHER_READ,
+				  UNIX_PERM_OTHER_READ,
 				  other_perm_label,
 				  is_folder);
 	
@@ -4201,7 +4218,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_OTHERS_ROW,
 				  PERMISSIONS_CHECKBOXES_WRITE_COLUMN,
-				  GNOME_VFS_PERM_OTHER_WRITE,
+				  UNIX_PERM_OTHER_WRITE,
 				  other_perm_label,
 				  is_folder);
 	
@@ -4209,7 +4226,7 @@ create_permission_checkboxes (FMPropertiesWindow *window,
 				  check_button_table, 
 				  PERMISSIONS_CHECKBOXES_OTHERS_ROW,
 				  PERMISSIONS_CHECKBOXES_EXECUTE_COLUMN,
-				  GNOME_VFS_PERM_OTHER_EXEC,
+				  UNIX_PERM_OTHER_EXEC,
 				  other_perm_label,
 				  is_folder);
 }
@@ -4318,9 +4335,9 @@ static void
 apply_recursive_clicked (GtkWidget *recursive_button,
 			 FMPropertiesWindow *window)
 {
-	GnomeVFSFilePermissions file_permission, file_permission_mask;
-	GnomeVFSFilePermissions dir_permission, dir_permission_mask;
-	GnomeVFSFilePermissions vfs_mask, vfs_new_perm, p;
+	guint32 file_permission, file_permission_mask;
+	guint32 dir_permission, dir_permission_mask;
+	guint32 vfs_mask, vfs_new_perm, p;
 	GtkWidget *button, *combo;
 	gboolean active, is_folder, is_special, use_original;
 	GList *l;

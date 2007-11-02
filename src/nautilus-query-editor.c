@@ -46,8 +46,6 @@
 #include <gtk/gtkfilechooserbutton.h>
 #include "gtk/gtkcelllayout.h"
 #include "gtk/gtkcellrenderertext.h"
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-mime-info.h>
 
 typedef enum {
 	NAUTILUS_QUERY_EDITOR_ROW_LOCATION,

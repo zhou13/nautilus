@@ -5,8 +5,9 @@ SUBDIRS=file-manager
 bin_PROGRAMS=					\
 	nautilus				\
 	nautilus-file-management-properties	\
-	nautilus-connect-server			\
 	$(NULL)
+
+#	nautilus-connect-server			
 
 INCLUDES =							\
 	-I$(top_srcdir) 					\
@@ -139,13 +140,14 @@ nautilus_file_management_properties_SOURCES= \
 	nautilus-file-management-properties-main.c	\
 	$(NULL)
 
-nautilus_connect_server_SOURCES= \
-	nautilus-connect-server-dialog.c	\
-	nautilus-connect-server-dialog.h	\
-	nautilus-connect-server-dialog-main.c	\
-	nautilus-location-entry.c		\
-	nautilus-location-entry.h		\
-	$(NULL)
+# Disabled for now in the gio world
+#nautilus_connect_server_SOURCES= \
+#	nautilus-connect-server-dialog.c	\
+#	nautilus-connect-server-dialog.h	\
+#	nautilus-connect-server-dialog-main.c	\
+#	nautilus-location-entry.c		\
+#	nautilus-location-entry.h		\
+#	$(NULL)
 
 $(nautilus_shell_interface_idl_sources): nautilus_shell_interface_idl_stamp
 nautilus_shell_interface_idl_stamp: nautilus-shell-interface.idl $(ORBIT_IDL)

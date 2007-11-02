@@ -27,7 +27,6 @@
 
 #include <gtk/gtkobject.h>
 #include <gio/gfile.h>
-#include <libgnomevfs/gnome-vfs-types.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 
 /* NautilusDirectory is a class that manages the model for a directory,

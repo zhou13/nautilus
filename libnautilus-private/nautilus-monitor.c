@@ -31,9 +31,6 @@
 
 #include <gio/gdirectorymonitor.h>
 #include <libgnome/gnome-util.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
 
 struct NautilusMonitor {
 	GDirectoryMonitor *monitor;

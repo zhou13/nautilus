@@ -44,7 +44,6 @@
 #include <gtk/gtkcheckmenuitem.h>
 #include <glib/gi18n.h>
 #include <libgnome/gnome-util.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-private/nautilus-desktop-icon-file.h>
 #include <libnautilus-private/nautilus-directory-background.h>
 #include <libnautilus-private/nautilus-directory-notify.h>

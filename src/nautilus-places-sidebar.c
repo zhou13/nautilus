@@ -55,7 +55,6 @@
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-file-operations.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <gio/gvolumemonitor.h>
 #include <gio/gthemedicon.h>
 

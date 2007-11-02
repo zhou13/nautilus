@@ -24,7 +24,6 @@
 #include <config.h>
 #include "nautilus-search-engine-tracker.h"
 #include <tracker.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-glib-extensions.h>
 

@@ -44,15 +44,11 @@
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
-#include <eel/eel-vfs-extensions.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtksignal.h>
 #include <gdk/gdkx.h>
 #include <glib/gi18n.h>
 #include <libgnomeui/gnome-icon-theme.h>
-#include <libgnomevfs/gnome-vfs-async-ops.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-extension/nautilus-location-widget-provider.h>
 #include <libnautilus-private/nautilus-debug-log.h>
 #include <libnautilus-private/nautilus-file-attributes.h>

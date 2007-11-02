@@ -43,8 +43,6 @@
 #include <librsvg/rsvg.h>
 #include <glib/gi18n.h>
 #include <libgnome/gnome-util.h>
-#include <libgnomevfs/gnome-vfs-directory.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libxml/parser.h>
 #include <stdlib.h>
 #include <string.h>

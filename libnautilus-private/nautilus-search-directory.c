@@ -30,7 +30,6 @@
 #include "nautilus-file-utilities.h"
 #include "nautilus-search-engine.h"
 #include <eel/eel-glib-extensions.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <gtk/gtksignal.h>
 #include <gio/gioerror.h>
 #include <libgnome/gnome-macros.h>

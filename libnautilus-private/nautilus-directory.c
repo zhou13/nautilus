@@ -43,7 +43,6 @@
 #include <eel/eel-string.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtksignal.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 
 enum {
 	FILES_ADDED,
@@ -58,10 +57,10 @@ static guint signals[LAST_SIGNAL];
 /* Specifications for parallel-directory metafile. */
 #define METAFILES_DIRECTORY_NAME "metafiles"
 #define METAFILE_SUFFIX ".xml"
-#define METAFILES_DIRECTORY_PERMISSIONS \
-	(GNOME_VFS_PERM_USER_ALL \
-         | GNOME_VFS_PERM_GROUP_ALL \
-	 | GNOME_VFS_PERM_OTHER_ALL)
+#define METAFILES_DIRECTORY_PERMISSIONS  \
+	(S_IRUSR | S_IWUSR | S_IXUSR |   \
+	 S_IRGRP | S_IWGRP | S_IXGRP |   \
+	 S_IROTH | S_IWOTH | S_IXOTH)
 
 static GHashTable *directories;
 

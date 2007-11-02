@@ -35,8 +35,6 @@
 #include <eel/eel-string.h>
 #include <glib/gi18n.h>
 #include <libgnome/gnome-util.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 
 /* Constants */
 #define STRING_LIST_DEFAULT_TOKENS_DELIMETER ","

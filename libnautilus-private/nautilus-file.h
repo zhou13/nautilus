@@ -26,7 +26,6 @@
 #define NAUTILUS_FILE_H
 
 #include <gtk/gtkobject.h>
-#include <libgnomevfs/gnome-vfs-types.h>
 #include <gio/gfileinfo.h>
 #include <gio/gfile.h>
 #include <gio/gioerror.h>
@@ -270,7 +269,7 @@ void                    nautilus_file_set_group                         (Nautilu
 									 NautilusFileOperationCallback   callback,
 									 gpointer                        callback_data);
 void                    nautilus_file_set_permissions                   (NautilusFile                   *file,
-									 GnomeVFSFilePermissions         permissions,
+									 guint32                         permissions,
 									 NautilusFileOperationCallback   callback,
 									 gpointer                        callback_data);
 void                    nautilus_file_rename                            (NautilusFile                   *file,

@@ -58,12 +58,6 @@
 #include <gio/gcontenttype.h>
 #include <gio/gurifuncs.h>
 #include <libgnome/gnome-macros.h>
-#include <libgnomevfs/gnome-vfs-file-info.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
-#include <libgnomevfs/gnome-vfs-volume.h>
-#include <libgnomevfs/gnome-vfs-volume-monitor.h>
-#include <libgnomevfs/gnome-vfs-drive.h>
 #include <glib/gfileutils.h>
 #include <gio/gthemedicon.h>
 #include <gio/gfileicon.h>
@@ -1518,7 +1512,7 @@ update_info_internal (NautilusFile *file,
 	gboolean changed;
 	gboolean is_symlink, is_hidden, is_backup, is_mountpoint;
 	gboolean has_permissions;
-	GnomeVFSFilePermissions permissions;
+	guint32 permissions;
 	gboolean can_read, can_write, can_execute, can_delete, can_trash, can_rename, can_mount, can_unmount, can_eject;
 	gboolean thumbnailing_failed;
 	int uid, gid;
@@ -4035,7 +4029,7 @@ nautilus_file_get_permissions (NautilusFile *file)
  **/
 void
 nautilus_file_set_permissions (NautilusFile *file, 
-			       GnomeVFSFilePermissions new_permissions,
+			       guint32 new_permissions,
 			       NautilusFileOperationCallback callback,
 			       gpointer callback_data)
 {
@@ -4689,7 +4683,7 @@ nautilus_file_set_group (NautilusFile *file,
 static char *
 nautilus_file_get_octal_permissions_as_string (NautilusFile *file)
 {
-	GnomeVFSFilePermissions permissions;
+	guint32 permissions;
 
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
 
@@ -4714,7 +4708,7 @@ nautilus_file_get_octal_permissions_as_string (NautilusFile *file)
 static char *
 nautilus_file_get_permissions_as_string (NautilusFile *file)
 {
-	GnomeVFSFilePermissions permissions;
+	guint32 permissions;
 	gboolean is_directory;
 	gboolean is_link;
 	gboolean suid, sgid, sticky;

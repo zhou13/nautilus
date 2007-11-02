@@ -39,7 +39,6 @@
 #include <eel/eel-labeled-image.h>
 #include <eel/eel-graphic-effects.h>
 #include <eel/eel-gdk-pixbuf-extensions.h>
-#include <eel/eel-vfs-extensions.h>
 #include <eel/eel-stock-dialogs.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gtk/gtkdnd.h>
@@ -59,7 +58,6 @@
 #include <glib/gi18n.h>
 #include <libgnomeui/gnome-uidefs.h>
 #include <libgnomeui/gnome-popup-menu.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <gconf/gconf-client.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
 #include <libnautilus-private/nautilus-emblem-utils.h>

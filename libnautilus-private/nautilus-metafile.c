@@ -39,10 +39,6 @@
 #include <gio/gurifuncs.h>
 #include <libxml/parser.h>
 #include <gtk/gtkmain.h>
-#include <libgnomevfs/gnome-vfs-file-info.h>
-#include <libgnomevfs/gnome-vfs-types.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -116,7 +112,6 @@ typedef struct MetafileReadState {
 } MetafileReadState;
 
 typedef struct MetafileWriteState {
-	GnomeVFSAsyncHandle *handle;
 	xmlChar *buffer;
 	goffset size;
 	gboolean write_again;

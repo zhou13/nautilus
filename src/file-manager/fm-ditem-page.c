@@ -44,8 +44,6 @@
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
 #include <libgnome/gnome-desktop-item.h>
-#include <eel/eel-vfs-extensions.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 
 static void fm_ditem_page_instance_init            (FMDitemPage               *provider);
 static void fm_ditem_page_class_init               (FMDitemPageClass          *class);

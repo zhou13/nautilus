@@ -34,14 +34,10 @@
 #include "nautilus-signaller.h"
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-string.h>
-#include <eel/eel-vfs-extensions.h>
 #include <eel/eel-debug.h>
 #include <libgnome/gnome-util.h>
 #include <glib/gi18n.h>
 #include <gio/gfilemonitor.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <unistd.h>
 #include <stdlib.h>
 

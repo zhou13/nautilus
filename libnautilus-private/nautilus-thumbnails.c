@@ -35,7 +35,6 @@
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
 #include <gtk/gtkmain.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <librsvg/rsvg.h>
 #include <errno.h>
 #include <stdio.h>

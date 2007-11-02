@@ -1,5 +1,56 @@
 2007-11-02  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-customization-data.[ch]:
+        * libnautilus-private/nautilus-desktop-directory.c:
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-directory-private.h:
+        * libnautilus-private/nautilus-directory.[ch]:
+        * libnautilus-private/nautilus-file-operations-progress.[ch]:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file-utilities.c:
+        * libnautilus-private/nautilus-file.[ch]:
+        * libnautilus-private/nautilus-global-preferences.c:
+        * libnautilus-private/nautilus-icon-dnd.c:
+        * libnautilus-private/nautilus-metafile.c:
+        * libnautilus-private/nautilus-monitor.c:
+        * libnautilus-private/nautilus-program-choosing.c:
+        * libnautilus-private/nautilus-query.h:
+        * libnautilus-private/nautilus-search-directory.c:
+        * libnautilus-private/nautilus-search-engine-tracker.c:
+        * libnautilus-private/nautilus-search-engine.h:
+        * libnautilus-private/nautilus-thumbnails.c:
+        * libnautilus-private/nautilus-tree-view-drag-dest.c:
+        * libnautilus-private/nautilus-vfs-utils.h:
+        * src/file-manager/fm-desktop-icon-view.c:
+        * src/file-manager/fm-ditem-page.c:
+        * src/file-manager/fm-icon-container.c:
+        * src/file-manager/fm-icon-view.c:
+        * src/file-manager/fm-list-view.c:
+        * src/file-manager/fm-properties-window.c:
+        * src/file-manager/fm-tree-view.c:
+        * src/nautilus-desktop-window.c:
+        * src/nautilus-emblem-sidebar.c:
+        * src/nautilus-location-bar.c:
+        * src/nautilus-location-dialog.c:
+        * src/nautilus-location-entry.c:
+        * src/nautilus-main.c:
+        * src/nautilus-navigation-window-menus.c:
+        * src/nautilus-places-sidebar.c:
+        * src/nautilus-query-editor.c:
+        * src/nautilus-shell.c:
+        * src/nautilus-sidebar-title.c:
+        * src/nautilus-window-manage-views.c:
+        * src/nautilus-window.c:
+        * test/test-nautilus-mime-actions-set.c:
+        * test/test-nautilus-mime-actions.c:
+        * test/test.h:
+	Remove lots of gnome vfs includes
+	
+        * src/Makefile.am:
+	Disable building of connect to server app
+
+2007-11-02  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file.[ch]:
         Add nautilus_file_is_launchable
 

@@ -41,7 +41,6 @@
 #include <gtk/gtkvbox.h>
 #include <glib/gi18n.h>
 #include <gio/gurifuncs.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include "nautilus-file-operations-progress-icons.h"
 
 /* The default width of the progress dialog. It will be wider

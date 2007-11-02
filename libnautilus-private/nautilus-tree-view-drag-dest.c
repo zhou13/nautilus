@@ -34,7 +34,6 @@
 #include <gtk/gtkmain.h>
 #include <gtk/gtksignal.h>
 #include <libgnome/gnome-macros.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include "nautilus-file-dnd.h"
 #include "nautilus-icon-dnd.h"
 #include "nautilus-link.h"

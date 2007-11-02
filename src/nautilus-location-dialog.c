@@ -25,13 +25,11 @@
 #include "nautilus-location-dialog.h"
 
 #include <eel/eel-gtk-macros.h>
-#include <eel/eel-vfs-extensions.h>
 #include <eel/eel-stock-dialogs.h>
 #include <gtk/gtkhbox.h>
 #include <gtk/gtklabel.h>
 #include <gtk/gtkstock.h>
 #include <libgnomeui/gnome-help.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include "nautilus-location-entry.h"
 #include "nautilus-desktop-window.h"

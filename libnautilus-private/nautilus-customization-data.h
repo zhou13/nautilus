@@ -32,7 +32,6 @@
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gtk/gtklabel.h>
-#include <libgnomevfs/gnome-vfs-types.h>
 
 #define RESET_IMAGE_NAME "reset.png"
 

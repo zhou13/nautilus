@@ -25,10 +25,6 @@
 
 #include <libgnome/gnome-macros.h>
 #include <glib/gi18n.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs-ops.h>
-#include <libgnomevfs/gnome-vfs-uri.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <eel/eel-string.h>
 #include <gio/gcontenttype.h>
 #include <libnautilus-private/nautilus-global-preferences.h>

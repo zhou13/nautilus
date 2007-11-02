@@ -50,7 +50,6 @@
 #include <libegg/eggtreemultidnd.h>
 #include <glib/gi18n.h>
 #include <libgnome/gnome-macros.h>
-#include <libgnomevfs/gnome-vfs-utils.h>
 #include <libnautilus-extension/nautilus-column-provider.h>
 #include <libnautilus-private/nautilus-column-chooser.h>
 #include <libnautilus-private/nautilus-column-utilities.h>

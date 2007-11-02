@@ -30,7 +30,6 @@
 #define NAUTILUS_FILE_OPERATIONS_PROGRESS_H
 
 #include <gtk/gtkdialog.h>
-#include <libgnomevfs/gnome-vfs-file-size.h>
 
 typedef struct NautilusFileOperationsProgressDetails NautilusFileOperationsProgressDetails;
 

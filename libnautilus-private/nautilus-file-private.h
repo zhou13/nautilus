@@ -78,7 +78,7 @@ struct NautilusFileDetails
 	
 	int sort_order;
 	
-	guint permissions;
+	guint32 permissions;
 	int uid; /* -1 is none */
 	int gid; /* -1 is none */
 	

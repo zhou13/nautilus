@@ -39,14 +39,12 @@
 #include <eel/eel-gtk-macros.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
-#include <eel/eel-vfs-extensions.h>
 #include <gtk/gtkdnd.h>
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <gio/gfilenamecompleter.h>
 #include <libgnomeui/gnome-stock-icons.h>
 #include <libgnomeui/gnome-uidefs.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
 #include <libnautilus-private/nautilus-entry.h>
 #include <libnautilus-private/nautilus-icon-dnd.h>
@@ -75,7 +73,7 @@ EEL_CLASS_BOILERPLATE (NautilusLocationEntry,
 		       nautilus_location_entry,
 		       NAUTILUS_TYPE_ENTRY)
 
-/* routine that performs the tab expansion using gnome-vfs.  Extract the directory name and
+/* routine that performs the tab expansion.  Extract the directory name and
    incomplete basename, then iterate through the directory trying to complete it.  If we
    find something, add it to the entry */
   

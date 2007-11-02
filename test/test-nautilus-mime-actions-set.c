@@ -25,8 +25,6 @@
 #include <config.h>
 
 #include <gnome.h>
-#include <libgnomevfs/gnome-vfs-mime-handlers.h>
-#include <libgnomevfs/gnome-vfs.h>
 #include <libnautilus-private/nautilus-mime-actions.h>
 #include <stdio.h>
 
