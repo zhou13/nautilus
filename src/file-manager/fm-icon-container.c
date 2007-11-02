@@ -23,9 +23,9 @@
 */
 #include <config.h>
 
+#include <string.h>
 #include <libgnome/gnome-macros.h>
 #include <glib/gi18n.h>
-#include <eel/eel-string.h>
 #include <gio/gcontenttype.h>
 #include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-file-attributes.h>
@@ -176,19 +176,18 @@ fm_icon_container_prioritize_thumbnailing (NautilusIconContainer *container,
 	}
 }
 
-
 /*
  * Get the preference for which caption text should appear
  * beneath icons.
  */
-static const EelStringList *
+static char **
 fm_icon_container_get_icon_text_attributes_from_preferences (void)
 {
-	static const EelStringList *attributes;
+	static char **attributes;
 
 	if (attributes == NULL) {
-		eel_preferences_add_auto_string_list (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS,
-						      &attributes);
+		eel_preferences_add_auto_string_array (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS,
+						       &attributes);
 	}
 
 	/* We don't need to sanity check the attributes list even though it came
@@ -211,7 +210,7 @@ fm_icon_container_get_icon_text_attributes_from_preferences (void)
 	 * duplicate attributes by making "bad" choices insensitive.
 	 *
 	 * In the second case, the preferences getter (and also the auto storage) for
-	 * string_list values are always valid members of the enumeration associated
+	 * string_array values are always valid members of the enumeration associated
 	 * with the preference.
 	 *
 	 * So, no more error checking on attributes is needed here and we can return
@@ -229,11 +228,11 @@ fm_icon_container_get_icon_text_attributes_from_preferences (void)
  * @view: FMIconView to query.
  * 
  **/
-static const EelStringList *
+static char **
 fm_icon_container_get_icon_text_attribute_names (NautilusIconContainer *container,
 						 int *len)
 {
-	const EelStringList *attributes;
+	char **attributes;
 	int piece_count;
 
 	const int pieces_by_level[] = {
@@ -247,11 +246,11 @@ fm_icon_container_get_icon_text_attribute_names (NautilusIconContainer *containe
 	};
 
 	piece_count = pieces_by_level[nautilus_icon_container_get_zoom_level (container)];
-	
+
 	attributes = fm_icon_container_get_icon_text_attributes_from_preferences ();
 
-	*len = MIN (piece_count, eel_string_list_get_length (attributes));
-	
+	*len = MIN (piece_count, g_strv_length (attributes));
+
 	return attributes;
 }
 
@@ -266,8 +265,7 @@ fm_icon_container_get_icon_text (NautilusIconContainer *container,
 {
 	char *actual_uri;
 	gchar *description;
-	const EelStringList *attribute_names;
-	const char *attribute;
+	char **attribute_names;
 	char *text_array[4];
 	int i, j, num_attributes;
 	FMIconView *icon_view;
@@ -312,18 +310,21 @@ fm_icon_container_get_icon_text (NautilusIconContainer *container,
 		 * make sense. */
 		return;
 	}
-	
+
 	/* Find out what attributes go below each icon. */
-	attribute_names = fm_icon_container_get_icon_text_attribute_names (container, &num_attributes);
+	attribute_names = fm_icon_container_get_icon_text_attribute_names (container,
+									   &num_attributes);
 
 	/* Get the attributes. */
-	for (i = 0, j = 0; i < num_attributes; i++)	{
-		attribute = eel_string_list_peek_nth (attribute_names, i);
-		if (eel_strcmp (attribute, "none") == 0) {
+	j = 0;
+	for (i = 0; i < num_attributes; ++i)
+	{
+		if (strcmp (attribute_names[i], "none") == 0) {
 			continue;
 		}
+
 		text_array[j++] =
-			nautilus_file_get_string_attribute_with_default (file, attribute);
+			nautilus_file_get_string_attribute_with_default (file, attribute_names[i]);
 	}
 	text_array[j] = NULL;
 
@@ -331,7 +332,7 @@ fm_icon_container_get_icon_text (NautilusIconContainer *container,
 	*additional_text = g_strjoinv ("\n", text_array);
 
 	for (i = 0; i < j; i++) {
-		g_free(text_array[i]);
+		g_free (text_array[i]);
 	}
 }
 

@@ -136,8 +136,8 @@ static int                      click_policy_auto_value;
 static char *              	default_sort_order_auto_value;
 static gboolean			default_sort_reversed_auto_value;
 static NautilusZoomLevel        default_zoom_level_auto_value;
-static GList *                  default_visible_columns_auto_value;
-static GList *                  default_column_order_auto_value;
+static char **                  default_visible_columns_auto_value;
+static char **                  default_column_order_auto_value;
 static GdkCursor *              hand_cursor = NULL;
 
 static GtkTargetList *          source_target_list = NULL;
@@ -1156,32 +1156,57 @@ move_copy_items_callback (NautilusTreeViewDragDest *dest,
 }
 
 static void
-apply_columns_settings (FMListView *list_view, GList *column_order, GList *visible_columns)
+apply_columns_settings (FMListView *list_view,
+			char **column_order,
+			char **visible_columns)
 {
 	GList *all_columns;
 	GList *old_view_columns, *view_columns;
+	GHashTable *visible_columns_hash;
 	GtkTreeViewColumn *prev_view_column;
 	GList *l;
+	int i;
 
 	/* prepare ordered list of view columns using column_order and visible_columns */
 	view_columns = NULL;
 	all_columns = nautilus_get_all_columns ();
 	all_columns = nautilus_sort_columns (all_columns, column_order);
+
+	/* hash table to lookup if a given column should be visible */
+	visible_columns_hash = g_hash_table_new_full (g_str_hash,
+						      g_str_equal,
+						      (GDestroyNotify) g_free,
+						      (GDestroyNotify) g_free);
+	for (i = 0; visible_columns[i] != NULL; ++i) {
+		g_hash_table_insert (visible_columns_hash,
+				     g_ascii_strdown (visible_columns[i], -1),
+				     g_ascii_strdown (visible_columns[i], -1));
+	}
+
 	for (l = all_columns; l != NULL; l = l->next) {
 		char *name;
+		char *lowercase;
 
 		g_object_get (G_OBJECT (l->data), "name", &name, NULL);
-		if (g_list_find_custom (visible_columns, name, (GCompareFunc) g_ascii_strcasecmp) != NULL) {
+		lowercase = g_ascii_strdown (name, -1);
+
+		if (g_hash_table_lookup (visible_columns_hash, lowercase) != NULL) {
 			GtkTreeViewColumn *view_column;
 
 			view_column = g_hash_table_lookup (list_view->details->columns, name);
 			if (view_column != NULL) {
-				view_columns = g_list_append (view_columns, view_column);
+				view_columns = g_list_prepend (view_columns, view_column);
 			}
 		}
+
 		g_free (name);
+		g_free (lowercase);
 	}
+
+	g_hash_table_destroy (visible_columns_hash);
 	nautilus_column_list_free (all_columns);
+
+	view_columns = g_list_reverse (view_columns);
 
 	/* remove columns that are not present in the configuration */
 	old_view_columns = gtk_tree_view_get_columns (list_view->details->tree_view);
@@ -1418,7 +1443,9 @@ create_and_set_up_tree_view (FMListView *view)
 	/* Apply the default column order and visible columns, to get it
 	 * right most of the time. The metadata will be checked when a 
 	 * folder is loaded */
-	apply_columns_settings (view, default_column_order_auto_value, default_visible_columns_auto_value);
+	apply_columns_settings (view,
+				default_column_order_auto_value,
+				default_visible_columns_auto_value);
 
 	gtk_widget_show (GTK_WIDGET (view->details->tree_view));
 	gtk_container_add (GTK_CONTAINER (view), GTK_WIDGET (view->details->tree_view));
@@ -1437,12 +1464,15 @@ fm_list_view_add_file (FMDirectoryView *view, NautilusFile *file, NautilusDirect
 	fm_list_model_add_file (model, file, directory);
 }
 
-static GList *
+static char **
 get_visible_columns (FMListView *list_view)
 {
 	NautilusFile *file;
 	GList *visible_columns;
-	
+	char **ret;
+
+	ret = NULL;
+
 	file = fm_directory_view_get_directory_as_file (FM_DIRECTORY_VIEW (list_view));
 
 	visible_columns = nautilus_file_get_metadata_list 
@@ -1450,19 +1480,31 @@ get_visible_columns (FMListView *list_view)
 		 NAUTILUS_METADATA_KEY_LIST_VIEW_VISIBLE_COLUMNS,
 		 NAUTILUS_METADATA_SUBKEY_COLUMNS);
 
-	if (!visible_columns) {
-		visible_columns = eel_g_str_list_copy (default_visible_columns_auto_value);
+	if (visible_columns) {
+		GPtrArray *res;
+		GList *l;
+
+		res = g_ptr_array_new ();
+		for (l = visible_columns; l != NULL; l = l->next) {
+			g_ptr_array_add (res, l->data);
+		}
+		g_ptr_array_add (res, NULL);
+
+		ret = (char **) g_ptr_array_free (res, FALSE);
 	}
 
-	return visible_columns;
+	return ret ? ret : g_strdupv (default_visible_columns_auto_value);
 }
 
-static GList *
+static char **
 get_column_order (FMListView *list_view)
 {
 	NautilusFile *file;
 	GList *column_order;
-	
+	char **ret;
+
+	ret = NULL;
+
 	file = fm_directory_view_get_directory_as_file (FM_DIRECTORY_VIEW (list_view));
 
 	column_order = nautilus_file_get_metadata_list 
@@ -1470,26 +1512,35 @@ get_column_order (FMListView *list_view)
 		 NAUTILUS_METADATA_KEY_LIST_VIEW_COLUMN_ORDER,
 		 NAUTILUS_METADATA_SUBKEY_COLUMNS);
 
-	if (!column_order) {
-		column_order = eel_g_str_list_copy (default_column_order_auto_value);
+	if (column_order) {
+		GPtrArray *res;
+		GList *l;
+
+		res = g_ptr_array_new ();
+		for (l = column_order; l != NULL; l = l->next) {
+			g_ptr_array_add (res, l->data);
+		}
+		g_ptr_array_add (res, NULL);
+
+		ret = (char **) g_ptr_array_free (res, FALSE);
 	}
 
-	return column_order;
+	return ret ? ret : g_strdupv (default_visible_columns_auto_value);
 }
 
 static void
 set_columns_settings_from_metadata_and_preferences (FMListView *list_view)
 {
-	GList *column_order;
-	GList *visible_columns;
+	char **column_order;
+	char **visible_columns;
 
 	column_order = get_column_order (list_view);
 	visible_columns = get_visible_columns (list_view);
 
 	apply_columns_settings (list_view, column_order, visible_columns);
 
-	eel_g_list_free_deep (column_order);
-	eel_g_list_free_deep (visible_columns);
+	g_strfreev (column_order);
+	g_strfreev (visible_columns);
 }
 
 static void
@@ -1886,20 +1937,41 @@ column_chooser_changed_callback (NautilusColumnChooser *chooser,
 				 FMListView *view)
 {
 	NautilusFile *file;
-	GList *visible_columns;
-	GList *column_order;
-	
+	char **visible_columns;
+	char **column_order;
+	GList *list;
+	int i;
+
 	file = fm_directory_view_get_directory_as_file (FM_DIRECTORY_VIEW (view));
 
 	nautilus_column_chooser_get_settings (chooser,
 					      &visible_columns,
 					      &column_order);
 
-	nautilus_file_set_metadata_list (file, NAUTILUS_METADATA_KEY_LIST_VIEW_VISIBLE_COLUMNS, NAUTILUS_METADATA_SUBKEY_COLUMNS, visible_columns);
-	nautilus_file_set_metadata_list (file, NAUTILUS_METADATA_KEY_LIST_VIEW_COLUMN_ORDER, NAUTILUS_METADATA_SUBKEY_COLUMNS, column_order);
+	list = NULL;
+	for (i = 0; visible_columns[i] != NULL; ++i) {
+		list = g_list_prepend (list, visible_columns[i]);
+	}
+	list = g_list_reverse (list);
+	nautilus_file_set_metadata_list (file,
+					 NAUTILUS_METADATA_KEY_LIST_VIEW_VISIBLE_COLUMNS,
+					 NAUTILUS_METADATA_SUBKEY_COLUMNS,
+					 list);
+	g_list_free (list);
 
-	eel_g_list_free_deep (visible_columns);
-	eel_g_list_free_deep (column_order);
+	list = NULL;
+	for (i = 0; column_order[i] != NULL; ++i) {
+		list = g_list_prepend (list, column_order[i]);
+	}
+	list = g_list_reverse (list);
+	nautilus_file_set_metadata_list (file,
+					 NAUTILUS_METADATA_KEY_LIST_VIEW_COLUMN_ORDER,
+					 NAUTILUS_METADATA_SUBKEY_COLUMNS,
+					 list);
+	g_list_free (list);
+
+	g_strfreev (visible_columns);
+	g_strfreev (column_order);
 
 	set_columns_settings_from_metadata_and_preferences (view);
 }
@@ -1908,8 +1980,8 @@ static void
 column_chooser_set_from_settings (NautilusColumnChooser *chooser,
 				  FMListView *view)
 {
-	GList *visible_columns;
-	GList *column_order;
+	char **visible_columns;
+	char **column_order;
 
 	g_signal_handlers_block_by_func 
 		(chooser, G_CALLBACK (column_chooser_changed_callback), view);
@@ -1921,9 +1993,9 @@ column_chooser_set_from_settings (NautilusColumnChooser *chooser,
 					      visible_columns, 
 					      column_order);
 
-	eel_g_list_free_deep (visible_columns);
-	eel_g_list_free_deep (column_order);
-	
+	g_strfreev (visible_columns);
+	g_strfreev (column_order);
+
 	g_signal_handlers_unblock_by_func 
 		(chooser, G_CALLBACK (column_chooser_changed_callback), view);
 }
@@ -2628,10 +2700,10 @@ fm_list_view_class_init (FMListViewClass *class)
 					  &default_sort_reversed_auto_value);
 	eel_preferences_add_auto_enum (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_ZOOM_LEVEL,
 				       (int *) &default_zoom_level_auto_value);
-	eel_preferences_add_auto_string_glist (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_VISIBLE_COLUMNS,
-					       (const GList **) &default_visible_columns_auto_value);
-	eel_preferences_add_auto_string_glist (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_COLUMN_ORDER,
-					       (const GList **) &default_column_order_auto_value);
+	eel_preferences_add_auto_string_array (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_VISIBLE_COLUMNS,
+					       &default_visible_columns_auto_value);
+	eel_preferences_add_auto_string_array (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_COLUMN_ORDER,
+					       &default_column_order_auto_value);
 }
 
 static const char *

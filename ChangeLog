@@ -1,3 +1,19 @@
+2007-11-02  Paolo Borelli  <pborelli@katamail.com>
+
+        * src/file-manager/fm-icon-container.c:
+        * src/file-manager/fm-list-view.c:
+        * src/nautilus-shell.c:
+        * src/nautilus-file-management-properties.c:
+        * libnautilus-private/nautilus-column-utilities.c:
+        * libnautilus-private/nautilus-column-utilities.h:
+        * libnautilus-private/nautilus-column-chooser.c:
+        * libnautilus-private/nautilus-column-chooser.h:
+	Remove all uses of eel-string-list and update code to the new
+	eel_preferences_[set|get]_string_array api.
+
+	* libnautilus-private/nautilus-global-preferences.c:
+	Update to the eel-enumerations api changes.
+
 2007-11-02  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-customization-data.[ch]:

@@ -266,18 +266,18 @@ static void
 columns_changed_callback (NautilusColumnChooser *chooser,
 			  gpointer callback_data)
 {
-	GList *visible_columns;
-	GList *column_order;
-	
+	char **visible_columns;
+	char **column_order;
+
 	nautilus_column_chooser_get_settings (NAUTILUS_COLUMN_CHOOSER (chooser),
 					      &visible_columns,
 					      &column_order);
 
-	eel_preferences_set_string_glist (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_VISIBLE_COLUMNS, visible_columns);
-	eel_preferences_set_string_glist (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_COLUMN_ORDER, column_order);
+	eel_preferences_set_string_array (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_VISIBLE_COLUMNS, visible_columns);
+	eel_preferences_set_string_array (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_COLUMN_ORDER, column_order);
 
-	eel_g_list_free_deep (visible_columns);
-	eel_g_list_free_deep (column_order);
+	g_strfreev (visible_columns);
+	g_strfreev (column_order);
 }
 
 static void
@@ -331,13 +331,13 @@ static void
 icon_captions_changed_callback (GtkComboBox *combo_box,
 				gpointer user_data)
 {
-	GList *captions;
+	GPtrArray *captions;
 	GladeXML *xml;
 	int i;
 	
 	xml = GLADE_XML (user_data);
 
-	captions = NULL;
+	captions = g_ptr_array_new ();
 
 	for (i = 0; icon_captions_components[i] != NULL; i++) {
 		GtkWidget *combo_box;
@@ -353,11 +353,13 @@ icon_captions_changed_callback (GtkComboBox *combo_box,
 						  "column_names");
 
 		name = g_ptr_array_index (column_names, active);
-		captions = g_list_prepend (captions, g_strdup (name));
+		g_ptr_array_add (captions, name);
 	}
-	captions = g_list_reverse (captions);
-	eel_preferences_set_string_glist (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS, captions);
-	eel_g_list_free_deep (captions);
+	g_ptr_array_add (captions, NULL);
+
+	eel_preferences_set_string_array (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS,
+					  (char **)captions->pdata);
+	g_ptr_array_free (captions, TRUE);
 }
 
 static void
@@ -395,28 +397,29 @@ update_caption_combo_box (GladeXML *xml,
 static void
 update_icon_captions_from_gconf (GladeXML *xml)
 {
-	GList *captions;
-	int i;
-	GList *l;
-	char *data;
+	char **captions;
+	int i, j;
 
-	captions = eel_preferences_get_string_glist (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS);
+	captions = eel_preferences_get_string_array (NAUTILUS_PREFERENCES_ICON_VIEW_CAPTIONS);
 
-	for (l = captions, i = 0; 
+	for (i = 0, j = 0; 
 	     icon_captions_components[i] != NULL;
 	     i++) {
-		if (l != NULL) {
-			data = l->data;
-			l = l->next;
+		char *data;
+
+		if (captions[j]) {
+			data = captions[j];
+			++j;
 		} else {
 			data = "none";
 		}
-		
+
 		update_caption_combo_box (xml, 
 					  icon_captions_components[i],
 					  data);
 	}
-	eel_g_list_free_deep (captions);
+
+	g_strfreev (captions);
 }
 
 static void
@@ -478,19 +481,18 @@ create_date_format_menu (GladeXML *xml_dialog)
 static void
 set_columns_from_gconf (NautilusColumnChooser *chooser)
 {
-	GList *visible_columns;
-	GList *column_order;
+	char **visible_columns;
+	char **column_order;
 	
-	visible_columns = eel_preferences_get_string_glist (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_VISIBLE_COLUMNS);
-	column_order = eel_preferences_get_string_glist (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_COLUMN_ORDER);
+	visible_columns = eel_preferences_get_string_array (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_VISIBLE_COLUMNS);
+	column_order = eel_preferences_get_string_array (NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_COLUMN_ORDER);
 
 	nautilus_column_chooser_set_settings (NAUTILUS_COLUMN_CHOOSER (chooser), 
 					      visible_columns,
 					      column_order);
 
-
-	eel_g_list_free_deep (visible_columns);
-	eel_g_list_free_deep (column_order);
+	g_strfreev (visible_columns);
+	g_strfreev (column_order);
 }
 
 static void 

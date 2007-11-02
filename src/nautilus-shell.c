@@ -379,10 +379,10 @@ save_window_states (void)
 	char *window_attributes;
 	int x, y, width, height;
 	char *location;
-	GList *states;
+	GPtrArray *states;
 	int screen_num = -1;
 
-	states = NULL;
+	states = g_ptr_array_new ();
 	windows = nautilus_application_get_window_list ();
 	for (node = windows; node; node = g_list_next (node)) {
 		g_assert (node->data != NULL);
@@ -407,23 +407,21 @@ save_window_states (void)
 						     screen_num);
 		g_free (location);
 
-		states = g_list_prepend (states, window_attributes);
+		g_ptr_array_add (states, window_attributes);
 	}
+	g_ptr_array_add (states, NULL);
 
 	if (eel_preferences_key_is_writable (START_STATE_CONFIG)) {
-		states = g_list_reverse (states);
-		eel_preferences_set_string_glist (START_STATE_CONFIG, states);
+		eel_preferences_set_string_array (START_STATE_CONFIG,
+						  (char **) states->pdata);
 	}
 
-	eel_g_list_free_deep (states);
-	g_list_free (states);
+	g_ptr_array_free (states, TRUE);
 }
 
 static void
-restore_one_window_callback (const char *attributes,
-			     gpointer callback_data)
+restore_one_window (const char *attributes, NautilusShell *shell)
 {
-	NautilusShell *shell;
 	char **attrs;
 	int attrs_len;
 	int x;
@@ -435,9 +433,7 @@ restore_one_window_callback (const char *attributes,
 	GdkScreen *screen = NULL;
 
 	g_return_if_fail (!eel_str_is_empty (attributes));
-	g_return_if_fail (NAUTILUS_IS_SHELL (callback_data));
-
-	shell = NAUTILUS_SHELL (callback_data);
+	g_return_if_fail (NAUTILUS_IS_SHELL (shell));
 
 	attrs = g_strsplit (attributes, ",", -1);
 	attrs_len = g_strv_length (attrs);
@@ -505,18 +501,27 @@ restore_one_window_callback (const char *attributes,
 static gboolean
 restore_window_states (NautilusShell *shell)
 {
-	GList *states;
+	char **states;
 	gboolean result;
+	int i;
 
-	states = eel_preferences_get_string_glist (START_STATE_CONFIG);
-	result = g_list_length (states) > 0;
-	g_list_foreach (states, (GFunc) restore_one_window_callback, shell);
-	if (eel_preferences_key_is_writable (START_STATE_CONFIG)) {
-		eel_preferences_set_string_glist (START_STATE_CONFIG, NULL);
+	result = FALSE;
+
+	states = eel_preferences_get_string_array (START_STATE_CONFIG);
+	if (!states) {
+		return result;
 	}
 
-	eel_g_list_free_deep (states);
-	g_list_free (states);
+	for (i = 0; states[i] != NULL; ++i) {
+		result = TRUE;
+		restore_one_window (states[i], shell);
+	}
+
+	if (eel_preferences_key_is_writable (START_STATE_CONFIG)) {
+		eel_preferences_set_string_array (START_STATE_CONFIG, NULL);
+	}
+
+	g_strfreev (states);
 
 	return result;
 }
