@@ -1,3 +1,16 @@
+2007-11-02  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.[ch]:
+        Add nautilus_file_is_launchable
+
+        * libnautilus-private/nautilus-program-choosing.c:
+	Add launched apps to recent files
+	
+        * libnautilus-private/nautilus-mime-actions.[ch]:
+        * src/file-manager/fm-directory-view.[ch]:
+	Move all the file activaton code from FMDirectoryView
+	to a common place in nautilus-mime-actions
+
 2007-11-01  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.[ch]:

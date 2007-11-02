@@ -30,6 +30,7 @@
 #include "nautilus-global-preferences.h"
 #include "nautilus-icon-info.h"
 #include "nautilus-vfs-utils.h"
+#include "nautilus-recent.h"
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gnome-extensions.h>
 #include <eel/eel-vfs-extensions.h>
@@ -606,6 +607,12 @@ nautilus_launch_application (GAppInfo *application,
 #else
 			g_warning ("Can't open app: %s\n", error->message);
 #endif
+		}
+	} else {
+		for (l = files; l != NULL; l = l->next) {
+			file = NAUTILUS_FILE (l->data);
+			
+			nautilus_recent_add_file (file, application);
 		}
 	}
 

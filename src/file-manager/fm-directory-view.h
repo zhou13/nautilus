@@ -40,6 +40,7 @@
 #include <eel/eel-string-list.h>
 #include <libnautilus-private/nautilus-view.h>
 #include <libnautilus-private/nautilus-window-info.h>
+#include <gio/gappinfo.h>
 
 typedef struct FMDirectoryView FMDirectoryView;
 typedef struct FMDirectoryViewClass FMDirectoryViewClass;
@@ -372,9 +373,13 @@ gboolean            fm_directory_view_get_loading                      (FMDirect
 /* Hooks for subclasses to call. These are normally called only by 
  * FMDirectoryView and its subclasses 
  */
-void                fm_directory_view_activate_files                   (FMDirectoryView  *view,
-									GList            *files,
-									NautilusWindowOpenMode mode,
+void                fm_directory_view_activate_files                   (FMDirectoryView        *view,
+									GList                  *files,
+									NautilusWindowOpenMode  mode,
+									NautilusWindowOpenFlags flags);
+void                fm_directory_view_activate_file                    (FMDirectoryView        *view,
+									NautilusFile           *file,
+									NautilusWindowOpenMode  mode,
 									NautilusWindowOpenFlags flags);
 void                fm_directory_view_start_batching_selection_changes (FMDirectoryView  *view);
 void                fm_directory_view_stop_batching_selection_changes  (FMDirectoryView  *view);

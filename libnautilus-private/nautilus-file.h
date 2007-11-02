@@ -171,6 +171,7 @@ GFileType               nautilus_file_get_file_type                     (Nautilu
 char *                  nautilus_file_get_mime_type                     (NautilusFile                   *file);
 gboolean                nautilus_file_is_mime_type                      (NautilusFile                   *file,
 									 const char                     *mime_type);
+gboolean                nautilus_file_is_launchable                     (NautilusFile                   *file);
 gboolean                nautilus_file_is_symbolic_link                  (NautilusFile                   *file);
 gboolean                nautilus_file_is_mountpoint                     (NautilusFile                   *file);
 char *                  nautilus_file_get_volume_free_space             (NautilusFile                   *file);
