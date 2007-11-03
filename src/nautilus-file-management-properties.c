@@ -161,17 +161,6 @@ static const char * const icon_captions_components[] = {
 	NULL
 };
 
-static GladeXML *
-nautilus_file_management_properties_dialog_create (void)
-{
-	GladeXML *xml_dialog;
-
-	xml_dialog = glade_xml_new (GLADEDIR "/nautilus-file-management-properties.glade",
-				    NULL, NULL);
-
-	return xml_dialog;
-}
-
 static void
 nautilus_file_management_properties_size_group_create (GladeXML *xml_dialog,
 						       char *prefix,
@@ -673,7 +662,8 @@ nautilus_file_management_properties_dialog_show (GCallback close_callback, GtkWi
 {
 	GladeXML *xml_dialog;
 
-	xml_dialog = nautilus_file_management_properties_dialog_create ();
+	xml_dialog = glade_xml_new (GLADEDIR "/nautilus-file-management-properties.glade",
+				    NULL, NULL);
 	
 	g_signal_connect (G_OBJECT (glade_xml_get_widget (xml_dialog, "file_management_dialog")),
 			  "response", close_callback, NULL);
@@ -681,4 +671,6 @@ nautilus_file_management_properties_dialog_show (GCallback close_callback, GtkWi
 			  "delete_event", G_CALLBACK (delete_event_callback), close_callback);
 
 	nautilus_file_management_properties_dialog_setup (xml_dialog, window);
+
+	g_object_unref (xml_dialog);
 }

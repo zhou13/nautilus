@@ -357,6 +357,8 @@ nautilus_icon_info_lookup (GIcon *icon,
 			pixbuf = eel_gdk_pixbuf_load_from_stream (stream);
 
 			/* TODO: resize icon? */
+
+			g_object_unref (stream);
 		}
 
 		icon_info = nautilus_icon_info_new_for_pixbuf (pixbuf);

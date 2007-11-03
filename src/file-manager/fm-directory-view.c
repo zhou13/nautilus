@@ -676,19 +676,23 @@ get_view_directory (FMDirectoryView *view)
 	return path;
 }
 
-
 void
 fm_directory_view_activate_files (FMDirectoryView *view,
 				  GList *files,
 				  NautilusWindowOpenMode mode,
 				  NautilusWindowOpenFlags flags)
 {
-  nautilus_mime_activate_files (fm_directory_view_get_containing_window (view),
-				view->details->window,
-				files,
-				get_view_directory (view),
-				mode,
-				flags);
+	char *path;
+
+	path = get_view_directory (view);
+	nautilus_mime_activate_files (fm_directory_view_get_containing_window (view),
+				      view->details->window,
+				      files,
+				      path,
+				      mode,
+				      flags);
+
+	g_free (path);
 }
 
 void
@@ -697,12 +701,17 @@ fm_directory_view_activate_file (FMDirectoryView *view,
 				 NautilusWindowOpenMode mode,
 				 NautilusWindowOpenFlags flags)
 {
-  nautilus_mime_activate_file (fm_directory_view_get_containing_window (view),
-			       view->details->window,
-			       file,
-			       get_view_directory (view),
-			       mode,
-			       flags);
+	char *path;
+
+	path = get_view_directory (view);
+	nautilus_mime_activate_file (fm_directory_view_get_containing_window (view),
+				     view->details->window,
+				     file,
+				     path,
+				     mode,
+				     flags);
+
+	g_free (path);
 }
 
 static void

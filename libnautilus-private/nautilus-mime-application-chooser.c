@@ -588,9 +588,8 @@ set_uri_and_type (NautilusMimeApplicationChooser *chooser,
 	char *name;
 	char *emname;
 	char *extension;
-	const char *description;
 	GFile *file;
-	
+
 	chooser->details->uri = g_strdup (uri);
 
 	file = g_file_new_for_uri (uri);
@@ -608,14 +607,16 @@ set_uri_and_type (NautilusMimeApplicationChooser *chooser,
 		chooser->details->type_description =
 			g_strdup_printf (_("%s document"), extension);
 	} else {
+		char *description;
+
 		chooser->details->content_type = g_strdup (mime_type);
 		description = g_content_type_get_description (mime_type);
 
 		if (description == NULL) {
-			description = _("Unknown");
+			description = g_strdup (_("Unknown"));
 		}
 
-		chooser->details->type_description = g_strdup (description);
+		chooser->details->type_description = description;
 	}
 	g_free (extension);
 

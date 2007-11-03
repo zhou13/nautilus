@@ -1,5 +1,13 @@
 2007-11-02  Paolo Borelli  <pborelli@katamail.com>
 
+	* src/file-manager/fm-directory-view.c:
+	* src/nautilus-file-management-properties.c:
+	* libnautilus-private/nautilus-icon-info.c:
+	* libnautilus-private/nautilus-mime-application-chooser.c:
+	Plug some minor memory leaks.
+
+2007-11-02  Paolo Borelli  <pborelli@katamail.com>
+
         * src/file-manager/fm-icon-container.c:
         * src/file-manager/fm-list-view.c:
         * src/nautilus-shell.c:
