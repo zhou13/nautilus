@@ -2,6 +2,7 @@
 
 	* src/file-manager/fm-directory-view.c:
 	* src/nautilus-file-management-properties.c:
+	* src/nautilus-navigation-window.c:
 	* libnautilus-private/nautilus-icon-info.c:
 	* libnautilus-private/nautilus-mime-application-chooser.c:
 	Plug some minor memory leaks.

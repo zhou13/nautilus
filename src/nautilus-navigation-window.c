@@ -41,13 +41,8 @@
 #include "nautilus-search-bar.h"
 #include "nautilus-window-manage-views.h"
 #include "nautilus-zoom-control.h"
-#include <eel/eel-accessibility.h>
-#include <eel/eel-debug.h>
-#include <eel/eel-gdk-extensions.h>
-#include <eel/eel-gdk-pixbuf-extensions.h>
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-gtk-macros.h>
-#include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gdk/gdkx.h>
@@ -690,6 +685,7 @@ nautilus_navigation_window_destroy (GtkObject *object)
 
 	window->sidebar = NULL;
 	g_list_foreach (window->sidebar_panels, (GFunc)g_object_unref, NULL);
+	g_list_free (window->sidebar_panels);
 	window->sidebar_panels = NULL;
 
 	window->view_as_combo_box = NULL;
@@ -755,10 +751,8 @@ nautilus_navigation_window_add_sidebar_panel (NautilusNavigationWindow *window,
 	g_signal_connect (sidebar_panel, "tab_icon_changed",
 			  (GCallback)side_panel_image_changed_callback, window);
 
-	
-	g_object_ref (sidebar_panel);
-	window->sidebar_panels = g_list_prepend (window->sidebar_panels, sidebar_panel);
-
+	window->sidebar_panels = g_list_prepend (window->sidebar_panels,
+						 g_object_ref (sidebar_panel));
 
 	/* Show if default */
 	sidebar_id = nautilus_sidebar_get_sidebar_id (sidebar_panel);
