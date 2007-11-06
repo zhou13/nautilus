@@ -1,3 +1,9 @@
+2007-11-06  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-program-choosing.c:
+	Update to the new GAppInfo and EelAppLaunchContext APIs
+	Remove old startup notify code
+
 2007-11-05  Jürg Billeter  <j@bitron.ch>
 
 	reviewed by: Alexander Larsson  <alexl@redhat.com>

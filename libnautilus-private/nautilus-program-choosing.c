@@ -35,6 +35,7 @@
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-preferences.h>
 #include <eel/eel-string.h>
+#include <eel/eel-app-launch-context.h>
 #include <gtk/gtk.h>
 #include <libgnome/gnome-config.h>
 #include <glib/gi18n.h>
@@ -46,35 +47,10 @@
 #include <libgnomeui/gnome-uidefs.h>
 #include <stdlib.h>
 
-#ifdef HAVE_STARTUP_NOTIFICATION
-#define SN_API_NOT_YET_FROZEN
-#include <libsn/sn.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
-#endif
 
 extern char **environ;
-
-static char *
-gicon_to_string (GIcon *icon)
-{
-	GFile *file;
-	const char * const *names;
-	
-	if (G_IS_FILE_ICON (icon)) {
-		file = g_file_icon_get_file (G_FILE_ICON (icon));
-		if (file) {
-			return g_file_get_path (file);
-		}
-	} else if (G_IS_THEMED_ICON (icon)) {
-		names = g_themed_icon_get_names (G_THEMED_ICON (icon));
-		if (names) {
-			return g_strdup (names[0]);
-		}
-	}
-	
-	return NULL;
-}
 
 /* Cut and paste from gdkspawn-x11.c */
 static gchar **
@@ -200,179 +176,6 @@ application_cannot_open_location (GAppInfo *application,
 #endif
 }
 
-#ifdef HAVE_STARTUP_NOTIFICATION
-static void
-sn_error_trap_push (SnDisplay *display,
-		    Display   *xdisplay)
-{
-	gdk_error_trap_push ();
-}
-
-static void
-sn_error_trap_pop (SnDisplay *display,
-		   Display   *xdisplay)
-{
-	gdk_error_trap_pop ();
-}
-
-extern char **environ;
-
-static char **
-make_spawn_environment_for_sn_context (SnLauncherContext *sn_context,
-				       char             **envp)
-{
-	char **retval;
-	int    i, j;
-
-	retval = NULL;
-	
-	if (envp == NULL) {
-		envp = environ;
-	}
-	
-	for (i = 0; envp[i]; i++) {
-		/* Count length */
-	}
-
-	retval = g_new (char *, i + 2);
-
-	for (i = 0, j = 0; envp[i]; i++) {
-		if (!g_str_has_prefix (envp[i], "DESKTOP_STARTUP_ID=")) {
-			retval[j] = g_strdup (envp[i]);
-			++j;
-	        }
-	}
-
-	retval[j] = g_strdup_printf ("DESKTOP_STARTUP_ID=%s",
-				     sn_launcher_context_get_startup_id (sn_context));
-	++j;
-	retval[j] = NULL;
-
-	return retval;
-}
-
-/* This should be fairly long, as it's confusing to users if a startup
- * ends when it shouldn't (it appears that the startup failed, and
- * they have to relaunch the app). Also the timeout only matters when
- * there are bugs and apps don't end their own startup sequence.
- *
- * This timeout is a "last resort" timeout that ignores whether the
- * startup sequence has shown activity or not.  Metacity and the
- * tasklist have smarter, and correspondingly able-to-be-shorter
- * timeouts. The reason our timeout is dumb is that we don't monitor
- * the sequence (don't use an SnMonitorContext)
- */
-#define STARTUP_TIMEOUT_LENGTH (30 /* seconds */ * 1000)
-
-typedef struct
-{
-	GdkScreen *screen;
-	GSList *contexts;
-	guint timeout_id;
-} StartupTimeoutData;
-
-static void
-free_startup_timeout (void *data)
-{
-	StartupTimeoutData *std;
-
-	std = data;
-
-	g_slist_foreach (std->contexts,
-			 (GFunc) sn_launcher_context_unref,
-			 NULL);
-	g_slist_free (std->contexts);
-
-	if (std->timeout_id != 0) {
-		g_source_remove (std->timeout_id);
-		std->timeout_id = 0;
-	}
-
-	g_free (std);
-}
-
-static gboolean
-startup_timeout (void *data)
-{
-	StartupTimeoutData *std;
-	GSList *tmp;
-	GTimeVal now;
-	int min_timeout;
-
-	std = data;
-
-	min_timeout = STARTUP_TIMEOUT_LENGTH;
-	
-	g_get_current_time (&now);
-	
-	tmp = std->contexts;
-	while (tmp != NULL) {
-		SnLauncherContext *sn_context;
-		GSList *next;
-		long tv_sec, tv_usec;
-		double elapsed;
-		
-		sn_context = tmp->data;
-		next = tmp->next;
-		
-		sn_launcher_context_get_last_active_time (sn_context,
-							  &tv_sec, &tv_usec);
-
-		elapsed =
-			((((double)now.tv_sec - tv_sec) * G_USEC_PER_SEC +
-			  (now.tv_usec - tv_usec))) / 1000.0;
-
-		if (elapsed >= STARTUP_TIMEOUT_LENGTH) {
-			std->contexts = g_slist_remove (std->contexts,
-							sn_context);
-			sn_launcher_context_complete (sn_context);
-			sn_launcher_context_unref (sn_context);
-		} else {
-			min_timeout = MIN (min_timeout, (STARTUP_TIMEOUT_LENGTH - elapsed));
-		}
-		
-		tmp = next;
-	}
-
-	if (std->contexts == NULL) {
-		std->timeout_id = 0;
-	} else {
-		std->timeout_id = g_timeout_add (min_timeout,
-						 startup_timeout,
-						 std);
-	}
-
-	/* always remove this one, but we may have reinstalled another one. */
-	return FALSE;
-}
-
-static void
-add_startup_timeout (GdkScreen         *screen,
-		     SnLauncherContext *sn_context)
-{
-	StartupTimeoutData *data;
-
-	data = g_object_get_data (G_OBJECT (screen), "nautilus-startup-data");
-	if (data == NULL) {
-		data = g_new (StartupTimeoutData, 1);
-		data->screen = screen;
-		data->contexts = NULL;
-		data->timeout_id = 0;
-		
-		g_object_set_data_full (G_OBJECT (screen), "nautilus-startup-data",
-					data, free_startup_timeout);		
-	}
-
-	sn_launcher_context_ref (sn_context);
-	data->contexts = g_slist_prepend (data->contexts, sn_context);
-	
-	if (data->timeout_id == 0) {
-		data->timeout_id = g_timeout_add (STARTUP_TIMEOUT_LENGTH,
-						  startup_timeout,
-						  data);		
-	}
-}
-
 /* FIXME: This is the wrong way to do this; there should be some event
  * (e.g. button press) available with a good time.  A function like
  * this should not be needed.
@@ -424,7 +227,6 @@ slowly_and_stupidly_obtain_timestamp (Display *xdisplay)
 	
 	return event.xproperty.time;
 }
-#endif /* HAVE_STARTUP_NOTIFICATION */
 
 
 /**
@@ -442,26 +244,22 @@ nautilus_launch_application (GAppInfo *application,
 			     GList *files,
 			     GtkWindow *parent_window)
 {
-	GdkScreen       *screen;
 	char		*uri;
 	char            *uri_scheme;
 	GList           *locations, *l;
 	GFile *location;
 	NautilusFile    *file;
-	char           **envp;
 	gboolean        result;
 	GError *error;
-#ifdef HAVE_STARTUP_NOTIFICATION
-	SnLauncherContext *sn_context;
-	SnDisplay *sn_display;
-#endif
+	EelAppLaunchContext *launch_context;
+	NautilusIconInfo *icon;
 
 	g_assert (files != NULL);
 
 	locations = NULL;
 	for (l = files; l != NULL; l = l->next) {
 		file = NAUTILUS_FILE (l->data);
-
+		
 		location = NULL;
 
 		if (nautilus_file_is_nautilus_link (file)) {
@@ -478,115 +276,27 @@ nautilus_launch_application (GAppInfo *application,
 	}
 	locations = g_list_reverse (locations);
 
-	screen = gtk_window_get_screen (parent_window);
-	envp = my_gdk_spawn_make_environment_for_screen (screen, NULL);
-	
-#ifdef HAVE_STARTUP_NOTIFICATION
-	sn_display = sn_display_new (gdk_display,
-				     sn_error_trap_push,
-				     sn_error_trap_pop);
+	launch_context = eel_app_launch_context_new ();
+	if (parent_window)
+		eel_app_launch_context_set_screen (launch_context,
+						     gtk_window_get_screen (parent_window));
 
-	
-	/* Only initiate notification if application supports it. */
-	if (g_app_info_supports_xdg_startup_notify (application))
-	{ 
-		char *name;
-		char *description;
-		GIcon *gicon;
-		NautilusIconInfo *icon;
-		char *icon_name;
-		int   files_count;
-
-		file = NAUTILUS_FILE (files->data);
-
-		sn_context = sn_launcher_context_new (sn_display,
-						      screen ? gdk_screen_get_number (screen) :
-						      DefaultScreen (gdk_display));
-
-		files_count = g_list_length (files);
-		if (files_count == 1) {
-			name = nautilus_file_get_display_name (file);
-			description = g_strdup_printf (_("Opening %s"), name);
-		} else {
-			name = NULL;
-			description = g_strdup_printf (ngettext ("Opening %d Item",
-								 "Opening %d Items",
-								 files_count),
-						       files_count);
-		}
-
-		if (name != NULL) {
-			sn_launcher_context_set_name (sn_context, name);
-			g_free (name);
-		}
-
-		if (description != NULL) {
-			sn_launcher_context_set_description (sn_context, description);
-			g_free (description);
-		}
-
-		icon = nautilus_file_get_icon (file, 48, 0);
-		icon_name = g_strdup (nautilus_icon_info_get_used_name (icon));
-
-		if (icon_name == NULL) {
-			gicon = g_app_info_get_icon (application);
-			if (gicon) {
-				icon_name = gicon_to_string (gicon);
-			}
-		}
-
-		if (icon_name != NULL) {
-			sn_launcher_context_set_icon_name (sn_context, icon_name);
-			g_free (icon_name);
-		}
-		
-		if (!sn_launcher_context_get_initiated (sn_context)) {
-			const char *binary_name;
-			char **old_envp;
-			Time timestamp;
-
-			timestamp = slowly_and_stupidly_obtain_timestamp (GDK_WINDOW_XDISPLAY (GTK_WIDGET (parent_window)->window));
-			
-			binary_name = g_app_info_get_executable (application);
-		
-			sn_launcher_context_set_binary_name (sn_context,
-							     binary_name);
-			
-			sn_launcher_context_initiate (sn_context,
-						      g_get_prgname () ? g_get_prgname () : "unknown",
-						      binary_name,
-						      timestamp);
-
-			old_envp = envp;
-			envp = make_spawn_environment_for_sn_context (sn_context, envp);
-			g_strfreev (old_envp);
-		}
-	} else {
-		sn_context = NULL;
+	file = NAUTILUS_FILE (files->data);
+	icon = nautilus_file_get_icon (file, 48, 0);
+	if (icon) {
+		eel_app_launch_context_set_icon_name (launch_context,
+							nautilus_icon_info_get_used_name (icon));
+		g_object_unref (icon);
 	}
-#endif /* HAVE_STARTUP_NOTIFICATION */
-
+	
 	error = NULL;
 	result = g_app_info_launch (application,
 				    locations,
-				    envp,
+				    G_APP_LAUNCH_CONTEXT (launch_context),
 				    &error);
 
-#ifdef HAVE_STARTUP_NOTIFICATION
-	if (sn_context != NULL) {
-		if (!result) {
-			sn_launcher_context_complete (sn_context); /* end sequence */
-		} else {
-			add_startup_timeout (screen ? screen :
-					     gdk_display_get_default_screen (gdk_display_get_default ()),
-					     sn_context);
-		}
-		sn_launcher_context_unref (sn_context);
-	}
+	g_object_unref (launch_context);
 	
-	sn_display_unref (sn_display);
-#endif /* HAVE_STARTUP_NOTIFICATION */
-
 	if (!result) {
 		if (error->domain == G_IO_ERROR &&
 		    error->code == G_IO_ERROR_NOT_SUPPORTED) {
@@ -613,7 +323,6 @@ nautilus_launch_application (GAppInfo *application,
 	}
 
 	eel_g_object_list_free (locations);
-	g_strfreev (envp);
 }
 
 /**
@@ -668,9 +377,7 @@ nautilus_launch_desktop_file (GdkScreen   *screen,
 	int total, count;
 	char **envp;
 	GFile *file;
-#ifdef HAVE_STARTUP_NOTIFICATION
 	Time timestamp;
-#endif
 
 	/* strip the leading command specifier */
 	if (eel_str_has_prefix (desktop_file_uri, NAUTILUS_DESKTOP_COMMAND_SPECIFIER)) {
@@ -759,10 +466,8 @@ nautilus_launch_desktop_file (GdkScreen   *screen,
 
 	error = NULL;
 
-#ifdef HAVE_STARTUP_NOTIFICATION
 	timestamp = slowly_and_stupidly_obtain_timestamp (GDK_WINDOW_XDISPLAY (GTK_WIDGET (parent_window)->window));
 	gnome_desktop_item_set_launch_time (ditem, timestamp);
-#endif
 	gnome_desktop_item_launch_with_env (ditem, (GList *) parameter_uris,
 					    flags, envp,
 					    &error);
