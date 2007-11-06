@@ -1720,7 +1720,7 @@ make_properties_from_directories (NautilusPropertyBrowser *property_browser)
 		eel_g_list_free_deep (property_browser->details->keywords);	
 		property_browser->details->keywords = NULL;
 
-		icons = nautilus_emblem_list_availible ();
+		icons = nautilus_emblem_list_available ();
 
 		l = icons;
 		while (l != NULL) {

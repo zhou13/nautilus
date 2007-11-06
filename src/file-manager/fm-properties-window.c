@@ -3112,7 +3112,7 @@ create_emblems_page (FMPropertiesWindow *window)
 	gtk_notebook_append_page (window->details->notebook, 
 				  scroller, gtk_label_new (_("Emblems")));
 
-	icons = nautilus_emblem_list_availible ();
+	icons = nautilus_emblem_list_available ();
 
 	window->details->initial_emblems = get_initial_emblems (window->details->original_files);
 

@@ -46,7 +46,7 @@
 #define EMBLEM_NAME_DESKTOP "emblem-desktop"
 
 GList *
-nautilus_emblem_list_availible (void)
+nautilus_emblem_list_available (void)
 {
 	GtkIconTheme *icon_theme;
 	GList *list;
@@ -76,7 +76,7 @@ nautilus_emblem_get_icon_name_from_keyword (const char *keyword)
 static gboolean
 is_reserved_keyword (const char *keyword)
 {
-	GList *availible;
+	GList *available;
 	char *icon_name;
 	gboolean result;
 
@@ -102,13 +102,13 @@ is_reserved_keyword (const char *keyword)
 		return TRUE;
 	}
 
-	availible = nautilus_emblem_list_availible ();
+	available = nautilus_emblem_list_available ();
 	icon_name = nautilus_emblem_get_icon_name_from_keyword (keyword);
 	/* see if the keyword already exists */
-	result = g_list_find_custom (availible,
+	result = g_list_find_custom (available,
 				     (char *) icon_name,
 				     (GCompareFunc) g_strcasecmp) != NULL;
-	eel_g_list_free_deep (availible);	
+	eel_g_list_free_deep (available);	
 	g_free (icon_name);
 	return result;
 }

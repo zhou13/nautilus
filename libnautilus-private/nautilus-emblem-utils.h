@@ -27,7 +27,7 @@
 #include <gtk/gtkwindow.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
-GList *    nautilus_emblem_list_availible             (void);
+GList *    nautilus_emblem_list_available             (void);
 void       nautilus_emblem_refresh_list               (void);
 gboolean   nautilus_emblem_should_show_in_list        (const char *emblem);
 gboolean   nautilus_emblem_verify_keyword             (GtkWindow *parent_window,

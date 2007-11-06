@@ -948,7 +948,7 @@ nautilus_emblem_sidebar_populate (NautilusEmblemSidebar *emblem_sidebar)
 	}
 
 
-	icons = nautilus_emblem_list_availible ();
+	icons = nautilus_emblem_list_available ();
 
 	l = icons;
 	widgets = NULL;
