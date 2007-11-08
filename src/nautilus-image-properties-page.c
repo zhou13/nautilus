@@ -265,7 +265,11 @@ append_xmp_value_pair (GString    *string,
 	XmpStringPtr value;
 
 	value = xmp_string_new();
+#ifdef HAVE_EXEMPI_NEW_API
+	if (xmp_get_property (xmp, ns, propname, value, &options)) {
+#else
 	if (xmp_get_property_and_bits (xmp, ns, propname, value, &options)) {
+#endif
 		if (XMP_IS_PROP_SIMPLE (options)) {
 			g_string_append_printf (string,
 						"<b>%s:</b> %s\n",

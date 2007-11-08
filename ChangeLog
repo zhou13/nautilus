@@ -1,3 +1,10 @@
+2007-11-08  Sebastian Dröge  <slomo@circular-chaos.org>
+
+	* configure.in:
+	* src/nautilus-image-properties-page.c:
+	Add support for exempi >= 1.99.5 while keeping support for older
+	versions.
+
 2007-11-06  Sebastian Dröge  <slomo@circular-chaos.org>
 
 	* NEWS:
