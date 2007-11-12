@@ -1,3 +1,8 @@
+2007-11-12  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file.c:
+	Fix reversed checks
+
 2007-11-08  Sebastian Dröge  <slomo@circular-chaos.org>
 
 	* configure.in:

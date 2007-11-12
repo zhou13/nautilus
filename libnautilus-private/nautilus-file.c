@@ -5229,8 +5229,8 @@ get_description (NautilusFile *file)
 		return NULL;
 	}
 
-	if (g_content_type_is_unknown (mime_type) == 0
-	    && nautilus_file_is_executable (file)) {
+	if (g_content_type_is_unknown (mime_type) &&
+	    nautilus_file_is_executable (file)) {
 		return _("program");
 	}
 
@@ -5366,8 +5366,9 @@ nautilus_file_is_launchable (NautilusFile *file)
 	gboolean type_can_be_executable;
 
 	type_can_be_executable = FALSE;
-	if (file->details->mime_type == NULL) {
-		type_can_be_executable = g_content_type_can_be_executable (eel_ref_str_peek (file->details->mime_type));
+	if (file->details->mime_type != NULL) {
+		type_can_be_executable =
+			g_content_type_can_be_executable (eel_ref_str_peek (file->details->mime_type));
 	}
 		
 	return type_can_be_executable &&
