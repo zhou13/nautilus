@@ -1,5 +1,11 @@
 2007-11-13  Alexander Larsson  <alexl@redhat.com>
 
+        * src/nautilus-window-manage-views.c:
+        * src/nautilus-window-private.h:
+	Try to mount location if not mounted.
+
+2007-11-13  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-async.c:
         * libnautilus-private/nautilus-file-private.h:
         * libnautilus-private/nautilus-file.c:

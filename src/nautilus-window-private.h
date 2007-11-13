@@ -82,6 +82,8 @@ struct NautilusWindowDetails
         char *pending_scroll_to;
         GList *pending_selection;
         NautilusFile *determine_view_file;
+        GCancellable *mount_cancellable;
+        gboolean tried_mount;
 
         /* View As choices */
         GtkActionGroup *view_as_action_group; /* owned by ui_manager */

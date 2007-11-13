@@ -44,6 +44,7 @@
 #include <eel/eel-gtk-extensions.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
+#include <eel/eel-mount-operation.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtksignal.h>
 #include <gdk/gdkx.h>
@@ -747,6 +748,7 @@ begin_location_change (NautilusWindow *window,
         window->details->pending_location = g_object_ref (location);
         window->details->location_change_type = type;
         window->details->location_change_distance = distance;
+        window->details->tried_mount = FALSE;
         window->details->pending_selection = eel_g_object_list_copy (new_selection);
 
         
@@ -881,6 +883,52 @@ setup_new_window (NautilusWindow *window, NautilusFile *file)
         }
 }
 
+typedef struct {
+	GCancellable *cancellable;
+	NautilusWindow *window;
+} MountNotMountedData;
+
+static void 
+mount_not_mounted_callback (GObject *source_object,
+			    GAsyncResult *res,
+			    gpointer user_data)
+{
+	MountNotMountedData *data;
+	NautilusWindow *window;
+	GError *error;
+	GCancellable *cancellable;
+
+	data = user_data;
+	window = data->window;
+	cancellable = data->cancellable;
+	g_free (data);
+
+	if (g_cancellable_is_cancelled (cancellable)) {
+		/* Cancelled, don't call back */
+		g_object_unref (cancellable);
+		return;
+	}
+
+	window->details->mount_cancellable = NULL;
+
+	window->details->determine_view_file = nautilus_file_get (window->details->pending_location);
+	
+	error = NULL;
+	if (!g_mount_for_location_finish (G_FILE (source_object), res, &error)) {
+		got_file_info_for_view_selection_callback (window->details->determine_view_file, window);
+		g_error_free (error);
+	} else {
+		nautilus_file_invalidate_all_attributes (window->details->determine_view_file);
+		nautilus_file_call_when_ready (window->details->determine_view_file,
+					       NAUTILUS_FILE_ATTRIBUTE_INFO |
+					       NAUTILUS_FILE_ATTRIBUTE_METADATA,
+					       got_file_info_for_view_selection_callback,
+					       window);
+	}
+
+	g_object_unref (cancellable);
+}
+
 static void
 got_file_info_for_view_selection_callback (NautilusFile *file,
 					   gpointer callback_data)
@@ -891,20 +939,40 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 	NautilusWindow *window;
 	NautilusFile *viewed_file;
 	GFile *location;
-
+	GMountOperation *mount_op;
+	MountNotMountedData *data;
+	
 	window = callback_data;
 	
         g_assert (window->details->determine_view_file == file);
         window->details->determine_view_file = NULL;
 
+	error = nautilus_file_get_file_info_error (file);
+	
+	if (error && error->domain == G_IO_ERROR && error->code == G_IO_ERROR_NOT_MOUNTED &&
+	    !window->details->tried_mount) {
+		window->details->tried_mount = TRUE;
+		
+		mount_op = eel_mount_operation_new (GTK_WINDOW (window));
+		location = nautilus_file_get_location (file);
+		data = g_new0 (MountNotMountedData, 1);
+		data->cancellable = g_cancellable_new ();
+		data->window = window;
+		window->details->mount_cancellable = data->cancellable;
+		g_mount_for_location (location, mount_op, window->details->mount_cancellable,
+				      mount_not_mounted_callback, data);
+		g_object_unref (location);
+		g_object_unref (mount_op);
+		
+		return;
+	}
+	window->details->tried_mount = FALSE;
+	
 	location = window->details->pending_location;
 	
 	view_id = NULL;
 	
-	error = nautilus_file_get_file_info_error (file);
         if (error == NULL ||
-	    (error->domain == GNOME_VFS_ERROR && error->code == GNOME_VFS_ERROR_NOT_SUPPORTED) ||
-	    (error->domain == GNOME_VFS_ERROR && error->code ==  GNOME_VFS_ERROR_INVALID_URI) ||
 	    (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_NOT_SUPPORTED)) {
 		/* We got the information we need, now pick what view to use: */
 
@@ -1385,6 +1453,11 @@ free_location_change (NautilusWindow *window)
          * the load_complete callback.
          */
 
+	if (window->details->mount_cancellable != NULL) {
+		g_cancellable_cancel (window->details->mount_cancellable);
+		window->details->mount_cancellable = NULL;
+	}
+
         if (window->details->determine_view_file != NULL) {
 		nautilus_file_cancel_call_when_ready
 			(window->details->determine_view_file,
@@ -1413,7 +1486,7 @@ cancel_location_change (NautilusWindow *window)
                  * be told, or it is the very pending change we wish
                  * to cancel.
                  */
-		selection = nautilus_view_get_selection (window->new_content_view);
+		selection = nautilus_view_get_selection (window->content_view);
                 load_new_location (window,
 				   window->details->location,
 				   selection,
