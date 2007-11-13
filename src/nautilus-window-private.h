@@ -83,6 +83,7 @@ struct NautilusWindowDetails
         GList *pending_selection;
         NautilusFile *determine_view_file;
         GCancellable *mount_cancellable;
+        GError *mount_error;
         gboolean tried_mount;
 
         /* View As choices */

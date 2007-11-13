@@ -97,7 +97,8 @@ static void create_content_view                       (NautilusWindow           
 						       const char                 *view_id);
 static void display_view_selection_failure            (NautilusWindow             *window,
 						       NautilusFile               *file,
-						       GFile                      *location);
+						       GFile                      *location,
+						       GError                     *error);
 static void load_new_location                         (NautilusWindow             *window,
 						       GFile                      *location,
 						       GList                      *selection,
@@ -915,7 +916,9 @@ mount_not_mounted_callback (GObject *source_object,
 	
 	error = NULL;
 	if (!g_mount_for_location_finish (G_FILE (source_object), res, &error)) {
+		window->details->mount_error = error;
 		got_file_info_for_view_selection_callback (window->details->determine_view_file, window);
+		window->details->mount_error = NULL;
 		g_error_free (error);
 	} else {
 		nautilus_file_invalidate_all_attributes (window->details->determine_view_file);
@@ -947,7 +950,11 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
         g_assert (window->details->determine_view_file == file);
         window->details->determine_view_file = NULL;
 
-	error = nautilus_file_get_file_info_error (file);
+	if (window->details->mount_error) {
+		error = window->details->mount_error;
+	} else {
+		error = nautilus_file_get_file_info_error (file);
+	}
 	
 	if (error && error->domain == G_IO_ERROR && error->code == G_IO_ERROR_NOT_MOUNTED &&
 	    !window->details->tried_mount) {
@@ -966,7 +973,6 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 		
 		return;
 	}
-	window->details->tried_mount = FALSE;
 	
 	location = window->details->pending_location;
 	
@@ -1019,7 +1025,7 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 		g_free (view_id);
 	} else {
 		display_view_selection_failure (window, file,
-						location);
+						location, error);
 
 		if (!GTK_WIDGET_VISIBLE (GTK_WIDGET (window))) {
 			/* Destroy never-had-a-chance-to-be-seen window. This case
@@ -1544,7 +1550,7 @@ nautilus_window_report_view_failed (NautilusWindow *window,
 
 static void
 display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
-				GFile *location)
+				GFile *location, GError *error)
 {
 	char *full_uri_for_display;
 	char *uri_for_display;
@@ -1552,10 +1558,7 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 	char *detail_message;
 	char *scheme_string;
 	GtkDialog *dialog;
-	GError *error;
 
-	error = nautilus_file_get_file_info_error (file);
-	
 	/* Some sort of failure occurred. How 'bout we tell the user? */
 	full_uri_for_display = g_file_get_parse_name (location);
 	/* Truncate the URI so it doesn't get insanely wide. Note that even
@@ -1566,6 +1569,8 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 		(full_uri_for_display, MAX_URI_IN_DIALOG_LENGTH);
 	g_free (full_uri_for_display);
 
+	error_message = NULL;
+	detail_message = NULL;
 	if (error == NULL) {
 		if (nautilus_file_is_directory (file)) {
 			error_message = g_strdup_printf
@@ -1580,47 +1585,41 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 			detail_message = g_strdup 
 				(_("The location is not a folder."));
 		}
-	} else if (error->domain == GNOME_VFS_ERROR) {
-		switch ((GnomeVFSResult)error->code) {
-		case GNOME_VFS_ERROR_NOT_FOUND:
+	} else if (error->domain == G_IO_ERROR) {
+		switch (error->code) {
+		case G_IO_ERROR_NOT_FOUND:
 			error_message = g_strdup_printf
 				(_("Couldn't find \"%s\"."), 
 				 uri_for_display);
 			detail_message = g_strdup 
 				(_("Please check the spelling and try again."));
 			break;
-			
-		case GNOME_VFS_ERROR_INVALID_URI:
-			error_message = g_strdup_printf
-				(_("\"%s\" is not a valid location."),
-				 uri_for_display);
-			detail_message = g_strdup 
-				(_("Please check the spelling and try again."));
-			break;
-
-		case GNOME_VFS_ERROR_NOT_SUPPORTED:
+		case G_IO_ERROR_NOT_SUPPORTED:
 			scheme_string = g_file_get_uri_scheme (location);
-			g_assert (scheme_string != NULL);  /* Shouldn't have gotten this error unless there's a : separator. */
+				
 			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 							 uri_for_display);
-			detail_message = g_strdup_printf (_("Nautilus cannot handle %s: locations."),
-							  scheme_string);
+			if (scheme_string != NULL) {
+				detail_message = g_strdup_printf (_("Nautilus cannot handle %s: locations."),
+								  scheme_string);
+			} else {
+				detail_message = g_strdup (_("Nautilus cannot handle this kind of locations."));
+			}
 			g_free (scheme_string);
 			break;
-
-		case GNOME_VFS_ERROR_LOGIN_FAILED:
+		case G_IO_ERROR_NOT_MOUNTED:
 			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 							 uri_for_display);
-			detail_message = g_strdup (_("The attempt to log in failed."));		
+			detail_message = g_strdup (_("Unable to mount the location."));
 			break;
 			
-		case GNOME_VFS_ERROR_ACCESS_DENIED:
+		case G_IO_ERROR_PERMISSION_DENIED:
 			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 							 uri_for_display);
 			detail_message = g_strdup (_("Access was denied."));
 			break;
 			
-		case GNOME_VFS_ERROR_HOST_NOT_FOUND:
+		case G_IO_ERROR_HOST_NOT_FOUND:
 			/* This case can be hit for user-typed strings like "foo" due to
 			 * the code that guesses web addresses when there's no initial "/".
 			 * But this case is also hit for legitimate web addresses when
@@ -1630,43 +1629,21 @@ display_view_selection_failure (NautilusWindow *window, NautilusFile *file,
 							 uri_for_display);
 			detail_message = g_strdup (_("Check that the spelling is correct and that your proxy settings are correct."));
 			break;
-			
-		case GNOME_VFS_ERROR_HOST_HAS_NO_ADDRESS:
-			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-							 uri_for_display);
-			detail_message = g_strdup (_("Check that your proxy settings are correct."));
-			break;
-			
-		case GNOME_VFS_ERROR_NO_MASTER_BROWSER:
-			error_message = g_strdup_printf
-				(_("Couldn't display \"%s\", because Nautilus cannot contact the SMB master browser."),
-				 uri_for_display);
-			detail_message = g_strdup
-				(_("Check that an SMB server is running in the local network."));
-			break;
-			
-		case GNOME_VFS_ERROR_CANCELLED:
+		case G_IO_ERROR_CANCELLED:
 			g_free (uri_for_display);
 			return;
 			
-		case GNOME_VFS_ERROR_SERVICE_NOT_AVAILABLE:
-			error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
-							 uri_for_display);
-			detail_message = g_strdup (_("Check if the service is available."));
-			break;
-			
 		default:
-			error_message = g_strdup_printf (_("Nautilus cannot display \"%s\"."),
-							 uri_for_display);
-			detail_message = g_strdup (_("Please select another viewer and try again."));
+			break;
 		}
-	} else {
-		/* TODO: Better error reporting */
-		error_message = g_strdup_printf (_("Nautilus cannot display \"%s\"."),
+	}
+	
+	if (error_message == NULL) {
+		error_message = g_strdup_printf (_("Couldn't display \"%s\"."),
 						 uri_for_display);
 		detail_message = g_strdup_printf (_("Error: %s\nPlease select another viewer and try again."), error->message);
 	}
-		
+	
 	dialog = eel_show_error_dialog (error_message, detail_message, NULL);
 	
 	g_free (uri_for_display);

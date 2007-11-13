@@ -2,6 +2,12 @@
 
         * src/nautilus-window-manage-views.c:
         * src/nautilus-window-private.h:
+	Better error reporting on view failure
+
+2007-11-13  Alexander Larsson  <alexl@redhat.com>
+
+        * src/nautilus-window-manage-views.c:
+        * src/nautilus-window-private.h:
 	Try to mount location if not mounted.
 
 2007-11-13  Alexander Larsson  <alexl@redhat.com>
