@@ -1,5 +1,16 @@
 2007-11-13  Alexander Larsson  <alexl@redhat.com>
 
+        * src/file-manager/fm-error-reporting.c:
+	Remove last use of GNOME_VFS_ERROR
+	
+        * libnautilus-private/Makefile.am:
+        * libnautilus-private/nautilus-vfs-utils.[ch]: Removed.
+        * src/file-manager/fm-directory-view.c:
+        * src/nautilus-window-manage-views.c:
+	Remove GNOME_VFS_ERROR
+
+2007-11-13  Alexander Larsson  <alexl@redhat.com>
+
         * src/nautilus-window-manage-views.c:
         * src/nautilus-window-private.h:
 	Better error reporting on view failure

@@ -28,10 +28,8 @@
 
 #include <string.h>
 #include <glib/gi18n.h>
-#include <libgnomevfs/gnome-vfs-result.h>
 #include <libnautilus-private/nautilus-debug-log.h>
 #include <libnautilus-private/nautilus-file.h>
-#include <libnautilus-private/nautilus-vfs-utils.h>
 #include <eel/eel-string.h>
 #include <eel/eel-stock-dialogs.h>
 
@@ -49,28 +47,25 @@ fm_report_error_loading_directory (NautilusFile *file,
 	char *message;
 
 	if (error == NULL ||
-	    error->message == NULL ||
-	    (error->domain == GNOME_VFS_ERROR && error == GNOME_VFS_OK)) {
+	    error->message == NULL) {
 		return;
 	}
 
 	file_name = nautilus_file_get_display_name (file);
 	
-	if (error->domain == GNOME_VFS_ERROR) {
+	if (error->domain == G_IO_ERROR) {
 		switch (error->code) {
-		case GNOME_VFS_ERROR_ACCESS_DENIED:
+		case G_IO_ERROR_PERMISSION_DENIED:
 			message = g_strdup_printf (_("You do not have the permissions necessary to view the contents of \"%s\"."),
 						   file_name);
 			break;
-		case GNOME_VFS_ERROR_NOT_FOUND:
+		case G_IO_ERROR_NOT_FOUND:
 			message = g_strdup_printf (_("\"%s\" couldn't be found. Perhaps it has recently been deleted."),
 						   file_name);
 			break;
 		default:
-			/* We should invent decent error messages for every case we actually experience. */
-			g_warning ("Hit unhandled case %d in fm_report_error_loading_directory", 
-				   error->code);
-			message = g_strdup_printf (_("Sorry, couldn't display all the contents of \"%s\"."), file_name);
+			message = g_strdup_printf (_("Sorry, couldn't display all the contents of \"%s\". %s"), file_name,
+						   error->message);
 		}
 	} else {
 		message = g_strdup (error->message);
@@ -168,7 +163,7 @@ fm_report_error_setting_group (NautilusFile *file,
 	message = NULL;
 	if (error->domain == G_IO_ERROR) {
 		switch (error->code) {
-		case GNOME_VFS_ERROR_NOT_PERMITTED:
+		case G_IO_ERROR_PERMISSION_DENIED:
 			message = g_strdup_printf (_("You do not have the permissions necessary to change the group of \"%s\"."),
 						   file_name);
 			break;

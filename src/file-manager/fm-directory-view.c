@@ -95,7 +95,6 @@
 #include <libnautilus-private/nautilus-program-choosing.h>
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libnautilus-private/nautilus-ui-utilities.h>
-#include <libnautilus-private/nautilus-vfs-utils.h>
 #include <libnautilus-private/nautilus-signaller.h>
 #include <unistd.h>
 
