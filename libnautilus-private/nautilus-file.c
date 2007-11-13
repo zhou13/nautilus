@@ -280,6 +280,12 @@ nautilus_file_clear_info (NautilusFile *file)
 		file->details->edit_name = NULL;
 	}
 
+	if (!file->details->got_custom_activation_location &&
+	    file->details->activation_location != NULL) {
+		g_object_unref (file->details->activation_location);
+		file->details->activation_location = NULL;
+	}
+	
 	if (file->details->icon != NULL) {
 		g_object_unref (file->details->icon);
 		file->details->icon = NULL;
@@ -1522,7 +1528,9 @@ update_info_internal (NautilusFile *file,
 	const char *symlink_name, *mime_type, *selinux_context, *name, *thumbnail_path;
 	GFileType file_type;
 	GIcon *icon;
-
+	GFile *old_activation_location;
+	const char *activation_uri;
+	
 	if (file->details->is_gone) {
 		return FALSE;
 	}
@@ -1558,6 +1566,30 @@ update_info_internal (NautilusFile *file,
 	}
 	file->details->type = file_type;
 
+	if (!file->details->got_custom_activation_location) {
+		activation_uri = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STD_TARGET_URI);
+		if (activation_uri == NULL) {
+			if (file->details->activation_location) {
+				g_object_unref (file->details->activation_location);
+				file->details->activation_location = NULL;
+				changed = TRUE;
+			}
+		} else {
+			old_activation_location = file->details->activation_location;
+			file->details->activation_location = g_file_new_for_uri (activation_uri);
+			
+			if (old_activation_location) {
+				if (!g_file_equal (old_activation_location,
+						   file->details->activation_location)) {
+					changed = TRUE;
+				}
+				g_object_unref (old_activation_location);
+			} else {
+				changed = TRUE;
+			}
+		}
+	}
+	
 	is_symlink = g_file_info_get_is_symlink (info);
 	if (file->details->is_symlink != is_symlink) {
 		changed = TRUE;
@@ -2966,10 +2998,6 @@ char *
 nautilus_file_get_activation_uri (NautilusFile *file)
 {
 	g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
-
-	if (!file->details->got_link_info) {
-		return NULL;
-	}
 
 	if (file->details->activation_location != NULL) {
 		return g_file_get_uri (file->details->activation_location);

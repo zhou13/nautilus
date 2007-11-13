@@ -1,3 +1,10 @@
+2007-11-13  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
+        * libnautilus-private/nautilus-file-private.h:
+        * libnautilus-private/nautilus-file.c:
+	Handle std:target_uri gio links
+
 2007-11-12  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file.c:
