@@ -94,4 +94,12 @@ void nautilus_file_operations_unmount_volume (GtkWindow                      *pa
 					      NautilusUnmountCallback         callback,
 					      gpointer                        user_data);
 								
+
+void nautilus_file_operations_copy (GList *files,
+				    GArray *relative_item_points,
+				    GFile *target_dir,
+				    GtkWindow *parent_window,
+				    void (*done_callback) (GHashTable *debuting_uris, gpointer data),
+				    gpointer done_callback_data);
+
 #endif /* NAUTILUS_FILE_OPERATIONS_H */

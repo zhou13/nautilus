@@ -310,25 +310,25 @@ idle_callback (gpointer data)
 	
 	if (start_at_idle) {
 		g_signal_emit (info,
-			       STARTED,
+			       signals[STARTED],
 			       0);
 	}
 	
 	if (changed_at_idle) {
 		g_signal_emit (info,
-			       CHANGED,
+			       signals[CHANGED],
 			       0);
 	}
 	
 	if (progress_at_idle) {
 		g_signal_emit (info,
-			       PROGRESS_CHANGED,
+			       signals[PROGRESS_CHANGED],
 			       0);
 	}
 	
 	if (finish_at_idle) {
 		g_signal_emit (info,
-			       FINISHED,
+			       signals[FINISHED],
 			       0);
 	}
 	

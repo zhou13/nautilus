@@ -1,6 +1,19 @@
 2007-11-16  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-progress-info.c:
+	Fix signal emissions
+
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Add nautilus_file_operations_copy, with some initial
+	(far from done) code
+	
+        * test/Makefile.am:
+        * test/test-copy.c:
+	nautilus_file_operations_copy testcase
+
+2007-11-16  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-progress-info.c:
 	Reindent
 	Fix threading issues wrt the idle source
 

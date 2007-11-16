@@ -35,6 +35,8 @@
 #include "nautilus-file-changes-queue.h"
 #include "nautilus-lib-self-check-functions.h"
 
+#include "nautilus-progress-info.h"
+
 #include <eel/eel-alert-dialog.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-pango-extensions.h>
@@ -3929,6 +3931,208 @@ nautilus_file_set_permissions_recursive (const char                     *directo
 }
 
 #endif /* GIO_CONVERSION_DONE */
+
+typedef struct {
+	GIOJob *io_job;
+	GtkWidget *parent_window;
+	NautilusProgressInfo *progress;
+	GCancellable *cancellable;
+	gboolean aborted;
+} CommonJob;
+
+static void
+init_common (CommonJob *common,
+	     GtkWindow *parent_window)
+{
+	common->parent_window = g_object_ref (parent_window);
+	common->progress = nautilus_progress_info_new ();
+	common->cancellable = nautilus_progress_info_get_cancellable (common->progress);
+}
+
+typedef struct {
+	int num_files;
+	goffset num_bytes;
+} SourceInfo;
+
+typedef struct {
+	CommonJob common;
+	GList *files;
+} CopyJob;
+
+static void
+count_file (GFileInfo *info,
+	    SourceInfo *source_info)
+{
+	source_info->num_files += 1;
+	source_info->num_bytes += g_file_info_get_size (info);
+}
+
+static void
+scan_dir (GFile *dir,
+	  SourceInfo *source_info,
+	  CommonJob *job,
+	  GQueue *dirs)
+{
+	GFileInfo *info;
+	GError *error;
+	GFile *subdir;
+	GFileEnumerator *enumerator;
+
+	error = NULL;
+	enumerator = g_file_enumerate_children (dir,
+						G_FILE_ATTRIBUTE_STD_NAME","
+						G_FILE_ATTRIBUTE_STD_TYPE","
+						G_FILE_ATTRIBUTE_STD_SIZE,
+						G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+						job->cancellable,
+						&error);
+	if (enumerator) {
+		error = NULL;
+		while ((info = g_file_enumerator_next_file (enumerator, job->cancellable, &error)) != NULL) {
+			count_file (info, source_info);
+
+			if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
+				subdir = g_file_get_child (dir,
+							   g_file_info_get_name (info));
+				
+				/* Push to head, since we want depth-first */
+				g_queue_push_head (dirs, subdir);
+			}
+
+			g_object_unref (info);
+		}
+		if (error) {
+			/* TODO: Handle error */
+			g_print ("error: %s\n", error->message);
+			g_error_free (error);
+		}
+		
+		g_file_enumerator_close (enumerator, job->cancellable, NULL);
+	} else {
+		/* TODO: Handle error */
+		g_print ("error: %s\n", error->message);
+		g_error_free (error);
+	}
+}	
+
+static void
+scan_file (GFile *file,
+	   SourceInfo *source_info,
+	   CommonJob *job)
+{
+	GFileInfo *info;
+	GError *error;
+	GQueue *dirs;
+	GFile *dir;
+
+	dirs = g_queue_new ();
+	
+	error = NULL;
+	info = g_file_query_info (file, 
+				  G_FILE_ATTRIBUTE_STD_TYPE","
+				  G_FILE_ATTRIBUTE_STD_SIZE,
+				  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+				  job->cancellable,
+				  &error);
+
+	if (info) {
+		count_file (info, source_info);
+
+		if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
+			g_queue_push_head (dirs, g_object_ref (file));
+		}
+		
+		g_object_unref (info);
+	} else {
+		/* TODO: Handle toplevel error */
+		g_print ("error: %s\n", error->message);
+		g_error_free (error);
+	}
+		
+	while (!job->aborted && 
+	       (dir = g_queue_pop_head (dirs)) != NULL) {
+		scan_dir (dir, source_info, job, dirs);
+		g_object_unref (dir);
+	}
+
+	/* Free all from queue if we exited early */
+	g_queue_foreach (dirs, (GFunc)g_object_unref, NULL);
+	g_queue_free (dirs);
+	
+}
+
+static void
+scan_sources (GList *files,
+	      SourceInfo *source_info,
+	      CommonJob *job)
+{
+	GList *l;
+	GFile *file;
+
+	/* TODO: copy -> opname */
+	nautilus_progress_info_set_status (job->progress,
+					   _("Preparing for copy"));
+	
+	for (l = files; l != NULL && !job->aborted; l = l->next) {
+		file = l->data;
+
+		scan_file (file,
+			   source_info,
+			   job);
+	}
+}
+
+static void
+copy_job (GIOJob *io_job,
+	  GCancellable *cancellable,
+	  gpointer user_data)
+{
+	CopyJob *job;
+	SourceInfo source_info;
+
+	job = user_data;
+	job->common.io_job = io_job;
+
+	g_print ("copy job start\n");
+	
+	nautilus_progress_info_start (job->common.progress);
+
+	/* TODO: Verify target is a directory */
+
+	memset (&source_info, 0, sizeof (source_info));
+	scan_sources (job->files,
+		      &source_info,
+		      &job->common);
+
+	g_print ("source info: %d files, %"G_GINT64_FORMAT" bytes\n",
+		 source_info.num_files,
+		 source_info.num_bytes);
+
+	g_print ("copy job done\n");
+	
+}
+
+void
+nautilus_file_operations_copy (GList *files,
+			       GArray *relative_item_points,
+			       GFile *target_dir,
+			       GtkWindow *parent_window,
+			       void (*done_callback) (GHashTable *debuting_uris, gpointer data),
+			       gpointer done_callback_data)
+{
+	CopyJob *job;
+
+	job = g_new0 (CopyJob, 1);
+
+	init_common ((CommonJob *)job, parent_window);
+	job->files = eel_g_object_list_copy (files);
+
+	g_schedule_io_job (copy_job,
+			   job,
+			   NULL, /* destroy notify */
+			   0,
+			   job->common.cancellable);
+}
 
 
 static void
