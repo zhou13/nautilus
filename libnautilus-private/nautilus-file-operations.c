@@ -3689,6 +3689,7 @@ nautilus_file_operations_unmount_volume (GtkWindow                      *parent_
 	data->callback = callback;
 	data->user_data = user_data;
 	g_volume_unmount (volume,
+			  NULL,
 			  unmount_volume_callback,
 			  data);
 }

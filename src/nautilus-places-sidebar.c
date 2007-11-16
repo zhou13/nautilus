@@ -1202,7 +1202,7 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 		gtk_tree_model_get (model, &iter, PLACES_SIDEBAR_COLUMN_DRIVE, &drive, -1);
 		if (drive != NULL) {
 			/* TODO-gio: Handle callbacks etc */
-			g_drive_mount (drive, NULL, NULL, sidebar);
+			g_drive_mount (drive, NULL, NULL, NULL, sidebar);
 			g_object_unref (drive);
 		}
 	}
@@ -1318,7 +1318,7 @@ mount_shortcut_cb (GtkMenuItem           *item,
 
 	if (drive != NULL) {
 		/* TODO-gio: Handle callbacks etc */
-		g_drive_mount (drive, NULL, NULL, sidebar);
+		g_drive_mount (drive, NULL, NULL, NULL, sidebar);
 		g_object_unref (drive);
 	}
 }
@@ -1348,9 +1348,13 @@ unmount_shortcut_cb (GtkMenuItem           *item,
 
 		nautilus_file_operations_unmount_volume (GTK_WINDOW (toplevel),
 							 volume, NULL, sidebar);
-	} 
-	g_object_unref (volume);
-	g_object_unref (drive);
+	}
+	if (volume != NULL) {
+		g_object_unref (volume);
+	}
+	if (drive != NULL) {
+		g_object_unref (drive);
+	}
 }
 
 static void
@@ -1372,10 +1376,10 @@ eject_shortcut_cb (GtkMenuItem           *item,
 
 	if (volume != NULL) {
 		/* TODO-gio: Handle callbacks etc */
-		g_volume_eject (volume, NULL, sidebar);
+		g_volume_eject (volume, NULL, NULL, sidebar);
 	} else if (drive != NULL) {
 		/* TODO-gio: Handle callbacks etc */
-		g_drive_eject (drive, NULL, sidebar);
+		g_drive_eject (drive, NULL, NULL, sidebar);
 	}
 	g_object_unref (volume);
 	g_object_unref (drive);

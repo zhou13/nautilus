@@ -1098,10 +1098,10 @@ fm_tree_view_unmount_cb (GtkWidget *menu_item,
 	if (volume != NULL) {
 		if (g_volume_can_eject (volume)) {
 			/* TODO-gio: Handle callbacks */
-			g_volume_eject (volume, NULL, NULL);
+			g_volume_eject (volume, NULL, NULL, NULL);
 		} else {
 			/* TODO-gio: Handle callbacks */
-			g_volume_unmount (volume, NULL, NULL);
+			g_volume_unmount (volume, NULL, NULL, NULL);
 		}
 	}
 }
