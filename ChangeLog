@@ -1,5 +1,11 @@
 2007-11-16  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-progress-info.c:
+	Reindent
+	Fix threading issues wrt the idle source
+
+2007-11-16  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/Makefile.am:
         * libnautilus-private/nautilus-progress-info.[ch]:
 	Added NautilusProgressInfo class
