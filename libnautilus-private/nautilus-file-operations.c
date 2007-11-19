@@ -27,6 +27,7 @@
 #include <config.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <locale.h>
 #include "nautilus-file-operations.h"
 
@@ -71,6 +72,14 @@
 #include "nautilus-file-utilities.h"
 
 static gboolean confirm_trash_auto_value;
+
+typedef struct {
+	GIOJob *io_job;
+	GtkWidget *parent_window;
+	NautilusProgressInfo *progress;
+	GCancellable *cancellable;
+	gboolean aborted;
+} CommonJob;
 
 #ifdef GIO_CONVERSION_DONE
 
@@ -2992,7 +3001,7 @@ typedef struct {
 	const char *primary_text;
 	const char *secondary_text;
 	const char *details_text;
-	va_list button_title_args;
+	const char **button_titles;
 	
 	int result;
 } RunSimpleDialogData;
@@ -3000,29 +3009,26 @@ typedef struct {
 static void
 do_run_simple_dialog (gpointer _data)
 {
-	RunSimpleDialogData *data = data;
+	RunSimpleDialogData *data = _data;
 	const char *button_title;
         GtkWidget *dialog;
 	int result;
 	int response_id;
 
 	/* Create the dialog. */
-	dialog = eel_alert_dialog_new (GTK_WINDOW (data->parent_window), 
+	dialog = eel_alert_dialog_new (data->parent_window, 
 	                               0,
 	                               data->message_type,
 	                               GTK_BUTTONS_NONE,
 	                               data->primary_text,
 	                               data->secondary_text);
-	
-	response_id = 0;
-	while (1) {
-		button_title = va_arg (data->button_title_args, const char *);
-		if (button_title == NULL) {
-			break;
-		}
+
+	for (response_id = 0;
+	     data->button_titles[response_id] != NULL;
+	     response_id++) {
+		button_title = data->button_titles[response_id];
 		gtk_dialog_add_button (GTK_DIALOG (dialog), button_title, response_id);
 		gtk_dialog_set_default_response (GTK_DIALOG (dialog), response_id);
-		response_id++;
 	}
 
 	if (data->details_text) {
@@ -3045,7 +3051,7 @@ do_run_simple_dialog (gpointer _data)
 }
 
 static int
-run_simple_dialog (GIOJob *job,
+_run_simple_dialog (GIOJob *job,
 		   GtkWindow *parent_window,
 		   gboolean ignore_close_box,
 		   GtkMessageType message_type,
@@ -3054,35 +3060,97 @@ run_simple_dialog (GIOJob *job,
 		   const char *details_text,
 		   ...)
 {
-	RunSimpleDialogData data;
+	RunSimpleDialogData *data;
+	va_list varargs;
+	int res;
+	const char *button_title;
+	GPtrArray *ptr_array;
 
-	data.parent_window = parent_window;
-	data.ignore_close_box = ignore_close_box;
-	data.message_type = message_type;
-	data.primary_text = primary_text;
-	data.secondary_text = secondary_text;
-	data.details_text = details_text;
-	va_start (data.button_title_args, details_text);
+	data = g_new0 (RunSimpleDialogData, 1);
+	data->parent_window = parent_window;
+	data->ignore_close_box = ignore_close_box;
+	data->message_type = message_type;
+	data->primary_text = primary_text;
+	data->secondary_text = secondary_text;
+	data->details_text = details_text;
+
+	ptr_array = g_ptr_array_new ();
+	va_start (varargs, details_text);
+	while ((button_title = va_arg (varargs, const char *)) != NULL) {
+		g_ptr_array_add (ptr_array, (char *)button_title);
+	}
+	g_ptr_array_add (ptr_array, NULL);
+	data->button_titles = (const char **)g_ptr_array_free (ptr_array, FALSE);
+	va_end (varargs);
 
 	g_io_job_send_to_mainloop (job,
 				   do_run_simple_dialog,
-				   &data,
+				   data,
 				   NULL,
 				   TRUE);
 
-	va_end (data.button_title_args);
+	res = data->result;
 
-	return data.result;
+	g_free (data->button_titles);
+	g_free (data);
+	return res;
 }
 
+
+static int
+run_simple_dialog (CommonJob *job,
+		   gboolean ignore_close_box,
+		   GtkMessageType message_type,
+		   const char *primary_text,
+		   const char *secondary_text,
+		   const char *details_text,
+		   ...)
+{
+	RunSimpleDialogData *data;
+	va_list varargs;
+	int res;
+	const char *button_title;
+	GPtrArray *ptr_array;
+
+	data = g_new0 (RunSimpleDialogData, 1);
+	data->parent_window = GTK_WINDOW (job->parent_window);
+	data->ignore_close_box = ignore_close_box;
+	data->message_type = message_type;
+	data->primary_text = primary_text;
+	data->secondary_text = secondary_text;
+	data->details_text = details_text;
+
+	ptr_array = g_ptr_array_new ();
+	va_start (varargs, details_text);
+	while ((button_title = va_arg (varargs, const char *)) != NULL) {
+		g_ptr_array_add (ptr_array, (char *)button_title);
+	}
+	g_ptr_array_add (ptr_array, NULL);
+	data->button_titles = (const char **)g_ptr_array_free (ptr_array, FALSE);
+	va_end (varargs);
+
+	g_io_job_send_to_mainloop (job->io_job,
+				   do_run_simple_dialog,
+				   data,
+				   NULL,
+				   TRUE);
+
+	res = data->result;
+
+	g_free (data->button_titles);
+	g_free (data);
+	return res;
+}
+
+
 static int 
-run_alert (GIOJob *job,
+_run_alert (GIOJob *job,
 	   GtkWindow *parent_window,
 	   const char *primary_message,
 	   const char *secondary_message,
 	   const char *ok_label)
 {
-	return run_simple_dialog (job, parent_window,
+	return _run_simple_dialog (job, parent_window,
 				  FALSE,
 				  GTK_MESSAGE_WARNING,
 				  primary_message,
@@ -3094,14 +3162,14 @@ run_alert (GIOJob *job,
 }
 
 static int
-run_yes_no_dialog (GIOJob *job,
+_run_yes_no_dialog (GIOJob *job,
 		   const char *prompt,
 		   const char *detail,
 		   const char *yes_label,
 		   const char *no_label,
 		   GtkWindow *parent_window)
 {
-	return run_simple_dialog (job, parent_window,
+	return _run_simple_dialog (job, parent_window,
 				  FALSE,
 				  GTK_MESSAGE_QUESTION,
 				  prompt,
@@ -3144,10 +3212,10 @@ confirm_delete_from_trash (GIOJob *job,
 					  file_count);
 	}
 
-	response = run_alert (job, parent_window,
-			      prompt,
-			      _("If you delete an item, it will be permanently lost."),
-			      GTK_STOCK_DELETE);
+	response = _run_alert (job, parent_window,
+			       prompt,
+			       _("If you delete an item, it will be permanently lost."),
+			       GTK_STOCK_DELETE);
 	
 	return (response == 1);
 }
@@ -3191,11 +3259,11 @@ confirm_deletion (GIOJob *job,
 		}
 	}
 	
-	response = run_yes_no_dialog (job,
-				      prompt,
-				      detail,
-				      GTK_STOCK_DELETE, GTK_STOCK_CANCEL,
-				      parent_window);
+	response = _run_yes_no_dialog (job,
+				       prompt,
+				       detail,
+				       GTK_STOCK_DELETE, GTK_STOCK_CANCEL,
+				       parent_window);
 	
 	g_free (detail);
 	
@@ -3236,10 +3304,10 @@ confirm_delete_directly (GIOJob *job,
 						   "the %d selected items?", file_count), file_count);
 	}
 
-	response = run_alert (job, parent_window,
-			      prompt,
-			      _("If you delete an item, it will be permanently lost."),
-			      GTK_STOCK_DELETE);
+	response = _run_alert (job, parent_window,
+			       prompt,
+			       _("If you delete an item, it will be permanently lost."),
+			       GTK_STOCK_DELETE);
 
 	return response == 1;
 }
@@ -3956,40 +4024,69 @@ nautilus_file_set_permissions_recursive (const char                     *directo
 
 #endif /* GIO_CONVERSION_DONE */
 
-typedef struct {
-	GIOJob *io_job;
-	GtkWidget *parent_window;
-	NautilusProgressInfo *progress;
-	GCancellable *cancellable;
-	gboolean aborted;
-} CommonJob;
+#define op_job_new(__type, parent_window) ((__type *)(init_common (sizeof(__type), parent_window)))
 
-static void
-init_common (CommonJob *common,
+static gpointer
+init_common (gsize job_size,
 	     GtkWindow *parent_window)
 {
+	CommonJob *common;
+
+	common = g_malloc0 (job_size);
+	
 	common->parent_window = g_object_ref (parent_window);
 	common->progress = nautilus_progress_info_new ();
 	common->cancellable = nautilus_progress_info_get_cancellable (common->progress);
+
+	return common;
+}
+
+static void
+finalize_common (CommonJob *common)
+{
+	nautilus_progress_info_finish (common->progress);
+	
+	if (common->parent_window) {
+		 g_object_unref (common->parent_window);
+	}
+	g_object_unref (common->progress);
+	g_object_unref (common->cancellable);
+	g_free (common);
 }
 
 typedef struct {
 	int num_files;
 	goffset num_bytes;
+	int num_files_since_progress;
 } SourceInfo;
 
-typedef struct {
-	CommonJob common;
-	GList *files;
-	GFile *destination;
-} CopyJob;
-
+static void
+report_count_progress (CommonJob *job,
+		       SourceInfo *source_info)
+{
+	char *size;
+	
+	size = g_format_file_size_for_display (source_info->num_bytes);
+	nautilus_progress_info_set_details_printf (job->progress,
+						   _("Preparing to copy %d files (%s)"),
+						   source_info->num_files,
+						   size);
+	g_free (size);
+}
+		       
 static void
 count_file (GFileInfo *info,
+	    CommonJob *job,
 	    SourceInfo *source_info)
 {
 	source_info->num_files += 1;
 	source_info->num_bytes += g_file_info_get_size (info);
+
+	if (source_info->num_files_since_progress++ > 100) {
+		report_count_progress (job, source_info);
+		source_info->num_files_since_progress = 0;
+	}
+	
 }
 
 static void
@@ -4002,6 +4099,8 @@ scan_dir (GFile *dir,
 	GError *error;
 	GFile *subdir;
 	GFileEnumerator *enumerator;
+	char *parse_name;
+	char *secondary;
 
 	error = NULL;
 	enumerator = g_file_enumerate_children (dir,
@@ -4014,7 +4113,7 @@ scan_dir (GFile *dir,
 	if (enumerator) {
 		error = NULL;
 		while ((info = g_file_enumerator_next_file (enumerator, job->cancellable, &error)) != NULL) {
-			count_file (info, source_info);
+			count_file (info, job, source_info);
 
 			if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
 				subdir = g_file_get_child (dir,
@@ -4027,6 +4126,7 @@ scan_dir (GFile *dir,
 			g_object_unref (info);
 		}
 		if (error) {
+
 			/* TODO: Handle error */
 			g_print ("error: %s\n", error->message);
 			g_error_free (error);
@@ -4034,8 +4134,20 @@ scan_dir (GFile *dir,
 		
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
 	} else {
-		/* TODO: Handle error */
-		g_print ("error: %s\n", error->message);
+		parse_name = g_file_get_parse_name (dir);
+		/* TODO: better string, special case perms */
+		secondary = g_strdup_printf (_("There was an error reading the folder %s"), parse_name);
+		g_free (parse_name);
+		run_simple_dialog (job,
+				   FALSE,
+				   GTK_MESSAGE_WARNING,
+				   _("Unable to read folder"),
+				   secondary,
+				   error->message,
+				   GTK_STOCK_CANCEL,  _("Skip"),_("_Retry"),
+				   NULL);
+		g_free (secondary);
+		
 		g_error_free (error);
 	}
 }	
@@ -4061,7 +4173,7 @@ scan_file (GFile *file,
 				  &error);
 
 	if (info) {
-		count_file (info, source_info);
+		count_file (info, job, source_info);
 
 		if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
 			g_queue_push_head (dirs, g_object_ref (file));
@@ -4083,7 +4195,6 @@ scan_file (GFile *file,
 	/* Free all from queue if we exited early */
 	g_queue_foreach (dirs, (GFunc)g_object_unref, NULL);
 	g_queue_free (dirs);
-	
 }
 
 static void
@@ -4105,6 +4216,9 @@ scan_sources (GList *files,
 			   source_info,
 			   job);
 	}
+
+	/* Make sure we report the final count */
+	report_count_progress (job, source_info);
 }
 
 static gboolean
@@ -4132,7 +4246,8 @@ verify_destination (CommonJob *job,
 
 			if (required_size > 0) {
 				fsinfo = g_file_query_filesystem_info (dest,
-								       G_FILE_ATTRIBUTE_FS_FREE,
+								       G_FILE_ATTRIBUTE_FS_FREE","
+								       G_FILE_ATTRIBUTE_FS_READONLY,
 								       job->cancellable,
 								       &error);
 				if (fsinfo) {
@@ -4147,6 +4262,14 @@ verify_destination (CommonJob *job,
 							res = FALSE;
 						}
 					}
+					if (g_file_info_get_attribute_boolean (fsinfo,
+									       G_FILE_ATTRIBUTE_FS_READONLY)) {
+							/* TODO: Handle readonly dest */
+							g_print ("Error: Target is readonly\n");
+							/* cancel, try again */
+							res = FALSE;
+					}
+					
 					g_object_unref (fsinfo);
 				}
 			}
@@ -4165,28 +4288,55 @@ verify_destination (CommonJob *job,
 	return res;
 }
 
+typedef struct {
+	CommonJob common;
+	GList *files;
+	GFile *destination;
+	void (*done_callback) (GHashTable *debuting_uris, gpointer data);
+	gpointer done_callback_data;
+} CopyJob;
+
+static void
+copy_job_done (gpointer user_data)
+{
+	CopyJob *job;
+
+	job = user_data;
+	if (job->done_callback) {
+		job->done_callback (/* TODO: debuting uris */NULL, job->done_callback_data);
+	}
+
+	eel_g_object_list_free (job->files);
+	g_object_unref (job->destination);
+	
+	finalize_common ((CommonJob *)job);
+}
+
+
 static void
 copy_job (GIOJob *io_job,
 	  GCancellable *cancellable,
 	  gpointer user_data)
 {
 	CopyJob *job;
+	CommonJob *common;
 	SourceInfo source_info;
 
 	job = user_data;
-	job->common.io_job = io_job;
+	common = &job->common;
+	common->io_job = io_job;
 
 	g_print ("copy job start\n");
 	
 	nautilus_progress_info_start (job->common.progress);
 
-	/* TODO: Verify target is a directory */
-	
 	memset (&source_info, 0, sizeof (source_info));
 	scan_sources (job->files,
 		      &source_info,
-		      &job->common);
-	/* TODO: handler error/abort, free, callback */
+		      common);
+	if (common->aborted) {
+		goto aborted;
+	}
 
 	g_print ("source info: %d files, %"G_GINT64_FORMAT" bytes\n",
 		 source_info.num_files,
@@ -4195,12 +4345,19 @@ copy_job (GIOJob *io_job,
 	if (!verify_destination (&job->common,
 				 job->destination,
 				 source_info.num_bytes)) {
-		/* TODO: free, callback*/
-		return;
+		goto aborted;
 	}
 
-	g_print ("copy job done\n");
+	/* TODO: Copy files */
 	
+ aborted:
+	g_print ("copy job done\n");
+
+	g_io_job_send_to_mainloop (io_job,
+				   copy_job_done,
+				   job,
+				   NULL,
+				   FALSE);
 }
 
 void
@@ -4213,9 +4370,7 @@ nautilus_file_operations_copy (GList *files,
 {
 	CopyJob *job;
 
-	job = g_new0 (CopyJob, 1);
-
-	init_common ((CommonJob *)job, parent_window);
+	job = op_job_new (CopyJob, parent_window);
 	job->files = eel_g_object_list_copy (files);
 	job->destination = g_object_ref (target_dir);
 

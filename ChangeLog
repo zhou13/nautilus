@@ -1,5 +1,16 @@
 2007-11-19  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-progress-info.[ch]:
+	Add nautilus_get_all_progress_info()
+	
+        * test/test-copy.c:
+	Print progress info
+	
+        * libnautilus-private/nautilus-file-operations.c:
+	Implement generic run_simple_dialog()
+
+2007-11-19  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-operations.c:
 	Add generic run_simple_dialog.
 

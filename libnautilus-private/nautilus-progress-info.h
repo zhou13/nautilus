@@ -52,6 +52,8 @@ GType nautilus_progress_info_get_type (void) G_GNUC_CONST;
 
 NautilusProgressInfo *nautilus_progress_info_new (void);
 
+GList *       nautilus_get_all_progress_info (void);
+
 char *        nautilus_progress_info_get_status      (NautilusProgressInfo *info);
 char *        nautilus_progress_info_get_details     (NautilusProgressInfo *info);
 double        nautilus_progress_info_get_progress    (NautilusProgressInfo *info);
@@ -65,6 +67,9 @@ void          nautilus_progress_info_set_status      (NautilusProgressInfo *info
 						      const char           *status);
 void          nautilus_progress_info_set_details     (NautilusProgressInfo *info,
 						      const char           *details);
+void          nautilus_progress_info_set_details_printf (NautilusProgressInfo *info,
+							 const char           *format,
+							 ...);
 void          nautilus_progress_info_set_progress    (NautilusProgressInfo *info,
 						      gboolean              activity_mode,
 						      double                current_percent);

@@ -26,6 +26,7 @@
 #include <math.h>
 #include <glib/gi18n.h>
 #include <eel/eel-string.h>
+#include <eel/eel-glib-extensions.h>
 #include "nautilus-progress-info.h"
 
 enum {
@@ -36,7 +37,7 @@ enum {
   LAST_SIGNAL
 };
 
-#define SIGNAL_DELAY_MSEC 2000
+#define SIGNAL_DELAY_MSEC 1200
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
@@ -67,10 +68,25 @@ struct _NautilusProgressInfoClass
 	GObjectClass parent_class;
 };
 
+static GList *active_progress_infos = NULL;
 
 G_LOCK_DEFINE_STATIC(progress_info);
 
 G_DEFINE_TYPE (NautilusProgressInfo, nautilus_progress_info, G_TYPE_OBJECT)
+
+GList *
+nautilus_get_all_progress_info (void)
+{
+	GList *l;
+	
+	G_LOCK (progress_info);
+
+	l = eel_g_object_list_copy (active_progress_infos);
+	
+	G_UNLOCK (progress_info);
+
+	return l;
+}
 
 static void
 nautilus_progress_info_finalize (GObject *object)
@@ -95,10 +111,15 @@ nautilus_progress_info_dispose (GObject *object)
 	
 	info = NAUTILUS_PROGRESS_INFO (object);
 
+	G_LOCK (progress_info);
+
+	/* Remove from active list in dispose, since a get_all_progress_info()
+	   call later could revive the object */
+	active_progress_infos = g_list_remove (active_progress_infos, object);
+	
 	/* Destroy source in dispose, because the callback
 	   could come here before the destroy, which should
 	   ressurect the object for a while */
-	G_LOCK (progress_info);
 	if (info->idle_source) {
 		g_source_destroy (info->idle_source);
 		g_source_unref (info->idle_source);
@@ -157,6 +178,10 @@ static void
 nautilus_progress_info_init (NautilusProgressInfo *info)
 {
 	info->cancellable = g_cancellable_new ();
+
+	G_LOCK (progress_info);
+	active_progress_infos = g_list_append (active_progress_infos, info);
+	G_UNLOCK (progress_info);
 }
 
 NautilusProgressInfo *
@@ -423,6 +448,34 @@ nautilus_progress_info_set_details (NautilusProgressInfo *info,
   
 	G_UNLOCK (progress_info);
 }
+
+void
+nautilus_progress_info_set_details_printf (NautilusProgressInfo *info,
+					   const char           *format,
+					   ...)
+{
+	gchar *details;
+	va_list args;
+	
+	va_start (args, format);
+	details = g_strdup_vprintf (format, args);
+	va_end (args);
+
+	G_LOCK (progress_info);
+	
+	if (eel_strcmp (info->details, details) != 0) {
+		g_free (info->details);
+		info->details = details;
+		
+		info->changed_at_idle = TRUE;
+		queue_idle (info, FALSE);
+	} else {
+		g_free (details);
+	}
+  
+	G_UNLOCK (progress_info);
+}
+
 
 void
 nautilus_progress_info_set_progress (NautilusProgressInfo *info,
