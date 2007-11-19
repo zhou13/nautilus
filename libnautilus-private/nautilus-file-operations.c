@@ -2987,105 +2987,129 @@ trash_files (GList *files, GCancellable  *cancellable, GtkWindow *parent_window)
 
 typedef struct {
 	GtkWindow *parent_window;
-	const char *primary_message;
-	const char *secondary_message;
-	const char *ok_label;
-	int response;
-} AlertInfo;
+	gboolean ignore_close_box;
+	GtkMessageType message_type;
+	const char *primary_text;
+	const char *secondary_text;
+	const char *details_text;
+	va_list button_title_args;
+	
+	int result;
+} RunSimpleDialogData;
 
 static void
-run_alert (gpointer user_data)
+do_run_simple_dialog (gpointer _data)
 {
-	AlertInfo *info = user_data;
-	GtkDialog *dialog;
+	RunSimpleDialogData *data = data;
+	const char *button_title;
+        GtkWidget *dialog;
+	int result;
+	int response_id;
 
-	dialog = GTK_DIALOG (eel_alert_dialog_new (info->parent_window,
-						   0, GTK_MESSAGE_WARNING, GTK_BUTTONS_NONE,
-						   info->primary_message,
-						   info->secondary_message));
-	gtk_dialog_add_button (dialog, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
-	gtk_dialog_add_button (dialog, info->ok_label, GTK_RESPONSE_YES);
+	/* Create the dialog. */
+	dialog = eel_alert_dialog_new (GTK_WINDOW (data->parent_window), 
+	                               0,
+	                               data->message_type,
+	                               GTK_BUTTONS_NONE,
+	                               data->primary_text,
+	                               data->secondary_text);
 	
-	gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_YES);
+	response_id = 0;
+	while (1) {
+		button_title = va_arg (data->button_title_args, const char *);
+		if (button_title == NULL) {
+			break;
+		}
+		gtk_dialog_add_button (GTK_DIALOG (dialog), button_title, response_id);
+		gtk_dialog_set_default_response (GTK_DIALOG (dialog), response_id);
+		response_id++;
+	}
+
+	if (data->details_text) {
+		eel_alert_dialog_set_details_label (EEL_ALERT_DIALOG (dialog),
+						    data->details_text);
+	}
 	
-	info->response = gtk_dialog_run (dialog);
+	/* Run it. */
+        gtk_widget_show (dialog);
+        result = gtk_dialog_run (GTK_DIALOG (dialog));
+	
+	while ((result == GTK_RESPONSE_NONE || result == GTK_RESPONSE_DELETE_EVENT) && data->ignore_close_box) {
+		gtk_widget_show (GTK_WIDGET (dialog));
+		result = gtk_dialog_run (GTK_DIALOG (dialog));
+	}
+	
 	gtk_object_destroy (GTK_OBJECT (dialog));
 
-	return;
-}
-
-static int 
-run_alert_in_main (GIOJob *job,
-		   GtkWindow *parent_window,
-		   const char *primary_message,
-		   const char *secondary_message,
-		   const char *ok_label)
-{
-	AlertInfo info;
-
-	info.parent_window = parent_window;
-	info.primary_message = primary_message;
-	info.secondary_message = secondary_message;
-	info.ok_label = ok_label;
-
-	g_io_job_send_to_mainloop (job,
-				   run_alert,
-				   &info,
-				   NULL,
-				   TRUE);
-	
-	return info.response;
-}
-
-typedef struct {
-	const char *prompt;
-	const char *detail;
-	const char *yes_label;
-	const char *no_label;
-	GtkWindow *parent_window;
-	int response;
-} YesNoInfo;
-
-static void
-run_yes_no (gpointer data)
-{
-	YesNoInfo *info = data;
-	GtkDialog *dialog;
-
-	dialog = eel_show_yes_no_dialog
-		(info->prompt,
-		 info->detail,
-		 info->yes_label, info->no_label,
-		 info->parent_window);
-	
-	info->response = gtk_dialog_run (dialog);
-	
-	gtk_object_destroy (GTK_OBJECT (dialog));
+	data->result = result;
 }
 
 static int
-run_yes_no_dialog_in_main (GIOJob *job,
-			   const char *prompt,
-			   const char *detail,
-			   const char *yes_label,
-			   const char *no_label,
-			   GtkWindow *parent_window)
+run_simple_dialog (GIOJob *job,
+		   GtkWindow *parent_window,
+		   gboolean ignore_close_box,
+		   GtkMessageType message_type,
+		   const char *primary_text,
+		   const char *secondary_text,
+		   const char *details_text,
+		   ...)
 {
-	YesNoInfo info;
+	RunSimpleDialogData data;
 
-	info.prompt = prompt;
-	info.detail = detail;
-	info.yes_label = yes_label;
-	info.no_label = no_label;
-	info.parent_window = parent_window;
+	data.parent_window = parent_window;
+	data.ignore_close_box = ignore_close_box;
+	data.message_type = message_type;
+	data.primary_text = primary_text;
+	data.secondary_text = secondary_text;
+	data.details_text = details_text;
+	va_start (data.button_title_args, details_text);
 
 	g_io_job_send_to_mainloop (job,
-				   run_yes_no,
-				   &info,
+				   do_run_simple_dialog,
+				   &data,
 				   NULL,
 				   TRUE);
-	
-	return info.response;
+
+	va_end (data.button_title_args);
+
+	return data.result;
+}
+
+static int 
+run_alert (GIOJob *job,
+	   GtkWindow *parent_window,
+	   const char *primary_message,
+	   const char *secondary_message,
+	   const char *ok_label)
+{
+	return run_simple_dialog (job, parent_window,
+				  FALSE,
+				  GTK_MESSAGE_WARNING,
+				  primary_message,
+				  secondary_message,
+				  NULL,
+				  GTK_STOCK_CANCEL, 
+				  ok_label,
+				  NULL);
+}
+
+static int
+run_yes_no_dialog (GIOJob *job,
+		   const char *prompt,
+		   const char *detail,
+		   const char *yes_label,
+		   const char *no_label,
+		   GtkWindow *parent_window)
+{
+	return run_simple_dialog (job, parent_window,
+				  FALSE,
+				  GTK_MESSAGE_QUESTION,
+				  prompt,
+				  detail,
+				  NULL,
+				  no_label,
+				  yes_label,
+				  NULL);
 }
 
 static gboolean
@@ -3120,12 +3144,12 @@ confirm_delete_from_trash (GIOJob *job,
 					  file_count);
 	}
 
-	response = run_alert_in_main (job, parent_window,
-				      prompt,
-				      _("If you delete an item, it will be permanently lost."),
-				      GTK_STOCK_DELETE);
+	response = run_alert (job, parent_window,
+			      prompt,
+			      _("If you delete an item, it will be permanently lost."),
+			      GTK_STOCK_DELETE);
 	
-	return (response == GTK_RESPONSE_YES);
+	return (response == 1);
 }
 
 static gboolean
@@ -3167,15 +3191,15 @@ confirm_deletion (GIOJob *job,
 		}
 	}
 	
-	response = run_yes_no_dialog_in_main (job,
-					      prompt,
-					      detail,
-					      GTK_STOCK_DELETE, GTK_STOCK_CANCEL,
-					      parent_window);
+	response = run_yes_no_dialog (job,
+				      prompt,
+				      detail,
+				      GTK_STOCK_DELETE, GTK_STOCK_CANCEL,
+				      parent_window);
 	
 	g_free (detail);
 	
-	return (response == GTK_RESPONSE_YES);
+	return (response == 1);
 }
 
 static gboolean
@@ -3212,12 +3236,12 @@ confirm_delete_directly (GIOJob *job,
 						   "the %d selected items?", file_count), file_count);
 	}
 
-	response = run_alert_in_main (job, parent_window,
-				      prompt,
-				      _("If you delete an item, it will be permanently lost."),
-				      GTK_STOCK_DELETE);
+	response = run_alert (job, parent_window,
+			      prompt,
+			      _("If you delete an item, it will be permanently lost."),
+			      GTK_STOCK_DELETE);
 
-	return response == GTK_RESPONSE_YES;
+	return response == 1;
 }
 
 
@@ -3957,6 +3981,7 @@ typedef struct {
 typedef struct {
 	CommonJob common;
 	GList *files;
+	GFile *destination;
 } CopyJob;
 
 static void
@@ -4082,6 +4107,64 @@ scan_sources (GList *files,
 	}
 }
 
+static gboolean
+verify_destination (CommonJob *job,
+		    GFile *dest,
+		    goffset required_size)
+{
+	GFileInfo *info, *fsinfo;
+	GError *error;
+	gboolean res;
+	guint64 free_size;
+
+	res = FALSE;
+	error = NULL;
+	
+	info = g_file_query_info (dest, 
+				  G_FILE_ATTRIBUTE_STD_TYPE,
+				  0,
+				  job->cancellable,
+				  &error);
+
+	if (info) {
+		if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
+			res = TRUE;
+
+			if (required_size > 0) {
+				fsinfo = g_file_query_filesystem_info (dest,
+								       G_FILE_ATTRIBUTE_FS_FREE,
+								       job->cancellable,
+								       &error);
+				if (fsinfo) {
+					if (g_file_info_has_attribute (fsinfo, G_FILE_ATTRIBUTE_FS_FREE)) {
+						free_size = g_file_info_get_attribute_uint64 (fsinfo,
+											      G_FILE_ATTRIBUTE_FS_FREE);
+
+						if (free_size < required_size) {
+							/* TODO: Handle not-enough-space */
+							g_print ("Error: Target doesn't have enough free space\n");
+							/* cancel, try again */
+							res = FALSE;
+						}
+					}
+					g_object_unref (fsinfo);
+				}
+			}
+			
+		} else {
+			/* TODO: Handle target-not-directory */
+			g_print ("Error: Target is not directory\n");
+		}
+		g_object_unref (info);
+	} else {
+		/* TODO: Handle toplevel error */
+		g_print ("error: %s\n", error->message);
+		g_error_free (error);
+	}
+
+	return res;
+}
+
 static void
 copy_job (GIOJob *io_job,
 	  GCancellable *cancellable,
@@ -4098,15 +4181,23 @@ copy_job (GIOJob *io_job,
 	nautilus_progress_info_start (job->common.progress);
 
 	/* TODO: Verify target is a directory */
-
+	
 	memset (&source_info, 0, sizeof (source_info));
 	scan_sources (job->files,
 		      &source_info,
 		      &job->common);
+	/* TODO: handler error/abort, free, callback */
 
 	g_print ("source info: %d files, %"G_GINT64_FORMAT" bytes\n",
 		 source_info.num_files,
 		 source_info.num_bytes);
+	
+	if (!verify_destination (&job->common,
+				 job->destination,
+				 source_info.num_bytes)) {
+		/* TODO: free, callback*/
+		return;
+	}
 
 	g_print ("copy job done\n");
 	
@@ -4126,6 +4217,7 @@ nautilus_file_operations_copy (GList *files,
 
 	init_common ((CommonJob *)job, parent_window);
 	job->files = eel_g_object_list_copy (files);
+	job->destination = g_object_ref (target_dir);
 
 	g_schedule_io_job (copy_job,
 			   job,
