@@ -1,3 +1,8 @@
+2007-11-20  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
+	Add error handling for source scanning
+
 2007-11-19  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-progress-info.[ch]:

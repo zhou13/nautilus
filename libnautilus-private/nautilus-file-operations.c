@@ -79,6 +79,8 @@ typedef struct {
 	NautilusProgressInfo *progress;
 	GCancellable *cancellable;
 	gboolean aborted;
+	GHashTable *skip_files;
+	GHashTable *skip_readdir_error;
 } CommonJob;
 
 #ifdef GIO_CONVERSION_DONE
@@ -4049,15 +4051,62 @@ finalize_common (CommonJob *common)
 	if (common->parent_window) {
 		 g_object_unref (common->parent_window);
 	}
+	if (common->skip_files) {
+		g_hash_table_destroy (common->skip_files);
+	}
+	if (common->skip_readdir_error) {
+		g_hash_table_destroy (common->skip_readdir_error);
+	}
 	g_object_unref (common->progress);
 	g_object_unref (common->cancellable);
 	g_free (common);
 }
 
+static void
+skip_file (CommonJob *common,
+	   GFile *file)
+{
+	if (common->skip_files == NULL) {
+		common->skip_files =
+			g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
+	}
+
+	g_hash_table_insert (common->skip_files, g_object_ref (file), file);
+}
+
+static void
+skip_readdir_error (CommonJob *common,
+		    GFile *file)
+{
+	if (common->skip_readdir_error == NULL) {
+		common->skip_readdir_error =
+			g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
+	}
+
+	g_hash_table_insert (common->skip_readdir_error, g_object_ref (file), file);
+}
+
+#if 0
+static gboolean
+should_skip_file (CommonJob *common,
+		  GFile *file)
+{
+	if (common->skip_files == NULL) {
+		return g_hash_table_lookup (common->skip_files, file) != NULL;
+	}
+	return FALSE;
+}
+#endif
+
+typedef enum {
+	OP_KIND_COPY = 0
+} OpKind;
+
 typedef struct {
 	int num_files;
 	goffset num_bytes;
 	int num_files_since_progress;
+	OpKind op;
 } SourceInfo;
 
 static void
@@ -4067,10 +4116,12 @@ report_count_progress (CommonJob *job,
 	char *size;
 	
 	size = g_format_file_size_for_display (source_info->num_bytes);
-	nautilus_progress_info_set_details_printf (job->progress,
-						   _("Preparing to copy %d files (%s)"),
-						   source_info->num_files,
-						   size);
+	if (source_info->op == OP_KIND_COPY) {
+		nautilus_progress_info_set_details_printf (job->progress,
+							   _("Preparing to copy %d files (%s)"),
+							   source_info->num_files,
+							   size);
+	}
 	g_free (size);
 }
 		       
@@ -4089,6 +4140,18 @@ count_file (GFileInfo *info,
 	
 }
 
+static char *
+strdup_with_name (const char *format, GFile *file)
+{
+	char *parse_name, *res;
+
+	parse_name = g_file_get_parse_name (file);
+	res = g_strdup_printf (format, parse_name);
+	g_free (parse_name);
+	
+	return res;
+}
+
 static void
 scan_dir (GFile *dir,
 	  SourceInfo *source_info,
@@ -4099,9 +4162,15 @@ scan_dir (GFile *dir,
 	GError *error;
 	GFile *subdir;
 	GFileEnumerator *enumerator;
-	char *parse_name;
+	char *primary;
 	char *secondary;
+	char *details;
+	int response;
+	SourceInfo saved_info;
 
+	saved_info = *source_info;
+
+ retry:
 	error = NULL;
 	enumerator = g_file_enumerate_children (dir,
 						G_FILE_ATTRIBUTE_STD_NAME","
@@ -4125,30 +4194,79 @@ scan_dir (GFile *dir,
 
 			g_object_unref (info);
 		}
+		g_file_enumerator_close (enumerator, job->cancellable, NULL);
+		
 		if (error) {
-
-			/* TODO: Handle error */
-			g_print ("error: %s\n", error->message);
+			primary = _("Error while copying.");
+			details = NULL;
+			
+			if (error->domain == G_IO_ERROR &&
+			    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+				secondary = strdup_with_name (_("Files in the folder \"%s\" cannot be copied because you do "
+								"not have permissions to read them."), dir);
+			} else {
+				secondary = strdup_with_name (_("There was an error getting information about the files in the folder \"%s\"."), dir);
+				details = error->message;
+			}
+			
+			response = run_simple_dialog (job,
+						      FALSE,
+						      GTK_MESSAGE_WARNING,
+						      primary,
+						      secondary,
+						      details,
+						      GTK_STOCK_CANCEL, _("_Retry"), _("_Skip files"),
+						      NULL);
+			g_free (secondary);
+			
 			g_error_free (error);
+			
+			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+				job->aborted = TRUE;
+			} else if (response == 1) {
+				*source_info = saved_info;
+				goto retry;
+			} else if (response == 2) {
+				skip_readdir_error (job, dir);
+			} else {
+				g_assert_not_reached ();
+			}
 		}
 		
-		g_file_enumerator_close (enumerator, job->cancellable, NULL);
 	} else {
-		parse_name = g_file_get_parse_name (dir);
-		/* TODO: better string, special case perms */
-		secondary = g_strdup_printf (_("There was an error reading the folder %s"), parse_name);
-		g_free (parse_name);
-		run_simple_dialog (job,
-				   FALSE,
-				   GTK_MESSAGE_WARNING,
-				   _("Unable to read folder"),
-				   secondary,
-				   error->message,
-				   GTK_STOCK_CANCEL,  _("Skip"),_("_Retry"),
-				   NULL);
-		g_free (secondary);
+		primary = _("Error while copying.");
+		details = NULL;
 		
+		if (error->domain == G_IO_ERROR &&
+		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			secondary = strdup_with_name (_("The folder \"%s\" cannot be copied because you do not have "
+						       "permissions to read it."), dir);
+		} else {
+			secondary = strdup_with_name (_("There was an error reading the folder \"%s\"."), dir);
+			details = error->message;
+		}
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      NULL);
+		g_free (secondary);
+
 		g_error_free (error);
+
+		if (response == 0) {
+			skip_file (job, dir);
+		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 2) {
+			goto retry;
+		} else {
+			g_assert_not_reached ();
+		}
 	}
 }	
 
@@ -4161,9 +4279,14 @@ scan_file (GFile *file,
 	GError *error;
 	GQueue *dirs;
 	GFile *dir;
+	char *primary;
+	char *secondary;
+	char *details;
+	int response;
 
 	dirs = g_queue_new ();
 	
+ retry:
 	error = NULL;
 	info = g_file_query_info (file, 
 				  G_FILE_ATTRIBUTE_STD_TYPE","
@@ -4181,9 +4304,39 @@ scan_file (GFile *file,
 		
 		g_object_unref (info);
 	} else {
-		/* TODO: Handle toplevel error */
-		g_print ("error: %s\n", error->message);
+		primary = _("Error while copying.");
+		details = NULL;
+		
+		if (error->domain == G_IO_ERROR &&
+		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			secondary = strdup_with_name (_("The file \"%s\" cannot be copied because you do not have "
+						       "permissions to read it."), file);
+		} else {
+			secondary = strdup_with_name (_("There was an error getting information about \"%s\"."), file);
+			details = error->message;
+		}
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      NULL);
+		g_free (secondary);
+
 		g_error_free (error);
+
+		if (response == 0) {
+			skip_file (job, file);
+		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 2) {
+			goto retry;
+		} else {
+			g_assert_not_reached ();
+		}
 	}
 		
 	while (!job->aborted && 
@@ -4205,9 +4358,10 @@ scan_sources (GList *files,
 	GList *l;
 	GFile *file;
 
-	/* TODO: copy -> opname */
-	nautilus_progress_info_set_status (job->progress,
-					   _("Preparing for copy"));
+	if (source_info->op == OP_KIND_COPY) {
+		nautilus_progress_info_set_status (job->progress,
+						   _("Preparing for copy"));
+	}
 	
 	for (l = files; l != NULL && !job->aborted; l = l->next) {
 		file = l->data;
@@ -4221,71 +4375,156 @@ scan_sources (GList *files,
 	report_count_progress (job, source_info);
 }
 
-static gboolean
+static void
 verify_destination (CommonJob *job,
 		    GFile *dest,
 		    goffset required_size)
 {
 	GFileInfo *info, *fsinfo;
 	GError *error;
-	gboolean res;
 	guint64 free_size;
+	char *primary, *secondary, *details;
+	int response;
+	char *size1, *size2;
+	GFileType file_type;
 
-	res = FALSE;
-	error = NULL;
+ retry:
 	
+	error = NULL;
 	info = g_file_query_info (dest, 
 				  G_FILE_ATTRIBUTE_STD_TYPE,
 				  0,
 				  job->cancellable,
 				  &error);
 
-	if (info) {
-		if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY) {
-			res = TRUE;
-
-			if (required_size > 0) {
-				fsinfo = g_file_query_filesystem_info (dest,
-								       G_FILE_ATTRIBUTE_FS_FREE","
-								       G_FILE_ATTRIBUTE_FS_READONLY,
-								       job->cancellable,
-								       &error);
-				if (fsinfo) {
-					if (g_file_info_has_attribute (fsinfo, G_FILE_ATTRIBUTE_FS_FREE)) {
-						free_size = g_file_info_get_attribute_uint64 (fsinfo,
-											      G_FILE_ATTRIBUTE_FS_FREE);
-
-						if (free_size < required_size) {
-							/* TODO: Handle not-enough-space */
-							g_print ("Error: Target doesn't have enough free space\n");
-							/* cancel, try again */
-							res = FALSE;
-						}
-					}
-					if (g_file_info_get_attribute_boolean (fsinfo,
-									       G_FILE_ATTRIBUTE_FS_READONLY)) {
-							/* TODO: Handle readonly dest */
-							g_print ("Error: Target is readonly\n");
-							/* cancel, try again */
-							res = FALSE;
-					}
-					
-					g_object_unref (fsinfo);
-				}
-			}
-			
+	if (info == NULL) {
+		primary = strdup_with_name (_("Error while copying to \"%s\"."), dest);
+		details = NULL;
+		
+		if (error->domain == G_IO_ERROR &&
+		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			secondary = _("You don't have permissions to access the destination folder.");
 		} else {
-			/* TODO: Handle target-not-directory */
-			g_print ("Error: Target is not directory\n");
+			secondary = _("There was an error getting information about the destination.");
+			details = error->message;
 		}
-		g_object_unref (info);
-	} else {
-		/* TODO: Handle toplevel error */
-		g_print ("error: %s\n", error->message);
+
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_ERROR,
+					      primary,
+					      secondary,
+					      details,
+					      GTK_STOCK_CANCEL, _("_Retry"),
+					      NULL);
+		g_free (primary);
+		
 		g_error_free (error);
+
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1) {
+			goto retry;
+		} else {
+			g_assert_not_reached ();
+		}
+
+		return;
 	}
 
-	return res;
+	file_type = g_file_info_get_file_type (info);
+	g_object_unref (info);
+	
+	if (file_type != G_FILE_TYPE_DIRECTORY) {
+		primary = strdup_with_name (_("Error while copying to \"%s\"."), dest);
+		secondary = _("The destination is not a folder.");
+
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_ERROR,
+					      primary,
+					      secondary,
+					      NULL,
+					      GTK_STOCK_CANCEL,
+					      NULL);
+		g_free (primary);
+		
+		g_error_free (error);
+
+		job->aborted = TRUE;
+		return;
+	}
+	
+	fsinfo = g_file_query_filesystem_info (dest,
+					       G_FILE_ATTRIBUTE_FS_FREE","
+					       G_FILE_ATTRIBUTE_FS_READONLY,
+					       job->cancellable,
+					       NULL);
+	if (fsinfo == NULL) {
+		/* All sorts of things can go wrong getting the fs info (like not supported)
+		 * only check these things if the fs returns them
+		 */
+		return;
+	}
+	
+	if (required_size > 0 &&
+	    g_file_info_has_attribute (fsinfo, G_FILE_ATTRIBUTE_FS_FREE)) {
+		free_size = g_file_info_get_attribute_uint64 (fsinfo,
+							      G_FILE_ATTRIBUTE_FS_FREE);
+		
+		if (free_size < required_size) {
+			primary = strdup_with_name (_("Error while copying to \"%s\"."), dest);
+			secondary = _("There is not enough space on the destination. Try to remove files to make space.");
+			
+			size1 = g_format_file_size_for_display (free_size);
+			size2 = g_format_file_size_for_display (required_size);
+			details = g_strdup_printf (_("There is %s availible, but %s is required."), size1, size2);
+			g_free (size1);
+			g_free (size2);
+			
+			response = run_simple_dialog (job,
+						      FALSE,
+						      GTK_MESSAGE_WARNING,
+						      primary,
+						      secondary,
+						      details,
+						      GTK_STOCK_CANCEL, _("_Retry"),
+						      NULL);
+			g_free (primary);
+			g_free (details);
+			
+			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+				job->aborted = TRUE;
+			} else if (response == 1) {
+				goto retry;
+			} else {
+				g_assert_not_reached ();
+			}
+		}
+	}
+	
+	if (!job->aborted &&
+	    g_file_info_get_attribute_boolean (fsinfo,
+					       G_FILE_ATTRIBUTE_FS_READONLY)) {
+		primary = strdup_with_name (_("Error while copying to \"%s\"."), dest);
+		secondary = _("The destination is read-only.");
+
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_ERROR,
+					      primary,
+					      secondary,
+					      NULL,
+					      GTK_STOCK_CANCEL,
+					      NULL);
+		g_free (primary);
+		
+		g_error_free (error);
+
+		job->aborted = TRUE;
+	}
+	
+	g_object_unref (fsinfo);
 }
 
 typedef struct {
@@ -4342,9 +4581,10 @@ copy_job (GIOJob *io_job,
 		 source_info.num_files,
 		 source_info.num_bytes);
 	
-	if (!verify_destination (&job->common,
-				 job->destination,
-				 source_info.num_bytes)) {
+	verify_destination (&job->common,
+			    job->destination,
+			    source_info.num_bytes);
+	if (common->aborted) {
 		goto aborted;
 	}
 
