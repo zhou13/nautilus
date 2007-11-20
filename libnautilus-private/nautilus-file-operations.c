@@ -4635,11 +4635,10 @@ static void
 copy_file (CommonJob *job,
 	   GFile *src,
 	   GFile *dest_dir,
-	   const char *dest_fs_id,
+	   gboolean same_fs,
 	   SourceInfo *source_info,
 	   SourceInfo *done_info)
 {
-	gboolean same_fs;
 	GFile *dest;
 	GError *error;
 	gboolean overwrite;
@@ -4652,11 +4651,6 @@ copy_file (CommonJob *job,
 	}
 
 	overwrite = FALSE;
-
-	same_fs = FALSE;
-	if (dest_fs_id) {
-		same_fs = has_fs_id (src, dest_fs_id);
-	}
 
 	dest = get_target_file (src, dest_dir, same_fs);
 
@@ -4692,8 +4686,8 @@ copy_file (CommonJob *job,
 				is_merge = TRUE;
 				primary = strdup_with_name (_("A folder named \"%s\" already exists.  Do you want to merge the source folder?"), 
 							    dest);
-				secondary = strdup_with_full_name (_("The folder already exists in \"%s\".  "
-								     "Replacing it will overwrite any files in the folder that conflict with the files being copied."), 
+				secondary = strdup_with_full_name (_("The source folder already exists in \"%s\".  "
+								     "Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."), 
 								   dest_dir);
 				
 			} else {
@@ -4830,15 +4824,21 @@ copy_files (CommonJob *job,
 	    SourceInfo *done_info)
 {
 	GList *l;
-	GFile *file;
+	GFile *src;
+	gboolean same_fs;
 
 	for (l = files;
 	     l != NULL && !job->aborted ;
 	     l = l->next) {
-		file = l->data;
+		src = l->data;
+
+		same_fs = FALSE;
+		if (dest_fs_id) {
+			same_fs = has_fs_id (src, dest_fs_id);
+		}
 		
-		copy_file (job, file, dest_dir,
-			   dest_fs_id,
+		copy_file (job, src, dest_dir,
+			   same_fs,
 			   source_info, done_info);
 	}
 	

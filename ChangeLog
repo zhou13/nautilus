@@ -1,6 +1,12 @@
 2007-11-20  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Pass in same_fs instead of dest_fs_id so we can
+	reuse copy_file recursively and only check once.
+
+2007-11-20  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	More work on file copies
 
 2007-11-20  Alexander Larsson  <alexl@redhat.com>
