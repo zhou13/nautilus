@@ -81,6 +81,9 @@ typedef struct {
 	gboolean aborted;
 	GHashTable *skip_files;
 	GHashTable *skip_readdir_error;
+	gboolean skip_all;
+	gboolean merge_all;
+	gboolean replace_all;
 } CommonJob;
 
 #ifdef GIO_CONVERSION_DONE
@@ -4086,17 +4089,15 @@ skip_readdir_error (CommonJob *common,
 	g_hash_table_insert (common->skip_readdir_error, g_object_ref (file), file);
 }
 
-#if 0
 static gboolean
 should_skip_file (CommonJob *common,
 		  GFile *file)
 {
-	if (common->skip_files == NULL) {
+	if (common->skip_files != NULL) {
 		return g_hash_table_lookup (common->skip_files, file) != NULL;
 	}
 	return FALSE;
 }
-#endif
 
 typedef enum {
 	OP_KIND_COPY = 0
@@ -4143,11 +4144,24 @@ count_file (GFileInfo *info,
 static char *
 strdup_with_name (const char *format, GFile *file)
 {
-	char *parse_name, *res;
+	char *name, *res;
 
-	parse_name = g_file_get_parse_name (file);
-	res = g_strdup_printf (format, parse_name);
-	g_free (parse_name);
+	/* TODO: Pass cancellable? */
+	name = get_display_name (file, NULL);
+	res = g_strdup_printf (format, name);
+	g_free (name);
+	
+	return res;
+}
+
+static char *
+strdup_with_full_name (const char *format, GFile *file)
+{
+	char *name, *res;
+
+	name = g_file_get_parse_name (file);
+	res = g_strdup_printf (format, name);
+	g_free (name);
 	
 	return res;
 }
@@ -4162,9 +4176,7 @@ scan_dir (GFile *dir,
 	GError *error;
 	GFile *subdir;
 	GFileEnumerator *enumerator;
-	char *primary;
-	char *secondary;
-	char *details;
+	char *primary, *secondary, *details;
 	int response;
 	SourceInfo saved_info;
 
@@ -4378,6 +4390,7 @@ scan_sources (GList *files,
 static void
 verify_destination (CommonJob *job,
 		    GFile *dest,
+		    char **dest_fs_id,
 		    goffset required_size)
 {
 	GFileInfo *info, *fsinfo;
@@ -4388,11 +4401,14 @@ verify_destination (CommonJob *job,
 	char *size1, *size2;
 	GFileType file_type;
 
+	*dest_fs_id = NULL;
+
  retry:
 	
 	error = NULL;
 	info = g_file_query_info (dest, 
-				  G_FILE_ATTRIBUTE_STD_TYPE,
+				  G_FILE_ATTRIBUTE_STD_TYPE","
+				  G_FILE_ATTRIBUTE_ID_FS,
 				  0,
 				  job->cancellable,
 				  &error);
@@ -4433,6 +4449,11 @@ verify_destination (CommonJob *job,
 	}
 
 	file_type = g_file_info_get_file_type (info);
+
+	*dest_fs_id =
+		g_strdup (g_file_info_get_attribute_string (info,
+							    G_FILE_ATTRIBUTE_ID_FS));
+	
 	g_object_unref (info);
 	
 	if (file_type != G_FILE_TYPE_DIRECTORY) {
@@ -4527,6 +4548,302 @@ verify_destination (CommonJob *job,
 	g_object_unref (fsinfo);
 }
 
+static GFile *
+get_target_file (GFile *src,
+		 GFile *dest_dir,
+		 gboolean same_fs)
+{
+	char *basename;
+	GFile *dest;
+	GFileInfo *info;
+	const char *copyname;
+
+	dest = NULL;
+	if (!same_fs) {
+		info = g_file_query_info (src,
+					  G_FILE_ATTRIBUTE_STD_COPY_NAME,
+					  0, NULL, NULL);
+		
+		if (info) {
+			copyname = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STD_COPY_NAME);
+
+			if (copyname) {
+				dest = g_file_get_child_for_display_name (dest_dir, copyname, NULL);
+			}
+			
+			g_object_unref (info);
+		}
+	}
+
+	if (dest == NULL) {
+		basename = g_file_get_basename (src);
+		dest = g_file_get_child (dest_dir, basename);
+		g_free (basename);
+	}
+	
+	return dest;
+}
+
+static gboolean
+has_fs_id (GFile *file, const char *fs_id)
+{
+	const char *id;
+	GFileInfo *info;
+	gboolean res;
+
+	res = FALSE;
+	info = g_file_query_info (file,
+				  G_FILE_ATTRIBUTE_ID_FS,
+				  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+				  NULL, NULL);
+
+	if (info) {
+		id = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_ID_FS);
+		
+		if (id && strcmp (id, fs_id) == 0) {
+			res = TRUE;
+		}
+		
+		g_object_unref (info);
+	}
+	
+	return res;
+}
+
+static gboolean
+is_dir (GFile *file)
+{
+	GFileInfo *info;
+	gboolean res;
+
+	res = FALSE;
+	info = g_file_query_info (file,
+				  G_FILE_ATTRIBUTE_STD_TYPE,
+				  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+				  NULL, NULL);
+	if (info) {
+		res = g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY;
+		g_object_unref (info);
+	}
+	
+	return res;
+}
+
+
+
+static void
+copy_file (CommonJob *job,
+	   GFile *src,
+	   GFile *dest_dir,
+	   const char *dest_fs_id,
+	   SourceInfo *source_info,
+	   SourceInfo *done_info)
+{
+	gboolean same_fs;
+	GFile *dest;
+	GError *error;
+	gboolean overwrite;
+	GFileCopyFlags flags;
+	char *primary, *secondary, *details;
+	int response;
+	
+	if (should_skip_file (job, src)) {
+		return;
+	}
+
+	overwrite = FALSE;
+
+	same_fs = FALSE;
+	if (dest_fs_id) {
+		same_fs = has_fs_id (src, dest_fs_id);
+	}
+
+	dest = get_target_file (src, dest_dir, same_fs);
+
+ retry:
+	
+	error = NULL;
+	flags = G_FILE_COPY_NOFOLLOW_SYMLINKS;
+	if (overwrite) {
+		flags |= G_FILE_COPY_OVERWRITE;
+	}
+	if (g_file_copy (src, dest,
+			 flags,
+			 job->cancellable,
+			 NULL /* TODO: GFileProgressCallback       progress_callback */,
+			 NULL /* gpointer                    progress_callback_data */,
+			 &error)) {
+		done_info->num_files ++;
+		
+		/* TODO: Update done_info->num_bytes */
+		g_object_unref (dest);
+		return;
+	}
+
+	/* Conflict */
+	if (!overwrite &&
+	    error->domain == G_IO_ERROR &&
+	    error->code == G_IO_ERROR_EXISTS) {
+		gboolean is_merge;
+
+		is_merge = FALSE;
+		if (is_dir (dest)) {
+			if (is_dir (src)) {
+				is_merge = TRUE;
+				primary = strdup_with_name (_("A folder named \"%s\" already exists.  Do you want to merge the source folder?"), 
+							    dest);
+				secondary = strdup_with_full_name (_("The folder already exists in \"%s\".  "
+								     "Replacing it will overwrite any files in the folder that conflict with the files being copied."), 
+								   dest_dir);
+				
+			} else {
+				primary = strdup_with_name (_("A folder named \"%s\" already exists.  Do you want to replace it?"), 
+							    dest);
+				secondary = strdup_with_full_name (_("The folder already exists in \"%s\".  "
+								     "Replacing it will remove all files in the folder."), 
+								   dest_dir);
+			}
+		} else {
+			primary = strdup_with_name (_("A file named \"%s\" already exists.  Do you want to replace it?"), 
+						    dest);
+			secondary = strdup_with_full_name (_("The file already exists in \"%s\".  "
+							     "Replacing it will overwrite its content."), 
+							   dest_dir);
+		}
+
+		if ((is_merge && job->merge_all) ||
+		    (!is_merge && job->replace_all)) {
+			g_free (primary);
+			g_free (secondary);
+			g_error_free (error);
+			
+			overwrite = TRUE;
+			goto retry;
+		}
+
+		if (job->skip_all) {
+			g_free (primary);
+			g_free (secondary);
+			g_error_free (error);
+			
+			goto out;
+		}
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      NULL,
+					      GTK_STOCK_CANCEL,
+					      _("S_kip All"),
+					      is_merge?_("Merge _All"):_("Replace _All"),
+					      _("_Skip"),
+					      is_merge?_("_Merge"):_("_Replace"),
+					      NULL);
+		g_free (primary);
+		g_free (secondary);
+
+		g_error_free (error);
+		
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1 || response == 3) { /* skip all / skip */
+			if (response == 1) {
+				job->skip_all = TRUE;
+			}
+		} else if (response == 2 || response == 4) { /* merge/replace all  / merge/replace*/
+			if (response == 2) {
+				if (is_merge) {
+					job->merge_all = TRUE;
+				} else {
+					job->replace_all = TRUE;
+				}
+			}
+			overwrite = TRUE;
+			goto retry;
+		} else {
+			g_assert_not_reached ();
+		}
+	}
+#if 0 /* TODO */
+	else if (overwrite &&
+		 error->domain == G_IO_ERROR &&
+		 error->code == G_IO_ERROR_IS_DIRECTORY) {
+		/* TODO: Recursively delete dest */
+		
+	}
+	
+	/* Needs to recurse */
+	else if (error->domain == G_IO_ERROR &&
+		 (error->code == G_IO_ERROR_WOULD_RECURSE ||
+		  error->code == G_IO_ERROR_WOULD_MERGE)) {
+		/* TODO: Handle recursive copy */
+		copy_directory (job, src, dest, same_fs,
+				source_info, done_info);
+	}
+#endif
+	
+	/* Other error */
+	else {
+		if (job->skip_all) {
+			goto out;
+		}
+		primary = strdup_with_name (_("Error while copying \"%s\"."), src);
+		secondary = strdup_with_full_name (_("There was an error getting copying the file into %s."), dest_dir);
+		details = error->message;
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+					      NULL);
+		g_free (primary);
+		g_free (secondary);
+
+		g_error_free (error);
+		
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1) { /* skip all */
+			job->skip_all = TRUE;
+		} else if (response == 2) { /* skip */
+			/* do nothing */
+		} else {
+			g_assert_not_reached ();
+		}
+	}
+ out:
+
+	g_object_unref (dest);
+}
+
+static void
+copy_files (CommonJob *job,
+	    GList *files,
+	    GFile *dest_dir,
+	    const char *dest_fs_id,
+	    SourceInfo *source_info,
+	    SourceInfo *done_info)
+{
+	GList *l;
+	GFile *file;
+
+	for (l = files;
+	     l != NULL && !job->aborted ;
+	     l = l->next) {
+		file = l->data;
+		
+		copy_file (job, file, dest_dir,
+			   dest_fs_id,
+			   source_info, done_info);
+	}
+	
+}
+
 typedef struct {
 	CommonJob common;
 	GList *files;
@@ -4560,12 +4877,16 @@ copy_job (GIOJob *io_job,
 	CopyJob *job;
 	CommonJob *common;
 	SourceInfo source_info;
+	SourceInfo done_info;
+	char *dest_fs_id;
 
 	job = user_data;
 	common = &job->common;
 	common->io_job = io_job;
 
 	g_print ("copy job start\n");
+
+	dest_fs_id = NULL;
 	
 	nautilus_progress_info_start (job->common.progress);
 
@@ -4583,16 +4904,24 @@ copy_job (GIOJob *io_job,
 	
 	verify_destination (&job->common,
 			    job->destination,
+			    &dest_fs_id,
 			    source_info.num_bytes);
 	if (common->aborted) {
 		goto aborted;
 	}
 
+	memset (&source_info, 0, sizeof (source_info));
+	copy_files (common, job->files, job->destination,
+		    dest_fs_id,
+		    &source_info, &done_info);
+
 	/* TODO: Copy files */
 	
  aborted:
 	g_print ("copy job done\n");
-
+	
+	g_free (dest_fs_id);
+	
 	g_io_job_send_to_mainloop (io_job,
 				   copy_job_done,
 				   job,
