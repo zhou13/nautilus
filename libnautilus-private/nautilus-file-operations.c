@@ -4079,14 +4079,14 @@ skip_file (CommonJob *common,
 
 static void
 skip_readdir_error (CommonJob *common,
-		    GFile *file)
+		    GFile *dir)
 {
 	if (common->skip_readdir_error == NULL) {
 		common->skip_readdir_error =
 			g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
 	}
 
-	g_hash_table_insert (common->skip_readdir_error, g_object_ref (file), file);
+	g_hash_table_insert (common->skip_readdir_error, g_object_ref (dir), dir);
 }
 
 static gboolean
@@ -4095,6 +4095,16 @@ should_skip_file (CommonJob *common,
 {
 	if (common->skip_files != NULL) {
 		return g_hash_table_lookup (common->skip_files, file) != NULL;
+	}
+	return FALSE;
+}
+
+static gboolean
+should_skip_readdir_error (CommonJob *common,
+			   GFile *dir)
+{
+	if (common->skip_readdir_error != NULL) {
+		return g_hash_table_lookup (common->skip_readdir_error, dir) != NULL;
 	}
 	return FALSE;
 }
@@ -4629,7 +4639,167 @@ is_dir (GFile *file)
 	return res;
 }
 
+static void copy_file (CommonJob *job,
+		       GFile *src,
+		       GFile *dest_dir,
+		       gboolean same_fs,
+		       SourceInfo *source_info,
+		       SourceInfo *done_info);
 
+static void
+copy_directory (CommonJob *job,
+		GFile *src,
+		GFile *dest,
+		gboolean same_fs,
+		SourceInfo *source_info,
+		SourceInfo *done_info)
+{
+	GFileInfo *info;
+	GError *error;
+	GFile *src_file;
+	GFileEnumerator *enumerator;
+	char *primary, *secondary, *details;
+	int response;
+	gboolean skip_error;
+
+ retry_mkdir:
+
+	/* First create the directory, then copy stuff to it before
+	   copying the attributes, because we need to be sure we can write to it */
+	
+	error = NULL;
+	if (!g_file_make_directory (dest, job->cancellable, &error)) {
+		primary = _("Error while copying.");
+		details = NULL;
+		
+		if (error->domain == G_IO_ERROR &&
+		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			secondary = strdup_with_name (_("The folder \"%s\" cannot be copied because you do not have "
+						       "permissions to create it in the destination."), src);
+		} else {
+			secondary = strdup_with_name (_("There was an error creating the folder \"%s\"."), src);
+			details = error->message;
+		}
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      NULL);
+		g_free (secondary);
+
+		g_error_free (error);
+
+		if (response == 0) {
+			/* Skip: Do Nothing  */
+		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 2) {
+			goto retry_mkdir;
+		} else {
+			g_assert_not_reached ();
+		}
+	}
+	
+	skip_error = should_skip_readdir_error (job, src);
+ retry:
+	error = NULL;
+	enumerator = g_file_enumerate_children (src,
+						G_FILE_ATTRIBUTE_STD_NAME,
+						G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+						job->cancellable,
+						&error);
+	if (enumerator) {
+		error = NULL;
+		
+		while (!job->aborted &&
+		       (info = g_file_enumerator_next_file (enumerator, job->cancellable, skip_error?NULL:&error)) != NULL) {
+			src_file = g_file_get_child (src,
+						     g_file_info_get_name (info));
+			copy_file (job, src_file, dest, same_fs, source_info, done_info);
+			g_object_unref (info);
+		}
+		g_file_enumerator_close (enumerator, job->cancellable, NULL);
+		
+		if (error) {
+			primary = _("Error while copying.");
+			details = NULL;
+			
+			if (error->domain == G_IO_ERROR &&
+			    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+				secondary = strdup_with_name (_("Files in the folder \"%s\" cannot be copied because you do "
+								"not have permissions to read them."), src);
+			} else {
+				secondary = strdup_with_name (_("There was an error getting information about the files in the folder \"%s\"."), src);
+				details = error->message;
+			}
+			
+			response = run_simple_dialog (job,
+						      FALSE,
+						      GTK_MESSAGE_WARNING,
+						      primary,
+						      secondary,
+						      details,
+						      GTK_STOCK_CANCEL, _("_Skip files"),
+						      NULL);
+			g_free (secondary);
+			
+			g_error_free (error);
+			
+			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+				job->aborted = TRUE;
+			} else if (response == 1) {
+				/* Skip: Do Nothing */
+			} else {
+				g_assert_not_reached ();
+			}
+		}
+
+		done_info->num_files ++;
+	} else {
+		primary = _("Error while copying.");
+		details = NULL;
+		
+		if (error->domain == G_IO_ERROR &&
+		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			secondary = strdup_with_name (_("The folder \"%s\" cannot be copied because you do not have "
+						       "permissions to read it."), src);
+		} else {
+			secondary = strdup_with_name (_("There was an error reading the folder \"%s\"."), src);
+			details = error->message;
+		}
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      NULL);
+		g_free (secondary);
+
+		g_error_free (error);
+
+		if (response == 0) {
+			/* Skip: Do Nothing  */
+		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 2) {
+			goto retry;
+		} else {
+			g_assert_not_reached ();
+		}
+	}
+
+	/* Ignore errors here. Failure to copy metadata is not a hard error */
+	g_file_copy_attributes (src, dest,
+				G_FILE_COPY_NOFOLLOW_SYMLINKS,
+				job->cancellable, NULL);
+}
 
 static void
 copy_file (CommonJob *job,
@@ -4764,19 +4934,29 @@ copy_file (CommonJob *job,
 	else if (overwrite &&
 		 error->domain == G_IO_ERROR &&
 		 error->code == G_IO_ERROR_IS_DIRECTORY) {
-		/* TODO: Recursively delete dest */
+		/* TODO: Recursively delete dest, then retry */
 		
 	}
+#endif
 	
 	/* Needs to recurse */
 	else if (error->domain == G_IO_ERROR &&
 		 (error->code == G_IO_ERROR_WOULD_RECURSE ||
 		  error->code == G_IO_ERROR_WOULD_MERGE)) {
 		/* TODO: Handle recursive copy */
+
+		if (overwrite && error->code == G_IO_ERROR_WOULD_RECURSE) {
+			error = NULL;
+			/* Copying a dir onto file, first remove the file */
+			if (!g_file_delete (dest, job->cancellable, &error)) {
+				/* TODO: Handle delete error */
+				
+			}
+		}
+		
 		copy_directory (job, src, dest, same_fs,
 				source_info, done_info);
 	}
-#endif
 	
 	/* Other error */
 	else {

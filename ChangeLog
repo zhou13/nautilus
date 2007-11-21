@@ -1,3 +1,8 @@
+2007-11-21  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
+	Handle recursive copies
+
 2007-11-20  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
