@@ -4647,23 +4647,15 @@ static void copy_file (CommonJob *job,
 		       SourceInfo *done_info);
 
 static void
-copy_directory (CommonJob *job,
-		GFile *src,
-		GFile *dest,
-		gboolean same_fs,
-		SourceInfo *source_info,
-		SourceInfo *done_info)
+create_dest_dir (CommonJob *job,
+		 GFile *src,
+		 GFile *dest)
 {
-	GFileInfo *info;
 	GError *error;
-	GFile *src_file;
-	GFileEnumerator *enumerator;
 	char *primary, *secondary, *details;
 	int response;
-	gboolean skip_error;
 
- retry_mkdir:
-
+ retry:
 	/* First create the directory, then copy stuff to it before
 	   copying the attributes, because we need to be sure we can write to it */
 	
@@ -4698,12 +4690,37 @@ copy_directory (CommonJob *job,
 		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
 		} else if (response == 2) {
-			goto retry_mkdir;
+			goto retry;
 		} else {
 			g_assert_not_reached ();
 		}
 	}
-	
+}
+
+static void
+copy_directory (CommonJob *job,
+		GFile *src,
+		GFile *dest,
+		gboolean same_fs,
+		gboolean create_dest,
+		SourceInfo *source_info,
+		SourceInfo *done_info)
+{
+	GFileInfo *info;
+	GError *error;
+	GFile *src_file;
+	GFileEnumerator *enumerator;
+	char *primary, *secondary, *details;
+	int response;
+	gboolean skip_error;
+
+	if (create_dest) {
+		create_dest_dir (job, src, dest);
+		if (job->aborted) {
+			return;
+		}
+	}
+		
 	skip_error = should_skip_readdir_error (job, src);
  retry:
 	error = NULL;
@@ -4795,10 +4812,12 @@ copy_directory (CommonJob *job,
 		}
 	}
 
-	/* Ignore errors here. Failure to copy metadata is not a hard error */
-	g_file_copy_attributes (src, dest,
-				G_FILE_COPY_NOFOLLOW_SYMLINKS,
-				job->cancellable, NULL);
+	if (create_dest) {
+		/* Ignore errors here. Failure to copy metadata is not a hard error */
+		g_file_copy_attributes (src, dest,
+					G_FILE_COPY_NOFOLLOW_SYMLINKS,
+					job->cancellable, NULL);
+	}
 }
 
 static void
@@ -4943,7 +4962,6 @@ copy_file (CommonJob *job,
 	else if (error->domain == G_IO_ERROR &&
 		 (error->code == G_IO_ERROR_WOULD_RECURSE ||
 		  error->code == G_IO_ERROR_WOULD_MERGE)) {
-		/* TODO: Handle recursive copy */
 
 		if (overwrite && error->code == G_IO_ERROR_WOULD_RECURSE) {
 			error = NULL;
@@ -4955,6 +4973,7 @@ copy_file (CommonJob *job,
 		}
 		
 		copy_directory (job, src, dest, same_fs,
+				error->code != G_IO_ERROR_WOULD_MERGE,
 				source_info, done_info);
 	}
 	
@@ -5095,8 +5114,6 @@ copy_job (GIOJob *io_job,
 		    dest_fs_id,
 		    &source_info, &done_info);
 
-	/* TODO: Copy files */
-	
  aborted:
 	g_print ("copy job done\n");
 	
