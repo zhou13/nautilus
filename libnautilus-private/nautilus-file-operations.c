@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <locale.h>
+#include <math.h>
 #include "nautilus-file-operations.h"
 
 #include "nautilus-debug-log.h"
@@ -74,17 +75,21 @@
 static gboolean confirm_trash_auto_value;
 
 typedef struct {
-	GIOJob *io_job;
+	GIOJob *io_job;	
+	GTimer *time;
 	GtkWidget *parent_window;
 	NautilusProgressInfo *progress;
 	GCancellable *cancellable;
 	gboolean aborted;
 	GHashTable *skip_files;
 	GHashTable *skip_readdir_error;
-	gboolean skip_all;
+	gboolean skip_all_error;
+	gboolean skip_all_conflict;
 	gboolean merge_all;
 	gboolean replace_all;
 } CommonJob;
+
+#define SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE 15
 
 #ifdef GIO_CONVERSION_DONE
 
@@ -3117,6 +3122,8 @@ run_simple_dialog (CommonJob *job,
 	const char *button_title;
 	GPtrArray *ptr_array;
 
+	g_timer_stop (job->time);
+	
 	data = g_new0 (RunSimpleDialogData, 1);
 	data->parent_window = GTK_WINDOW (job->parent_window);
 	data->ignore_close_box = ignore_close_box;
@@ -3144,6 +3151,9 @@ run_simple_dialog (CommonJob *job,
 
 	g_free (data->button_titles);
 	g_free (data);
+
+	g_timer_continue (job->time);
+
 	return res;
 }
 
@@ -4042,6 +4052,7 @@ init_common (gsize job_size,
 	common->parent_window = g_object_ref (parent_window);
 	common->progress = nautilus_progress_info_new ();
 	common->cancellable = nautilus_progress_info_get_cancellable (common->progress);
+	common->time = g_timer_new ();
 
 	return common;
 }
@@ -4050,6 +4061,8 @@ static void
 finalize_common (CommonJob *common)
 {
 	nautilus_progress_info_finish (common->progress);
+
+	g_timer_destroy (common->time);
 	
 	if (common->parent_window) {
 		 g_object_unref (common->parent_window);
@@ -4120,6 +4133,14 @@ typedef struct {
 	OpKind op;
 } SourceInfo;
 
+typedef struct {
+	int num_files;
+	goffset num_bytes;
+	OpKind op;
+	GFile *dest;
+	guint64 last_report_time;
+} TransferInfo;
+
 static void
 report_count_progress (CommonJob *job,
 		       SourceInfo *source_info)
@@ -4135,7 +4156,7 @@ report_count_progress (CommonJob *job,
 	}
 	g_free (size);
 }
-		       
+
 static void
 count_file (GFileInfo *info,
 	    CommonJob *job,
@@ -4255,6 +4276,8 @@ scan_dir (GFile *dir,
 			}
 		}
 		
+	} else if (job->skip_all_error) {
+		skip_file (job, dir);
 	} else {
 		primary = _("Error while copying.");
 		details = NULL;
@@ -4274,17 +4297,20 @@ scan_dir (GFile *dir,
 					      primary,
 					      secondary,
 					      details,
-					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      GTK_STOCK_CANCEL, _("S_kip All"), _("Skip"), _("_Retry"),
 					      NULL);
 		g_free (secondary);
 
 		g_error_free (error);
 
-		if (response == 0) {
-			skip_file (job, dir);
-		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
-		} else if (response == 2) {
+		} else if (response == 1 || response == 2) {
+			if (response == 1) {
+				job->skip_all_error = TRUE;
+			}
+			skip_file (job, dir);
+		} else if (response == 3) {
 			goto retry;
 		} else {
 			g_assert_not_reached ();
@@ -4325,6 +4351,8 @@ scan_file (GFile *file,
 		}
 		
 		g_object_unref (info);
+	} else if (job->skip_all_error) {
+		skip_file (job, file);
 	} else {
 		primary = _("Error while copying.");
 		details = NULL;
@@ -4344,17 +4372,20 @@ scan_file (GFile *file,
 					      primary,
 					      secondary,
 					      details,
-					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      GTK_STOCK_CANCEL, _("S_kip All"), _("Skip"), _("_Retry"),
 					      NULL);
 		g_free (secondary);
-
+		
 		g_error_free (error);
 
-		if (response == 0) {
-			skip_file (job, file);
-		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
-		} else if (response == 2) {
+		} else if (response == 1 || response == 2) {
+			if (response == 1) {
+				job->skip_all_error = TRUE;
+			}
+			skip_file (job, file);
+		} else if (response == 3) {
 			goto retry;
 		} else {
 			g_assert_not_reached ();
@@ -4558,6 +4589,110 @@ verify_destination (CommonJob *job,
 	g_object_unref (fsinfo);
 }
 
+static char *
+format_time (double seconds)
+{
+	int minutes;
+	int hours;
+	char *res;
+
+	if (seconds < 0) {
+		/* Just to make sure... */
+		seconds = 0;
+	}
+	
+	if (seconds < 60) {
+		return g_strdup_printf (ngettext ("%d second","%d seconds", (int) seconds), (int) seconds);
+	}
+
+	if (seconds < 60*60) {
+		minutes = (int) floor (seconds / 60 + 0.5);
+		return g_strdup_printf (ngettext (_("%d minute"), _("%d minutes"), minutes), minutes);
+	}
+
+	hours = floor (seconds / (60*60));
+	
+	if (seconds < 60*60*4) {
+		char *h, *m;
+
+		minutes = (int) floor ((seconds - hours * 60 * 60) / 60 + 0.5);
+		
+		h = g_strdup_printf (ngettext (_("%d hour"), _("%d hours"), hours), hours);
+		m = g_strdup_printf (ngettext (_("%d minute"), _("%d minutes"), minutes), minutes);
+		res = g_strconcat (h, ", ", m, NULL);
+		g_free (h);
+		g_free (m);
+		return res;
+	}
+	
+	return g_strdup_printf (_("about %d hours"), hours);
+}
+
+#define NSEC_PER_SEC 1000000000
+
+static void
+report_copy_progress (CommonJob *job,
+		      SourceInfo *source_info,
+		      TransferInfo *transfer_info)
+{
+	char *dest_basename;
+	int files_left;
+	goffset total_size;
+	char *size, *total_size_str, *rate_str, *time_str;
+	double elapsed, transfer_rate, remaining_time;
+	guint64 now;
+
+	now = g_thread_gettime ();
+	
+	if (transfer_info->last_report_time != 0 &&
+	    ABS (transfer_info->last_report_time - now) < 1 * NSEC_PER_SEC) {
+		return;
+	}
+	transfer_info->last_report_time = now;
+	
+	dest_basename = get_display_name (transfer_info->dest, job->cancellable);
+
+	files_left = source_info->num_files - transfer_info->num_files;
+
+	/* Races and whatnot could cause this to be negative... */
+	if (files_left < 0) {
+		files_left = 1;
+	}
+			   
+	nautilus_progress_info_set_status_printf (job->progress,
+						  _("Copying %d files to %s"),
+						  files_left, dest_basename);
+	g_free (dest_basename);
+
+	total_size = MAX (source_info->num_bytes, transfer_info->num_bytes);
+	
+	size = g_format_file_size_for_display (transfer_info->num_bytes);
+	total_size_str = g_format_file_size_for_display (total_size);
+
+	elapsed = g_timer_elapsed (job->time, NULL);
+	if (elapsed < SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE) {
+		nautilus_progress_info_set_details_printf (job->progress,
+							   _("Copied %s of %s."),
+							   size, total_size_str);
+	} else {
+		transfer_rate = transfer_info->num_bytes / elapsed;
+		rate_str = g_format_file_size_for_display ((goffset) floor (transfer_rate + 0.5));
+		remaining_time = (total_size - transfer_info->num_bytes) / transfer_rate;
+
+		time_str = format_time (remaining_time);
+		
+		nautilus_progress_info_set_details_printf (job->progress,
+							   _("Copied %s of %s, at %s/sec. Estimated time left: %s."),
+							   size, total_size_str, rate_str,
+							   time_str);
+		g_free (rate_str);
+		g_free (time_str);
+	}
+	
+	g_free (size);
+	g_free (total_size_str);
+}
+
 static GFile *
 get_target_file (GFile *src,
 		 GFile *dest_dir,
@@ -4644,7 +4779,7 @@ static void copy_file (CommonJob *job,
 		       GFile *dest_dir,
 		       gboolean same_fs,
 		       SourceInfo *source_info,
-		       SourceInfo *done_info);
+		       TransferInfo *transfer_info);
 
 static void
 create_dest_dir (CommonJob *job,
@@ -4679,16 +4814,16 @@ create_dest_dir (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      GTK_STOCK_CANCEL, ("Skip"), _("_Retry"),
 					      NULL);
 		g_free (secondary);
 
 		g_error_free (error);
 
-		if (response == 0) {
-			/* Skip: Do Nothing  */
-		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
+		} else if (response == 1) {
+			/* Skip: Do Nothing  */
 		} else if (response == 2) {
 			goto retry;
 		} else {
@@ -4704,7 +4839,7 @@ copy_directory (CommonJob *job,
 		gboolean same_fs,
 		gboolean create_dest,
 		SourceInfo *source_info,
-		SourceInfo *done_info)
+		TransferInfo *transfer_info)
 {
 	GFileInfo *info;
 	GError *error;
@@ -4736,7 +4871,7 @@ copy_directory (CommonJob *job,
 		       (info = g_file_enumerator_next_file (enumerator, job->cancellable, skip_error?NULL:&error)) != NULL) {
 			src_file = g_file_get_child (src,
 						     g_file_info_get_name (info));
-			copy_file (job, src_file, dest, same_fs, source_info, done_info);
+			copy_file (job, src_file, dest, same_fs, source_info, transfer_info);
 			g_object_unref (info);
 		}
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
@@ -4775,7 +4910,9 @@ copy_directory (CommonJob *job,
 			}
 		}
 
-		done_info->num_files ++;
+		/* Count the copied directory as a file */
+		transfer_info->num_files ++;
+		report_copy_progress (job, source_info, transfer_info);
 	} else {
 		primary = _("Error while copying.");
 		details = NULL;
@@ -4820,13 +4957,42 @@ copy_directory (CommonJob *job,
 	}
 }
 
+
+typedef struct {
+	CommonJob *job;
+	goffset last_size;
+	SourceInfo *source_info;
+	TransferInfo *transfer_info;
+} ProgressData;
+
+static void
+copy_file_progress_callback (goffset current_num_bytes,
+			     goffset total_num_bytes,
+			     gpointer user_data)
+{
+	ProgressData *pdata;
+	goffset new_size;
+
+	pdata = user_data;
+	
+	new_size = current_num_bytes - pdata->last_size;
+
+	if (new_size > 0) {
+		pdata->transfer_info->num_bytes += new_size;
+		pdata->last_size = current_num_bytes;
+		report_copy_progress (pdata->job,
+				      pdata->source_info,
+				      pdata->transfer_info);
+	}
+}
+
 static void
 copy_file (CommonJob *job,
 	   GFile *src,
 	   GFile *dest_dir,
 	   gboolean same_fs,
 	   SourceInfo *source_info,
-	   SourceInfo *done_info)
+	   TransferInfo *transfer_info)
 {
 	GFile *dest;
 	GError *error;
@@ -4834,6 +5000,7 @@ copy_file (CommonJob *job,
 	GFileCopyFlags flags;
 	char *primary, *secondary, *details;
 	int response;
+	ProgressData pdata;
 	
 	if (should_skip_file (job, src)) {
 		return;
@@ -4850,15 +5017,19 @@ copy_file (CommonJob *job,
 	if (overwrite) {
 		flags |= G_FILE_COPY_OVERWRITE;
 	}
+	pdata.job = job;
+	pdata.last_size = 0;
+	pdata.source_info = source_info;
+	pdata.transfer_info = transfer_info;
 	if (g_file_copy (src, dest,
 			 flags,
 			 job->cancellable,
-			 NULL /* TODO: GFileProgressCallback       progress_callback */,
-			 NULL /* gpointer                    progress_callback_data */,
+			 copy_file_progress_callback,
+			 &pdata,
 			 &error)) {
-		done_info->num_files ++;
+		transfer_info->num_files ++;
+		report_copy_progress (job, source_info, transfer_info);
 		
-		/* TODO: Update done_info->num_bytes */
 		g_object_unref (dest);
 		return;
 	}
@@ -4904,7 +5075,7 @@ copy_file (CommonJob *job,
 			goto retry;
 		}
 
-		if (job->skip_all) {
+		if (job->skip_all_conflict) {
 			g_free (primary);
 			g_free (secondary);
 			g_error_free (error);
@@ -4933,7 +5104,7 @@ copy_file (CommonJob *job,
 			job->aborted = TRUE;
 		} else if (response == 1 || response == 3) { /* skip all / skip */
 			if (response == 1) {
-				job->skip_all = TRUE;
+				job->skip_all_conflict = TRUE;
 			}
 		} else if (response == 2 || response == 4) { /* merge/replace all  / merge/replace*/
 			if (response == 2) {
@@ -4974,12 +5145,12 @@ copy_file (CommonJob *job,
 		
 		copy_directory (job, src, dest, same_fs,
 				error->code != G_IO_ERROR_WOULD_MERGE,
-				source_info, done_info);
+				source_info, transfer_info);
 	}
 	
 	/* Other error */
 	else {
-		if (job->skip_all) {
+		if (job->skip_all_error) {
 			goto out;
 		}
 		primary = strdup_with_name (_("Error while copying \"%s\"."), src);
@@ -5002,7 +5173,7 @@ copy_file (CommonJob *job,
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
 		} else if (response == 1) { /* skip all */
-			job->skip_all = TRUE;
+			job->skip_all_error = TRUE;
 		} else if (response == 2) { /* skip */
 			/* do nothing */
 		} else {
@@ -5020,12 +5191,14 @@ copy_files (CommonJob *job,
 	    GFile *dest_dir,
 	    const char *dest_fs_id,
 	    SourceInfo *source_info,
-	    SourceInfo *done_info)
+	    TransferInfo *transfer_info)
 {
 	GList *l;
 	GFile *src;
 	gboolean same_fs;
 
+	report_copy_progress (job, source_info, transfer_info);
+	
 	for (l = files;
 	     l != NULL && !job->aborted ;
 	     l = l->next) {
@@ -5038,7 +5211,7 @@ copy_files (CommonJob *job,
 		
 		copy_file (job, src, dest_dir,
 			   same_fs,
-			   source_info, done_info);
+			   source_info, transfer_info);
 	}
 	
 }
@@ -5067,7 +5240,6 @@ copy_job_done (gpointer user_data)
 	finalize_common ((CommonJob *)job);
 }
 
-
 static void
 copy_job (GIOJob *io_job,
 	  GCancellable *cancellable,
@@ -5076,7 +5248,7 @@ copy_job (GIOJob *io_job,
 	CopyJob *job;
 	CommonJob *common;
 	SourceInfo source_info;
-	SourceInfo done_info;
+	TransferInfo transfer_info;
 	char *dest_fs_id;
 
 	job = user_data;
@@ -5088,8 +5260,8 @@ copy_job (GIOJob *io_job,
 	dest_fs_id = NULL;
 	
 	nautilus_progress_info_start (job->common.progress);
-
-	memset (&source_info, 0, sizeof (source_info));
+	
+	memset (&source_info, 0, sizeof (SourceInfo));
 	scan_sources (job->files,
 		      &source_info,
 		      common);
@@ -5109,11 +5281,14 @@ copy_job (GIOJob *io_job,
 		goto aborted;
 	}
 
-	memset (&source_info, 0, sizeof (source_info));
+	g_timer_start (job->common.time);
+	
+	memset (&transfer_info, 0, sizeof (transfer_info));
+	transfer_info.dest = job->destination;
 	copy_files (common, job->files, job->destination,
 		    dest_fs_id,
-		    &source_info, &done_info);
-
+		    &source_info, &transfer_info);
+	
  aborted:
 	g_print ("copy job done\n");
 	

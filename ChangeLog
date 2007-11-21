@@ -1,6 +1,15 @@
 2007-11-21  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Add progress updates to copy.
+	Make some error dialogs more consistent (add skip all, reorder)
+	
+        * libnautilus-private/nautilus-progress-info.[ch]:
+	Add nautilus_progress_info_set_status_printf
+
+2007-11-21  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Don't create dest dir on merges
 	
 2007-11-21  Alexander Larsson  <alexl@redhat.com>

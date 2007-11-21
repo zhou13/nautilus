@@ -433,6 +433,34 @@ nautilus_progress_info_set_status (NautilusProgressInfo *info,
 }
 
 void
+nautilus_progress_info_set_status_printf (NautilusProgressInfo *info,
+					  const char           *format,
+					  ...)
+{
+	gchar *status;
+	va_list args;
+	
+	va_start (args, format);
+	status = g_strdup_vprintf (format, args);
+	va_end (args);
+
+	G_LOCK (progress_info);
+	
+	if (eel_strcmp (info->status, status) != 0) {
+		g_free (info->status);
+		info->status = status;
+		
+		info->changed_at_idle = TRUE;
+		queue_idle (info, FALSE);
+	} else {
+		g_free (status);
+	}
+  
+	G_UNLOCK (progress_info);
+}
+
+
+void
 nautilus_progress_info_set_details (NautilusProgressInfo *info,
 				    const char           *details)
 {

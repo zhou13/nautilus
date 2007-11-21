@@ -65,6 +65,9 @@ void          nautilus_progress_info_start           (NautilusProgressInfo *info
 void          nautilus_progress_info_finish          (NautilusProgressInfo *info);
 void          nautilus_progress_info_set_status      (NautilusProgressInfo *info,
 						      const char           *status);
+void          nautilus_progress_info_set_status_printf (NautilusProgressInfo *info,
+							const char           *format,
+							...);
 void          nautilus_progress_info_set_details     (NautilusProgressInfo *info,
 						      const char           *details);
 void          nautilus_progress_info_set_details_printf (NautilusProgressInfo *info,
