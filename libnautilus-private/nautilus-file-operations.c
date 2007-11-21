@@ -5135,9 +5135,39 @@ copy_file (CommonJob *job,
 
 		if (overwrite && error->code == G_IO_ERROR_WOULD_RECURSE) {
 			error = NULL;
+			
 			/* Copying a dir onto file, first remove the file */
 			if (!g_file_delete (dest, job->cancellable, &error)) {
-				/* TODO: Handle delete error */
+				if (job->skip_all_error) {
+					goto out;
+				}
+				primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
+				secondary = strdup_with_full_name (_("Couldn't remove the already existing file with the same name in %s."), dest_dir);
+				details = error->message;
+				
+				response = run_simple_dialog (job,
+							      FALSE,
+							      GTK_MESSAGE_WARNING,
+							      primary,
+							      secondary,
+							      details,
+							      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+							      NULL);
+				g_free (primary);
+				g_free (secondary);
+				
+				g_error_free (error);
+				
+				if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+					job->aborted = TRUE;
+				} else if (response == 1) { /* skip all */
+					job->skip_all_error = TRUE;
+				} else if (response == 2) { /* skip */
+					/* do nothing */
+				} else {
+					g_assert_not_reached ();
+				}
+				goto out;
 				
 			}
 		}
