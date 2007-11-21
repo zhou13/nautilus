@@ -4956,6 +4956,127 @@ copy_directory (CommonJob *job,
 	}
 }
 
+static gboolean
+remove_target_recursively (CommonJob *job,
+			   GFile *src,
+			   GFile *toplevel_dest,
+			   GFile *file)
+{
+	GFileEnumerator *enumerator;
+	GError *error;
+	GFile *child;
+	gboolean stop;
+	char *primary, *secondary, *details;
+	int response;
+	GFileInfo *info;
+
+	stop = FALSE;
+	
+	error = NULL;
+	enumerator = g_file_enumerate_children (file,
+						G_FILE_ATTRIBUTE_STD_NAME,
+						G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+						job->cancellable,
+						&error);
+	if (enumerator) {
+		error = NULL;
+		
+		while (!job->aborted &&
+		       (info = g_file_enumerator_next_file (enumerator, job->cancellable, &error)) != NULL) {
+			child = g_file_get_child (file,
+						  g_file_info_get_name (info));
+			if (!remove_target_recursively (job, src, toplevel_dest, child)) {
+				stop = TRUE;
+				break;
+			}
+			g_object_unref (info);
+		}
+		g_file_enumerator_close (enumerator, job->cancellable, NULL);
+		
+	} else if (error->domain == G_IO_ERROR &&
+		   error->code == G_IO_ERROR_NOT_DIRECTORY) {
+		/* Not a dir, continue */
+		g_error_free (error);
+		
+	} else {
+		if (job->skip_all_error) {
+			goto skip1;
+		}
+		
+		primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
+		secondary = strdup_with_full_name (_("Couldn't remove files from the already folder %s."), file);
+		details = error->message;
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+					      NULL);
+		g_free (primary);
+		g_free (secondary);
+		
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1) { /* skip all */
+			job->skip_all_error = TRUE;
+		} else if (response == 2) { /* skip */
+			/* do nothing */
+		} else {
+			g_assert_not_reached ();
+		}
+	skip1:
+		g_error_free (error);
+		
+		stop = TRUE;
+	}
+
+	if (stop) {
+		return FALSE;
+	}
+
+	error = NULL;
+	
+	if (!g_file_delete (file, job->cancellable, &error)) {
+		if (job->skip_all_error) {
+			goto skip2;
+		}
+		primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
+		secondary = strdup_with_full_name (_("Couldn't remove the already existing file %s."), file);
+		details = error->message;
+		
+		response = run_simple_dialog (job,
+					      FALSE,
+					      GTK_MESSAGE_WARNING,
+					      primary,
+					      secondary,
+					      details,
+					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+					      NULL);
+		g_free (primary);
+		g_free (secondary);
+		
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1) { /* skip all */
+			job->skip_all_error = TRUE;
+		} else if (response == 2) { /* skip */
+			/* do nothing */
+		} else {
+			g_assert_not_reached ();
+		}
+
+	skip2:
+		g_error_free (error);
+		
+		return FALSE;
+	}
+	
+	return TRUE;
+	
+}
 
 typedef struct {
 	CommonJob *job;
@@ -5000,6 +5121,7 @@ copy_file (CommonJob *job,
 	char *primary, *secondary, *details;
 	int response;
 	ProgressData pdata;
+	gboolean would_recurse;
 	
 	if (should_skip_file (job, src)) {
 		return;
@@ -5119,21 +5241,27 @@ copy_file (CommonJob *job,
 			g_assert_not_reached ();
 		}
 	}
-#if 0 /* TODO */
+	
 	else if (overwrite &&
 		 error->domain == G_IO_ERROR &&
 		 error->code == G_IO_ERROR_IS_DIRECTORY) {
-		/* TODO: Recursively delete dest, then retry */
+
+		g_error_free (error);
 		
+		if (remove_target_recursively (job, src, dest, dest)) {
+			goto retry;
+		}
 	}
-#endif
 	
 	/* Needs to recurse */
 	else if (error->domain == G_IO_ERROR &&
 		 (error->code == G_IO_ERROR_WOULD_RECURSE ||
 		  error->code == G_IO_ERROR_WOULD_MERGE)) {
 
-		if (overwrite && error->code == G_IO_ERROR_WOULD_RECURSE) {
+		would_recurse = error->code == G_IO_ERROR_WOULD_RECURSE;
+		g_error_free (error);
+
+		if (overwrite && would_recurse) {
 			error = NULL;
 			
 			/* Copying a dir onto file, first remove the file */

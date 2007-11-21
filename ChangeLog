@@ -1,6 +1,12 @@
 2007-11-21  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Handle deleting a directory when overwriting it with a
+	file.
+
+2007-11-21  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Handle errors in remove destination
 	
 2007-11-21  Alexander Larsson  <alexl@redhat.com>
