@@ -3259,13 +3259,15 @@ _run_simple_dialog (GIOJob *job,
 	return res;
 }
 
+/* NOTE: This frees the primary / secondary strings, in order to
+   avoid doing that everywhere. So, make sure they are strduped */
 
 static int
 run_simple_dialog (CommonJob *job,
 		   gboolean ignore_close_box,
 		   GtkMessageType message_type,
-		   const char *primary_text,
-		   const char *secondary_text,
+		   char *primary_text,
+		   char *secondary_text,
 		   const char *details_text,
 		   ...)
 {
@@ -3307,6 +3309,9 @@ run_simple_dialog (CommonJob *job,
 
 	g_timer_continue (job->time);
 
+	g_free (primary_text);
+	g_free (secondary_text);
+	
 	return res;
 }
 
@@ -4364,7 +4369,7 @@ scan_dir (GFile *dir,
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
 		
 		if (error) {
-			primary = _("Error while copying.");
+			primary = f (_("Error while copying."));
 			details = NULL;
 			
 			if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -4383,7 +4388,6 @@ scan_dir (GFile *dir,
 						      details,
 						      GTK_STOCK_CANCEL, _("_Retry"), _("_Skip files"),
 						      NULL);
-			g_free (secondary);
 			
 			g_error_free (error);
 			
@@ -4402,7 +4406,7 @@ scan_dir (GFile *dir,
 	} else if (job->skip_all_error) {
 		skip_file (job, dir);
 	} else {
-		primary = _("Error while copying.");
+		primary = f (_("Error while copying."));
 		details = NULL;
 		
 		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -4421,7 +4425,6 @@ scan_dir (GFile *dir,
 					      details,
 					      GTK_STOCK_CANCEL, _("S_kip All"), _("Skip"), _("_Retry"),
 					      NULL);
-		g_free (secondary);
 
 		g_error_free (error);
 
@@ -4476,7 +4479,7 @@ scan_file (GFile *file,
 	} else if (job->skip_all_error) {
 		skip_file (job, file);
 	} else {
-		primary = _("Error while copying.");
+		primary = f (_("Error while copying."));
 		details = NULL;
 		
 		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -4495,7 +4498,6 @@ scan_file (GFile *file,
 					      details,
 					      GTK_STOCK_CANCEL, _("S_kip All"), _("Skip"), _("_Retry"),
 					      NULL);
-		g_free (secondary);
 		
 		g_error_free (error);
 
@@ -4579,9 +4581,9 @@ verify_destination (CommonJob *job,
 		details = NULL;
 		
 		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
-			secondary = _("You don't have permissions to access the destination folder.");
+			secondary = f (_("You don't have permissions to access the destination folder."));
 		} else {
-			secondary = _("There was an error getting information about the destination.");
+			secondary = f (_("There was an error getting information about the destination."));
 			details = error->message;
 		}
 
@@ -4593,7 +4595,6 @@ verify_destination (CommonJob *job,
 					      details,
 					      GTK_STOCK_CANCEL, _("_Retry"),
 					      NULL);
-		g_free (primary);
 		
 		g_error_free (error);
 
@@ -4618,7 +4619,7 @@ verify_destination (CommonJob *job,
 	
 	if (file_type != G_FILE_TYPE_DIRECTORY) {
 		primary = f (_("Error while copying to \"%B\"."), dest);
-		secondary = _("The destination is not a folder.");
+		secondary = f (_("The destination is not a folder."));
 
 		response = run_simple_dialog (job,
 					      FALSE,
@@ -4628,7 +4629,6 @@ verify_destination (CommonJob *job,
 					      NULL,
 					      GTK_STOCK_CANCEL,
 					      NULL);
-		g_free (primary);
 		
 		g_error_free (error);
 
@@ -4667,8 +4667,6 @@ verify_destination (CommonJob *job,
 						      details,
 						      GTK_STOCK_CANCEL, _("_Retry"),
 						      NULL);
-			g_free (primary);
-			g_free (details);
 			
 			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 				job->aborted = TRUE;
@@ -4684,7 +4682,7 @@ verify_destination (CommonJob *job,
 	    g_file_info_get_attribute_boolean (fsinfo,
 					       G_FILE_ATTRIBUTE_FS_READONLY)) {
 		primary = f (_("Error while copying to \"%B\"."), dest);
-		secondary = _("The destination is read-only.");
+		secondary = f (_("The destination is read-only."));
 
 		response = run_simple_dialog (job,
 					      FALSE,
@@ -4694,7 +4692,6 @@ verify_destination (CommonJob *job,
 					      NULL,
 					      GTK_STOCK_CANCEL,
 					      NULL);
-		g_free (primary);
 		
 		g_error_free (error);
 
@@ -4859,7 +4856,7 @@ create_dest_dir (CommonJob *job,
 	
 	error = NULL;
 	if (!g_file_make_directory (dest, job->cancellable, &error)) {
-		primary = _("Error while copying.");
+		primary = f (_("Error while copying."));
 		details = NULL;
 		
 		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -4878,7 +4875,6 @@ create_dest_dir (CommonJob *job,
 					      details,
 					      GTK_STOCK_CANCEL, ("Skip"), _("_Retry"),
 					      NULL);
-		g_free (secondary);
 
 		g_error_free (error);
 
@@ -4939,7 +4935,7 @@ copy_directory (CommonJob *job,
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
 		
 		if (error) {
-			primary = _("Error while copying.");
+			primary = f (_("Error while copying."));
 			details = NULL;
 			
 			if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -4958,7 +4954,6 @@ copy_directory (CommonJob *job,
 						      details,
 						      GTK_STOCK_CANCEL, _("_Skip files"),
 						      NULL);
-			g_free (secondary);
 			
 			g_error_free (error);
 			
@@ -4975,7 +4970,7 @@ copy_directory (CommonJob *job,
 		transfer_info->num_files ++;
 		report_copy_progress (job, source_info, transfer_info);
 	} else {
-		primary = _("Error while copying.");
+		primary = f (_("Error while copying."));
 		details = NULL;
 		
 		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -4994,7 +4989,6 @@ copy_directory (CommonJob *job,
 					      details,
 					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
 					      NULL);
-		g_free (secondary);
 
 		g_error_free (error);
 
@@ -5075,8 +5069,6 @@ remove_target_recursively (CommonJob *job,
 					      details,
 					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
 					      NULL);
-		g_free (primary);
-		g_free (secondary);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
@@ -5115,8 +5107,6 @@ remove_target_recursively (CommonJob *job,
 					      details,
 					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
 					      NULL);
-		g_free (primary);
-		g_free (secondary);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
@@ -5275,8 +5265,6 @@ copy_file (CommonJob *job,
 					      _("_Skip"),
 					      is_merge?_("_Merge"):_("_Replace"),
 					      NULL);
-		g_free (primary);
-		g_free (secondary);
 
 		g_error_free (error);
 		
@@ -5337,8 +5325,6 @@ copy_file (CommonJob *job,
 							      details,
 							      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
 							      NULL);
-				g_free (primary);
-				g_free (secondary);
 				
 				g_error_free (error);
 				
@@ -5378,8 +5364,6 @@ copy_file (CommonJob *job,
 					      details,
 					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
 					      NULL);
-		g_free (primary);
-		g_free (secondary);
 
 		g_error_free (error);
 		
