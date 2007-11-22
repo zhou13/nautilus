@@ -4296,17 +4296,13 @@ static void
 report_count_progress (CommonJob *job,
 		       SourceInfo *source_info)
 {
-	char *size;
 	char *s;
 	
-	size = g_format_file_size_for_display (source_info->num_bytes);
 	if (source_info->op == OP_KIND_COPY) {
 		s = f (_("Preparing to copy %d files (%S)"),
 		       source_info->num_files, source_info->num_bytes);
-		nautilus_progress_info_set_details (job->progress, s);
-		g_free (s);
+		nautilus_progress_info_take_details (job->progress, s);
 	}
-	g_free (size);
 }
 
 static void
@@ -4323,31 +4319,6 @@ count_file (GFileInfo *info,
 	}
 	
 }
-
-static char *
-strdup_with_name (const char *format, GFile *file, GCancellable *cancellable)
-{
-	char *name, *res;
-
-	name = get_display_name (file, cancellable);
-	res = g_strdup_printf (format, name);
-	g_free (name);
-	
-	return res;
-}
-
-static char *
-strdup_with_full_name (const char *format, GFile *file)
-{
-	char *name, *res;
-
-	name = g_file_get_parse_name (file);
-	res = g_strdup_printf (format, name);
-	g_free (name);
-	
-	return res;
-}
-
 static void
 scan_dir (GFile *dir,
 	  SourceInfo *source_info,
@@ -4396,10 +4367,10 @@ scan_dir (GFile *dir,
 			
 			if (error->domain == G_IO_ERROR &&
 			    error->code == G_IO_ERROR_PERMISSION_DENIED) {
-				secondary = strdup_with_name (_("Files in the folder \"%s\" cannot be copied because you do "
-								"not have permissions to read them."), dir, job->cancellable);
+				secondary = f (_("Files in the folder \"%B\" cannot be copied because you do "
+						 "not have permissions to read them."), dir);
 			} else {
-				secondary = strdup_with_name (_("There was an error getting information about the files in the folder \"%s\"."), dir, job->cancellable);
+				secondary = f (_("There was an error getting information about the files in the folder \"%B\"."), dir);
 				details = error->message;
 			}
 			
@@ -4435,10 +4406,10 @@ scan_dir (GFile *dir,
 		
 		if (error->domain == G_IO_ERROR &&
 		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
-			secondary = strdup_with_name (_("The folder \"%s\" cannot be copied because you do not have "
-						       "permissions to read it."), dir, job->cancellable);
+			secondary = f (_("The folder \"%B\" cannot be copied because you do not have "
+					 "permissions to read it."), dir);
 		} else {
-			secondary = strdup_with_name (_("There was an error reading the folder \"%s\"."), dir, job->cancellable);
+			secondary = f (_("There was an error reading the folder \"%B\"."), dir);
 			details = error->message;
 		}
 		
@@ -4510,10 +4481,10 @@ scan_file (GFile *file,
 		
 		if (error->domain == G_IO_ERROR &&
 		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
-			secondary = strdup_with_name (_("The file \"%s\" cannot be copied because you do not have "
-						       "permissions to read it."), file, job->cancellable);
+			secondary = f (_("The file \"%B\" cannot be copied because you do not have "
+					 "permissions to read it."), file);
 		} else {
-			secondary = strdup_with_name (_("There was an error getting information about \"%s\"."), file, job->cancellable);
+			secondary = f (_("There was an error getting information about \"%B\"."), file);
 			details = error->message;
 		}
 		
@@ -4590,7 +4561,6 @@ verify_destination (CommonJob *job,
 	guint64 free_size;
 	char *primary, *secondary, *details;
 	int response;
-	char *size1, *size2;
 	GFileType file_type;
 
 	*dest_fs_id = NULL;
@@ -4606,7 +4576,7 @@ verify_destination (CommonJob *job,
 				  &error);
 
 	if (info == NULL) {
-		primary = strdup_with_name (_("Error while copying to \"%s\"."), dest, job->cancellable);
+		primary = f (_("Error while copying to \"%B\"."), dest);
 		details = NULL;
 		
 		if (error->domain == G_IO_ERROR &&
@@ -4649,7 +4619,7 @@ verify_destination (CommonJob *job,
 	g_object_unref (info);
 	
 	if (file_type != G_FILE_TYPE_DIRECTORY) {
-		primary = strdup_with_name (_("Error while copying to \"%s\"."), dest, job->cancellable);
+		primary = f (_("Error while copying to \"%B\"."), dest);
 		secondary = _("The destination is not a folder.");
 
 		response = run_simple_dialog (job,
@@ -4686,14 +4656,10 @@ verify_destination (CommonJob *job,
 							      G_FILE_ATTRIBUTE_FS_FREE);
 		
 		if (free_size < required_size) {
-			primary = strdup_with_name (_("Error while copying to \"%s\"."), dest, job->cancellable);
+			primary = f (_("Error while copying to \"%B\"."), dest);
 			secondary = _("There is not enough space on the destination. Try to remove files to make space.");
 			
-			size1 = g_format_file_size_for_display (free_size);
-			size2 = g_format_file_size_for_display (required_size);
-			details = g_strdup_printf (_("There is %s availible, but %s is required."), size1, size2);
-			g_free (size1);
-			g_free (size2);
+			details = f (_("There is %S availible, but %S is required."), free_size, required_size);
 			
 			response = run_simple_dialog (job,
 						      FALSE,
@@ -4719,7 +4685,7 @@ verify_destination (CommonJob *job,
 	if (!job->aborted &&
 	    g_file_info_get_attribute_boolean (fsinfo,
 					       G_FILE_ATTRIBUTE_FS_READONLY)) {
-		primary = strdup_with_name (_("Error while copying to \"%s\"."), dest, job->cancellable);
+		primary = f (_("Error while copying to \"%B\"."), dest);
 		secondary = _("The destination is read-only.");
 
 		response = run_simple_dialog (job,
@@ -4747,11 +4713,10 @@ report_copy_progress (CommonJob *job,
 		      SourceInfo *source_info,
 		      TransferInfo *transfer_info)
 {
-	char *dest_basename;
 	int files_left;
 	goffset total_size;
-	char *size, *total_size_str, *rate_str, *time_str;
-	double elapsed, transfer_rate, remaining_time;
+	double elapsed, transfer_rate;
+	int remaining_time;
 	guint64 now;
 
 	now = g_thread_gettime ();
@@ -4762,8 +4727,6 @@ report_copy_progress (CommonJob *job,
 	}
 	transfer_info->last_report_time = now;
 	
-	dest_basename = get_display_name (transfer_info->dest, job->cancellable);
-
 	files_left = source_info->num_files - transfer_info->num_files;
 
 	/* Races and whatnot could cause this to be negative... */
@@ -4771,39 +4734,28 @@ report_copy_progress (CommonJob *job,
 		files_left = 1;
 	}
 			   
-	nautilus_progress_info_set_status_printf (job->progress,
-						  _("Copying %d files to %s"),
-						  files_left, dest_basename);
-	g_free (dest_basename);
+	nautilus_progress_info_take_status (job->progress,
+					    f (_("Copying %d files to %B"),
+					       files_left, transfer_info->dest));
 
 	total_size = MAX (source_info->num_bytes, transfer_info->num_bytes);
 	
-	size = g_format_file_size_for_display (transfer_info->num_bytes);
-	total_size_str = g_format_file_size_for_display (total_size);
-
 	elapsed = g_timer_elapsed (job->time, NULL);
 	if (elapsed < SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE) {
 		char *s;
 		s = f (_("Copied %S of %S."), transfer_info->num_bytes, total_size);
-		nautilus_progress_info_set_details (job->progress, s);
-		g_free (s);
+		nautilus_progress_info_take_details (job->progress, s);
 	} else {
+		char *s;
 		transfer_rate = transfer_info->num_bytes / elapsed;
-		rate_str = g_format_file_size_for_display ((goffset) floor (transfer_rate + 0.5));
 		remaining_time = (total_size - transfer_info->num_bytes) / transfer_rate;
 
-		time_str = format_time (remaining_time);
-		
-		nautilus_progress_info_set_details_printf (job->progress,
-							   _("Copied %s of %s, at %s/sec. Estimated time left: %s."),
-							   size, total_size_str, rate_str,
-							   time_str);
-		g_free (rate_str);
-		g_free (time_str);
+		s = f (_("Copied %S of %S, at %S/sec. Estimated time left: %T."),
+		       transfer_info->num_bytes, total_size,
+		       (goffset)transfer_rate,
+		       remaining_time);
+		nautilus_progress_info_take_details (job->progress, s);
 	}
-	
-	g_free (size);
-	g_free (total_size_str);
 }
 
 static GFile *
@@ -4914,10 +4866,10 @@ create_dest_dir (CommonJob *job,
 		
 		if (error->domain == G_IO_ERROR &&
 		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
-			secondary = strdup_with_name (_("The folder \"%s\" cannot be copied because you do not have "
-						       "permissions to create it in the destination."), src, job->cancellable);
+			secondary = f (_("The folder \"%B\" cannot be copied because you do not have "
+					 "permissions to create it in the destination."), src);
 		} else {
-			secondary = strdup_with_name (_("There was an error creating the folder \"%s\"."), src, job->cancellable);
+			secondary = f (_("There was an error creating the folder \"%B\"."), src);
 			details = error->message;
 		}
 		
@@ -4995,10 +4947,10 @@ copy_directory (CommonJob *job,
 			
 			if (error->domain == G_IO_ERROR &&
 			    error->code == G_IO_ERROR_PERMISSION_DENIED) {
-				secondary = strdup_with_name (_("Files in the folder \"%s\" cannot be copied because you do "
-								"not have permissions to read them."), src, job->cancellable);
+				secondary = f (_("Files in the folder \"%B\" cannot be copied because you do "
+						 "not have permissions to read them."), src);
 			} else {
-				secondary = strdup_with_name (_("There was an error getting information about the files in the folder \"%s\"."), src, job->cancellable);
+				secondary = f (_("There was an error getting information about the files in the folder \"%B\"."), src);
 				details = error->message;
 			}
 			
@@ -5032,10 +4984,10 @@ copy_directory (CommonJob *job,
 		
 		if (error->domain == G_IO_ERROR &&
 		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
-			secondary = strdup_with_name (_("The folder \"%s\" cannot be copied because you do not have "
-						       "permissions to read it."), src, job->cancellable);
+			secondary = f (_("The folder \"%B\" cannot be copied because you do not have "
+					 "permissions to read it."), src);
 		} else {
-			secondary = strdup_with_name (_("There was an error reading the folder \"%s\"."), src, job->cancellable);
+			secondary = f (_("There was an error reading the folder \"%B\"."), src);
 			details = error->message;
 		}
 		
@@ -5117,8 +5069,8 @@ remove_target_recursively (CommonJob *job,
 			goto skip1;
 		}
 		
-		primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
-		secondary = strdup_with_full_name (_("Couldn't remove files from the already folder %s."), file);
+		primary = f (_("Error while copying \"%B\"."), src);
+		secondary = f (_("Couldn't remove files from the already folder %F."), file);
 		details = error->message;
 		
 		response = run_simple_dialog (job,
@@ -5157,8 +5109,8 @@ remove_target_recursively (CommonJob *job,
 		if (job->skip_all_error) {
 			goto skip2;
 		}
-		primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
-		secondary = strdup_with_full_name (_("Couldn't remove the already existing file %s."), file);
+		primary = f (_("Error while copying \"%B\"."), src);
+		secondary = f (_("Couldn't remove the already existing file %F."), file);
 		details = error->message;
 		
 		response = run_simple_dialog (job,
@@ -5279,25 +5231,25 @@ copy_file (CommonJob *job,
 		if (is_dir (dest)) {
 			if (is_dir (src)) {
 				is_merge = TRUE;
-				primary = strdup_with_name (_("A folder named \"%s\" already exists.  Do you want to merge the source folder?"), 
-							    dest, job->cancellable);
-				secondary = strdup_with_full_name (_("The source folder already exists in \"%s\".  "
-								     "Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."), 
-								   dest_dir);
+				primary = f (_("A folder named \"%B\" already exists.  Do you want to merge the source folder?"), 
+					     dest);
+				secondary = f (_("The source folder already exists in \"%B\".  "
+						 "Merging will ask for confirmation before replacing any files in the folder that conflict with the files being copied."), 
+					       dest_dir);
 				
 			} else {
-				primary = strdup_with_name (_("A folder named \"%s\" already exists.  Do you want to replace it?"), 
-							    dest, job->cancellable);
-				secondary = strdup_with_full_name (_("The folder already exists in \"%s\".  "
-								     "Replacing it will remove all files in the folder."), 
-								   dest_dir);
+				primary = f (_("A folder named \"%B\" already exists.  Do you want to replace it?"), 
+							    dest);
+				secondary = f (_("The folder already exists in \"%F\".  "
+						 "Replacing it will remove all files in the folder."), 
+					       dest_dir);
 			}
 		} else {
-			primary = strdup_with_name (_("A file named \"%s\" already exists.  Do you want to replace it?"), 
-						    dest, job->cancellable);
-			secondary = strdup_with_full_name (_("The file already exists in \"%s\".  "
-							     "Replacing it will overwrite its content."), 
-							   dest_dir);
+			primary = f (_("A file named \"%B\" already exists.  Do you want to replace it?"), 
+				     dest);
+			secondary = f (_("The file already exists in \"%F\".  "
+					 "Replacing it will overwrite its content."), 
+				       dest_dir);
 		}
 
 		if ((is_merge && job->merge_all) ||
@@ -5383,8 +5335,8 @@ copy_file (CommonJob *job,
 				if (job->skip_all_error) {
 					goto out;
 				}
-				primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
-				secondary = strdup_with_full_name (_("Couldn't remove the already existing file with the same name in %s."), dest_dir);
+				primary = f (_("Error while copying \"%B\"."), src);
+				secondary = f (_("Couldn't remove the already existing file with the same name in %F."), dest_dir);
 				details = error->message;
 				
 				response = run_simple_dialog (job,
@@ -5424,8 +5376,8 @@ copy_file (CommonJob *job,
 		if (job->skip_all_error) {
 			goto out;
 		}
-		primary = strdup_with_name (_("Error while copying \"%s\"."), src, job->cancellable);
-		secondary = strdup_with_full_name (_("There was an error getting copying the file into %s."), dest_dir);
+		primary = f (_("Error while copying \"%B\"."), src);
+		secondary = f (_("There was an error getting copying the file into %F."), dest_dir);
 		details = error->message;
 		
 		response = run_simple_dialog (job,

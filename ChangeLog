@@ -1,5 +1,14 @@
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-progress-info.[ch]:
+	Remove printf versions
+	rename _set_foo_nocopy to _take_foo
+
+        * libnautilus-private/nautilus-file-operations.c:
+	Use new custom printf formating for all strings
+	
+2007-11-22  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-operations.c:
 	Use eel_strdup_printf_with_custom to make it easier
 	to create error dialogs.

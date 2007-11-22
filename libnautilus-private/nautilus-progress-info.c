@@ -416,6 +416,25 @@ nautilus_progress_info_finish (NautilusProgressInfo *info)
 }
 
 void
+nautilus_progress_info_take_status (NautilusProgressInfo *info,
+				    char *status)
+{
+	G_LOCK (progress_info);
+	
+	if (eel_strcmp (info->status, status) != 0) {
+		g_free (info->status);
+		info->status = status;
+		
+		info->changed_at_idle = TRUE;
+		queue_idle (info, FALSE);
+	} else {
+		g_free (status);
+	}
+	
+	G_UNLOCK (progress_info);
+}
+
+void
 nautilus_progress_info_set_status (NautilusProgressInfo *info,
 				   const char *status)
 {
@@ -432,33 +451,25 @@ nautilus_progress_info_set_status (NautilusProgressInfo *info,
 	G_UNLOCK (progress_info);
 }
 
-void
-nautilus_progress_info_set_status_printf (NautilusProgressInfo *info,
-					  const char           *format,
-					  ...)
-{
-	gchar *status;
-	va_list args;
-	
-	va_start (args, format);
-	status = g_strdup_vprintf (format, args);
-	va_end (args);
 
+void
+nautilus_progress_info_take_details (NautilusProgressInfo *info,
+				     char           *details)
+{
 	G_LOCK (progress_info);
 	
-	if (eel_strcmp (info->status, status) != 0) {
-		g_free (info->status);
-		info->status = status;
+	if (eel_strcmp (info->details, details) != 0) {
+		g_free (info->details);
+		info->details = details;
 		
 		info->changed_at_idle = TRUE;
 		queue_idle (info, FALSE);
 	} else {
-		g_free (status);
+		g_free (details);
 	}
   
 	G_UNLOCK (progress_info);
 }
-
 
 void
 nautilus_progress_info_set_details (NautilusProgressInfo *info,
@@ -476,34 +487,6 @@ nautilus_progress_info_set_details (NautilusProgressInfo *info,
   
 	G_UNLOCK (progress_info);
 }
-
-void
-nautilus_progress_info_set_details_printf (NautilusProgressInfo *info,
-					   const char           *format,
-					   ...)
-{
-	gchar *details;
-	va_list args;
-	
-	va_start (args, format);
-	details = g_strdup_vprintf (format, args);
-	va_end (args);
-
-	G_LOCK (progress_info);
-	
-	if (eel_strcmp (info->details, details) != 0) {
-		g_free (info->details);
-		info->details = details;
-		
-		info->changed_at_idle = TRUE;
-		queue_idle (info, FALSE);
-	} else {
-		g_free (details);
-	}
-  
-	G_UNLOCK (progress_info);
-}
-
 
 void
 nautilus_progress_info_set_progress (NautilusProgressInfo *info,
