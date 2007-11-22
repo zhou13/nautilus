@@ -82,6 +82,8 @@ static gboolean confirm_trash_auto_value;
  *  Queue changes and metadata ops in the copy code
  *  Copy needs to return debuting uris
  *  Set coords if passed in
+ *  Update progress percent
+ *  Show progress info dialog
  */
 
 typedef struct {
