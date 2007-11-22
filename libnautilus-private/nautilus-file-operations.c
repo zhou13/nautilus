@@ -95,6 +95,14 @@ typedef struct {
 
 #define IS_IO_ERROR(__error, KIND) (((__error)->domain == G_IO_ERROR && (__error)->code == G_IO_ERROR_ ## KIND))
 
+#define SKIP _("_Skip")
+#define SKIP_ALL _("S_kip All")
+#define RETRY _("_Retry")
+#define REPLACE _("_Replace")
+#define REPLACE_ALL _("Replace _All")
+#define MERGE _("_Merge")
+#define MERGE_ALL _("Merge _All")
+
 static char *
 format_time (int seconds)
 {
@@ -1301,7 +1309,7 @@ handle_transfer_vfs_error (const GnomeVFSXferProgressInfo *progress_info,
 			error_dialog_button_pressed = eel_run_simple_dialog
 				(parent_for_error_dialog (transfer_info), TRUE, 
 				 GTK_MESSAGE_ERROR, text, 
-				 detail, GTK_STOCK_CANCEL, _("_Retry"), NULL);
+				 detail, GTK_STOCK_CANCEL, RETRY, NULL);
 
 			switch (error_dialog_button_pressed) {
 			case 0:
@@ -1318,7 +1326,7 @@ handle_transfer_vfs_error (const GnomeVFSXferProgressInfo *progress_info,
 			error_dialog_button_pressed = eel_run_simple_dialog
 				(parent_for_error_dialog (transfer_info), TRUE, 
 				 GTK_MESSAGE_ERROR, text, 
-				 detail, _("_Skip"), GTK_STOCK_CANCEL, _("_Retry"), NULL);
+				 detail, SKIP, GTK_STOCK_CANCEL, RETRY, NULL);
 
 			switch (error_dialog_button_pressed) {
 			case 0:
@@ -1486,7 +1494,7 @@ handle_transfer_overwrite (const GnomeVFSXferProgressInfo *progress_info,
 			 GTK_MESSAGE_WARNING, 
 			 text, 
 			 secondary_text, 
-			 _("_Skip"), _("_Replace"), NULL);
+			 SKIP, REPLACE, NULL);
 		g_free (text);	 
 		g_free (secondary_text);
 
@@ -1505,7 +1513,7 @@ handle_transfer_overwrite (const GnomeVFSXferProgressInfo *progress_info,
 		result = eel_run_simple_dialog
 			(parent_for_error_dialog (transfer_info), TRUE, GTK_MESSAGE_WARNING, text, 
 			 secondary_text, 
-			 _("S_kip All"), _("Replace _All"), _("_Skip"), _("_Replace"), NULL);
+			 SKIP_ALL, REPLACE_ALL, SKIP, REPLACE, NULL);
 		g_free (text);
 		g_free (secondary_text);
 
@@ -4386,7 +4394,7 @@ scan_dir (GFile *dir,
 						      primary,
 						      secondary,
 						      details,
-						      GTK_STOCK_CANCEL, _("_Retry"), _("_Skip files"),
+						      GTK_STOCK_CANCEL, RETRY, SKIP,
 						      NULL);
 			
 			g_error_free (error);
@@ -4423,7 +4431,7 @@ scan_dir (GFile *dir,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, _("S_kip All"), _("Skip"), _("_Retry"),
+					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP, RETRY,
 					      NULL);
 
 		g_error_free (error);
@@ -4496,7 +4504,7 @@ scan_file (GFile *file,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, _("S_kip All"), _("Skip"), _("_Retry"),
+					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP, RETRY,
 					      NULL);
 		
 		g_error_free (error);
@@ -4593,7 +4601,7 @@ verify_destination (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, _("_Retry"),
+					      GTK_STOCK_CANCEL, RETRY,
 					      NULL);
 		
 		g_error_free (error);
@@ -4665,7 +4673,7 @@ verify_destination (CommonJob *job,
 						      primary,
 						      secondary,
 						      details,
-						      GTK_STOCK_CANCEL, _("_Retry"),
+						      GTK_STOCK_CANCEL, RETRY,
 						      NULL);
 			
 			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
@@ -4873,7 +4881,7 @@ create_dest_dir (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, ("Skip"), _("_Retry"),
+					      GTK_STOCK_CANCEL, SKIP, RETRY,
 					      NULL);
 
 		g_error_free (error);
@@ -4987,15 +4995,15 @@ copy_directory (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      _("Skip"), GTK_STOCK_CANCEL, _("_Retry"),
+					      SKIP, GTK_STOCK_CANCEL, RETRY,
 					      NULL);
 
 		g_error_free (error);
 
-		if (response == 0) {
-			/* Skip: Do Nothing  */
-		} else if (response == 1 || response == GTK_RESPONSE_DELETE_EVENT) {
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
+		} else if (response == 1) {
+			/* Skip: Do Nothing  */
 		} else if (response == 2) {
 			goto retry;
 		} else {
@@ -5067,7 +5075,7 @@ remove_target_recursively (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
 					      NULL);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
@@ -5105,7 +5113,7 @@ remove_target_recursively (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
 					      NULL);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
@@ -5260,10 +5268,10 @@ copy_file (CommonJob *job,
 					      secondary,
 					      NULL,
 					      GTK_STOCK_CANCEL,
-					      _("S_kip All"),
-					      is_merge?_("Merge _All"):_("Replace _All"),
-					      _("_Skip"),
-					      is_merge?_("_Merge"):_("_Replace"),
+					      SKIP_ALL,
+					      is_merge?MERGE_ALL:REPLACE_ALL,
+					      SKIP,
+					      is_merge?MERGE:REPLACE,
 					      NULL);
 
 		g_error_free (error);
@@ -5323,7 +5331,7 @@ copy_file (CommonJob *job,
 							      primary,
 							      secondary,
 							      details,
-							      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+							      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
 							      NULL);
 				
 				g_error_free (error);
@@ -5362,7 +5370,7 @@ copy_file (CommonJob *job,
 					      primary,
 					      secondary,
 					      details,
-					      GTK_STOCK_CANCEL, _("S_kip All"), _("_Skip"),
+					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
 					      NULL);
 
 		g_error_free (error);

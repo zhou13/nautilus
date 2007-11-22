@@ -1,6 +1,12 @@
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Add defines for common button names to make sure
+	they are consistent
+
+2007-11-22  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Use the right create_dest arg to copy_directory
 	
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
