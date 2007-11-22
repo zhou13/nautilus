@@ -1,6 +1,12 @@
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Add run_warning and run_error to simplify the
+	code for error dialogs.
+
+2007-11-22  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Add defines for common button names to make sure
 	they are consistent
 

@@ -3267,63 +3267,6 @@ _run_simple_dialog (GIOJob *job,
 	return res;
 }
 
-/* NOTE: This frees the primary / secondary strings, in order to
-   avoid doing that everywhere. So, make sure they are strduped */
-
-static int
-run_simple_dialog (CommonJob *job,
-		   gboolean ignore_close_box,
-		   GtkMessageType message_type,
-		   char *primary_text,
-		   char *secondary_text,
-		   const char *details_text,
-		   ...)
-{
-	RunSimpleDialogData *data;
-	va_list varargs;
-	int res;
-	const char *button_title;
-	GPtrArray *ptr_array;
-
-	g_timer_stop (job->time);
-	
-	data = g_new0 (RunSimpleDialogData, 1);
-	data->parent_window = GTK_WINDOW (job->parent_window);
-	data->ignore_close_box = ignore_close_box;
-	data->message_type = message_type;
-	data->primary_text = primary_text;
-	data->secondary_text = secondary_text;
-	data->details_text = details_text;
-
-	ptr_array = g_ptr_array_new ();
-	va_start (varargs, details_text);
-	while ((button_title = va_arg (varargs, const char *)) != NULL) {
-		g_ptr_array_add (ptr_array, (char *)button_title);
-	}
-	g_ptr_array_add (ptr_array, NULL);
-	data->button_titles = (const char **)g_ptr_array_free (ptr_array, FALSE);
-	va_end (varargs);
-
-	g_io_job_send_to_mainloop (job->io_job,
-				   do_run_simple_dialog,
-				   data,
-				   NULL,
-				   TRUE);
-
-	res = data->result;
-
-	g_free (data->button_titles);
-	g_free (data);
-
-	g_timer_continue (job->time);
-
-	g_free (primary_text);
-	g_free (secondary_text);
-	
-	return res;
-}
-
-
 static int 
 _run_alert (GIOJob *job,
 	   GtkWindow *parent_window,
@@ -3359,6 +3302,129 @@ _run_yes_no_dialog (GIOJob *job,
 				  no_label,
 				  yes_label,
 				  NULL);
+}
+
+/* NOTE: This frees the primary / secondary strings, in order to
+   avoid doing that everywhere. So, make sure they are strduped */
+
+static int
+run_simple_dialog_va (CommonJob *job,
+		      gboolean ignore_close_box,
+		      GtkMessageType message_type,
+		      char *primary_text,
+		      char *secondary_text,
+		      const char *details_text,
+		      va_list varargs)
+{
+	RunSimpleDialogData *data;
+	int res;
+	const char *button_title;
+	GPtrArray *ptr_array;
+
+	g_timer_stop (job->time);
+	
+	data = g_new0 (RunSimpleDialogData, 1);
+	data->parent_window = GTK_WINDOW (job->parent_window);
+	data->ignore_close_box = ignore_close_box;
+	data->message_type = message_type;
+	data->primary_text = primary_text;
+	data->secondary_text = secondary_text;
+	data->details_text = details_text;
+
+	ptr_array = g_ptr_array_new ();
+	while ((button_title = va_arg (varargs, const char *)) != NULL) {
+		g_ptr_array_add (ptr_array, (char *)button_title);
+	}
+	g_ptr_array_add (ptr_array, NULL);
+	data->button_titles = (const char **)g_ptr_array_free (ptr_array, FALSE);
+
+	g_io_job_send_to_mainloop (job->io_job,
+				   do_run_simple_dialog,
+				   data,
+				   NULL,
+				   TRUE);
+
+	res = data->result;
+
+	g_free (data->button_titles);
+	g_free (data);
+
+	g_timer_continue (job->time);
+
+	g_free (primary_text);
+	g_free (secondary_text);
+	
+	return res;
+}
+
+#if 0 /* Not used at the moment */
+static int
+run_simple_dialog (CommonJob *job,
+		   gboolean ignore_close_box,
+		   GtkMessageType message_type,
+		   char *primary_text,
+		   char *secondary_text,
+		   const char *details_text,
+		   ...)
+{
+	va_list varargs;
+	int res;
+
+	va_start (varargs, details_text);
+	res = run_simple_dialog_va (job,
+				    ignore_close_box,
+				    message_type,
+				    primary_text,
+				    secondary_text,
+				    details_text,
+				    varargs);
+	va_end (varargs);
+	return res;
+}
+#endif
+
+static int
+run_error (CommonJob *job,
+	   char *primary_text,
+	   char *secondary_text,
+	   const char *details_text,
+	   ...)
+{
+	va_list varargs;
+	int res;
+
+	va_start (varargs, details_text);
+	res = run_simple_dialog_va (job,
+				    FALSE,
+				    GTK_MESSAGE_ERROR,
+				    primary_text,
+				    secondary_text,
+				    details_text,
+				    varargs);
+	va_end (varargs);
+	return res;
+}
+
+static int
+run_warning (CommonJob *job,
+	     char *primary_text,
+	     char *secondary_text,
+	     const char *details_text,
+	     ...)
+{
+	va_list varargs;
+	int res;
+
+	va_start (varargs, details_text);
+	res = run_simple_dialog_va (job,
+				    FALSE,
+				    GTK_MESSAGE_WARNING,
+				    primary_text,
+				    secondary_text,
+				    details_text,
+				    varargs);
+	va_end (varargs);
+	return res;
 }
 
 static gboolean
@@ -4388,14 +4454,12 @@ scan_dir (GFile *dir,
 				details = error->message;
 			}
 			
-			response = run_simple_dialog (job,
-						      FALSE,
-						      GTK_MESSAGE_WARNING,
-						      primary,
-						      secondary,
-						      details,
-						      GTK_STOCK_CANCEL, RETRY, SKIP,
-						      NULL);
+			response = run_warning (job,
+						primary,
+						secondary,
+						details,
+						GTK_STOCK_CANCEL, RETRY, SKIP,
+						NULL);
 			
 			g_error_free (error);
 			
@@ -4425,14 +4489,12 @@ scan_dir (GFile *dir,
 			details = error->message;
 		}
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP, RETRY,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP_ALL, SKIP, RETRY,
+					NULL);
 
 		g_error_free (error);
 
@@ -4498,14 +4560,12 @@ scan_file (GFile *file,
 			details = error->message;
 		}
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP, RETRY,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP_ALL, SKIP, RETRY,
+					NULL);
 		
 		g_error_free (error);
 
@@ -4595,14 +4655,12 @@ verify_destination (CommonJob *job,
 			details = error->message;
 		}
 
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_ERROR,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, RETRY,
-					      NULL);
+		response = run_error (job,
+				      primary,
+				      secondary,
+				      details,
+				      GTK_STOCK_CANCEL, RETRY,
+				      NULL);
 		
 		g_error_free (error);
 
@@ -4629,14 +4687,12 @@ verify_destination (CommonJob *job,
 		primary = f (_("Error while copying to \"%B\"."), dest);
 		secondary = f (_("The destination is not a folder."));
 
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_ERROR,
-					      primary,
-					      secondary,
-					      NULL,
-					      GTK_STOCK_CANCEL,
-					      NULL);
+		response = run_error (job,
+				      primary,
+				      secondary,
+				      NULL,
+				      GTK_STOCK_CANCEL,
+				      NULL);
 		
 		g_error_free (error);
 
@@ -4667,14 +4723,12 @@ verify_destination (CommonJob *job,
 			
 			details = f (_("There is %S availible, but %S is required."), free_size, required_size);
 			
-			response = run_simple_dialog (job,
-						      FALSE,
-						      GTK_MESSAGE_WARNING,
-						      primary,
-						      secondary,
-						      details,
-						      GTK_STOCK_CANCEL, RETRY,
-						      NULL);
+			response = run_warning (job,
+						primary,
+						secondary,
+						details,
+						GTK_STOCK_CANCEL, RETRY,
+						NULL);
 			
 			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 				job->aborted = TRUE;
@@ -4692,14 +4746,12 @@ verify_destination (CommonJob *job,
 		primary = f (_("Error while copying to \"%B\"."), dest);
 		secondary = f (_("The destination is read-only."));
 
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_ERROR,
-					      primary,
-					      secondary,
-					      NULL,
-					      GTK_STOCK_CANCEL,
-					      NULL);
+		response = run_error (job,
+				      primary,
+				      secondary,
+				      NULL,
+				      GTK_STOCK_CANCEL,
+				      NULL);
 		
 		g_error_free (error);
 
@@ -4875,14 +4927,12 @@ create_dest_dir (CommonJob *job,
 			details = error->message;
 		}
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, SKIP, RETRY,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP, RETRY,
+					NULL);
 
 		g_error_free (error);
 
@@ -4954,14 +5004,12 @@ copy_directory (CommonJob *job,
 				details = error->message;
 			}
 			
-			response = run_simple_dialog (job,
-						      FALSE,
-						      GTK_MESSAGE_WARNING,
-						      primary,
-						      secondary,
-						      details,
-						      GTK_STOCK_CANCEL, _("_Skip files"),
-						      NULL);
+			response = run_warning (job,
+						primary,
+						secondary,
+						details,
+						GTK_STOCK_CANCEL, _("_Skip files"),
+						NULL);
 			
 			g_error_free (error);
 			
@@ -4989,14 +5037,12 @@ copy_directory (CommonJob *job,
 			details = error->message;
 		}
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      SKIP, GTK_STOCK_CANCEL, RETRY,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					SKIP, GTK_STOCK_CANCEL, RETRY,
+					NULL);
 
 		g_error_free (error);
 
@@ -5069,14 +5115,12 @@ remove_target_recursively (CommonJob *job,
 		secondary = f (_("Couldn't remove files from the already folder %F."), file);
 		details = error->message;
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
+					NULL);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
@@ -5107,14 +5151,12 @@ remove_target_recursively (CommonJob *job,
 		secondary = f (_("Couldn't remove the already existing file %F."), file);
 		details = error->message;
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
+					NULL);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
 			job->aborted = TRUE;
@@ -5261,19 +5303,17 @@ copy_file (CommonJob *job,
 			goto out;
 		}
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      NULL,
-					      GTK_STOCK_CANCEL,
-					      SKIP_ALL,
-					      is_merge?MERGE_ALL:REPLACE_ALL,
-					      SKIP,
-					      is_merge?MERGE:REPLACE,
-					      NULL);
-
+		response = run_warning (job,
+					primary,
+					secondary,
+					NULL,
+					GTK_STOCK_CANCEL,
+					SKIP_ALL,
+					is_merge?MERGE_ALL:REPLACE_ALL,
+					SKIP,
+					is_merge?MERGE:REPLACE,
+					NULL);
+		
 		g_error_free (error);
 		
 		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
@@ -5325,14 +5365,12 @@ copy_file (CommonJob *job,
 				secondary = f (_("Couldn't remove the already existing file with the same name in %F."), dest_dir);
 				details = error->message;
 				
-				response = run_simple_dialog (job,
-							      FALSE,
-							      GTK_MESSAGE_WARNING,
-							      primary,
-							      secondary,
-							      details,
-							      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
-							      NULL);
+				response = run_warning (job,
+							primary,
+							secondary,
+							details,
+							GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
+							NULL);
 				
 				g_error_free (error);
 				
@@ -5364,14 +5402,12 @@ copy_file (CommonJob *job,
 		secondary = f (_("There was an error getting copying the file into %F."), dest_dir);
 		details = error->message;
 		
-		response = run_simple_dialog (job,
-					      FALSE,
-					      GTK_MESSAGE_WARNING,
-					      primary,
-					      secondary,
-					      details,
-					      GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
-					      NULL);
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
+					NULL);
 
 		g_error_free (error);
 		
