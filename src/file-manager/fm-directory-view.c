@@ -2324,14 +2324,14 @@ done_loading (FMDirectoryView *view)
 
 
 typedef struct {
-	GHashTable *debuting_uris;
+	GHashTable *debuting_files;
 	GList	   *added_files;
-} DebutingUriData;
+} DebutingFilesData;
 
 static void
-debuting_uri_data_free (DebutingUriData *data)
+debuting_files_data_free (DebutingFilesData *data)
 {
-	g_hash_table_destroy (data->debuting_uris);
+	g_hash_table_unref (data->debuting_files);
 	nautilus_file_list_free (data->added_files);
 	g_free (data);
 }
@@ -2341,29 +2341,29 @@ debuting_uri_data_free (DebutingUriData *data)
  * it selects and reveals them all.
  */
 static void
-debuting_uri_add_file_callback (FMDirectoryView *view,
-				NautilusFile *new_file,
-				NautilusDirectory *directory,
-				DebutingUriData *data)
+debuting_files_add_file_callback (FMDirectoryView *view,
+				  NautilusFile *new_file,
+				  NautilusDirectory *directory,
+				  DebutingFilesData *data)
 {
-	char *uri;
+	GFile *location;
 
-	uri = nautilus_file_get_uri (new_file);
+	location = nautilus_file_get_location (new_file);
 
-	if (g_hash_table_remove (data->debuting_uris, uri)) {
+	if (g_hash_table_remove (data->debuting_files, location)) {
 		nautilus_file_ref (new_file);
 		data->added_files = g_list_prepend (data->added_files, new_file);
 
-		if (g_hash_table_size (data->debuting_uris) == 0) {
+		if (g_hash_table_size (data->debuting_files) == 0) {
 			fm_directory_view_set_selection (view, data->added_files);
 			fm_directory_view_reveal_selection (view);
 			g_signal_handlers_disconnect_by_func (view,
-							      G_CALLBACK (debuting_uri_add_file_callback),
+							      G_CALLBACK (debuting_files_add_file_callback),
 							      data);
 		}
 	}
 	
-	g_free (uri);
+	g_object_unref (location);
 }
 
 typedef struct {
@@ -2382,16 +2382,19 @@ copy_move_done_data_free (CopyMoveDoneData *data)
 }
 
 static void
-pre_copy_move_add_file_callback (FMDirectoryView *view, NautilusFile *new_file, NautilusDirectory *directory, CopyMoveDoneData *data)
+pre_copy_move_add_file_callback (FMDirectoryView *view,
+				 NautilusFile *new_file,
+				 NautilusDirectory *directory,
+				 CopyMoveDoneData *data)
 {
-	g_object_ref (new_file);
+	nautilus_file_ref (new_file);
 	data->added_files = g_list_prepend (data->added_files, new_file);
 }
 
 /* This needs to be called prior to nautilus_file_operations_copy_move.
  * It hooks up a signal handler to catch any icons that get added before
  * the copy_done_callback is invoked. The return value should  be passed
- * as the data for copy_move_done_callback.
+ * as the data for uri_copy_move_done_callback.
  */
 static CopyMoveDoneData *
 pre_copy_move (FMDirectoryView *directory_view)
@@ -2419,12 +2422,12 @@ pre_copy_move (FMDirectoryView *directory_view)
 static gboolean
 copy_move_done_partition_func (gpointer data, gpointer callback_data)
 {
- 	char *uri;
+ 	GFile *location;
  	gboolean result;
  	
-	uri = nautilus_file_get_uri (NAUTILUS_FILE (data));
-	result = g_hash_table_remove ((GHashTable *) callback_data, uri);
-	g_free (uri);
+	location = nautilus_file_get_location (NAUTILUS_FILE (data));
+	result = g_hash_table_remove ((GHashTable *) callback_data, location);
+	g_object_unref (location);
 
 	return result;
 }
@@ -2435,6 +2438,9 @@ remove_not_really_moved_files (gpointer key,
 			       gpointer callback_data)
 {
 	GList **added_files;
+	GFile *loc;
+
+	loc = key;
 
 	if (GPOINTER_TO_INT (value)) {
 		return FALSE;
@@ -2442,7 +2448,7 @@ remove_not_really_moved_files (gpointer key,
 	
 	added_files = callback_data;
 	*added_files = g_list_prepend (*added_files,
-				       nautilus_file_get_by_uri (key));
+				       nautilus_file_get (loc));
 	return TRUE;
 }
 
@@ -2455,11 +2461,11 @@ remove_not_really_moved_files (gpointer key,
  * up a signal handler to await their arrival.
  */
 static void
-copy_move_done_callback (GHashTable *debuting_uris, gpointer data)
+copy_move_done_callback (GHashTable *debuting_files, gpointer data)
 {
 	FMDirectoryView  *directory_view;
 	CopyMoveDoneData *copy_move_done_data;
-	DebutingUriData  *debuting_uri_data;
+	DebutingFilesData  *debuting_files_data;
 
 	copy_move_done_data = (CopyMoveDoneData *) data;
 	directory_view = copy_move_done_data->directory_view;
@@ -2467,12 +2473,12 @@ copy_move_done_callback (GHashTable *debuting_uris, gpointer data)
 	if (directory_view != NULL) {
 		g_assert (FM_IS_DIRECTORY_VIEW (directory_view));
 	
-		debuting_uri_data = g_new (DebutingUriData, 1);
-		debuting_uri_data->debuting_uris = debuting_uris;
-		debuting_uri_data->added_files = eel_g_list_partition
+		debuting_files_data = g_new (DebutingFilesData, 1);
+		debuting_files_data->debuting_files = g_hash_table_ref (debuting_files);
+		debuting_files_data->added_files = eel_g_list_partition
 			(copy_move_done_data->added_files,
 			 copy_move_done_partition_func,
-			 debuting_uris,
+			 debuting_files,
 			 &copy_move_done_data->added_files);
 
 		/* We're passed the same data used by pre_copy_move_add_file_callback, so disconnecting
@@ -2483,23 +2489,23 @@ copy_move_done_callback (GHashTable *debuting_uris, gpointer data)
 						      G_CALLBACK (pre_copy_move_add_file_callback),
 						      data);
 	
-		/* Any items in the debuting_uris hash table that have
+		/* Any items in the debuting_files hash table that have
 		 * "FALSE" as their value aren't really being copied
 		 * or moved, so we can't wait for an add_file signal
 		 * to come in for those.
 		 */
-		g_hash_table_foreach_remove (debuting_uris,
+		g_hash_table_foreach_remove (debuting_files,
 					     remove_not_really_moved_files,
-					     &debuting_uri_data->added_files);
+					     &debuting_files_data->added_files);
 		
-		if (g_hash_table_size (debuting_uris) == 0) {
+		if (g_hash_table_size (debuting_files) == 0) {
 			/* on the off-chance that all the icons have already been added */
-			if (debuting_uri_data->added_files != NULL) {
+			if (debuting_files_data->added_files != NULL) {
 				fm_directory_view_set_selection (directory_view,
-								 debuting_uri_data->added_files);
+								 debuting_files_data->added_files);
 				fm_directory_view_reveal_selection (directory_view);
 			}
-			debuting_uri_data_free (debuting_uri_data);
+			debuting_files_data_free (debuting_files_data);
 		} else {
 			/* We need to run after the default handler adds the folder we want to
 			 * operate on. The ADD_FILE signal is registered as G_SIGNAL_RUN_LAST, so we
@@ -2507,14 +2513,39 @@ copy_move_done_callback (GHashTable *debuting_uris, gpointer data)
 			 */
 			g_signal_connect_data (GTK_OBJECT (directory_view),
 					       "add_file",
-					       G_CALLBACK (debuting_uri_add_file_callback),
-					       debuting_uri_data,
-					       (GClosureNotify) debuting_uri_data_free,
+					       G_CALLBACK (debuting_files_add_file_callback),
+					       debuting_files_data,
+					       (GClosureNotify) debuting_files_data_free,
 					       G_CONNECT_AFTER);
 		}
 	}
 
 	copy_move_done_data_free (copy_move_done_data);
+}
+
+static void
+key_uri_to_file (gpointer       key,
+		 gpointer       value,
+		 gpointer       user_data)
+{
+	char *uri;
+
+	uri = key;
+	
+}
+
+static void
+uri_copy_move_done_callback (GHashTable *debuting_uris, gpointer data)
+{
+	GHashTable *debuting_files;
+
+	debuting_files = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
+	g_hash_table_foreach (debuting_uris, key_uri_to_file, debuting_files);
+	g_hash_table_destroy (debuting_files);
+	
+	copy_move_done_callback (debuting_files, data);
+	
+	g_hash_table_unref (debuting_files);
 }
 
 static gboolean
@@ -3489,7 +3520,7 @@ fm_directory_view_create_links_for_files (FMDirectoryView *view, GList *files,
 
         copy_move_done_data = pre_copy_move (view);
 	nautilus_file_operations_copy_move (uris, relative_item_points, NULL, GDK_ACTION_LINK, 
-		GTK_WIDGET (view), copy_move_done_callback, copy_move_done_data);
+		GTK_WIDGET (view), uri_copy_move_done_callback, copy_move_done_data);
 	eel_g_list_free_deep (uris);
 }
 
@@ -3521,7 +3552,7 @@ fm_directory_view_duplicate_selection (FMDirectoryView *view, GList *files,
 
         copy_move_done_data = pre_copy_move (view);
 	nautilus_file_operations_copy_move (uris, relative_item_points, NULL, GDK_ACTION_COPY,
-		GTK_WIDGET (view), copy_move_done_callback, copy_move_done_data);
+		GTK_WIDGET (view), uri_copy_move_done_callback, copy_move_done_data);
 	eel_g_list_free_deep (uris);
 }
 
@@ -8112,10 +8143,28 @@ fm_directory_view_move_copy_items (const GList *item_uris,
 		trash_or_delete_files (fm_directory_view_get_containing_window (view), locations, FALSE);
 		eel_g_object_list_free (locations);
 	} else {
-		nautilus_file_operations_copy_move
-			(item_uris, relative_item_points, 
-			 target_uri, copy_action, GTK_WIDGET (view),
-			 copy_move_done_callback, pre_copy_move (view));
+		if (copy_action == GDK_ACTION_COPY) {
+			GList *locations;
+			GFile *dest;
+
+			dest = g_file_new_for_uri (target_uri);
+			locations = location_list_from_uri_list (item_uris);
+			
+			nautilus_file_operations_copy (locations,
+						       relative_item_points,
+						       dest,
+						       fm_directory_view_get_containing_window (view),
+						       copy_move_done_callback,
+						       pre_copy_move (view));
+
+			eel_g_object_list_free (locations);
+			g_object_unref (dest);
+		} else {
+			nautilus_file_operations_copy_move
+				(item_uris, relative_item_points, 
+				 target_uri, copy_action, GTK_WIDGET (view),
+				 uri_copy_move_done_callback, pre_copy_move (view));
+		}
 	}
 }
 

@@ -1,6 +1,16 @@
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Handle debuting URIs in file copy op
+	
+        * src/file-manager/fm-directory-view.c:
+	Use new nautilus_file_operations_copy for copy.
+	Make debuting_uri hash into debuting_files in new
+	API. Convert for old calls.
+
+2007-11-22  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Add run_warning and run_error to simplify the
 	code for error dialogs.
 

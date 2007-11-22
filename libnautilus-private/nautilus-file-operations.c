@@ -81,6 +81,7 @@ static gboolean confirm_trash_auto_value;
  *  Use CommonJob in trash/delete code
  *  Queue changes and metadata ops in the copy code
  *  Copy needs to return debuting uris
+ *  Set coords if passed in
  */
 
 typedef struct {
@@ -4905,9 +4906,10 @@ static void copy_file (CommonJob *job,
 		       GFile *dest_dir,
 		       gboolean same_fs,
 		       SourceInfo *source_info,
-		       TransferInfo *transfer_info);
+		       TransferInfo *transfer_info,
+		       GHashTable *debuting_files);
 
-static void
+static gboolean
 create_dest_dir (CommonJob *job,
 		 GFile *src,
 		 GFile *dest)
@@ -4951,7 +4953,9 @@ create_dest_dir (CommonJob *job,
 		} else {
 			g_assert_not_reached ();
 		}
+		return FALSE;
 	}
+	return TRUE;
 }
 
 static void
@@ -4961,7 +4965,8 @@ copy_directory (CommonJob *job,
 		gboolean same_fs,
 		gboolean create_dest,
 		SourceInfo *source_info,
-		TransferInfo *transfer_info)
+		TransferInfo *transfer_info,
+		GHashTable *debuting_files)
 {
 	GFileInfo *info;
 	GError *error;
@@ -4972,10 +4977,13 @@ copy_directory (CommonJob *job,
 	gboolean skip_error;
 
 	if (create_dest) {
-		create_dest_dir (job, src, dest);
-		if (job->aborted) {
+		if (!create_dest_dir (job, src, dest)) {
 			return;
 		}
+		if (debuting_files) {
+			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (TRUE));
+		}
+
 	}
 		
 	skip_error = should_skip_readdir_error (job, src);
@@ -4993,7 +5001,7 @@ copy_directory (CommonJob *job,
 		       (info = g_file_enumerator_next_file (enumerator, job->cancellable, skip_error?NULL:&error)) != NULL) {
 			src_file = g_file_get_child (src,
 						     g_file_info_get_name (info));
-			copy_file (job, src_file, dest, same_fs, source_info, transfer_info);
+			copy_file (job, src_file, dest, same_fs, source_info, transfer_info, NULL);
 			g_object_unref (info);
 		}
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
@@ -5031,6 +5039,10 @@ copy_directory (CommonJob *job,
 		/* Count the copied directory as a file */
 		transfer_info->num_files ++;
 		report_copy_progress (job, source_info, transfer_info);
+
+		if (debuting_files) {
+			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (create_dest));
+		}
 	} else {
 		primary = f (_("Error while copying."));
 		details = NULL;
@@ -5218,7 +5230,8 @@ copy_file (CommonJob *job,
 	   GFile *dest_dir,
 	   gboolean same_fs,
 	   SourceInfo *source_info,
-	   TransferInfo *transfer_info)
+	   TransferInfo *transfer_info,
+	   GHashTable *debuting_files)
 {
 	GFile *dest;
 	GError *error;
@@ -5256,7 +5269,10 @@ copy_file (CommonJob *job,
 			 &error)) {
 		transfer_info->num_files ++;
 		report_copy_progress (job, source_info, transfer_info);
-		
+
+		if (debuting_files) {
+			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (TRUE));
+		}
 		g_object_unref (dest);
 		return;
 	}
@@ -5396,7 +5412,8 @@ copy_file (CommonJob *job,
 
 		copy_directory (job, src, dest, same_fs,
 				would_recurse,
-				source_info, transfer_info);
+				source_info, transfer_info,
+				debuting_files);
 	}
 	
 	/* Other error */
@@ -5432,22 +5449,32 @@ copy_file (CommonJob *job,
 	g_object_unref (dest);
 }
 
+typedef struct {
+	CommonJob common;
+	GList *files;
+	GFile *destination;
+	GHashTable *debuting_files;
+	void (*done_callback) (GHashTable *debuting_uris, gpointer data);
+	gpointer done_callback_data;
+} CopyJob;
+
 static void
-copy_files (CommonJob *job,
-	    GList *files,
-	    GFile *dest_dir,
+copy_files (CopyJob *job,
 	    const char *dest_fs_id,
 	    SourceInfo *source_info,
 	    TransferInfo *transfer_info)
 {
+	CommonJob *common;
 	GList *l;
 	GFile *src;
 	gboolean same_fs;
 
-	report_copy_progress (job, source_info, transfer_info);
+	common = &job->common;
+
+	report_copy_progress (common, source_info, transfer_info);
 	
-	for (l = files;
-	     l != NULL && !job->aborted ;
+	for (l = job->files;
+	     l != NULL && !common->aborted ;
 	     l = l->next) {
 		src = l->data;
 
@@ -5456,20 +5483,12 @@ copy_files (CommonJob *job,
 			same_fs = has_fs_id (src, dest_fs_id);
 		}
 		
-		copy_file (job, src, dest_dir,
+		copy_file (common, src, job->destination,
 			   same_fs,
-			   source_info, transfer_info);
+			   source_info, transfer_info,
+			   job->debuting_files);
 	}
-	
 }
-
-typedef struct {
-	CommonJob common;
-	GList *files;
-	GFile *destination;
-	void (*done_callback) (GHashTable *debuting_uris, gpointer data);
-	gpointer done_callback_data;
-} CopyJob;
 
 static void
 copy_job_done (gpointer user_data)
@@ -5478,11 +5497,12 @@ copy_job_done (gpointer user_data)
 
 	job = user_data;
 	if (job->done_callback) {
-		job->done_callback (/* TODO: debuting uris */NULL, job->done_callback_data);
+		job->done_callback (job->debuting_files, job->done_callback_data);
 	}
 
 	eel_g_object_list_free (job->files);
 	g_object_unref (job->destination);
+	g_hash_table_unref (job->debuting_files);
 	
 	finalize_common ((CommonJob *)job);
 }
@@ -5532,7 +5552,7 @@ copy_job (GIOJob *io_job,
 	
 	memset (&transfer_info, 0, sizeof (transfer_info));
 	transfer_info.dest = job->destination;
-	copy_files (common, job->files, job->destination,
+	copy_files (job,
 		    dest_fs_id,
 		    &source_info, &transfer_info);
 	
@@ -5553,14 +5573,17 @@ nautilus_file_operations_copy (GList *files,
 			       GArray *relative_item_points,
 			       GFile *target_dir,
 			       GtkWindow *parent_window,
-			       void (*done_callback) (GHashTable *debuting_uris, gpointer data),
+			       void (*done_callback) (GHashTable *debuting_files, gpointer data),
 			       gpointer done_callback_data)
 {
 	CopyJob *job;
 
 	job = op_job_new (CopyJob, parent_window);
+	job->done_callback = done_callback;
+	job->done_callback_data = done_callback_data;
 	job->files = eel_g_object_list_copy (files);
 	job->destination = g_object_ref (target_dir);
+	job->debuting_files = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
 
 	g_schedule_io_job (copy_job,
 			   job,
