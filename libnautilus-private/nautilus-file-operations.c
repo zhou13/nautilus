@@ -4,6 +4,7 @@
 
    Copyright (C) 1999, 2000 Free Software Foundation
    Copyright (C) 2000, 2001 Eazel, Inc.
+   Copyright (C) 2007 Red Hat, Inc.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -20,7 +21,8 @@
    Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.
    
-   Authors: Ettore Perazzoli <ettore@gnu.org> 
+   Authors: Alexander Larsson <alexl@redhat.com>
+            Ettore Perazzoli <ettore@gnu.org> 
             Pavel Cisler <pavel@eazel.com> 
  */
 
@@ -90,6 +92,155 @@ typedef struct {
 } CommonJob;
 
 #define SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE 15
+
+static char *
+format_time (int seconds)
+{
+	int minutes;
+	int hours;
+	char *res;
+
+	if (seconds < 0) {
+		/* Just to make sure... */
+		seconds = 0;
+	}
+	
+	if (seconds < 60) {
+		return g_strdup_printf (ngettext ("%d second","%d seconds", (int) seconds), (int) seconds);
+	}
+
+	if (seconds < 60*60) {
+		minutes = (seconds + 30) / 60;
+		return g_strdup_printf (ngettext (_("%d minute"), _("%d minutes"), minutes), minutes);
+	}
+
+	hours = seconds / (60*60);
+	
+	if (seconds < 60*60*4) {
+		char *h, *m;
+
+		minutes = (seconds - hours * 60 * 60 + 30) / 60;
+		
+		h = g_strdup_printf (ngettext (_("%d hour"), _("%d hours"), hours), hours);
+		m = g_strdup_printf (ngettext (_("%d minute"), _("%d minutes"), minutes), minutes);
+		res = g_strconcat (h, ", ", m, NULL);
+		g_free (h);
+		g_free (m);
+		return res;
+	}
+	
+	return g_strdup_printf (_("about %d hours"), hours);
+}
+
+static char *
+custom_full_name_to_string (char *format, va_list va)
+{
+	GFile *file;
+	
+	file = va_arg (va, GFile *);
+	
+	return g_file_get_parse_name (file);
+}
+
+static void
+custom_full_name_skip (va_list *va)
+{
+	va_arg (*va, GFile *);
+}
+
+static char *
+custom_basename_to_string (char *format, va_list va)
+{
+	GFile *file;
+	GFileInfo *info;
+	char *name, *basename;
+
+	file = va_arg (va, GFile *);
+
+	info = g_file_query_info (file,
+				  G_FILE_ATTRIBUTE_STD_DISPLAY_NAME,
+				  0,
+				  g_cancellable_get_current (),
+				  NULL);
+	
+	name = NULL;
+	if (info) {
+		name = g_strdup (g_file_info_get_display_name (info));
+		g_object_unref (info);
+	}
+	
+	if (name == NULL) {
+		basename = g_file_get_basename (file);
+		if (g_utf8_validate (basename, -1, NULL)) {
+			name = basename;
+		} else {
+			name = g_uri_escape_string (basename, G_URI_RESERVED_CHARS_ALLOWED_IN_PATH, TRUE);
+			g_free (basename);
+		}
+	}
+	
+	return name;
+}
+
+static void
+custom_basename_skip (va_list *va)
+{
+	va_arg (*va, GFile *);
+}
+
+
+static char *
+custom_size_to_string (char *format, va_list va)
+{
+	goffset size;
+
+	size = va_arg (va, goffset);
+	return g_format_file_size_for_display (size);
+}
+
+static void
+custom_size_skip (va_list *va)
+{
+	va_arg (*va, goffset);
+}
+
+static char *
+custom_time_to_string (char *format, va_list va)
+{
+	int secs;
+
+	secs = va_arg (va, int);
+	return format_time (secs);
+}
+
+static void
+custom_time_skip (va_list *va)
+{
+	va_arg (*va, int);
+}
+
+static EelPrintfHandler handlers[] = {
+	{ 'F', custom_full_name_to_string, custom_full_name_skip },
+	{ 'B', custom_basename_to_string, custom_basename_skip },
+	{ 'S', custom_size_to_string, custom_size_skip },
+	{ 'T', custom_time_to_string, custom_time_skip },
+	{ 0 }
+};
+
+
+static char *
+f (const char *format, ...) {
+	va_list va;
+	char *res;
+	
+	va_start (va, format);
+	res = eel_strdup_vprintf_with_custom (handlers, format, va);
+	va_end (va);
+
+	return res;
+}
+
+
 
 #ifdef GIO_CONVERSION_DONE
 
@@ -4146,13 +4297,14 @@ report_count_progress (CommonJob *job,
 		       SourceInfo *source_info)
 {
 	char *size;
+	char *s;
 	
 	size = g_format_file_size_for_display (source_info->num_bytes);
 	if (source_info->op == OP_KIND_COPY) {
-		nautilus_progress_info_set_details_printf (job->progress,
-							   _("Preparing to copy %d files (%s)"),
-							   source_info->num_files,
-							   size);
+		s = f (_("Preparing to copy %d files (%S)"),
+		       source_info->num_files, source_info->num_bytes);
+		nautilus_progress_info_set_details (job->progress, s);
+		g_free (s);
 	}
 	g_free (size);
 }
@@ -4588,45 +4740,6 @@ verify_destination (CommonJob *job,
 	g_object_unref (fsinfo);
 }
 
-static char *
-format_time (double seconds)
-{
-	int minutes;
-	int hours;
-	char *res;
-
-	if (seconds < 0) {
-		/* Just to make sure... */
-		seconds = 0;
-	}
-	
-	if (seconds < 60) {
-		return g_strdup_printf (ngettext ("%d second","%d seconds", (int) seconds), (int) seconds);
-	}
-
-	if (seconds < 60*60) {
-		minutes = (int) floor (seconds / 60 + 0.5);
-		return g_strdup_printf (ngettext (_("%d minute"), _("%d minutes"), minutes), minutes);
-	}
-
-	hours = floor (seconds / (60*60));
-	
-	if (seconds < 60*60*4) {
-		char *h, *m;
-
-		minutes = (int) floor ((seconds - hours * 60 * 60) / 60 + 0.5);
-		
-		h = g_strdup_printf (ngettext (_("%d hour"), _("%d hours"), hours), hours);
-		m = g_strdup_printf (ngettext (_("%d minute"), _("%d minutes"), minutes), minutes);
-		res = g_strconcat (h, ", ", m, NULL);
-		g_free (h);
-		g_free (m);
-		return res;
-	}
-	
-	return g_strdup_printf (_("about %d hours"), hours);
-}
-
 #define NSEC_PER_SEC 1000000000
 
 static void
@@ -4670,9 +4783,10 @@ report_copy_progress (CommonJob *job,
 
 	elapsed = g_timer_elapsed (job->time, NULL);
 	if (elapsed < SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE) {
-		nautilus_progress_info_set_details_printf (job->progress,
-							   _("Copied %s of %s."),
-							   size, total_size_str);
+		char *s;
+		s = f (_("Copied %S of %S."), transfer_info->num_bytes, total_size);
+		nautilus_progress_info_set_details (job->progress, s);
+		g_free (s);
 	} else {
 		transfer_rate = transfer_info->num_bytes / elapsed;
 		rate_str = g_format_file_size_for_display ((goffset) floor (transfer_rate + 0.5));
