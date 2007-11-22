@@ -76,6 +76,13 @@
 
 static gboolean confirm_trash_auto_value;
 
+/* TODO:
+ *  Implement missing functions
+ *  Use CommonJob in trash/delete code
+ *  Queue changes and metadata ops in the copy code
+ *  Copy needs to return debuting uris
+ */
+
 typedef struct {
 	GIOJob *io_job;	
 	GTimer *time;
@@ -92,6 +99,7 @@ typedef struct {
 } CommonJob;
 
 #define SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE 15
+#define NSEC_PER_SEC 1000000000
 
 #define IS_IO_ERROR(__error, KIND) (((__error)->domain == G_IO_ERROR && (__error)->code == G_IO_ERROR_ ## KIND))
 
@@ -4760,8 +4768,6 @@ verify_destination (CommonJob *job,
 	
 	g_object_unref (fsinfo);
 }
-
-#define NSEC_PER_SEC 1000000000
 
 static void
 report_copy_progress (CommonJob *job,
