@@ -1,5 +1,10 @@
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-operations.c:
+	Add IS_IO_ERROR macro and use that
+	
+2007-11-22  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-progress-info.[ch]:
 	Remove printf versions
 	rename _set_foo_nocopy to _take_foo

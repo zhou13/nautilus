@@ -93,6 +93,8 @@ typedef struct {
 
 #define SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE 15
 
+#define IS_IO_ERROR(__error, KIND) (((__error)->domain == G_IO_ERROR && (__error)->code == G_IO_ERROR_ ## KIND))
+
 static char *
 format_time (int seconds)
 {
@@ -4365,8 +4367,7 @@ scan_dir (GFile *dir,
 			primary = _("Error while copying.");
 			details = NULL;
 			
-			if (error->domain == G_IO_ERROR &&
-			    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 				secondary = f (_("Files in the folder \"%B\" cannot be copied because you do "
 						 "not have permissions to read them."), dir);
 			} else {
@@ -4404,8 +4405,7 @@ scan_dir (GFile *dir,
 		primary = _("Error while copying.");
 		details = NULL;
 		
-		if (error->domain == G_IO_ERROR &&
-		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 			secondary = f (_("The folder \"%B\" cannot be copied because you do not have "
 					 "permissions to read it."), dir);
 		} else {
@@ -4479,8 +4479,7 @@ scan_file (GFile *file,
 		primary = _("Error while copying.");
 		details = NULL;
 		
-		if (error->domain == G_IO_ERROR &&
-		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 			secondary = f (_("The file \"%B\" cannot be copied because you do not have "
 					 "permissions to read it."), file);
 		} else {
@@ -4579,8 +4578,7 @@ verify_destination (CommonJob *job,
 		primary = f (_("Error while copying to \"%B\"."), dest);
 		details = NULL;
 		
-		if (error->domain == G_IO_ERROR &&
-		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 			secondary = _("You don't have permissions to access the destination folder.");
 		} else {
 			secondary = _("There was an error getting information about the destination.");
@@ -4864,8 +4862,7 @@ create_dest_dir (CommonJob *job,
 		primary = _("Error while copying.");
 		details = NULL;
 		
-		if (error->domain == G_IO_ERROR &&
-		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 			secondary = f (_("The folder \"%B\" cannot be copied because you do not have "
 					 "permissions to create it in the destination."), src);
 		} else {
@@ -4945,8 +4942,7 @@ copy_directory (CommonJob *job,
 			primary = _("Error while copying.");
 			details = NULL;
 			
-			if (error->domain == G_IO_ERROR &&
-			    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+			if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 				secondary = f (_("Files in the folder \"%B\" cannot be copied because you do "
 						 "not have permissions to read them."), src);
 			} else {
@@ -4982,8 +4978,7 @@ copy_directory (CommonJob *job,
 		primary = _("Error while copying.");
 		details = NULL;
 		
-		if (error->domain == G_IO_ERROR &&
-		    error->code == G_IO_ERROR_PERMISSION_DENIED) {
+		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
 			secondary = f (_("The folder \"%B\" cannot be copied because you do not have "
 					 "permissions to read it."), src);
 		} else {
@@ -5059,8 +5054,7 @@ remove_target_recursively (CommonJob *job,
 		}
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
 		
-	} else if (error->domain == G_IO_ERROR &&
-		   error->code == G_IO_ERROR_NOT_DIRECTORY) {
+	} else if (IS_IO_ERROR (error, NOT_DIRECTORY)) {
 		/* Not a dir, continue */
 		g_error_free (error);
 		
@@ -5223,8 +5217,7 @@ copy_file (CommonJob *job,
 
 	/* Conflict */
 	if (!overwrite &&
-	    error->domain == G_IO_ERROR &&
-	    error->code == G_IO_ERROR_EXISTS) {
+	    IS_IO_ERROR (error, EXISTS)) {
 		gboolean is_merge;
 
 		is_merge = FALSE;
@@ -5309,8 +5302,7 @@ copy_file (CommonJob *job,
 	}
 	
 	else if (overwrite &&
-		 error->domain == G_IO_ERROR &&
-		 error->code == G_IO_ERROR_IS_DIRECTORY) {
+		 IS_IO_ERROR (error, IS_DIRECTORY)) {
 
 		g_error_free (error);
 		
@@ -5320,10 +5312,8 @@ copy_file (CommonJob *job,
 	}
 	
 	/* Needs to recurse */
-	else if (error->domain == G_IO_ERROR &&
-		 (error->code == G_IO_ERROR_WOULD_RECURSE ||
-		  error->code == G_IO_ERROR_WOULD_MERGE)) {
-
+	else if (IS_IO_ERROR (error, WOULD_RECURSE) ||
+		 IS_IO_ERROR (error, WOULD_MERGE)) {
 		would_recurse = error->code == G_IO_ERROR_WOULD_RECURSE;
 		g_error_free (error);
 
