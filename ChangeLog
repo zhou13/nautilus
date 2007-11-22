@@ -1,6 +1,11 @@
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Use the right create_dest arg to copy_directory
+	
+2007-11-22  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Free primary / secondary in run_simple_dialog
 
 2007-11-22  Alexander Larsson  <alexl@redhat.com>

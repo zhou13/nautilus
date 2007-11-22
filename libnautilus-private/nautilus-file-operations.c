@@ -5341,9 +5341,9 @@ copy_file (CommonJob *job,
 				
 			}
 		}
-		
+
 		copy_directory (job, src, dest, same_fs,
-				error->code != G_IO_ERROR_WOULD_MERGE,
+				would_recurse,
 				source_info, transfer_info);
 	}
 	
