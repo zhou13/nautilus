@@ -25,6 +25,7 @@
 #include <config.h>
 #include <math.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 #include <eel/eel-string.h>
 #include <eel/eel-glib-extensions.h>
 #include "nautilus-progress-info.h"
@@ -37,7 +38,7 @@ enum {
   LAST_SIGNAL
 };
 
-#define SIGNAL_DELAY_MSEC 1200
+#define SIGNAL_DELAY_MSEC 100
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
@@ -69,6 +70,10 @@ struct _NautilusProgressInfoClass
 };
 
 static GList *active_progress_infos = NULL;
+
+static GtkStatusIcon *status_icon = NULL;
+static int n_progress_ops = 0;
+
 
 G_LOCK_DEFINE_STATIC(progress_info);
 
@@ -174,6 +179,210 @@ nautilus_progress_info_class_init (NautilusProgressInfoClass *klass)
 	
 }
 
+static gboolean
+delete_event (GtkWidget *widget,
+	      GdkEventAny *event)
+{
+	gtk_widget_hide (widget);
+	return TRUE;
+}
+
+static GtkWidget *
+get_progress_window (void)
+{
+	static GtkWidget *progress_window = NULL;
+	GtkWidget *vbox;
+	
+	if (progress_window != NULL) {
+		return progress_window;
+	}
+	
+	progress_window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_resizable (GTK_WINDOW (progress_window),
+				  FALSE);
+
+	gtk_window_set_title (GTK_WINDOW (progress_window),
+			      _("File operations"));
+	gtk_window_set_wmclass (GTK_WINDOW (progress_window),
+				"file_progress", "Nautilus");
+	gtk_window_set_type_hint (GTK_WINDOW (progress_window),
+				  GDK_WINDOW_TYPE_HINT_DIALOG);
+	
+	vbox = gtk_vbox_new (FALSE, 0);
+	gtk_container_set_border_width (GTK_CONTAINER (vbox), 12);
+	gtk_widget_show (vbox);
+	
+	gtk_container_add (GTK_CONTAINER (progress_window),
+			   vbox);
+
+	g_signal_connect (progress_window, "delete_event", (GCallback)delete_event, NULL);
+
+	status_icon = gtk_status_icon_new_from_icon_name ("stock_folder-copy");
+	g_signal_connect_swapped (status_icon, "activate", (GCallback)gtk_window_present, progress_window);
+
+	gtk_status_icon_set_visible (status_icon, FALSE);
+	
+	return progress_window;
+}
+
+
+typedef struct {
+	GtkWidget *widget;
+	NautilusProgressInfo *info;
+	GtkLabel *status;
+	GtkLabel *details;
+	GtkProgressBar *progress_bar;
+} ProgressWidgetData;
+
+static void
+progress_widget_data_free (ProgressWidgetData *data)
+{
+	g_object_unref (data->info);
+	g_free (data);
+}
+
+static void
+update_data (ProgressWidgetData *data)
+{
+	char *status, *details;
+	char *markup;
+
+	status = nautilus_progress_info_get_status (data->info);
+	gtk_label_set_text (data->status, status);
+	g_free (status);
+
+	details = nautilus_progress_info_get_details (data->info);
+	markup = g_markup_printf_escaped ("<span size='small'>%s</span>", details);
+	gtk_label_set_markup (data->details, markup);
+	g_free (details);
+	g_free (markup);
+}
+
+static void
+update_progress (ProgressWidgetData *data)
+{
+	double progress;
+
+	progress = nautilus_progress_info_get_progress (data->info);
+	if (progress < 0) {
+		gtk_progress_bar_pulse (data->progress_bar);
+	} else {
+		gtk_progress_bar_set_fraction (data->progress_bar, progress);
+	}
+}
+
+static void
+op_finished (ProgressWidgetData *data)
+{
+	gtk_widget_destroy (data->widget);
+	
+	n_progress_ops--;
+	gtk_status_icon_set_tooltip (status_icon,
+				     _("%d file operations active"));
+	if (n_progress_ops == 0) {
+		gtk_status_icon_set_visible (status_icon, FALSE);
+	}
+}
+
+static GtkWidget *
+progress_widget_new (NautilusProgressInfo *info)
+{
+	ProgressWidgetData *data;
+	GtkWidget *label, *bar;
+
+	data = g_new0 (ProgressWidgetData, 1);
+	data->info = g_object_ref (info);
+	
+	data->widget = gtk_vbox_new (FALSE, 0);
+
+	g_object_set_data_full (G_OBJECT (data->widget),
+				"data", data, (GDestroyNotify)progress_widget_data_free);
+	
+	label = gtk_label_new ("details");
+	gtk_widget_set_size_request (label,
+				     400, -1);
+	data->status = GTK_LABEL (label);
+	gtk_label_set_line_wrap (GTK_LABEL (label), TRUE);
+	gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
+	gtk_widget_show (label);
+	gtk_box_pack_start (GTK_BOX (data->widget),
+			    label,
+			    FALSE, FALSE,
+			    2);
+	
+	bar = gtk_progress_bar_new ();
+	data->progress_bar = GTK_PROGRESS_BAR (bar);
+	gtk_progress_bar_set_pulse_step (data->progress_bar, 0.05);
+	
+	gtk_widget_show (bar);
+	gtk_box_pack_start (GTK_BOX (data->widget),
+			    bar,
+			    FALSE, FALSE,
+			    2);
+	
+	label = gtk_label_new ("status");
+	gtk_widget_set_size_request (label,
+				     400, -1);
+	data->details = GTK_LABEL (label);
+	gtk_label_set_line_wrap (GTK_LABEL (label), TRUE);
+	gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
+	gtk_widget_show (label);
+	gtk_box_pack_start (GTK_BOX (data->widget),
+			    label,
+			    FALSE, FALSE,
+			    0);
+
+	update_data (data);
+	update_progress (data);
+
+	g_signal_connect_swapped (data->info, "changed", (GCallback)update_data, data);
+	g_signal_connect_swapped (data->info, "progress_changed", (GCallback)update_progress, data);
+	g_signal_connect_swapped (data->info, "finished", (GCallback)op_finished, data);
+	
+	gtk_widget_show (data->widget);
+
+	return data->widget;
+}
+
+static void
+handle_new_progress_info (NautilusProgressInfo *info)
+{
+	GtkWidget *window, *progress;
+
+	window = get_progress_window ();
+	
+	progress = progress_widget_new (info);
+	gtk_box_pack_start (GTK_BOX (GTK_BIN (window)->child),
+			    progress,
+			    FALSE, FALSE, 6);
+
+	gtk_window_present (GTK_WINDOW (window));
+
+	n_progress_ops++;
+	gtk_status_icon_set_visible (status_icon, TRUE);
+	gtk_status_icon_set_tooltip (status_icon,
+				     _("%d file operations active"));
+}
+
+static gboolean
+new_op_started_timeout (NautilusProgressInfo *info)
+{
+	if (!nautilus_progress_info_get_is_finished (info)) {
+		handle_new_progress_info (info);
+	}
+	g_object_unref (info);
+	return FALSE;
+}
+
+static void
+new_op_started (NautilusProgressInfo *info)
+{
+	g_signal_handlers_disconnect_by_func (info, (GCallback)new_op_started, NULL);
+	g_timeout_add_seconds (2,
+			       (GSourceFunc)new_op_started_timeout,
+			       g_object_ref (info));
+}
+
 static void
 nautilus_progress_info_init (NautilusProgressInfo *info)
 {
@@ -182,6 +391,8 @@ nautilus_progress_info_init (NautilusProgressInfo *info)
 	G_LOCK (progress_info);
 	active_progress_infos = g_list_append (active_progress_infos, info);
 	G_UNLOCK (progress_info);
+
+	g_signal_connect (info, "started", (GCallback)new_op_started, NULL);
 }
 
 NautilusProgressInfo *
@@ -236,8 +447,12 @@ nautilus_progress_info_get_progress (NautilusProgressInfo *info)
 	double res;
 	
 	G_LOCK (progress_info);
-	
-	res = info->progress;
+
+	if (info->activity_mode) {
+		res = -1.0;
+	} else {
+		res = info->progress;
+	}
 	
 	G_UNLOCK (progress_info);
 	
@@ -489,18 +704,29 @@ nautilus_progress_info_set_details (NautilusProgressInfo *info,
 }
 
 void
+nautilus_progress_info_pulse_progress (NautilusProgressInfo *info)
+{
+	G_LOCK (progress_info);
+
+	info->activity_mode = TRUE;
+	info->progress = 0.0;
+	info->progress_at_idle = TRUE;
+	queue_idle (info, FALSE);
+	
+	G_UNLOCK (progress_info);
+}
+
+void
 nautilus_progress_info_set_progress (NautilusProgressInfo *info,
-				     gboolean              activity_mode,
 				     double                current_percent)
 {
 	G_LOCK (progress_info);
 	
-	if (activity_mode || /* Always pulse if activity mode */
-	    info->activity_mode || /* emit on switch from activity mode */
-	    fabs (current_percent - info->progress) > 0.1 /* Emit on change of 0.1 percent */
+	if (info->activity_mode || /* emit on switch from activity mode */
+	    fabs (current_percent - info->progress) > 0.005 /* Emit on change of 0.5 percent */
 	    ) {
+		info->activity_mode = FALSE;
 		info->progress = current_percent;
-		
 		info->progress_at_idle = TRUE;
 		queue_idle (info, FALSE);
 	}

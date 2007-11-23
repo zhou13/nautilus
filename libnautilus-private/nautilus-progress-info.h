@@ -72,8 +72,8 @@ void          nautilus_progress_info_set_details     (NautilusProgressInfo *info
 void          nautilus_progress_info_take_details    (NautilusProgressInfo *info,
 						      char                 *details);
 void          nautilus_progress_info_set_progress    (NautilusProgressInfo *info,
-						      gboolean              activity_mode,
 						      double                current_percent);
+void          nautilus_progress_info_pulse_progress  (NautilusProgressInfo *info);
 
 
 

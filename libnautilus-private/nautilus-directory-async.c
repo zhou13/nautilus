@@ -3446,15 +3446,16 @@ link_info_got_data (NautilusDirectory *directory,
 
 	nautilus_directory_ref (directory);
 
+	uri = NULL;
+	name = NULL;
+	icon = NULL;
+	
 	/* Handle the case where we read the Nautilus link. */
 	if (result) {
 		nautilus_link_get_link_info_given_file_contents (file_contents, bytes_read,
 								 &uri, &name, &icon);
 	} else {
 		/* FIXME bugzilla.gnome.org 42433: We should report this error to the user. */
-		uri = NULL;
-		name = NULL;
-		icon = NULL;
 	}
 
 	nautilus_file_ref (file);

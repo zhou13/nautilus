@@ -1,3 +1,12 @@
+2007-11-23  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-directory-async.c:
+	Don't free uninitialized memory.
+	
+        * libnautilus-private/nautilus-file-operations.c:
+        * libnautilus-private/nautilus-progress-info.[ch]:
+	Add progress info dialog
+
 2007-11-22  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:

@@ -103,6 +103,7 @@ typedef struct {
 
 #define SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE 15
 #define NSEC_PER_SEC 1000000000
+#define NSEC_PER_MSEC 1000000
 
 #define IS_IO_ERROR(__error, KIND) (((__error)->domain == G_IO_ERROR && (__error)->code == G_IO_ERROR_ ## KIND))
 
@@ -4395,6 +4396,8 @@ report_count_progress (CommonJob *job,
 		       source_info->num_files, source_info->num_bytes);
 		nautilus_progress_info_take_details (job->progress, s);
 	}
+
+	nautilus_progress_info_pulse_progress (job->progress);
 }
 
 static void
@@ -4786,7 +4789,7 @@ report_copy_progress (CommonJob *job,
 	now = g_thread_gettime ();
 	
 	if (transfer_info->last_report_time != 0 &&
-	    ABS (transfer_info->last_report_time - now) < 1 * NSEC_PER_SEC) {
+	    ABS (transfer_info->last_report_time - now) < 100 * NSEC_PER_MSEC) {
 		return;
 	}
 	transfer_info->last_report_time = now;
@@ -4820,6 +4823,8 @@ report_copy_progress (CommonJob *job,
 		       remaining_time);
 		nautilus_progress_info_take_details (job->progress, s);
 	}
+
+	nautilus_progress_info_set_progress (job->progress, (double)transfer_info->num_bytes / total_size);
 }
 
 static GFile *
@@ -5524,8 +5529,6 @@ copy_job (GIOJob *io_job,
 	common = &job->common;
 	common->io_job = io_job;
 
-	g_print ("copy job start\n");
-
 	dest_fs_id = NULL;
 	
 	nautilus_progress_info_start (job->common.progress);
@@ -5538,10 +5541,6 @@ copy_job (GIOJob *io_job,
 		goto aborted;
 	}
 
-	g_print ("source info: %d files, %"G_GINT64_FORMAT" bytes\n",
-		 source_info.num_files,
-		 source_info.num_bytes);
-	
 	verify_destination (&job->common,
 			    job->destination,
 			    &dest_fs_id,
@@ -5559,7 +5558,6 @@ copy_job (GIOJob *io_job,
 		    &source_info, &transfer_info);
 	
  aborted:
-	g_print ("copy job done\n");
 	
 	g_free (dest_fs_id);
 	
