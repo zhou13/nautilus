@@ -38,6 +38,11 @@ enum {
   LAST_SIGNAL
 };
 
+/* TODO:
+ * Want an icon for the operation.
+ * Add and implement cancel button
+ */
+
 #define SIGNAL_DELAY_MSEC 100
 
 static guint signals[LAST_SIGNAL] = { 0 };
@@ -281,6 +286,7 @@ op_finished (ProgressWidgetData *data)
 				     _("%d file operations active"));
 	if (n_progress_ops == 0) {
 		gtk_status_icon_set_visible (status_icon, FALSE);
+		gtk_widget_hide (get_progress_window ());
 	}
 }
 

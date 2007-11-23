@@ -1,5 +1,13 @@
 2007-11-23  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-operations.c:
+	Nicer progress texts
+	
+        * libnautilus-private/nautilus-progress-info.c:
+	Hide progress window when last op finishes.
+
+2007-11-23  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-directory-async.c:
 	Don't free uninitialized memory.
 	
