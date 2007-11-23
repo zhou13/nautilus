@@ -4812,7 +4812,15 @@ report_copy_progress (CopyJob *copy_job,
 	if (source_info->num_files == 1) {
 		nautilus_progress_info_take_status (job->progress,
 						    f (_("Copying \"%B\" to \"%B\""),
-						       (GFile *)copy_job->files->data, copy_job->destination));
+						       (GFile *)copy_job->files->data,
+						       copy_job->destination));
+	} else if (copy_job->files != NULL &&
+		   copy_job->files->next == NULL) {
+		nautilus_progress_info_take_status (job->progress,
+						    f (_("Copying %d files (in \"%B\") to \"%B\""),
+						       files_left,
+						       (GFile *)copy_job->files->data,
+						       copy_job->destination));
 	} else {
 		nautilus_progress_info_take_status (job->progress,
 						    f (_("Copying %d files to \"%B\""),

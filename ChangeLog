@@ -1,6 +1,14 @@
 2007-11-23  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:
+	Better status message when copying one folder
+	
+        * libnautilus-private/nautilus-progress-info.c:
+	Correct tooltip message for status icon
+
+2007-11-23  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-operations.c:
 	Nicer progress texts
 	
         * libnautilus-private/nautilus-progress-info.c:

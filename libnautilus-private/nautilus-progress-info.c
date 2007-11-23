@@ -277,17 +277,30 @@ update_progress (ProgressWidgetData *data)
 }
 
 static void
+update_status_icon_and_window (void)
+{
+	char *tooltip;
+
+	tooltip = g_strdup_printf (_("%d file operations active"),
+				   n_progress_ops);
+	gtk_status_icon_set_tooltip (status_icon, tooltip);
+	g_free (tooltip);
+	
+	if (n_progress_ops == 0) {
+		gtk_status_icon_set_visible (status_icon, FALSE);
+		gtk_widget_hide (get_progress_window ());
+	} else {
+		gtk_status_icon_set_visible (status_icon, TRUE);
+	}
+}
+
+static void
 op_finished (ProgressWidgetData *data)
 {
 	gtk_widget_destroy (data->widget);
 	
 	n_progress_ops--;
-	gtk_status_icon_set_tooltip (status_icon,
-				     _("%d file operations active"));
-	if (n_progress_ops == 0) {
-		gtk_status_icon_set_visible (status_icon, FALSE);
-		gtk_widget_hide (get_progress_window ());
-	}
+	update_status_icon_and_window ();
 }
 
 static GtkWidget *
@@ -365,9 +378,7 @@ handle_new_progress_info (NautilusProgressInfo *info)
 	gtk_window_present (GTK_WINDOW (window));
 
 	n_progress_ops++;
-	gtk_status_icon_set_visible (status_icon, TRUE);
-	gtk_status_icon_set_tooltip (status_icon,
-				     _("%d file operations active"));
+	update_status_icon_and_window ();	
 }
 
 static gboolean
