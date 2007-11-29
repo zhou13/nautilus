@@ -79,8 +79,6 @@ static gboolean confirm_trash_auto_value;
 /* TODO:
  *  Implement missing functions
  *  Use CommonJob in trash/delete code
- *  Queue metadata ops in the copy code
- *  Set coords if passed in
  */
 
 typedef struct {
@@ -102,6 +100,9 @@ typedef struct {
 	CommonJob common;
 	GList *files;
 	GFile *destination;
+	GdkPoint *icon_positions;
+	int n_icon_positions;
+	int screen_num;
 	GHashTable *debuting_files;
 	void (*done_callback) (GHashTable *debuting_uris, gpointer data);
 	gpointer done_callback_data;
@@ -4936,7 +4937,8 @@ static void copy_file (CopyJob *job,
 		       gboolean same_fs,
 		       SourceInfo *source_info,
 		       TransferInfo *transfer_info,
-		       GHashTable *debuting_files);
+		       GHashTable *debuting_files,
+		       GdkPoint *point);
 
 static gboolean
 create_dest_dir (CommonJob *job,
@@ -5034,7 +5036,7 @@ copy_directory (CopyJob *copy_job,
 		       (info = g_file_enumerator_next_file (enumerator, job->cancellable, skip_error?NULL:&error)) != NULL) {
 			src_file = g_file_get_child (src,
 						     g_file_info_get_name (info));
-			copy_file (copy_job, src_file, dest, same_fs, source_info, transfer_info, NULL);
+			copy_file (copy_job, src_file, dest, same_fs, source_info, transfer_info, NULL, NULL);
 			g_object_unref (info);
 		}
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
@@ -5259,6 +5261,7 @@ copy_file_progress_callback (goffset current_num_bytes,
 	}
 }
 
+/* Debuting files is non-NULL only for toplevel items */
 static void
 copy_file (CopyJob *copy_job,
 	   GFile *src,
@@ -5266,7 +5269,8 @@ copy_file (CopyJob *copy_job,
 	   gboolean same_fs,
 	   SourceInfo *source_info,
 	   TransferInfo *transfer_info,
-	   GHashTable *debuting_files)
+	   GHashTable *debuting_files,
+	   GdkPoint *position)
 {
 	GFile *dest;
 	GError *error;
@@ -5309,12 +5313,18 @@ copy_file (CopyJob *copy_job,
 		report_copy_progress (copy_job, source_info, transfer_info);
 
 		if (debuting_files) {
+			nautilus_file_changes_queue_schedule_metadata_copy (src, dest);
+			if (position) {
+				nautilus_file_changes_queue_schedule_position_set (dest, *position, copy_job->screen_num);
+			} else {
+				nautilus_file_changes_queue_schedule_position_remove (dest);
+			}
+			
 			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (TRUE));
 		}
 		g_object_unref (dest);
 
 		nautilus_file_changes_queue_file_added (dest);
-		/* TODO: copy metadata? */
 		return;
 	}
 
@@ -5449,8 +5459,10 @@ copy_file (CopyJob *copy_job,
 				goto out;
 				
 			}
+			if (debuting_files) { /* Only remove metadata for toplevel items */
+				nautilus_file_changes_queue_schedule_metadata_remove (dest);
+			}
 			nautilus_file_changes_queue_file_removed (dest);
-			nautilus_file_changes_queue_schedule_metadata_remove (dest);
 		}
 
 		copy_directory (copy_job, src, dest, same_fs,
@@ -5502,16 +5514,26 @@ copy_files (CopyJob *job,
 	GList *l;
 	GFile *src;
 	gboolean same_fs;
+	int i;
+	GdkPoint *point;
 
 	common = &job->common;
 
 	report_copy_progress (job, source_info, transfer_info);
 	
+	i = 0;
 	for (l = job->files;
 	     l != NULL && !common->aborted ;
 	     l = l->next) {
 		src = l->data;
 
+		if (i < job->n_icon_positions) {
+			point = &job->icon_positions[i];
+		} else {
+			point = NULL;
+		}
+
+		
 		same_fs = FALSE;
 		if (dest_fs_id) {
 			same_fs = has_fs_id (src, dest_fs_id);
@@ -5520,7 +5542,9 @@ copy_files (CopyJob *job,
 		copy_file (job, src, job->destination,
 			   same_fs,
 			   source_info, transfer_info,
-			   job->debuting_files);
+			   job->debuting_files,
+			   point);
+		i++;
 	}
 }
 
@@ -5603,12 +5627,25 @@ nautilus_file_operations_copy (GList *files,
 			       gpointer done_callback_data)
 {
 	CopyJob *job;
+	GdkScreen *screen;
 
 	job = op_job_new (CopyJob, parent_window);
 	job->done_callback = done_callback;
 	job->done_callback_data = done_callback_data;
 	job->files = eel_g_object_list_copy (files);
 	job->destination = g_object_ref (target_dir);
+	if (relative_item_points != NULL &&
+	    relative_item_points->len > 0) {
+		job->icon_positions =
+			g_memdup (relative_item_points->data,
+				  sizeof (GdkPoint) * relative_item_points->len);
+		job->n_icon_positions = relative_item_points->len;
+	}
+	job->screen_num = 0;
+	if (parent_window) {
+		screen = gtk_widget_get_screen (GTK_WIDGET (parent_window));
+		job->screen_num = gdk_screen_get_number (screen);
+	}
 	job->debuting_files = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
 
 	g_schedule_io_job (copy_job,

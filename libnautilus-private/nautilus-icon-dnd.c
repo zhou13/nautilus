@@ -1763,12 +1763,16 @@ drag_data_received_callback (GtkWidget *widget,
 				   drag_info->selection_data->data[0] == 'S' &&
 				   drag_info->direct_save_uri != NULL) {
 				GdkPoint p;
+				GFile *location;
 
-				nautilus_file_changes_queue_file_added_by_uri (drag_info->direct_save_uri);
+				location = g_file_new_for_uri (drag_info->direct_save_uri);
+
+				nautilus_file_changes_queue_file_added (location);
 				p.x = x; p.y = y;
-				nautilus_file_changes_queue_schedule_position_set (drag_info->direct_save_uri,
+				nautilus_file_changes_queue_schedule_position_set (location,
 										   p,
 										   gdk_screen_get_number (gtk_widget_get_screen (widget)));
+				g_object_unref (location);
 				nautilus_file_changes_consume_changes (TRUE);
             		}
 		        success = TRUE;

@@ -238,8 +238,23 @@ nautilus_file_changes_queue_file_moved (const char *from, const char *to)
 }
 
 void
-nautilus_file_changes_queue_schedule_metadata_copy (const char *from_uri,
-						    const char *to_uri)
+nautilus_file_changes_queue_schedule_metadata_copy (GFile *from,
+						    GFile *to)
+{
+	char *from_uri, *to_uri;
+
+	from_uri = g_file_get_uri (from);
+	to_uri = g_file_get_uri (to);
+
+	nautilus_file_changes_queue_schedule_metadata_copy_by_uri (from_uri, to_uri);
+
+	g_free (from_uri);
+	g_free (to_uri);
+}
+
+void
+nautilus_file_changes_queue_schedule_metadata_copy_by_uri (const char *from_uri,
+							   const char *to_uri)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -298,7 +313,7 @@ nautilus_file_changes_queue_schedule_metadata_remove (GFile *location)
 }
 
 void
-nautilus_file_changes_queue_schedule_position_set (const char *uri, 
+nautilus_file_changes_queue_schedule_position_set (GFile *location, 
 						   GdkPoint point,
 						   int screen)
 {
@@ -309,14 +324,14 @@ nautilus_file_changes_queue_schedule_position_set (const char *uri,
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_POSITION_SET;
-	new_item->from_uri = g_strdup (uri);
+	new_item->from_uri = g_file_get_uri (location);
 	new_item->point = point;
 	new_item->screen = screen;
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
 void
-nautilus_file_changes_queue_schedule_position_remove (const char *uri)
+nautilus_file_changes_queue_schedule_position_remove (GFile *location)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -325,7 +340,7 @@ nautilus_file_changes_queue_schedule_position_remove (const char *uri)
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_POSITION_REMOVE;
-	new_item->from_uri = g_strdup (uri);
+	new_item->from_uri = g_file_get_uri (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 

@@ -1,6 +1,16 @@
 2007-11-29  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-changes-queue.[ch]:
+        * libnautilus-private/nautilus-icon-dnd.c:
+	Change position setting api to accept GFile instead of
+	uri
+	
+        * libnautilus-private/nautilus-file-operations.c:
+	Set positions and copy metadata.
+
+2007-11-29  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-changes-queue.[ch]:
 	Add some GFile version and rename the old to _by_uri
 	
         * libnautilus-private/nautilus-file-operations.c:
