@@ -40,7 +40,7 @@
 #include <gtk/gtktable.h>
 #include <gtk/gtkvbox.h>
 #include <glib/gi18n.h>
-#include <gio/gurifuncs.h>
+#include <glib/gurifuncs.h>
 #include "nautilus-file-operations-progress-icons.h"
 
 /* The default width of the progress dialog. It will be wider

@@ -1,3 +1,20 @@
+2007-11-29  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-changes-queue.[ch]:
+	Add some GFile version and rename the old to _by_uri
+	
+        * libnautilus-private/nautilus-file-operations.c:
+	Emit change events
+	
+        * libnautilus-private/nautilus-file-operations-progress.c:
+        * libnautilus-private/nautilus-file.c:
+        * libnautilus-private/nautilus-icon-dnd.c:
+        * libnautilus-private/nautilus-metafile.c:
+        * libnautilus-private/nautilus-monitor.c:
+        * src/file-manager/fm-directory-view.c:
+        * src/file-manager/fm-icon-view.c:
+	Update to latest APIs
+
 2007-11-23  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-operations.c:

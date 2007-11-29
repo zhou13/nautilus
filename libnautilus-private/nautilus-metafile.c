@@ -36,7 +36,7 @@
 #include <eel/eel-string.h>
 #include <eel/eel-vfs-extensions.h>
 #include <eel/eel-xml-extensions.h>
-#include <gio/gurifuncs.h>
+#include <glib/gurifuncs.h>
 #include <libxml/parser.h>
 #include <gtk/gtkmain.h>
 #include <stdlib.h>

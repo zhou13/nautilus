@@ -26,8 +26,10 @@
 #include <gdk/gdktypes.h>
 #include <gio/gfile.h>
 
-void nautilus_file_changes_queue_file_added                      (const char *uri);
-void nautilus_file_changes_queue_file_changed                    (const char *uri);
+void nautilus_file_changes_queue_file_added                      (GFile      *location);
+void nautilus_file_changes_queue_file_added_by_uri               (const char *uri);
+void nautilus_file_changes_queue_file_changed                    (GFile      *location);
+void nautilus_file_changes_queue_file_changed_by_uri             (const char *uri);
 void nautilus_file_changes_queue_file_removed                    (GFile      *location);
 void nautilus_file_changes_queue_file_removed_by_uri             (const char *uri);
 void nautilus_file_changes_queue_file_moved                      (const char *from_uri,

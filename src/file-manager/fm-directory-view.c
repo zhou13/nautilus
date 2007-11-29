@@ -1273,7 +1273,7 @@ action_save_search_as_callback (GtkAction *action,
 			g_free (path);
 			
 			nautilus_search_directory_save_to_file (search, uri);
-			nautilus_file_changes_queue_file_added (uri);
+			nautilus_file_changes_queue_file_added_by_uri (uri);
 			nautilus_file_changes_consume_changes (TRUE);
 			g_free (uri);
 		}

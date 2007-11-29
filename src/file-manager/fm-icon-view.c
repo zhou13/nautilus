@@ -49,7 +49,6 @@
 #include <gtk/gtkstock.h>
 #include <glib/gi18n.h>
 #include <gio/gcontenttype.h>
-#include <gio/gsocketoutputstream.h>
 #include <libnautilus-private/nautilus-directory-background.h>
 #include <libnautilus-private/nautilus-directory.h>
 #include <libnautilus-private/nautilus-dnd.h>

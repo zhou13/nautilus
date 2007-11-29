@@ -1764,7 +1764,7 @@ drag_data_received_callback (GtkWidget *widget,
 				   drag_info->direct_save_uri != NULL) {
 				GdkPoint p;
 
-				nautilus_file_changes_queue_file_added (drag_info->direct_save_uri);
+				nautilus_file_changes_queue_file_added_by_uri (drag_info->direct_save_uri);
 				p.x = x; p.y = y;
 				nautilus_file_changes_queue_schedule_position_set (drag_info->direct_save_uri,
 										   p,

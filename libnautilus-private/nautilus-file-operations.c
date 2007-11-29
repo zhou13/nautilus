@@ -63,7 +63,7 @@
 #include <libgnomevfs/gnome-vfs-volume.h>
 #include <libgnomevfs/gnome-vfs-volume-monitor.h>
 #include <gio/gfile.h>
-#include <gio/gurifuncs.h>
+#include <glib/gurifuncs.h>
 #include <gio/gioscheduler.h>
 #include "nautilus-file-changes-queue.h"
 #include "nautilus-file-private.h"
@@ -79,7 +79,7 @@ static gboolean confirm_trash_auto_value;
 /* TODO:
  *  Implement missing functions
  *  Use CommonJob in trash/delete code
- *  Queue changes and metadata ops in the copy code
+ *  Queue metadata ops in the copy code
  *  Set coords if passed in
  */
 
@@ -4984,6 +4984,7 @@ create_dest_dir (CommonJob *job,
 		}
 		return FALSE;
 	}
+	nautilus_file_changes_queue_file_added (dest);
 	return TRUE;
 }
 
@@ -5223,6 +5224,8 @@ remove_target_recursively (CommonJob *job,
 		
 		return FALSE;
 	}
+	nautilus_file_changes_queue_file_removed (file);
+	nautilus_file_changes_queue_schedule_metadata_remove (file);
 	
 	return TRUE;
 	
@@ -5309,6 +5312,9 @@ copy_file (CopyJob *copy_job,
 			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (TRUE));
 		}
 		g_object_unref (dest);
+
+		nautilus_file_changes_queue_file_added (dest);
+		/* TODO: copy metadata? */
 		return;
 	}
 
@@ -5443,6 +5449,8 @@ copy_file (CopyJob *copy_job,
 				goto out;
 				
 			}
+			nautilus_file_changes_queue_file_removed (dest);
+			nautilus_file_changes_queue_schedule_metadata_remove (dest);
 		}
 
 		copy_directory (copy_job, src, dest, same_fs,

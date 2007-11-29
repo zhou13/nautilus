@@ -92,14 +92,14 @@ dir_changed (GDirectoryMonitor* monitor,
 		break;
 	case G_FILE_MONITOR_EVENT_ATTRIBUTE_CHANGED:
 	case G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT:
-		nautilus_file_changes_queue_file_changed (uri);
+		nautilus_file_changes_queue_file_changed (child);
 		break;
 	case G_FILE_MONITOR_EVENT_DELETED:
 		nautilus_file_changes_queue_schedule_metadata_remove_by_uri (uri);
 		nautilus_file_changes_queue_file_removed_by_uri (uri);
 		break;
 	case G_FILE_MONITOR_EVENT_CREATED:
-		nautilus_file_changes_queue_file_added (uri);
+		nautilus_file_changes_queue_file_added (child);
 		break;
 		
 	case G_FILE_MONITOR_EVENT_PRE_UNMOUNT:

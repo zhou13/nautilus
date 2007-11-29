@@ -56,7 +56,7 @@
 #include <gtk/gtksignal.h>
 #include <glib/gi18n.h>
 #include <gio/gcontenttype.h>
-#include <gio/gurifuncs.h>
+#include <glib/gurifuncs.h>
 #include <libgnome/gnome-macros.h>
 #include <glib/gfileutils.h>
 #include <gio/gthemedicon.h>
