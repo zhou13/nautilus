@@ -1196,6 +1196,7 @@ action_save_search_as_callback (GtkAction *action,
 	GtkWidget *dialog, *table, *label, *entry, *chooser, *save_button;
 	const char *entry_text;
 	char *filename, *filename_utf8, *dirname, *path, *uri;
+	GFile *location;
 	
         directory_view = FM_DIRECTORY_VIEW (callback_data);
 
@@ -1273,7 +1274,9 @@ action_save_search_as_callback (GtkAction *action,
 			g_free (path);
 			
 			nautilus_search_directory_save_to_file (search, uri);
-			nautilus_file_changes_queue_file_added_by_uri (uri);
+			location = g_file_new_for_uri (uri);
+			nautilus_file_changes_queue_file_added (location);
+			g_object_unref (location);
 			nautilus_file_changes_consume_changes (TRUE);
 			g_free (uri);
 		}

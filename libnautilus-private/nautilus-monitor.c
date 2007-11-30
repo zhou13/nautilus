@@ -95,8 +95,7 @@ dir_changed (GDirectoryMonitor* monitor,
 		nautilus_file_changes_queue_file_changed (child);
 		break;
 	case G_FILE_MONITOR_EVENT_DELETED:
-		nautilus_file_changes_queue_schedule_metadata_remove_by_uri (uri);
-		nautilus_file_changes_queue_file_removed_by_uri (uri);
+		nautilus_file_changes_queue_file_removed (child);
 		break;
 	case G_FILE_MONITOR_EVENT_CREATED:
 		nautilus_file_changes_queue_file_added (child);

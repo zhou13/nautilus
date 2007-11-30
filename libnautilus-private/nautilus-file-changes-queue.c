@@ -49,8 +49,8 @@ typedef enum {
 
 typedef struct {
 	NautilusFileChangeKind kind;
-	char *from_uri;
-	char *to_uri;
+	GFile *from;
+	GFile *to;
 	GdkPoint point;
 	int screen;
 } NautilusFileChange;
@@ -93,8 +93,12 @@ nautilus_file_changes_queue_get (void)
 static void
 nautilus_file_change_free (NautilusFileChange *change)
 {
-	g_free (change->from_uri);
-	g_free (change->to_uri);
+	if (change->from) {
+		g_object_unref (change->from);
+	}
+	if (change->to) {
+		g_object_unref (change->to);
+	}
 }
 
 void
@@ -148,21 +152,7 @@ nautilus_file_changes_queue_file_added (GFile *location)
 
 	new_item = g_new0 (NautilusFileChange, 1);
 	new_item->kind = CHANGE_FILE_ADDED;
-	new_item->from_uri = g_file_get_uri (location);
-	nautilus_file_changes_queue_add_common (queue, new_item);
-}
-
-void
-nautilus_file_changes_queue_file_added_by_uri (const char *uri)
-{
-	NautilusFileChange *new_item;
-	NautilusFileChangesQueue *queue;
-
-	queue = nautilus_file_changes_queue_get();
-
-	new_item = g_new0 (NautilusFileChange, 1);
-	new_item->kind = CHANGE_FILE_ADDED;
-	new_item->from_uri = g_strdup (uri);
+	new_item->from = g_object_ref (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -176,35 +166,7 @@ nautilus_file_changes_queue_file_changed (GFile *location)
 
 	new_item = g_new0 (NautilusFileChange, 1);
 	new_item->kind = CHANGE_FILE_CHANGED;
-	new_item->from_uri = g_file_get_uri (location);
-	nautilus_file_changes_queue_add_common (queue, new_item);
-}
-
-void
-nautilus_file_changes_queue_file_changed_by_uri (const char *uri)
-{
-	NautilusFileChange *new_item;
-	NautilusFileChangesQueue *queue;
-
-	queue = nautilus_file_changes_queue_get();
-
-	new_item = g_new0 (NautilusFileChange, 1);
-	new_item->kind = CHANGE_FILE_CHANGED;
-	new_item->from_uri = g_strdup (uri);
-	nautilus_file_changes_queue_add_common (queue, new_item);
-}
-
-void
-nautilus_file_changes_queue_file_removed_by_uri (const char *uri)
-{
-	NautilusFileChange *new_item;
-	NautilusFileChangesQueue *queue;
-
-	queue = nautilus_file_changes_queue_get();
-
-	new_item = g_new0 (NautilusFileChange, 1);
-	new_item->kind = CHANGE_FILE_REMOVED;
-	new_item->from_uri = g_strdup (uri);
+	new_item->from = g_object_ref (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -218,7 +180,7 @@ nautilus_file_changes_queue_file_removed (GFile *location)
 
 	new_item = g_new0 (NautilusFileChange, 1);
 	new_item->kind = CHANGE_FILE_REMOVED;
-	new_item->from_uri = g_file_get_uri (location);
+	new_item->from = g_object_ref (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -233,44 +195,14 @@ nautilus_file_changes_queue_file_moved (GFile *from,
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_FILE_MOVED;
-	new_item->from_uri = g_file_get_uri (from);
-	new_item->to_uri = g_file_get_uri (to);
-	nautilus_file_changes_queue_add_common (queue, new_item);
-}
-
-void
-nautilus_file_changes_queue_file_moved_by_uri (const char *from, const char *to)
-{
-	NautilusFileChange *new_item;
-	NautilusFileChangesQueue *queue;
-
-	queue = nautilus_file_changes_queue_get ();
-
-	new_item = g_new (NautilusFileChange, 1);
-	new_item->kind = CHANGE_FILE_MOVED;
-	new_item->from_uri = g_strdup (from);
-	new_item->to_uri = g_strdup (to);
+	new_item->from = g_object_ref (from);
+	new_item->to = g_object_ref (to);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
 void
 nautilus_file_changes_queue_schedule_metadata_copy (GFile *from,
 						    GFile *to)
-{
-	char *from_uri, *to_uri;
-
-	from_uri = g_file_get_uri (from);
-	to_uri = g_file_get_uri (to);
-
-	nautilus_file_changes_queue_schedule_metadata_copy_by_uri (from_uri, to_uri);
-
-	g_free (from_uri);
-	g_free (to_uri);
-}
-
-void
-nautilus_file_changes_queue_schedule_metadata_copy_by_uri (const char *from_uri,
-							   const char *to_uri)
 {
 	NautilusFileChange *new_item;
 	NautilusFileChangesQueue *queue;
@@ -279,8 +211,8 @@ nautilus_file_changes_queue_schedule_metadata_copy_by_uri (const char *from_uri,
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_METADATA_COPIED;
-	new_item->from_uri = g_strdup (from_uri);
-	new_item->to_uri = g_strdup (to_uri);
+	new_item->from = g_object_ref (from);
+	new_item->to = g_object_ref (to);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -295,22 +227,8 @@ nautilus_file_changes_queue_schedule_metadata_move (GFile      *from,
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_METADATA_MOVED;
-	new_item->from_uri = g_file_get_uri (from);
-	new_item->to_uri = g_file_get_uri (to);
-	nautilus_file_changes_queue_add_common (queue, new_item);
-}
-
-void
-nautilus_file_changes_queue_schedule_metadata_remove_by_uri (const char *uri)
-{
-	NautilusFileChange *new_item;
-	NautilusFileChangesQueue *queue;
-
-	queue = nautilus_file_changes_queue_get ();
-
-	new_item = g_new (NautilusFileChange, 1);
-	new_item->kind = CHANGE_METADATA_REMOVED;
-	new_item->from_uri = g_strdup (uri);
+	new_item->from = g_object_ref (from);
+	new_item->to = g_object_ref (to);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -324,7 +242,7 @@ nautilus_file_changes_queue_schedule_metadata_remove (GFile *location)
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_METADATA_REMOVED;
-	new_item->from_uri = g_file_get_uri (location);
+	new_item->from = g_object_ref (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -340,7 +258,7 @@ nautilus_file_changes_queue_schedule_position_set (GFile *location,
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_POSITION_SET;
-	new_item->from_uri = g_file_get_uri (location);
+	new_item->from = g_object_ref (location);
 	new_item->point = point;
 	new_item->screen = screen;
 	nautilus_file_changes_queue_add_common (queue, new_item);
@@ -356,7 +274,7 @@ nautilus_file_changes_queue_schedule_position_remove (GFile *location)
 
 	new_item = g_new (NautilusFileChange, 1);
 	new_item->kind = CHANGE_POSITION_REMOVE;
-	new_item->from_uri = g_file_get_uri (location);
+	new_item->from = g_object_ref (location);
 	nautilus_file_changes_queue_add_common (queue, new_item);
 }
 
@@ -395,15 +313,15 @@ static void
 pairs_list_free (GList *pairs)
 {
 	GList *p;
-	URIPair *pair;
+	GFilePair *pair;
 
 	/* deep delete the list of pairs */
 
 	for (p = pairs; p != NULL; p = p->next) {
 		/* delete the strings in each pair */
 		pair = p->data;
-		g_free (pair->from_uri);
-		g_free (pair->to_uri);
+		g_object_unref (pair->from);
+		g_object_unref (pair->to);
 	}
 
 	/* delete the list and the now empty pair structs */
@@ -418,7 +336,7 @@ position_set_list_free (GList *list)
 
 	for (p = list; p != NULL; p = p->next) {
 		item = p->data;
-		g_free (item->uri);
+		g_object_unref (item->location);
 	}
 	/* delete the list and the now empty structs */
 	eel_g_list_free_deep (list);
@@ -434,7 +352,7 @@ nautilus_file_changes_consume_changes (gboolean consume_all)
 	GList *additions, *changes, *deletions, *moves;
 	GList *metadata_copy_requests, *metadata_move_requests, *metadata_remove_requests;
 	GList *position_set_requests;
-	URIPair *pair;
+	GFilePair *pair;
 	NautilusFileChangesQueuePosition *position_set;
 	guint chunk_count;
 	NautilusFileChangesQueue *queue;
@@ -521,49 +439,49 @@ nautilus_file_changes_consume_changes (gboolean consume_all)
 			
 			if (deletions != NULL) {
 				deletions = g_list_reverse (deletions);
-				nautilus_directory_notify_files_removed_by_uri (deletions);
-				eel_g_list_free_deep (deletions);
+				nautilus_directory_notify_files_removed (deletions);
+				eel_g_object_list_free (deletions);
 				deletions = NULL;
 			}
 			if (moves != NULL) {
 				moves = g_list_reverse (moves);
-				nautilus_directory_notify_files_moved_by_uri (moves);
+				nautilus_directory_notify_files_moved (moves);
 				pairs_list_free (moves);
 				moves = NULL;
 			}
 			if (additions != NULL) {
 				additions = g_list_reverse (additions);
-				nautilus_directory_notify_files_added_by_uri (additions);
-				eel_g_list_free_deep (additions);
+				nautilus_directory_notify_files_added (additions);
+				eel_g_object_list_free (additions);
 				additions = NULL;
 			}
 			if (changes != NULL) {
 				changes = g_list_reverse (changes);
-				nautilus_directory_notify_files_changed_by_uri (changes);
-				eel_g_list_free_deep (changes);
+				nautilus_directory_notify_files_changed (changes);
+				eel_g_object_list_free (changes);
 				changes = NULL;
 			}
 			if (metadata_copy_requests != NULL) {
 				metadata_copy_requests = g_list_reverse (metadata_copy_requests);
-				nautilus_directory_schedule_metadata_copy_by_uri (metadata_copy_requests);
+				nautilus_directory_schedule_metadata_copy (metadata_copy_requests);
 				pairs_list_free (metadata_copy_requests);
 				metadata_copy_requests = NULL;
 			}
 			if (metadata_move_requests != NULL) {
 				metadata_move_requests = g_list_reverse (metadata_move_requests);
-				nautilus_directory_schedule_metadata_move_by_uri (metadata_move_requests);
+				nautilus_directory_schedule_metadata_move (metadata_move_requests);
 				pairs_list_free (metadata_move_requests);
 				metadata_move_requests = NULL;
 			}
 			if (metadata_remove_requests != NULL) {
 				metadata_remove_requests = g_list_reverse (metadata_remove_requests);
-				nautilus_directory_schedule_metadata_remove_by_uri (metadata_remove_requests);
-				eel_g_list_free_deep (metadata_remove_requests);
+				nautilus_directory_schedule_metadata_remove (metadata_remove_requests);
+				eel_g_object_list_free (metadata_remove_requests);
 				metadata_remove_requests = NULL;
 			}
 			if (position_set_requests != NULL) {
 				position_set_requests = g_list_reverse (position_set_requests);
-				nautilus_directory_schedule_position_set_by_uri (position_set_requests);
+				nautilus_directory_schedule_position_set (position_set_requests);
 				position_set_list_free (position_set_requests);
 				position_set_requests = NULL;
 			}
@@ -577,46 +495,46 @@ nautilus_file_changes_consume_changes (gboolean consume_all)
 		/* add the new change to the list */
 		switch (change->kind) {
 		case CHANGE_FILE_ADDED:
-			additions = g_list_prepend (additions, change->from_uri);
+			additions = g_list_prepend (additions, change->from);
 			break;
 
 		case CHANGE_FILE_CHANGED:
-			changes = g_list_prepend (changes, change->from_uri);
+			changes = g_list_prepend (changes, change->from);
 			break;
 
 		case CHANGE_FILE_REMOVED:
-			deletions = g_list_prepend (deletions, change->from_uri);
+			deletions = g_list_prepend (deletions, change->from);
 			break;
 
 		case CHANGE_FILE_MOVED:
-			pair = g_new (URIPair, 1);
-			pair->from_uri = change->from_uri;
-			pair->to_uri = change->to_uri;
+			pair = g_new (GFilePair, 1);
+			pair->from = change->from;
+			pair->to = change->to;
 			moves = g_list_prepend (moves, pair);
 			break;
 
 		case CHANGE_METADATA_COPIED:
-			pair = g_new (URIPair, 1);
-			pair->from_uri = change->from_uri;
-			pair->to_uri = change->to_uri;
+			pair = g_new (GFilePair, 1);
+			pair->from = change->from;
+			pair->to = change->to;
 			metadata_copy_requests = g_list_prepend (metadata_copy_requests, pair);
 			break;
 
 		case CHANGE_METADATA_MOVED:
-			pair = g_new (URIPair, 1);
-			pair->from_uri = change->from_uri;
-			pair->to_uri = change->to_uri;
+			pair = g_new (GFilePair, 1);
+			pair->from = change->from;
+			pair->to = change->to;
 			metadata_move_requests = g_list_prepend (metadata_move_requests, pair);
 			break;
 
 		case CHANGE_METADATA_REMOVED:
 			metadata_remove_requests = g_list_prepend (metadata_remove_requests, 
-				change->from_uri);
+				change->from);
 			break;
 
 		case CHANGE_POSITION_SET:
 			position_set = g_new (NautilusFileChangesQueuePosition, 1);
-			position_set->uri = change->from_uri;
+			position_set->location = change->from;
 			position_set->set = TRUE;
 			position_set->point = change->point;
 			position_set->screen = change->screen;
@@ -626,7 +544,7 @@ nautilus_file_changes_consume_changes (gboolean consume_all)
 
 		case CHANGE_POSITION_REMOVE:
 			position_set = g_new (NautilusFileChangesQueuePosition, 1);
-			position_set->uri = change->from_uri;
+			position_set->location = change->from;
 			position_set->set = FALSE;
 			position_set_requests = g_list_prepend (position_set_requests,
 								position_set);

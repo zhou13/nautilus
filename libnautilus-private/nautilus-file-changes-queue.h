@@ -27,23 +27,15 @@
 #include <gio/gfile.h>
 
 void nautilus_file_changes_queue_file_added                      (GFile      *location);
-void nautilus_file_changes_queue_file_added_by_uri               (const char *uri);
 void nautilus_file_changes_queue_file_changed                    (GFile      *location);
-void nautilus_file_changes_queue_file_changed_by_uri             (const char *uri);
 void nautilus_file_changes_queue_file_removed                    (GFile      *location);
-void nautilus_file_changes_queue_file_removed_by_uri             (const char *uri);
 void nautilus_file_changes_queue_file_moved                      (GFile      *from,
 								  GFile      *to);
-void nautilus_file_changes_queue_file_moved_by_uri               (const char *from_uri,
-								  const char *to_uri);
 void nautilus_file_changes_queue_schedule_metadata_copy          (GFile      *from,
 								  GFile      *to);
-void nautilus_file_changes_queue_schedule_metadata_copy_by_uri   (const char *from_uri,
-								  const char *to_uri);
 void nautilus_file_changes_queue_schedule_metadata_move          (GFile      *from,
 								  GFile      *to);
 void nautilus_file_changes_queue_schedule_metadata_remove        (GFile      *location);
-void nautilus_file_changes_queue_schedule_metadata_remove_by_uri (const char *uri);
 void nautilus_file_changes_queue_schedule_position_set           (GFile      *location,
 								  GdkPoint    point,
 								  int         screen);

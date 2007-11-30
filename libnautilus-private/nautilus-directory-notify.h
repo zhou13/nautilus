@@ -36,7 +36,7 @@ typedef struct {
 } GFilePair;
 
 typedef struct {
-	char *uri;
+	GFile *location;
 	gboolean set;
 	GdkPoint point;
 	int screen;
@@ -61,7 +61,7 @@ void nautilus_directory_notify_files_removed_by_uri    (GList        *uris);
 void nautilus_directory_schedule_metadata_copy_by_uri   (GList        *uri_pairs);
 void nautilus_directory_schedule_metadata_move_by_uri   (GList        *uri_pairs);
 void nautilus_directory_schedule_metadata_remove_by_uri (GList        *uris);
-void nautilus_directory_schedule_position_set_by_uri    (GList        *position_setting_list);
+void nautilus_directory_schedule_position_set    (GList        *position_setting_list);
 
 /* Change notification hack.
  * This is called when code modifies the file and it needs to trigger

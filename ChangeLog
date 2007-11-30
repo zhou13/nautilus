@@ -1,6 +1,19 @@
 2007-11-30  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-changes-queue.[ch]:
+	Convert changes queue to only use GFile, not uris.
+	Kill all _by_uri versions
+	
+        * libnautilus-private/nautilus-directory-notify.h:
+        * libnautilus-private/nautilus-directory.c:
+        * libnautilus-private/nautilus-link.c:
+        * libnautilus-private/nautilus-monitor.c:
+        * src/file-manager/fm-directory-view.c:
+	Update for above changes
+
+2007-11-30  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-changes-queue.[ch]:
 	More uri -> gfile API changes
 	
         * libnautilus-private/nautilus-file-operations.[ch]:

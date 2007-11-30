@@ -1588,7 +1588,7 @@ nautilus_directory_schedule_metadata_remove_by_uri (GList *uris)
 }
 
 void
-nautilus_directory_schedule_position_set_by_uri (GList *position_setting_list)
+nautilus_directory_schedule_position_set (GList *position_setting_list)
 {
 	GList *p;
 	const NautilusFileChangesQueuePosition *item;
@@ -1599,7 +1599,7 @@ nautilus_directory_schedule_position_set_by_uri (GList *position_setting_list)
 	for (p = position_setting_list; p != NULL; p = p->next) {
 		item = (NautilusFileChangesQueuePosition *) p->data;
 
-		file = nautilus_file_get_by_uri (item->uri);
+		file = nautilus_file_get (item->location);
 		
 		if (item->set) {
 			position_string = g_strdup_printf ("%d,%d",
