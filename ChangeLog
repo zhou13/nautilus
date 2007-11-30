@@ -1,3 +1,14 @@
+2007-11-30  Alexander Larsson  <alexl@redhat.com>
+
+        * libnautilus-private/nautilus-file-changes-queue.[ch]:
+	More uri -> gfile API changes
+	
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Add move operation
+	
+        * src/file-manager/fm-directory-view.c:
+	Use move operation
+
 2007-11-29  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-file-changes-queue.[ch]:

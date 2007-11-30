@@ -8159,6 +8159,22 @@ fm_directory_view_move_copy_items (const GList *item_uris,
 
 			eel_g_object_list_free (locations);
 			g_object_unref (dest);
+		} else if (copy_action == GDK_ACTION_MOVE) {
+			GList *locations;
+			GFile *dest;
+
+			dest = g_file_new_for_uri (target_uri);
+			locations = location_list_from_uri_list (item_uris);
+			
+			nautilus_file_operations_move (locations,
+						       relative_item_points,
+						       dest,
+						       fm_directory_view_get_containing_window (view),
+						       copy_move_done_callback,
+						       pre_copy_move (view));
+
+			eel_g_object_list_free (locations);
+			g_object_unref (dest);
 		} else {
 			nautilus_file_operations_copy_move
 				(item_uris, relative_item_points, 

@@ -77,8 +77,12 @@
 static gboolean confirm_trash_auto_value;
 
 /* TODO:
- *  Implement missing functions
+ *  Add cancellation
+ *  Implement missing functions:
+ *   duplicate, new file, new folder, empty trash, set_permissions recursive
+ *  Make delete handle recursive deletes
  *  Use CommonJob in trash/delete code
+ * TESTING!!!
  */
 
 typedef struct {
@@ -98,6 +102,7 @@ typedef struct {
 
 typedef struct {
 	CommonJob common;
+	gboolean is_move;
 	GList *files;
 	GFile *destination;
 	GdkPoint *icon_positions;
@@ -106,7 +111,7 @@ typedef struct {
 	GHashTable *debuting_files;
 	void (*done_callback) (GHashTable *debuting_uris, gpointer data);
 	gpointer done_callback_data;
-} CopyJob;
+} CopyMoveJob;
 
 #define SECONDS_NEEDED_FOR_RELIABLE_TRANSFER_RATE 15
 #define NSEC_PER_SEC 1000000000
@@ -4782,7 +4787,7 @@ verify_destination (CommonJob *job,
 }
 
 static void
-report_copy_progress (CopyJob *copy_job,
+report_copy_progress (CopyMoveJob *copy_job,
 		      SourceInfo *source_info,
 		      TransferInfo *transfer_info)
 {
@@ -4792,9 +4797,12 @@ report_copy_progress (CopyJob *copy_job,
 	int remaining_time;
 	guint64 now;
 	CommonJob *job;
+	gboolean is_move;
 
 	job = (CommonJob *)copy_job;
 
+	is_move = copy_job->is_move;
+	
 	now = g_thread_gettime ();
 	
 	if (transfer_info->last_report_time != 0 &&
@@ -4812,19 +4820,25 @@ report_copy_progress (CopyJob *copy_job,
 
 	if (source_info->num_files == 1) {
 		nautilus_progress_info_take_status (job->progress,
-						    f (_("Copying \"%B\" to \"%B\""),
+						    f (is_move ?
+						       _("Moving \"%B\" to \"%B\""):
+						       _("Copying \"%B\" to \"%B\""),
 						       (GFile *)copy_job->files->data,
 						       copy_job->destination));
 	} else if (copy_job->files != NULL &&
 		   copy_job->files->next == NULL) {
 		nautilus_progress_info_take_status (job->progress,
-						    f (_("Copying %d files (in \"%B\") to \"%B\""),
+						    f (is_move?
+						       _("Moving %d files (in \"%B\") to \"%B\""):
+						       _("Copying %d files (in \"%B\") to \"%B\""),
 						       files_left,
 						       (GFile *)copy_job->files->data,
 						       copy_job->destination));
 	} else {
 		nautilus_progress_info_take_status (job->progress,
-						    f (_("Copying %d files to \"%B\""),
+						    f (is_move?
+						       _("Moving %d files to \"%B\""):
+						       _("Copying %d files to \"%B\""),
 						       files_left, copy_job->destination));
 	}
 
@@ -4931,14 +4945,16 @@ is_dir (GFile *file)
 	return res;
 }
 
-static void copy_file (CopyJob *job,
-		       GFile *src,
-		       GFile *dest_dir,
-		       gboolean same_fs,
-		       SourceInfo *source_info,
-		       TransferInfo *transfer_info,
-		       GHashTable *debuting_files,
-		       GdkPoint *point);
+static void copy_move_file (CopyMoveJob *job,
+			    GFile *src,
+			    GFile *dest_dir,
+			    gboolean same_fs,
+			    SourceInfo *source_info,
+			    TransferInfo *transfer_info,
+			    GHashTable *debuting_files,
+			    GdkPoint *point,
+			    gboolean overwrite,
+			    gboolean *skipped_file);
 
 static gboolean
 create_dest_dir (CommonJob *job,
@@ -4991,14 +5007,15 @@ create_dest_dir (CommonJob *job,
 }
 
 static void
-copy_directory (CopyJob *copy_job,
-		GFile *src,
-		GFile *dest,
-		gboolean same_fs,
-		gboolean create_dest,
-		SourceInfo *source_info,
-		TransferInfo *transfer_info,
-		GHashTable *debuting_files)
+copy_move_directory (CopyMoveJob *copy_job,
+		     GFile *src,
+		     GFile *dest,
+		     gboolean same_fs,
+		     gboolean create_dest,
+		     SourceInfo *source_info,
+		     TransferInfo *transfer_info,
+		     GHashTable *debuting_files,
+		     gboolean *skipped_file)
 {
 	GFileInfo *info;
 	GError *error;
@@ -5007,12 +5024,14 @@ copy_directory (CopyJob *copy_job,
 	char *primary, *secondary, *details;
 	int response;
 	gboolean skip_error;
+	gboolean local_skipped_file;
 	CommonJob *job;
 
 	job = (CommonJob *)copy_job;
 	
 	if (create_dest) {
 		if (!create_dest_dir (job, src, dest)) {
+			*skipped_file = TRUE;
 			return;
 		}
 		if (debuting_files) {
@@ -5020,7 +5039,9 @@ copy_directory (CopyJob *copy_job,
 		}
 
 	}
-		
+
+	local_skipped_file = FALSE;
+	
 	skip_error = should_skip_readdir_error (job, src);
  retry:
 	error = NULL;
@@ -5036,13 +5057,17 @@ copy_directory (CopyJob *copy_job,
 		       (info = g_file_enumerator_next_file (enumerator, job->cancellable, skip_error?NULL:&error)) != NULL) {
 			src_file = g_file_get_child (src,
 						     g_file_info_get_name (info));
-			copy_file (copy_job, src_file, dest, same_fs, source_info, transfer_info, NULL, NULL);
+			copy_move_file (copy_job, src_file, dest, same_fs, source_info, transfer_info, NULL, NULL, FALSE, &local_skipped_file);
 			g_object_unref (info);
 		}
 		g_file_enumerator_close (enumerator, job->cancellable, NULL);
 		
 		if (error) {
-			primary = f (_("Error while copying."));
+			if (copy_job->is_move) {
+				primary = f (_("Error while moving."));
+			} else {
+				primary = f (_("Error while copying."));
+			}
 			details = NULL;
 			
 			if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -5066,6 +5091,7 @@ copy_directory (CopyJob *copy_job,
 				job->aborted = TRUE;
 			} else if (response == 1) {
 				/* Skip: Do Nothing */
+				local_skipped_file = TRUE;
 			} else {
 				g_assert_not_reached ();
 			}
@@ -5079,7 +5105,11 @@ copy_directory (CopyJob *copy_job,
 			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (create_dest));
 		}
 	} else {
-		primary = f (_("Error while copying."));
+		if (copy_job->is_move) {
+			primary = f (_("Error while moving."));
+		} else {
+			primary = f (_("Error while copying."));
+		}
 		details = NULL;
 		
 		if (IS_IO_ERROR (error, PERMISSION_DENIED)) {
@@ -5094,7 +5124,7 @@ copy_directory (CopyJob *copy_job,
 					primary,
 					secondary,
 					details,
-					SKIP, GTK_STOCK_CANCEL, RETRY,
+					GTK_STOCK_CANCEL, SKIP, RETRY,
 					NULL);
 
 		g_error_free (error);
@@ -5103,6 +5133,7 @@ copy_directory (CopyJob *copy_job,
 			job->aborted = TRUE;
 		} else if (response == 1) {
 			/* Skip: Do Nothing  */
+			local_skipped_file = TRUE;
 		} else if (response == 2) {
 			goto retry;
 		} else {
@@ -5115,6 +5146,44 @@ copy_directory (CopyJob *copy_job,
 		g_file_copy_attributes (src, dest,
 					G_FILE_COPY_NOFOLLOW_SYMLINKS,
 					job->cancellable, NULL);
+	}
+
+	if (!job->aborted && copy_job->is_move &&
+	    /* Don't delete source if there was a skipped file */
+	    !local_skipped_file) {
+		if (!g_file_delete (src, job->cancellable, &error)) {
+			if (job->skip_all_error) {
+				goto skip;
+			}
+			primary = f (_("Error while moving \"%B\"."), src);
+			secondary = f (_("Couldn't remove the source folder."));
+			details = error->message;
+			
+			response = run_warning (job,
+						primary,
+						secondary,
+						details,
+						GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
+						NULL);
+			
+			if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+				job->aborted = TRUE;
+			} else if (response == 1) { /* skip all */
+				job->skip_all_error = TRUE;
+				local_skipped_file = TRUE;
+			} else if (response == 2) { /* skip */
+				local_skipped_file = TRUE;
+			} else {
+				g_assert_not_reached ();
+			}
+			
+		skip:
+			g_error_free (error);
+		}
+	}
+
+	if (local_skipped_file) {
+		*skipped_file = TRUE;
 	}
 }
 
@@ -5234,7 +5303,7 @@ remove_target_recursively (CommonJob *job,
 }
 
 typedef struct {
-	CopyJob *job;
+	CopyMoveJob *job;
 	goffset last_size;
 	SourceInfo *source_info;
 	TransferInfo *transfer_info;
@@ -5263,32 +5332,33 @@ copy_file_progress_callback (goffset current_num_bytes,
 
 /* Debuting files is non-NULL only for toplevel items */
 static void
-copy_file (CopyJob *copy_job,
-	   GFile *src,
-	   GFile *dest_dir,
-	   gboolean same_fs,
-	   SourceInfo *source_info,
-	   TransferInfo *transfer_info,
-	   GHashTable *debuting_files,
-	   GdkPoint *position)
+copy_move_file (CopyMoveJob *copy_job,
+		GFile *src,
+		GFile *dest_dir,
+		gboolean same_fs,
+		SourceInfo *source_info,
+		TransferInfo *transfer_info,
+		GHashTable *debuting_files,
+		GdkPoint *position,
+		gboolean overwrite,
+		gboolean *skipped_file)
 {
 	GFile *dest;
 	GError *error;
-	gboolean overwrite;
 	GFileCopyFlags flags;
 	char *primary, *secondary, *details;
 	int response;
 	ProgressData pdata;
 	gboolean would_recurse;
 	CommonJob *job;
+	gboolean res;
 
 	job = (CommonJob *)copy_job;
 	
 	if (should_skip_file (job, src)) {
+		*skipped_file = TRUE;
 		return;
 	}
-
-	overwrite = FALSE;
 
 	dest = get_target_file (src, dest_dir, same_fs);
 
@@ -5303,12 +5373,24 @@ copy_file (CopyJob *copy_job,
 	pdata.last_size = 0;
 	pdata.source_info = source_info;
 	pdata.transfer_info = transfer_info;
-	if (g_file_copy (src, dest,
-			 flags,
-			 job->cancellable,
-			 copy_file_progress_callback,
-			 &pdata,
-			 &error)) {
+
+	if (copy_job->is_move) {
+		res = g_file_move (src, dest,
+				   flags,
+				   job->cancellable,
+				   copy_file_progress_callback,
+				   &pdata,
+				   &error);
+	} else {
+		res = g_file_copy (src, dest,
+				   flags,
+				   job->cancellable,
+				   copy_file_progress_callback,
+				   &pdata,
+				   &error);
+	}
+	
+	if (res) {
 		transfer_info->num_files ++;
 		report_copy_progress (copy_job, source_info, transfer_info);
 
@@ -5322,9 +5404,8 @@ copy_file (CopyJob *copy_job,
 			
 			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (TRUE));
 		}
-		g_object_unref (dest);
-
 		nautilus_file_changes_queue_file_added (dest);
+		g_object_unref (dest);
 		return;
 	}
 
@@ -5430,11 +5511,16 @@ copy_file (CopyJob *copy_job,
 			error = NULL;
 			
 			/* Copying a dir onto file, first remove the file */
-			if (!g_file_delete (dest, job->cancellable, &error)) {
+			if (!g_file_delete (dest, job->cancellable, &error) &&
+			    !IS_IO_ERROR (error, NOT_FOUND)) {
 				if (job->skip_all_error) {
 					goto out;
 				}
-				primary = f (_("Error while copying \"%B\"."), src);
+				if (copy_job->is_move) {
+					primary = f (_("Error while moving \"%B\"."), src);
+				} else {
+					primary = f (_("Error while copying \"%B\"."), src);
+				}
 				secondary = f (_("Couldn't remove the already existing file with the same name in %F."), dest_dir);
 				details = error->message;
 				
@@ -5459,16 +5545,23 @@ copy_file (CopyJob *copy_job,
 				goto out;
 				
 			}
+			if (error) {
+				g_error_free (error);
+				error = NULL;
+			}
 			if (debuting_files) { /* Only remove metadata for toplevel items */
 				nautilus_file_changes_queue_schedule_metadata_remove (dest);
 			}
 			nautilus_file_changes_queue_file_removed (dest);
 		}
 
-		copy_directory (copy_job, src, dest, same_fs,
-				would_recurse,
-				source_info, transfer_info,
-				debuting_files);
+		copy_move_directory (copy_job, src, dest, same_fs,
+				     would_recurse,
+				     source_info, transfer_info,
+				     debuting_files, skipped_file);
+
+		g_object_unref (dest);
+		return;
 	}
 	
 	/* Other error */
@@ -5477,7 +5570,7 @@ copy_file (CopyJob *copy_job,
 			goto out;
 		}
 		primary = f (_("Error while copying \"%B\"."), src);
-		secondary = f (_("There was an error getting copying the file into %F."), dest_dir);
+		secondary = f (_("There was an error copying the file into %F."), dest_dir);
 		details = error->message;
 		
 		response = run_warning (job,
@@ -5500,12 +5593,12 @@ copy_file (CopyJob *copy_job,
 		}
 	}
  out:
-
+	*skipped_file = TRUE; /* Or aborted, but same-same */
 	g_object_unref (dest);
 }
 
 static void
-copy_files (CopyJob *job,
+copy_files (CopyMoveJob *job,
 	    const char *dest_fs_id,
 	    SourceInfo *source_info,
 	    TransferInfo *transfer_info)
@@ -5516,6 +5609,7 @@ copy_files (CopyJob *job,
 	gboolean same_fs;
 	int i;
 	GdkPoint *point;
+	gboolean skipped_file;
 
 	common = &job->common;
 
@@ -5538,12 +5632,13 @@ copy_files (CopyJob *job,
 		if (dest_fs_id) {
 			same_fs = has_fs_id (src, dest_fs_id);
 		}
-		
-		copy_file (job, src, job->destination,
-			   same_fs,
-			   source_info, transfer_info,
-			   job->debuting_files,
-			   point);
+
+		skipped_file = FALSE;
+		copy_move_file (job, src, job->destination,
+				same_fs,
+				source_info, transfer_info,
+				job->debuting_files,
+				point, FALSE, &skipped_file);
 		i++;
 	}
 }
@@ -5551,7 +5646,7 @@ copy_files (CopyJob *job,
 static void
 copy_job_done (gpointer user_data)
 {
-	CopyJob *job;
+	CopyMoveJob *job;
 
 	job = user_data;
 	if (job->done_callback) {
@@ -5561,8 +5656,11 @@ copy_job_done (gpointer user_data)
 	eel_g_object_list_free (job->files);
 	g_object_unref (job->destination);
 	g_hash_table_unref (job->debuting_files);
+	g_free (job->icon_positions);
 	
 	finalize_common ((CommonJob *)job);
+
+	nautilus_file_changes_consume_changes (TRUE);
 }
 
 static void
@@ -5570,7 +5668,7 @@ copy_job (GIOJob *io_job,
 	  GCancellable *cancellable,
 	  gpointer user_data)
 {
-	CopyJob *job;
+	CopyMoveJob *job;
 	CommonJob *common;
 	SourceInfo source_info;
 	TransferInfo transfer_info;
@@ -5626,10 +5724,10 @@ nautilus_file_operations_copy (GList *files,
 			       void (*done_callback) (GHashTable *debuting_files, gpointer data),
 			       gpointer done_callback_data)
 {
-	CopyJob *job;
+	CopyMoveJob *job;
 	GdkScreen *screen;
 
-	job = op_job_new (CopyJob, parent_window);
+	job = op_job_new (CopyMoveJob, parent_window);
 	job->done_callback = done_callback;
 	job->done_callback_data = done_callback_data;
 	job->files = eel_g_object_list_copy (files);
@@ -5654,6 +5752,452 @@ nautilus_file_operations_copy (GList *files,
 			   0,
 			   job->common.cancellable);
 }
+
+static void
+report_move_progress (CopyMoveJob *move_job, int total, int left)
+{
+	CommonJob *job;
+
+	job = (CommonJob *)move_job;
+	
+	nautilus_progress_info_take_status (job->progress,
+					    f (_("Preparing to Move to \"%B\""),
+					       move_job->destination));
+
+	nautilus_progress_info_take_details (job->progress,
+					     f (_("Preparing to move %d files"), left));
+
+	nautilus_progress_info_pulse_progress (job->progress);
+}
+
+static void
+move_file_prepare (CopyMoveJob *move_job,
+		   GFile *src,
+		   GFile *dest_dir,
+		   gboolean same_fs,
+		   GHashTable *debuting_files,
+		   GdkPoint *position,
+		   GList **copy_files,
+		   GArray *copy_positions)
+{
+	GFile *dest;
+	GError *error;
+	CommonJob *job;
+	gboolean overwrite;
+	char *primary, *secondary, *details;
+	int response;
+	GFileCopyFlags flags;
+	gboolean would_recurse;
+
+	overwrite = FALSE;
+
+	job = (CommonJob *)move_job;
+	
+	dest = get_target_file (src, dest_dir, same_fs);
+
+ retry:
+	
+	flags = G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_NO_FALLBACK_FOR_MOVE;
+	if (overwrite) {
+		flags |= G_FILE_COPY_OVERWRITE;
+	}
+	
+	error = NULL;
+	if (g_file_move (src, dest,
+			 flags,
+			 job->cancellable,
+			 NULL,
+			 NULL,
+			 &error)) {
+		
+		if (debuting_files) {
+			g_hash_table_replace (debuting_files, g_object_ref (dest), GINT_TO_POINTER (TRUE));
+		}
+		
+		nautilus_file_changes_queue_file_moved (src, dest);
+		nautilus_file_changes_queue_schedule_metadata_move (src, dest);
+		
+		return;
+	}
+
+	/* Conflict */
+	if (!overwrite &&
+	    IS_IO_ERROR (error, EXISTS)) {
+		gboolean is_merge;
+		
+		g_error_free (error);
+		
+		is_merge = FALSE;
+		if (is_dir (dest)) {
+			if (is_dir (src)) {
+				is_merge = TRUE;
+				primary = f (_("A folder named \"%B\" already exists.  Do you want to merge the source folder?"), 
+					     dest);
+				secondary = f (_("The source folder already exists in \"%B\".  "
+						 "Merging will ask for confirmation before replacing any files in the folder that conflict with the files being moved."), 
+					       dest_dir);
+				
+			} else {
+				primary = f (_("A folder named \"%B\" already exists.  Do you want to replace it?"), 
+							    dest);
+				secondary = f (_("The folder already exists in \"%F\".  "
+						 "Replacing it will remove all files in the folder."), 
+					       dest_dir);
+			}
+		} else {
+			primary = f (_("A file named \"%B\" already exists.  Do you want to replace it?"), 
+				     dest);
+			secondary = f (_("The file already exists in \"%F\".  "
+					 "Replacing it will overwrite its content."), 
+				       dest_dir);
+		}
+
+		if ((is_merge && job->merge_all) ||
+		    (!is_merge && job->replace_all)) {
+			g_free (primary);
+			g_free (secondary);
+			g_error_free (error);
+			
+			overwrite = TRUE;
+			goto retry;
+		}
+
+		if (job->skip_all_conflict) {
+			g_free (primary);
+			g_free (secondary);
+			g_error_free (error);
+			
+			goto out;
+		}
+		
+		response = run_warning (job,
+					primary,
+					secondary,
+					NULL,
+					GTK_STOCK_CANCEL,
+					SKIP_ALL,
+					is_merge?MERGE_ALL:REPLACE_ALL,
+					SKIP,
+					is_merge?MERGE:REPLACE,
+					NULL);
+		
+		g_error_free (error);
+		
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1 || response == 3) { /* skip all / skip */
+			if (response == 1) {
+				job->skip_all_conflict = TRUE;
+			}
+		} else if (response == 2 || response == 4) { /* merge/replace all  / merge/replace*/
+			if (response == 2) {
+				if (is_merge) {
+					job->merge_all = TRUE;
+				} else {
+					job->replace_all = TRUE;
+				}
+			}
+			overwrite = TRUE;
+			goto retry;
+		} else {
+			g_assert_not_reached ();
+		}
+	}
+
+	else if (IS_IO_ERROR (error, WOULD_RECURSE) ||
+		 IS_IO_ERROR (error, WOULD_MERGE) ||
+		 IS_IO_ERROR (error, NOT_SUPPORTED)) {
+		gboolean delete_dest;
+		would_recurse = error->code == G_IO_ERROR_WOULD_RECURSE;
+		g_error_free (error);
+
+		delete_dest = FALSE;
+		if (overwrite && would_recurse) {
+			delete_dest = TRUE;
+			
+			error = NULL;
+		}
+
+		*copy_files = g_list_prepend (*copy_files, src);
+		if (position) {
+			g_array_append_val (copy_positions, *position);
+		}
+	}
+
+	/* Other error */
+	else {
+		if (job->skip_all_error) {
+			goto out;
+		}
+		primary = f (_("Error while moving \"%B\"."), src);
+		secondary = f (_("There was an error moving the file into %F."), dest_dir);
+		details = error->message;
+		
+		response = run_warning (job,
+					primary,
+					secondary,
+					details,
+					GTK_STOCK_CANCEL, SKIP_ALL, SKIP,
+					NULL);
+
+		g_error_free (error);
+		
+		if (response == 0 || response == GTK_RESPONSE_DELETE_EVENT) {
+			job->aborted = TRUE;
+		} else if (response == 1) { /* skip all */
+			job->skip_all_error = TRUE;
+		} else if (response == 2) { /* skip */
+			/* do nothing */
+		} else {
+			g_assert_not_reached ();
+		}
+	}
+	
+ out:
+	g_object_unref (dest);
+}
+
+static void
+move_files_prepare (CopyMoveJob *job,
+		    const char *dest_fs_id,
+		    GList **copy_files,
+		    GArray *copy_positions)
+{
+	CommonJob *common;
+	GList *l;
+	GFile *src;
+	gboolean same_fs;
+	int i;
+	GdkPoint *point;
+	int total, left;
+
+	common = &job->common;
+
+	total = left = g_list_length (job->files);
+
+	report_move_progress (job, total, left);
+
+	i = 0;
+	for (l = job->files;
+	     l != NULL && !common->aborted ;
+	     l = l->next) {
+		src = l->data;
+
+		if (i < job->n_icon_positions) {
+			point = &job->icon_positions[i];
+		} else {
+			point = NULL;
+		}
+
+		
+		same_fs = FALSE;
+		if (dest_fs_id) {
+			same_fs = has_fs_id (src, dest_fs_id);
+		}
+		
+		move_file_prepare (job, src, job->destination,
+				   same_fs,
+				   job->debuting_files,
+				   point,
+				   copy_files,
+				   copy_positions);
+		i++;
+	}
+
+}
+
+static void
+move_files (CopyMoveJob *job,
+	    GList *files,
+	    GArray *icon_positions,
+	    const char *dest_fs_id,
+	    SourceInfo *source_info,
+	    TransferInfo *transfer_info)
+{
+	CommonJob *common;
+	GList *l;
+	GFile *src;
+	gboolean same_fs;
+	int i;
+	GdkPoint *point;
+	gboolean skipped_file;
+
+	common = &job->common;
+
+	report_copy_progress (job, source_info, transfer_info);
+	
+	i = 0;
+	for (l = files;
+	     l != NULL && !common->aborted ;
+	     l = l->next) {
+		src = l->data;
+
+		if (i < icon_positions->len) {
+			point = &g_array_index (icon_positions, GdkPoint, i);
+		} else {
+			point = NULL;
+		}
+		
+		same_fs = FALSE;
+		if (dest_fs_id) {
+			same_fs = has_fs_id (src, dest_fs_id);
+		}
+
+		/* Set overwrite to true, as the user has
+		   selected overwrite on all toplevel items */
+		skipped_file = FALSE;
+		copy_move_file (job, src, job->destination,
+				same_fs,
+				source_info, transfer_info,
+				job->debuting_files,
+				point, TRUE, &skipped_file);
+		i++;
+	}
+}
+
+
+static void
+move_job_done (gpointer user_data)
+{
+	CopyMoveJob *job;
+
+	job = user_data;
+	if (job->done_callback) {
+		job->done_callback (job->debuting_files, job->done_callback_data);
+	}
+
+	eel_g_object_list_free (job->files);
+	g_object_unref (job->destination);
+	g_hash_table_unref (job->debuting_files);
+	g_free (job->icon_positions);
+	
+	finalize_common ((CommonJob *)job);
+
+	nautilus_file_changes_consume_changes (TRUE);
+}
+
+static void
+move_job (GIOJob *io_job,
+	  GCancellable *cancellable,
+	  gpointer user_data)
+{
+	CopyMoveJob *job;
+	CommonJob *common;
+	GList *copy_files;
+	GArray *copy_positions;
+	SourceInfo source_info;
+	TransferInfo transfer_info;
+	char *dest_fs_id;
+
+	job = user_data;
+	common = &job->common;
+	common->io_job = io_job;
+
+	dest_fs_id = NULL;
+
+	copy_files = NULL;
+	copy_positions = NULL;
+	
+	nautilus_progress_info_start (job->common.progress);
+	
+	verify_destination (&job->common,
+			    job->destination,
+			    &dest_fs_id,
+			    -1);
+	if (common->aborted) {
+		goto aborted;
+	}
+
+	copy_files = NULL;
+	copy_positions = g_array_new (FALSE, TRUE, sizeof (GdkPoint));
+
+	/* This moves all files that we can do without copy + delete */
+	move_files_prepare (job, dest_fs_id, &copy_files, copy_positions);
+	if (common->aborted) {
+		goto aborted;
+	}
+
+	copy_files = g_list_reverse (copy_files);
+
+	/* The rest we need to do deep copy + delete behind on,
+	   so scan for size */
+	
+	memset (&source_info, 0, sizeof (SourceInfo));
+	scan_sources (copy_files,
+		      &source_info,
+		      common);
+	if (common->aborted) {
+		goto aborted;
+	}
+
+	verify_destination (&job->common,
+			    job->destination,
+			    &dest_fs_id,
+			    source_info.num_bytes);
+	if (common->aborted) {
+		goto aborted;
+	}
+
+	memset (&transfer_info, 0, sizeof (transfer_info));
+	move_files (job,
+		    copy_files,
+		    copy_positions,
+		    dest_fs_id,
+		    &source_info, &transfer_info);
+
+ aborted:
+	g_list_free (copy_files);
+	if (copy_positions) {
+		g_array_free (copy_positions, TRUE);
+	}
+
+	g_free (dest_fs_id);
+	
+	g_io_job_send_to_mainloop (io_job,
+				   move_job_done,
+				   job,
+				   NULL,
+				   FALSE);
+}
+
+void
+nautilus_file_operations_move (GList *files,
+			       GArray *relative_item_points,
+			       GFile *target_dir,
+			       GtkWindow *parent_window,
+			       void (*done_callback) (GHashTable *debuting_files, gpointer data),
+			       gpointer done_callback_data)
+{
+	CopyMoveJob *job;
+	GdkScreen *screen;
+
+	job = op_job_new (CopyMoveJob, parent_window);
+	job->is_move = TRUE;
+	job->done_callback = done_callback;
+	job->done_callback_data = done_callback_data;
+	job->files = eel_g_object_list_copy (files);
+	job->destination = g_object_ref (target_dir);
+	if (relative_item_points != NULL &&
+	    relative_item_points->len > 0) {
+		job->icon_positions =
+			g_memdup (relative_item_points->data,
+				  sizeof (GdkPoint) * relative_item_points->len);
+		job->n_icon_positions = relative_item_points->len;
+	}
+	job->screen_num = 0;
+	if (parent_window) {
+		screen = gtk_widget_get_screen (GTK_WIDGET (parent_window));
+		job->screen_num = gdk_screen_get_number (screen);
+	}
+	job->debuting_files = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
+
+	g_schedule_io_job (move_job,
+			   job,
+			   NULL, /* destroy notify */
+			   0,
+			   job->common.cancellable);
+}
+
 
 
 static void
