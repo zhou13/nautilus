@@ -109,7 +109,7 @@ typedef struct {
 	int n_icon_positions;
 	int screen_num;
 	GHashTable *debuting_files;
-	void (*done_callback) (GHashTable *debuting_uris, gpointer data);
+	NautilusCopyCallback  done_callback;
 	gpointer done_callback_data;
 } CopyMoveJob;
 
@@ -3674,6 +3674,7 @@ static void
 delete_job_done (gpointer user_data)
 {
 	DeleteJob *job = user_data;
+	GHashTable *debuting_uris;
 
 	eel_g_object_list_free (job->files);
 	if (job->parent_window) {
@@ -3681,7 +3682,9 @@ delete_job_done (gpointer user_data)
 	}
 
 	if (job->done_callback) {
-		job->done_callback (/* TODO: debuting uris */NULL, job->done_callback_data);
+		debuting_uris = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
+		job->done_callback (debuting_uris, job->done_callback_data);
+		g_hash_table_unref (debuting_uris);
 	}
 	g_free (job);
 
@@ -5721,7 +5724,7 @@ nautilus_file_operations_copy (GList *files,
 			       GArray *relative_item_points,
 			       GFile *target_dir,
 			       GtkWindow *parent_window,
-			       void (*done_callback) (GHashTable *debuting_files, gpointer data),
+			       NautilusCopyCallback  done_callback,
 			       gpointer done_callback_data)
 {
 	CopyMoveJob *job;
@@ -6165,7 +6168,7 @@ nautilus_file_operations_move (GList *files,
 			       GArray *relative_item_points,
 			       GFile *target_dir,
 			       GtkWindow *parent_window,
-			       void (*done_callback) (GHashTable *debuting_files, gpointer data),
+			       NautilusCopyCallback  done_callback,
 			       gpointer done_callback_data)
 {
 	CopyMoveJob *job;
@@ -6221,17 +6224,70 @@ nautilus_file_set_permissions_recursive (const char                     *directo
 	not_supported_yet ();
 }
 
+static GList *
+location_list_from_uri_list (const GList *uris)
+{
+	const GList *l;
+	GList *files;
+	GFile *f;
+
+	files = NULL;
+	for (l = uris; l != NULL; l = l->next) {
+		f = g_file_new_for_uri (l->data);
+		files = g_list_prepend (files, f);
+	}
+
+	return g_list_reverse (files);
+}
+
 void
 nautilus_file_operations_copy_move (const GList *item_uris,
 				    GArray *relative_item_points,
 				    const char *target_dir,
 				    GdkDragAction copy_action,
 				    GtkWidget *parent_view,
-				    void (*done_callback) (GHashTable *debuting_uris, gpointer data),
+				    NautilusCopyCallback  done_callback,
 				    gpointer done_callback_data)
 {
-	/* TODO-gio: Implement */
-	not_supported_yet ();
+	GList *locations;
+	GFile *dest;
+	GtkWindow *parent_window;
+	
+	dest = g_file_new_for_uri (target_dir);
+	locations = location_list_from_uri_list (item_uris);
+
+	parent_window = NULL;
+	if (parent_view) {
+		parent_window = (GtkWindow *)gtk_widget_get_ancestor (parent_view, GTK_TYPE_WINDOW);
+	}
+	
+	if (copy_action == GDK_ACTION_COPY) {
+		nautilus_file_operations_copy (locations,
+					       relative_item_points,
+					       dest,
+					       parent_window,
+					       done_callback, done_callback_data);
+		
+	} else if (copy_action == GDK_ACTION_MOVE) {
+
+		if (g_file_has_uri_scheme (dest, "trash")) {
+			nautilus_file_operations_trash_or_delete (locations,
+								  parent_window,
+								  done_callback, done_callback_data);
+		} else {
+			nautilus_file_operations_move (locations,
+						       relative_item_points,
+						       dest,
+						       parent_window,
+						       done_callback, done_callback_data);
+		}
+	} else {
+		/* TODO-gio: Implement link */
+		not_supported_yet ();
+	}
+	
+	eel_g_object_list_free (locations);
+	g_object_unref (dest);
 }
 
 void 

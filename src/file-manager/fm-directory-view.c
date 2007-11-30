@@ -1696,22 +1696,6 @@ file_list_from_uri_list (const GList *uri_list)
 	return g_list_reverse (file_list);
 }
 
-static GList *
-location_list_from_uri_list (const GList *uris)
-{
-	const GList *l;
-	GList *files;
-	GFile *f;
-
-	files = NULL;
-	for (l = uris; l != NULL; l = l->next) {
-		f = g_file_new_for_uri (l->data);
-		files = g_list_prepend (files, f);
-	}
-
-	return g_list_reverse (files);
-}
-
 static void
 fm_directory_view_set_selection_uris (NautilusView *nautilus_view,
 				      GList *selection_uris)
@@ -2524,31 +2508,6 @@ copy_move_done_callback (GHashTable *debuting_files, gpointer data)
 	}
 
 	copy_move_done_data_free (copy_move_done_data);
-}
-
-static void
-key_uri_to_file (gpointer       key,
-		 gpointer       value,
-		 gpointer       user_data)
-{
-	char *uri;
-
-	uri = key;
-	
-}
-
-static void
-uri_copy_move_done_callback (GHashTable *debuting_uris, gpointer data)
-{
-	GHashTable *debuting_files;
-
-	debuting_files = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
-	g_hash_table_foreach (debuting_uris, key_uri_to_file, debuting_files);
-	g_hash_table_destroy (debuting_files);
-	
-	copy_move_done_callback (debuting_files, data);
-	
-	g_hash_table_unref (debuting_files);
 }
 
 static gboolean
@@ -3523,7 +3482,7 @@ fm_directory_view_create_links_for_files (FMDirectoryView *view, GList *files,
 
         copy_move_done_data = pre_copy_move (view);
 	nautilus_file_operations_copy_move (uris, relative_item_points, NULL, GDK_ACTION_LINK, 
-		GTK_WIDGET (view), uri_copy_move_done_callback, copy_move_done_data);
+		GTK_WIDGET (view), copy_move_done_callback, copy_move_done_data);
 	eel_g_list_free_deep (uris);
 }
 
@@ -3555,7 +3514,7 @@ fm_directory_view_duplicate_selection (FMDirectoryView *view, GList *files,
 
         copy_move_done_data = pre_copy_move (view);
 	nautilus_file_operations_copy_move (uris, relative_item_points, NULL, GDK_ACTION_COPY,
-		GTK_WIDGET (view), uri_copy_move_done_callback, copy_move_done_data);
+		GTK_WIDGET (view), copy_move_done_callback, copy_move_done_data);
 	eel_g_list_free_deep (uris);
 }
 
@@ -8140,51 +8099,10 @@ fm_directory_view_move_copy_items (const GList *item_uris,
 		return;
 	}
 
-	if (eel_uri_is_trash (target_uri) && copy_action == GDK_ACTION_MOVE) {
-		GList *locations;
-		locations = location_list_from_uri_list (item_uris);
-		trash_or_delete_files (fm_directory_view_get_containing_window (view), locations, FALSE);
-		eel_g_object_list_free (locations);
-	} else {
-		if (copy_action == GDK_ACTION_COPY) {
-			GList *locations;
-			GFile *dest;
-
-			dest = g_file_new_for_uri (target_uri);
-			locations = location_list_from_uri_list (item_uris);
-			
-			nautilus_file_operations_copy (locations,
-						       relative_item_points,
-						       dest,
-						       fm_directory_view_get_containing_window (view),
-						       copy_move_done_callback,
-						       pre_copy_move (view));
-
-			eel_g_object_list_free (locations);
-			g_object_unref (dest);
-		} else if (copy_action == GDK_ACTION_MOVE) {
-			GList *locations;
-			GFile *dest;
-
-			dest = g_file_new_for_uri (target_uri);
-			locations = location_list_from_uri_list (item_uris);
-			
-			nautilus_file_operations_move (locations,
-						       relative_item_points,
-						       dest,
-						       fm_directory_view_get_containing_window (view),
-						       copy_move_done_callback,
-						       pre_copy_move (view));
-
-			eel_g_object_list_free (locations);
-			g_object_unref (dest);
-		} else {
-			nautilus_file_operations_copy_move
-				(item_uris, relative_item_points, 
-				 target_uri, copy_action, GTK_WIDGET (view),
-				 uri_copy_move_done_callback, pre_copy_move (view));
-		}
-	}
+	nautilus_file_operations_copy_move
+		(item_uris, relative_item_points, 
+		 target_uri, copy_action, GTK_WIDGET (view),
+		 copy_move_done_callback, pre_copy_move (view));
 }
 
 gboolean

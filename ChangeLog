@@ -1,5 +1,14 @@
 2007-11-30  Alexander Larsson  <alexl@redhat.com>
 
+        * libnautilus-private/nautilus-file-operations.[ch]:
+	Reimplement copy_move helper with _copy and _move
+	Also support move to trash as trash
+	
+        * src/file-manager/fm-directory-view.c:
+	Use _copy_move again
+
+2007-11-30  Alexander Larsson  <alexl@redhat.com>
+
         * libnautilus-private/nautilus-file-changes-queue.[ch]:
 	Convert changes queue to only use GFile, not uris.
 	Kill all _by_uri versions
