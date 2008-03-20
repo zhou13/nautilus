@@ -869,6 +869,7 @@ nautilus_application_close_all_navigation_windows (void)
 	list_copy = g_list_copy (nautilus_application_window_list);
 	for (l = list_copy; l != NULL; l = l->next) {
 		NautilusWindow *window;
+		GList *l;
 		
 		window = NAUTILUS_WINDOW (l->data);
 		
@@ -883,18 +884,18 @@ static NautilusSpatialWindow *
 nautilus_application_get_existing_spatial_window (GFile *location)
 {
 	GList *l;
+	NautilusWindowSlot *slot;
 
 	for (l = nautilus_application_get_spatial_window_list ();
 	     l != NULL; l = l->next) {
 		GFile *window_location;
 
-		window_location = nautilus_window_get_location (NAUTILUS_WINDOW (l->data));
+		slot = NAUTILUS_WINDOW (l->data)->details->active_slot;
+		window_location = slot->location;
 		if (window_location != NULL) {
 			if (g_file_equal (location, window_location)) {
-				g_object_unref (window_location);
 				return NAUTILUS_SPATIAL_WINDOW (l->data);
 			}
-			g_object_unref (window_location);
 		}
 	}
 	return NULL;
@@ -905,14 +906,16 @@ find_parent_spatial_window (NautilusSpatialWindow *window)
 {
 	NautilusFile *file;
 	NautilusFile *parent_file;
+	NautilusWindowSlot *slot;
 	GFile *location;
 
-	location = nautilus_window_get_location (NAUTILUS_WINDOW (window));
+	slot = NAUTILUS_WINDOW (window)->details->active_slot;
+
+	location = slot->location;
 	if (location == NULL) {
 		return NULL;
 	}
 	file = nautilus_file_get (location);
-	g_object_unref (location);
 
 	if (!file) {
 		return NULL;
@@ -1154,13 +1157,15 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 	for (l = nautilus_application_get_spatial_window_list ();
 	     l != NULL; l = l->next) {
 		NautilusWindow *existing_window;
+		NautilusWindowSlot *slot;
 		GFile *existing_location;
-               	     
+
 		existing_window = NAUTILUS_WINDOW (l->data);
-		existing_location = existing_window->details->pending_location;
+		slot = existing_window->details->active_slot;
+		existing_location = slot->pending_location;
 		
 		if (existing_location == NULL) {
-			existing_location = existing_window->details->location;
+			existing_location = slot->location;
 		}
 		
 		if (g_file_equal (existing_location, location)) {
@@ -1171,8 +1176,8 @@ nautilus_application_present_spatial_window_with_selection (NautilusApplication 
 
 			gtk_window_present (GTK_WINDOW (existing_window));
 			if (new_selection &&
-			    existing_window->content_view != NULL) {
-				nautilus_view_set_selection (existing_window->content_view, new_selection);
+			    slot->content_view != NULL) {
+				nautilus_view_set_selection (slot->content_view, new_selection);
 			}
 
 			uri = g_file_get_uri (location);
@@ -1444,6 +1449,7 @@ mount_removed_callback (GVolumeMonitor *monitor,
 {
 	GList *window_list, *node, *close_list;
 	NautilusWindow *window;
+	NautilusWindowSlot *slot;
 	GFile *root;
 
 	close_list = NULL;
@@ -1456,24 +1462,27 @@ mount_removed_callback (GVolumeMonitor *monitor,
 	for (node = window_list; node != NULL; node = node->next) {
 		window = NAUTILUS_WINDOW (node->data);
 		if (window != NULL && window_can_be_closed (window)) {
+			GList *l;
 			GFile *location;
 
-			location = nautilus_window_get_location (window);
+			for (l = window->details->slots; l != NULL; l = l->next) {
+				slot = l->data;
+				location = slot->location;
+				if (g_file_has_prefix (location, root)) {
+					close_list = g_list_prepend (close_list, slot);
+				} 
+			}
 
-			if (g_file_has_prefix (location, root)) {
-				close_list = g_list_prepend (close_list, window);
-			} 
-			g_object_unref (location);
 		}
 	}
 
 	/* Handle the windows in the close list. */
 	for (node = close_list; node != NULL; node = node->next) {
-		window = NAUTILUS_WINDOW (node->data);
+		slot = node->data;
 		if (NAUTILUS_IS_SPATIAL_WINDOW (window)) {
-			nautilus_window_close (window);
+			nautilus_window_slot_close (slot);
 		} else {
-			nautilus_window_go_home (window);
+			nautilus_window_go_home (slot->window);
 		}
 	}
 
@@ -1582,6 +1591,7 @@ save_session_to_file (void)
 	for (l = nautilus_application_window_list; l != NULL; l = l->next) {
 		xmlNodePtr win_node;
 		NautilusWindow *window;
+		NautilusWindowSlot *slot;
 		char *tmp;
 
 		window = l->data;
@@ -1611,7 +1621,9 @@ save_session_to_file (void)
 			}
 		}
 
-		tmp = nautilus_window_get_location_uri (window);
+		/* TODO store all URIs for windows with mutiple slots */
+		slot = nautilus_window_get_active_slot (window);
+		tmp = nautilus_window_slot_get_location_uri (slot);
 		xmlNewProp (win_node, "location", tmp);
 		g_free (tmp);
 	}
@@ -1770,7 +1782,8 @@ nautilus_application_load_session (NautilusApplication *application,
 						}
 
 						location = g_file_new_for_uri (location_uri);
-						nautilus_window_open_location (window, location, FALSE);
+						/* TODO open all URIs for windows with mutiple slots */
+						nautilus_window_slot_open_location (window->details->active_slot, location, FALSE);
 						g_object_unref (location);
 					} else if (!strcmp (type, "spatial")) {
 						location = g_file_new_for_uri (location_uri);

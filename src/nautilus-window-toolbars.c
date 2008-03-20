@@ -137,12 +137,15 @@ nautilus_navigation_window_initialize_toolbars (NautilusNavigationWindow *window
 static GList *
 get_extension_toolbar_items (NautilusNavigationWindow *window)
 {
+	NautilusWindowSlot *slot;
 	GList *items;
 	GList *providers;
 	GList *l;
 	
 	providers = nautilus_module_get_extensions_for_type (NAUTILUS_TYPE_MENU_PROVIDER);
 	items = NULL;
+
+	slot = NAUTILUS_WINDOW (window)->details->active_slot;
 
 	for (l = providers; l != NULL; l = l->next) {
 		NautilusMenuProvider *provider;
@@ -152,7 +155,7 @@ get_extension_toolbar_items (NautilusNavigationWindow *window)
 		file_items = nautilus_menu_provider_get_toolbar_items 
 			(provider, 
 			 GTK_WIDGET (window),
-			 NAUTILUS_WINDOW (window)->details->viewed_file);
+			 slot->viewed_file);
 		items = g_list_concat (items, file_items);		
 	}
 

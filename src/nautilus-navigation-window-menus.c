@@ -432,10 +432,12 @@ action_folder_window_callback (GtkAction *action,
 			       gpointer user_data)
 {
 	NautilusWindow *current_window;
+	NautilusWindowSlot *slot;
 	GFile *current_location;
 
 	current_window = NAUTILUS_WINDOW (user_data);
-	current_location = nautilus_window_get_location (current_window);
+	slot = current_window->details->active_slot;
+	current_location = nautilus_window_slot_get_location (slot);
 	nautilus_application_present_spatial_window (
 			current_window->application,
 			current_window,

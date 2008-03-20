@@ -39,6 +39,7 @@
 #include <libnautilus-private/nautilus-link.h>
 #include <libnautilus-private/nautilus-view.h>
 #include <libnautilus-private/nautilus-window-info.h>
+#include <libnautilus-private/nautilus-window-slot-info.h>
 #include <gio/gio.h>
 
 typedef struct FMDirectoryView FMDirectoryView;
@@ -204,6 +205,7 @@ struct FMDirectoryViewClass {
          * If overridden, subclasses must call parent class's function.
          */
         void    (* merge_menus)         	(FMDirectoryView *view);
+        void    (* unmerge_menus)         	(FMDirectoryView *view);
 
         /* update_menus is a function pointer that subclasses can override to
          * update the sensitivity or wording of menu items in the menu bar.
@@ -328,6 +330,7 @@ GType               fm_directory_view_get_type                         (void);
 
 /* Functions callable from the user interface and elsewhere. */
 NautilusWindowInfo *fm_directory_view_get_nautilus_window              (FMDirectoryView  *view);
+NautilusWindowSlotInfo *fm_directory_view_get_nautilus_window_slot     (FMDirectoryView  *view);
 char *              fm_directory_view_get_uri                          (FMDirectoryView  *view);
 char *              fm_directory_view_get_backing_uri                  (FMDirectoryView  *view);
 gboolean            fm_directory_view_can_accept_item                  (NautilusFile     *target_item,
@@ -367,6 +370,7 @@ void                fm_directory_view_move_copy_items                  (const GL
 									int               x,
 									int               y,
 									FMDirectoryView  *view);
+gboolean            fm_directory_view_get_active                       (FMDirectoryView  *view);
 
 /* Wrappers for signal emitters. These are normally called 
  * only by FMDirectoryView itself. They have corresponding signals

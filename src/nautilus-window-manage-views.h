@@ -32,38 +32,41 @@
 
 void                    nautilus_window_manage_views_destroy          (NautilusWindow           *window);
 void                    nautilus_window_manage_views_finalize         (NautilusWindow           *window);
-void                    nautilus_window_open_location                 (NautilusWindow           *window,
+
+void                    nautilus_navigation_window_set_sidebar_panels (NautilusNavigationWindow *window,
+                                                                       GList                    *view_identifier_list);
+
+/* view interaction (through slots) */
+void                    nautilus_window_slot_open_location            (NautilusWindowSlot       *slot,
                                                                        GFile                    *location,
                                                                        gboolean                  close_behind);
-void                    nautilus_window_open_location_with_selection  (NautilusWindow           *window,
+void                    nautilus_window_slot_open_location_with_selection (NautilusWindowSlot       *slot,
                                                                        GFile                    *location,
                                                                        GList                    *selection,
                                                                        gboolean                  close_behind);
-void                    nautilus_window_open_location_full            (NautilusWindow           *window,
+void                    nautilus_window_slot_open_location_full       (NautilusWindowSlot       *slot,
                                                                        GFile                    *location,
                                                                        NautilusWindowOpenMode    mode,
                                                                        NautilusWindowOpenFlags   flags,
                                                                        GList                    *new_selection);
-void                    nautilus_window_stop_loading                  (NautilusWindow           *window);
-void                    nautilus_window_set_content_view              (NautilusWindow           *window,
+void                    nautilus_window_slot_stop_loading             (NautilusWindowSlot       *slot);
+
+void                    nautilus_window_slot_set_content_view         (NautilusWindowSlot       *slot,
                                                                        const char               *id);
-gboolean                nautilus_window_content_view_matches_iid      (NautilusWindow           *window,
+const char             *nautilus_window_slot_get_content_view_id      (NautilusWindowSlot       *slot);
+gboolean                nautilus_window_slot_content_view_matches_iid (NautilusWindowSlot       *slot,
                                                                        const char               *iid);
-const char             *nautilus_window_get_content_view_id           (NautilusWindow           *window);
-char                   *nautilus_window_get_view_label                (NautilusWindow           *window);
-char                   *nautilus_window_get_view_error_label          (NautilusWindow           *window);
-char                   *nautilus_window_get_view_startup_error_label  (NautilusWindow           *window);
-void                    nautilus_navigation_window_set_sidebar_panels (NautilusNavigationWindow *window,
-                                                                       GList                    *view_identifier_list);
 
 
-/* NautilusWindowInfo implementation: */
+/* NautilusWindowInfo implementation, exposed to the view API */
 void nautilus_window_report_load_underway     (NautilusWindow     *window,
                                                NautilusView       *view);
-void nautilus_window_report_selection_changed (NautilusWindowInfo *window);
+void nautilus_window_report_selection_changed (NautilusWindow     *window);
 void nautilus_window_report_view_failed       (NautilusWindow     *window,
                                                NautilusView       *view);
 void nautilus_window_report_load_complete     (NautilusWindow     *window,
                                                NautilusView       *view);
+void nautilus_window_report_location_change   (NautilusWindow     *window,
+					       gboolean            current_location);
 
 #endif /* NAUTILUS_WINDOW_MANAGE_VIEWS_H */

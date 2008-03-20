@@ -44,6 +44,8 @@
 #include <libnautilus-private/nautilus-sidebar-provider.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-signaller.h>
+#include <libnautilus-private/nautilus-window-info.h>
+#include <libnautilus-private/nautilus-window-slot-info.h>
 
 #include "nautilus-history-sidebar.h"
 
@@ -142,6 +144,7 @@ row_activated_callback (GtkTreeView *tree_view,
 			gpointer user_data)
 {
 	NautilusHistorySidebar *sidebar;
+	NautilusWindowSlotInfo *slot;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	NautilusBookmark *bookmark;
@@ -159,8 +162,9 @@ row_activated_callback (GtkTreeView *tree_view,
 	
 	/* Navigate to the clicked location. */
 	location = nautilus_bookmark_get_location (NAUTILUS_BOOKMARK (bookmark));
-	nautilus_window_info_open_location
-		(sidebar->window, 
+	slot = nautilus_window_info_get_active_slot (sidebar->window);
+	nautilus_window_slot_info_open_location
+		(slot,
 		 location, NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, 0, NULL);
 	g_object_unref (location);
 }

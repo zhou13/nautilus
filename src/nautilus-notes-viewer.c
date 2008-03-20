@@ -47,6 +47,8 @@
 #include <libnautilus-private/nautilus-clipboard.h>
 #include <libnautilus-private/nautilus-module.h>
 #include <libnautilus-private/nautilus-sidebar-provider.h>
+#include <libnautilus-private/nautilus-window-info.h>
+#include <libnautilus-private/nautilus-window-slot-info.h>
 #include <libnautilus-extension/nautilus-property-page-provider.h>
 
 #define SAVE_TIMEOUT (3 * 1000)
@@ -279,7 +281,7 @@ notes_load_metainfo (NautilusNotesViewer *notes)
 }
 
 static void
-loading_uri_callback (NautilusSidebar *sidebar,
+loading_uri_callback (NautilusWindowInfo *window,
                       const char *location,
                       NautilusNotesViewer *notes)
 {
@@ -430,11 +432,15 @@ static void
 nautilus_notes_viewer_set_parent_window (NautilusNotesViewer *sidebar,
                                           NautilusWindowInfo *window)
 {
+	NautilusWindowSlotInfo *slot;
+
+	slot = nautilus_window_info_get_active_slot (window);
+
 	g_signal_connect_object (window, "loading_uri",
 				 G_CALLBACK (loading_uri_callback), sidebar, 0);
         
         g_free (sidebar->details->uri);
-        sidebar->details->uri = nautilus_window_info_get_current_location (window);
+	sidebar->details->uri = nautilus_window_slot_info_get_current_location (slot);
         notes_load_metainfo (sidebar);
 
 	nautilus_clipboard_set_up_text_view

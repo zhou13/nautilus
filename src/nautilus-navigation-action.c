@@ -31,6 +31,8 @@
 
 #include "nautilus-navigation-action.h"
 #include "nautilus-navigation-window.h"
+#include "nautilus-window-private.h"
+#include "nautilus-navigation-window-slot.h"
 
 #include <gtk/gtkimage.h>
 #include <gtk/gtkimagemenuitem.h>
@@ -117,13 +119,16 @@ fill_menu (NautilusNavigationWindow *window,
 	   GtkWidget *menu,
 	   gboolean back)
 {
+	NautilusNavigationWindowSlot *slot;
 	GtkWidget *menu_item;
 	int index;
 	GList *list;
 
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
+
+	slot = NAUTILUS_NAVIGATION_WINDOW_SLOT (NAUTILUS_WINDOW (window)->details->active_slot);
 	
-	list = back ? window->back_list : window->forward_list;
+	list = back ? slot->back_list : slot->forward_list;
 	index = 0;
 	while (list != NULL) {
 		menu_item = nautilus_bookmark_menu_item_new (NAUTILUS_BOOKMARK (list->data));

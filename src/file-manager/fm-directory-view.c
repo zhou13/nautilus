@@ -161,7 +161,7 @@ enum {
 enum 
 {
   PROP_0,
-  PROP_WINDOW
+  PROP_WINDOW_SLOT
 };
 
 
@@ -179,6 +179,7 @@ static int scripts_directory_uri_length;
 struct FMDirectoryViewDetails
 {
 	NautilusWindowInfo *window;
+	NautilusWindowSlotInfo *slot;
 	NautilusDirectory *model;
 	NautilusFile *directory_as_file;
 	GtkActionGroup *dir_action_group;
@@ -223,6 +224,9 @@ struct FMDirectoryViewDetails
 	GList *old_changed_files;
 
 	GList *pending_locations_selected;
+
+	/* whether we are in the active slot */
+	gboolean active;
 
 	/* loading indicates whether this view has begun loading a directory.
 	 * This flag should need not be set inside subclasses. FMDirectoryView automatically
@@ -303,6 +307,7 @@ static void     trash_or_delete_files                          (GtkWindow       
 static void     load_directory                                 (FMDirectoryView      *view,
 								NautilusDirectory    *directory);
 static void     fm_directory_view_merge_menus                  (FMDirectoryView      *view);
+static void     fm_directory_view_unmerge_menus                (FMDirectoryView      *view);
 static void     fm_directory_view_init_show_hidden_files       (FMDirectoryView      *view);
 static void     fm_directory_view_load_location                (NautilusView         *nautilus_view,
 								const char           *location);
@@ -577,6 +582,13 @@ fm_directory_view_get_nautilus_window (FMDirectoryView  *view)
 	return view->details->window;
 }
 
+NautilusWindowSlotInfo *
+fm_directory_view_get_nautilus_window_slot (FMDirectoryView  *view)
+{
+	g_assert (view->details->slot != NULL);
+
+	return view->details->slot;
+}
 
 
 /* Returns the GtkWindow that this directory view occupies, or NULL
@@ -691,7 +703,7 @@ fm_directory_view_activate_files (FMDirectoryView *view,
 
 	path = get_view_directory (view);
 	nautilus_mime_activate_files (fm_directory_view_get_containing_window (view),
-				      view->details->window,
+				      view->details->slot,
 				      files,
 				      path,
 				      mode,
@@ -710,7 +722,7 @@ fm_directory_view_activate_file (FMDirectoryView *view,
 
 	path = get_view_directory (view);
 	nautilus_mime_activate_file (fm_directory_view_get_containing_window (view),
-				     view->details->window,
+				     view->details->slot,
 				     file,
 				     path,
 				     mode,
@@ -810,8 +822,8 @@ open_location (FMDirectoryView *directory_view,
 	nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 			    "directory view open_location window=%p: %s", window, new_uri);
 	location = g_file_new_for_uri (new_uri);
-	nautilus_window_info_open_location (directory_view->details->window,
-					    location, mode, flags, NULL);
+	nautilus_window_slot_info_open_location (directory_view->details->slot,
+						 location, mode, flags, NULL);
 	g_object_unref (location);
 }
 
@@ -1152,7 +1164,9 @@ action_show_hidden_files_callback (GtkAction *action,
 	} else {
 		mode = NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DISABLE;
 	}
-	nautilus_window_info_set_hidden_files_mode (directory_view->details->window, mode);
+	/* multiview-TODO listen to hidden file modes changes, block handler here. */
+	nautilus_window_info_set_hidden_files_mode (directory_view->details->window,
+						    mode);
 	if (directory_view->details->model != NULL) {
 		load_directory (directory_view, directory_view->details->model);
 	}
@@ -1531,7 +1545,9 @@ scripts_added_or_changed_callback (NautilusDirectory *directory,
 	view = FM_DIRECTORY_VIEW (callback_data);
 
 	view->details->scripts_invalid = TRUE;
-	schedule_update_menus (view);
+	if (view->details->active) {
+		schedule_update_menus (view);
+	}
 }
 
 static void
@@ -1544,7 +1560,9 @@ templates_added_or_changed_callback (NautilusDirectory *directory,
 	view = FM_DIRECTORY_VIEW (callback_data);
 
 	view->details->templates_invalid = TRUE;
-	schedule_update_menus (view);
+	if (view->details->active) {
+		schedule_update_menus (view);
+	}
 }
 
 static void
@@ -1631,20 +1649,28 @@ remove_directory_from_templates_directory_list (FMDirectoryView *view,
 }
 
 static void
-fm_directory_view_set_parent_window (FMDirectoryView *directory_view,
-				     NautilusWindowInfo *window)
+slot_active (NautilusWindowSlot *slot,
+	     FMDirectoryView *view)
 {
-	
-	directory_view->details->window = window;
+	g_assert (!view->details->active);
+	view->details->active = TRUE;
 
-	/* Add new menu items and perhaps whole menus */
-	fm_directory_view_merge_menus (directory_view);
-	
-	/* Set initial sensitivity, wording, toggle state, etc. */       
-	fm_directory_view_update_menus (directory_view);
+	fm_directory_view_merge_menus (view);
+	schedule_update_menus (view);
 
 	/* initialise show hidden mode */
-	fm_directory_view_init_show_hidden_files (directory_view);
+	fm_directory_view_init_show_hidden_files (view);
+}
+
+static void
+slot_inactive (NautilusWindowSlot *slot,
+	       FMDirectoryView *view)
+{
+	g_assert (view->details->active);
+	view->details->active = FALSE;
+
+	fm_directory_view_unmerge_menus (view);
+	remove_update_menus_timeout_callback (view);
 }
 
 static GtkWidget *
@@ -1836,7 +1862,7 @@ fm_directory_view_init (FMDirectoryView *view)
 }
 
 static void
-unmerge_ui (FMDirectoryView *view)
+real_unmerge_menus (FMDirectoryView *view)
 {
 	GtkUIManager *ui_manager;
 
@@ -1873,7 +1899,7 @@ fm_directory_view_destroy (GtkObject *object)
 
 	disconnect_model_handlers (view);
 
-	unmerge_ui (view);
+	fm_directory_view_unmerge_menus (view);
 	
 	/* We don't own the window, so no unref */
 	view->details->window = NULL;
@@ -2152,8 +2178,8 @@ fm_directory_view_display_selection_info (FMDirectoryView *view)
 	g_free (folder_item_count_str);
 	g_free (non_folder_str);
 
-	nautilus_window_info_set_status (view->details->window,
-					 status_string);
+	nautilus_window_slot_info_set_status (view->details->slot,
+					      status_string);
 	g_free (status_string);
 }
 
@@ -5582,8 +5608,8 @@ copy_or_cut_files (FMDirectoryView *view,
 		}
 	}
 
-	nautilus_window_info_set_status (view->details->window,
-					 status_string);
+	nautilus_window_slot_info_set_status (view->details->slot,
+					      status_string);
 	g_free (status_string);
 }
 
@@ -5666,8 +5692,8 @@ paste_clipboard_data (FMDirectoryView *view,
 	}
 
 	if (item_uris == NULL|| destination_uri == NULL) {
-		nautilus_window_info_set_status (view->details->window,
-						 _("There is nothing on the clipboard to paste."));
+		nautilus_window_slot_info_set_status (view->details->slot,
+						      _("There is nothing on the clipboard to paste."));
 	} else {
 		fm_directory_view_move_copy_items (item_uris, NULL, destination_uri,
 						   cut ? GDK_ACTION_MOVE : GDK_ACTION_COPY,
@@ -6553,6 +6579,7 @@ real_merge_menus (FMDirectoryView *view)
 	view->details->templates_invalid = TRUE;
 }
 
+
 static gboolean
 can_paste_into_file (NautilusFile *file)
 {
@@ -7403,8 +7430,11 @@ schedule_update_menus (FMDirectoryView *view)
 {
 	g_assert (FM_IS_DIRECTORY_VIEW (view));
 
-	/* Don't schedule updates after destroy (#349551) */
-	if (view->details->window == NULL) {
+	/* Don't schedule updates after destroy (#349551),
+ 	 * or if we are not active.
+ 	*/
+	if (view->details->window == NULL ||
+	    !view->details->active) {
 		return;
 	}
 	
@@ -7768,6 +7798,16 @@ fm_directory_view_merge_menus (FMDirectoryView *view)
 }
 
 static void
+fm_directory_view_unmerge_menus (FMDirectoryView *view)
+{
+	g_return_if_fail (FM_IS_DIRECTORY_VIEW (view));
+
+	EEL_CALL_METHOD
+		(FM_DIRECTORY_VIEW_CLASS, view,
+		 unmerge_menus, (view));
+}
+
+static void
 disconnect_handler (GObject *object, int *id)
 {
 	if (*id != 0) {
@@ -8115,6 +8155,8 @@ void
 fm_directory_view_update_menus (FMDirectoryView *view)
 {
 	g_return_if_fail (FM_IS_DIRECTORY_VIEW (view));
+
+	g_assert (view->details->active);
 
 	EEL_CALL_METHOD
 		(FM_DIRECTORY_VIEW_CLASS, view,
@@ -8649,7 +8691,12 @@ fm_directory_view_handle_text_drop (FMDirectoryView  *view,
 	g_free (container_uri);
 }
 
-
+gboolean
+fm_directory_view_get_active (FMDirectoryView *view)
+{
+	g_assert (FM_IS_DIRECTORY_VIEW (view));
+	return view->details->active;
+}
 
 static GArray *
 real_get_selected_icon_locations (FMDirectoryView *view)
@@ -8665,13 +8712,32 @@ fm_directory_view_set_property (GObject         *object,
 				GParamSpec      *pspec)
 {
   FMDirectoryView *directory_view;
+  NautilusWindowSlotInfo *slot;
+  NautilusWindowInfo *window;
   
   directory_view = FM_DIRECTORY_VIEW (object);
 
   switch (prop_id)  {
-  case PROP_WINDOW:
-	  g_assert (directory_view->details->window == NULL);
-	  fm_directory_view_set_parent_window (directory_view, NAUTILUS_WINDOW_INFO (g_value_get_object (value)));
+  case PROP_WINDOW_SLOT:
+	  g_assert (directory_view->details->slot == NULL);
+
+	  slot = NAUTILUS_WINDOW_SLOT_INFO (g_value_get_object (value));
+          window = nautilus_window_slot_info_get_window (slot);
+
+	  directory_view->details->slot = slot;
+	  directory_view->details->window = window;
+
+	  g_signal_connect_object (directory_view->details->slot,
+				   "active", G_CALLBACK (slot_active),
+				   directory_view, 0);
+	  g_signal_connect_object (directory_view->details->slot,
+				   "inactive", G_CALLBACK (slot_inactive),
+				   directory_view, 0);
+
+	  if (directory_view->details->slot == 
+	      nautilus_window_info_get_active_slot (window)) {
+	    slot_active (directory_view->details->slot, directory_view);
+	  }
 		  
       break;
     default:
@@ -8830,6 +8896,7 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 	klass->supports_zooming = real_supports_zooming;
 	klass->using_manual_layout = real_using_manual_layout;
         klass->merge_menus = real_merge_menus;
+        klass->unmerge_menus = real_unmerge_menus;
         klass->update_menus = real_update_menus;
 
 	/* Function pointers that subclasses must override */
@@ -8855,11 +8922,11 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 	utf8_string_atom = gdk_atom_intern ("UTF8_STRING", FALSE);
 
 	g_object_class_install_property (G_OBJECT_CLASS (klass),
-					 PROP_WINDOW,
-					 g_param_spec_object ("window",
-							      "Window",
-							      "The parent NautilusWindowInfo reference",
-							      NAUTILUS_TYPE_WINDOW_INFO,
+					 PROP_WINDOW_SLOT,
+					 g_param_spec_object ("window-slot",
+							      "Window Slot",
+							      "The parent window slot reference",
+							      NAUTILUS_TYPE_WINDOW_SLOT_INFO,
 							      G_PARAM_WRITABLE |
 							      G_PARAM_CONSTRUCT_ONLY));
 

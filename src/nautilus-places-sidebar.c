@@ -57,6 +57,8 @@
 #include <libnautilus-private/nautilus-trash-monitor.h>
 #include <libnautilus-private/nautilus-icon-names.h>
 #include <libnautilus-private/nautilus-autorun.h>
+#include <libnautilus-private/nautilus-window-info.h>
+#include <libnautilus-private/nautilus-window-slot-info.h>
 #include <gio/gio.h>
 
 #include "nautilus-bookmark-list.h"
@@ -247,11 +249,13 @@ update_places (NautilusPlacesSidebar *sidebar)
 	char *location, *mount_uri, *name, *desktop_path;
 	GIcon *icon;
 	GFile *root;
-	
-		
+	NautilusWindowSlotInfo *slot;
+
 	selection = gtk_tree_view_get_selection (sidebar->tree_view);
 	gtk_list_store_clear (sidebar->store);
-	location = nautilus_window_info_get_current_location (sidebar->window);
+
+	slot = nautilus_window_info_get_active_slot (sidebar->window);
+	location = nautilus_window_slot_info_get_current_location (slot);
 
 	/* add built in bookmarks */
 	desktop_path = nautilus_get_desktop_directory ();
@@ -1275,6 +1279,7 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 			GtkTreePath	      *path,
 			gboolean	      open_in_new_window)
 {
+	NautilusWindowSlot *slot;
 	GtkTreeIter iter;
 	GFile *location;
 	char *uri;
@@ -1296,9 +1301,10 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 		location = g_file_new_for_uri (uri);
 		/* Navigate to the clicked location */
 		if (!open_in_new_window) {
-			nautilus_window_info_open_location (sidebar->window, location,
-							    NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-							    0, NULL);
+			slot = nautilus_window_info_get_active_slot (sidebar->window);
+			nautilus_window_slot_info_open_location (slot, location,
+								 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
+								 0, NULL);
 		} else {
 			NautilusWindow *cur, *new;
 			
@@ -2046,11 +2052,15 @@ nautilus_places_sidebar_iface_init (NautilusSidebarIface *iface)
 static void
 nautilus_places_sidebar_set_parent_window (NautilusPlacesSidebar *sidebar,
 					   NautilusWindowInfo *window)
-{	
+{
+	NautilusWindowSlotInfo *slot;
+
 	sidebar->window = window;
-	
+
+	slot = nautilus_window_info_get_active_slot (window);
+
 	sidebar->bookmarks = nautilus_window_info_get_bookmark_list (window);
-	sidebar->uri = nautilus_window_info_get_current_location (window);
+	sidebar->uri = nautilus_window_slot_info_get_current_location (slot);
 
 	g_signal_connect_object (sidebar->bookmarks, "contents_changed",
 				 G_CALLBACK (update_places),

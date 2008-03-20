@@ -252,7 +252,8 @@ real_get_title (NautilusWindow *window)
 }
 
 static NautilusIconInfo *
-real_get_icon (NautilusWindow *window)
+real_get_icon (NautilusWindow *window,
+	       NautilusWindowSlot *slot)
 {
 	return nautilus_icon_info_lookup_from_name (NAUTILUS_ICON_DESKTOP, 48);
 }

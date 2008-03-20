@@ -187,7 +187,6 @@ static void
 fm_icon_view_destroy (GtkObject *object)
 {
 	FMIconView *icon_view;
-	GtkUIManager *ui_manager;
 
 	icon_view = FM_ICON_VIEW (object);
 
@@ -202,13 +201,6 @@ fm_icon_view_destroy (GtkObject *object)
 	if (icon_view->details->icons_not_positioned) {
 		nautilus_file_list_free (icon_view->details->icons_not_positioned);
 		icon_view->details->icons_not_positioned = NULL;
-	}
-
-	ui_manager = fm_directory_view_get_ui_manager (FM_DIRECTORY_VIEW (icon_view));
-	if (ui_manager != NULL) {
-		nautilus_ui_unmerge_ui (ui_manager,
-					&icon_view->details->icon_merge_id,
-					&icon_view->details->icon_action_group);
 	}
 
 	GTK_OBJECT_CLASS (fm_icon_view_parent_class)->destroy (object);
@@ -1190,7 +1182,9 @@ fm_icon_view_set_zoom_level (FMIconView *view,
 
 	g_signal_emit_by_name (view, "zoom_level_changed");
 	
-	fm_directory_view_update_menus (FM_DIRECTORY_VIEW (view));
+	if (fm_directory_view_get_active (FM_DIRECTORY_VIEW (view))) {
+		fm_directory_view_update_menus (FM_DIRECTORY_VIEW (view));
+	}
 }
 
 static void
@@ -1548,6 +1542,24 @@ fm_icon_view_merge_menus (FMDirectoryView *view)
 	}
 
 	update_layout_menus (icon_view);
+}
+
+static void
+fm_icon_view_unmerge_menus (FMDirectoryView *view)
+{
+	FMIconView *icon_view;
+	GtkUIManager *ui_manager;
+
+	icon_view = FM_ICON_VIEW (view);
+
+	FM_DIRECTORY_VIEW_CLASS (fm_icon_view_parent_class)->unmerge_menus (view);
+
+	ui_manager = fm_directory_view_get_ui_manager (view);
+	if (ui_manager != NULL) {
+		nautilus_ui_unmerge_ui (ui_manager,
+					&icon_view->details->icon_merge_id,
+					&icon_view->details->icon_action_group);
+	}
 }
 
 static void
@@ -1962,8 +1974,8 @@ icon_container_preview_callback (NautilusIconContainer *container,
 			file_name = nautilus_file_get_display_name (file);
 			message = g_strdup_printf (_("pointing at \"%s\""), file_name);
 			g_free (file_name);
-			nautilus_window_info_set_status
-				(fm_directory_view_get_nautilus_window (FM_DIRECTORY_VIEW (icon_view)),
+			nautilus_window_slot_info_set_status
+				(fm_directory_view_get_nautilus_window_slot (FM_DIRECTORY_VIEW (icon_view)),
 				 message);
 			g_free (message);
 		} else {
@@ -2140,7 +2152,8 @@ icon_position_changed_callback (NautilusIconContainer *container,
 	 * idle call, because we'd have to keep track of potentially multiple
 	 * sets of file/geometry info.
 	 */
-	if (icon_view->details->react_to_icon_change_idle_id == 0) {
+	if (fm_directory_view_get_active (FM_DIRECTORY_VIEW (icon_view)) &&
+	    icon_view->details->react_to_icon_change_idle_id == 0) {
                 icon_view->details->react_to_icon_change_idle_id
                         = g_idle_add (fm_icon_view_react_to_icon_change_idle_callback,
 				      icon_view);
@@ -2605,6 +2618,7 @@ fm_icon_view_class_init (FMIconViewClass *klass)
         fm_directory_view_class->emblems_changed = fm_icon_view_emblems_changed;
         fm_directory_view_class->image_display_policy_changed = fm_icon_view_image_display_policy_changed;
         fm_directory_view_class->merge_menus = fm_icon_view_merge_menus;
+        fm_directory_view_class->unmerge_menus = fm_icon_view_unmerge_menus;
         fm_directory_view_class->sort_directories_first_changed = fm_icon_view_sort_directories_first_changed;
         fm_directory_view_class->start_renaming_file = fm_icon_view_start_renaming_file;
         fm_directory_view_class->text_attribute_names_changed = fm_icon_view_text_attribute_names_changed;
@@ -2701,11 +2715,15 @@ fm_icon_view_init (FMIconView *icon_view)
 }
 
 static NautilusView *
-fm_icon_view_create (NautilusWindowInfo *window)
+fm_icon_view_create (NautilusWindowSlotInfo *slot)
 {
 	FMIconView *view;
 
-	view = g_object_new (FM_TYPE_ICON_VIEW, "window", window, NULL);
+	g_assert (NAUTILUS_IS_WINDOW_SLOT_INFO (slot));
+
+	view = g_object_new (FM_TYPE_ICON_VIEW,
+			     "window-slot", slot,
+			     NULL);
 	g_object_ref (view);
 	gtk_object_sink (GTK_OBJECT (view));
 	return NAUTILUS_VIEW (view);

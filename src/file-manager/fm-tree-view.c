@@ -72,6 +72,8 @@
 #include <libnautilus-private/nautilus-cell-renderer-pixbuf-emblem.h>
 #include <libnautilus-private/nautilus-sidebar-provider.h>
 #include <libnautilus-private/nautilus-module.h>
+#include <libnautilus-private/nautilus-window-info.h>
+#include <libnautilus-private/nautilus-window-slot-info.h>
 
 typedef struct {
         GObject parent;
@@ -335,6 +337,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 	GdkScreen *screen;
 	NautilusWindowOpenMode mode;
 	GFile *location;
+	NautilusWindowSlotInfo *slot;
 	
         view = FM_TREE_VIEW (callback_data);
 
@@ -343,6 +346,8 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
         g_assert (file == view->details->activation_file);
         
         mode = view->details->activation_in_new_window ? NAUTILUS_WINDOW_OPEN_IN_NAVIGATION : NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE;
+
+	slot = nautilus_window_info_get_active_slot (view->details->window);
 
 	uri = nautilus_file_get_activation_uri (file);
 	if (nautilus_file_is_launcher (file)) {
@@ -365,8 +370,8 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 					    "tree view window_info_open_location window=%p: %s",
 					    view->details->window, uri);
 			location = g_file_new_for_uri (uri);
-			nautilus_window_info_open_location
-				(view->details->window, 
+			nautilus_window_slot_info_open_location
+				(slot,
 				 location, 
 				 mode,
 				 0,
@@ -391,8 +396,8 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 					    "tree view window_info_open_location window=%p: %s",
 					    view->details->window, uri);
 			location = g_file_new_for_uri (uri);
-			nautilus_window_info_open_location
-				(view->details->window, 
+			nautilus_window_slot_info_open_location
+				(slot,
 				 location,
 				 mode,
 				 0,
@@ -898,8 +903,8 @@ copy_or_cut_files (FMTreeView *view,
 	}
 	g_free (name);
 	
-	nautilus_window_info_set_status (view->details->window,
-					 status_string);
+	nautilus_window_info_push_status (view->details->window,
+					  status_string);
 	g_free (status_string);
 }
 
@@ -968,8 +973,8 @@ paste_clipboard_data (FMTreeView *view,
 	}
 
 	if (item_uris == NULL|| destination_uri == NULL) {
-		nautilus_window_info_set_status (view->details->window,
-						 _("There is nothing on the clipboard to paste."));
+		nautilus_window_info_push_status (view->details->window,
+						  _("There is nothing on the clipboard to paste."));
 	} else {
 		nautilus_file_operations_copy_move
 			(item_uris, NULL, destination_uri,
@@ -1226,6 +1231,7 @@ create_tree (FMTreeView *view)
 	GList *mounts, *l;
 	char *location;
 	GIcon *icon;
+	NautilusWindowSlotInfo *slot;
 	
 	view->details->child_model = fm_tree_model_new ();
 	view->details->sort_model = GTK_TREE_MODEL_SORT
@@ -1326,7 +1332,8 @@ create_tree (FMTreeView *view)
 			  "button_press_event", G_CALLBACK (button_pressed_callback),
 			  view);
 
-	location = nautilus_window_info_get_current_location (view->details->window);
+	slot = nautilus_window_info_get_active_slot (view->details->window);
+	location = nautilus_window_slot_info_get_current_location (slot);
 	schedule_select_and_show_location (view, location);
 	g_free (location);
 }
@@ -1383,8 +1390,11 @@ filtering_changed_callback (gpointer callback_data)
 static void
 loading_uri_callback (NautilusWindowInfo *window,
 		      char *location,
-		      FMTreeView *view)
+		      gpointer callback_data)
 {
+	FMTreeView *view;
+
+	view = FM_TREE_VIEW (callback_data);
 	schedule_select_and_show_location (view, location);
 }
 
@@ -1537,12 +1547,15 @@ fm_tree_view_set_parent_window (FMTreeView *sidebar,
 				NautilusWindowInfo *window)
 {
 	char *location;
+	NautilusWindowSlotInfo *slot;
 	
 	sidebar->details->window = window;
 
+	slot = nautilus_window_info_get_active_slot (window);
+
 	g_signal_connect_object (window, "loading_uri",
 				 G_CALLBACK (loading_uri_callback), sidebar, 0);
-	location = nautilus_window_info_get_current_location (window);
+	location = nautilus_window_slot_info_get_current_location (slot);
 	loading_uri_callback (window, location, sidebar);
 	g_free (location);
 

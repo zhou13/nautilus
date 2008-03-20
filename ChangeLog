@@ -1,3 +1,28 @@
+2008-03-20  Chrisian Neumair  <cneumair@gnome-de.org>
+
+	* src/*.[ch]:
+	* libnautilus-private/*.[ch]:
+
+	Added:
+	* src/nautilus-window-slot.[ch]:
+	* src/nautilus-navigation-window-slot.[ch]:
+	* libnautilus-private/nautilus-window-slot-info.[ch]:
+
+	Add initial implementation of view slots, port all the
+	existing view switching code to it.
+
+	Each slot corresponds to a location that can be used to
+	display view widgets.
+
+	A slot contains all view-specific data, and connects
+	windows, sidebar panels and views.
+
+	For now, all Nautilus windows just have one slot. The
+	idea is that navigation windows will have a tabbed interfaces,
+	and each slot will be corresponde to a separate tab.
+
+=== multiview branch starts here ===
+
 2008-03-20  Alexander Larsson  <alexl@redhat.com>
 
         * libnautilus-private/nautilus-program-choosing.c:

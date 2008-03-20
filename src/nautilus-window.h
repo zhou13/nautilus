@@ -51,6 +51,15 @@
 typedef struct NautilusWindow NautilusWindow;
 #endif
 
+#ifndef NAUTILUS_WINDOW_SLOT_DEFINED
+#define NAUTILUS_WINDOW_SLOT_DEFINED
+typedef struct NautilusWindowSlot NautilusWindowSlot;
+#endif
+
+typedef struct NautilusWindowSlotClass NautilusWindowSlotClass;
+
+GType          nautilus_window_slot_get_type (void);
+
 typedef struct {
         GtkWindowClass parent_spot;
 
@@ -67,12 +76,22 @@ typedef struct {
         void   (* add_current_location_to_history_list) (NautilusWindow *window);
 
         char * (* get_title) (NautilusWindow *window);
-        gboolean (* set_title) (NautilusWindow *window, const char *title);
-        NautilusIconInfo * (* get_icon) (NautilusWindow *window);
+        void   (* set_title) (NautilusWindow *window,
+			      const char *title);
+        NautilusIconInfo * (* get_icon) (NautilusWindow *window,
+					 NautilusWindowSlot *slot);
 
         void   (* load_view_as_menu) (NautilusWindow *window);
-        void   (* set_content_view_widget) (NautilusWindow *window, 
+
+	/* these are called
+ 	 *   A) when switching the view within the active slot
+ 	 *   B) when switching the active slot
+ 	 */
+        void   (* connect_content_view) (NautilusWindow *window, 
+                                         NautilusView *new_view);
+        void   (* disconnect_content_view) (NautilusWindow *window, 
                                             NautilusView *new_view);
+
         void   (* set_throbber_active) (NautilusWindow *window,
                                         gboolean active);
 	void   (* set_allow_up) (NautilusWindow *window, gboolean allow);
@@ -82,6 +101,12 @@ typedef struct {
         void   (* get_default_size) (NautilusWindow *window, guint *default_width, guint *default_height);
         void   (* show_window)  (NautilusWindow *window);
         void   (* close) (NautilusWindow *window);
+
+        NautilusWindowSlot * (* open_slot) (NautilusWindow *window);
+        void                 (* close_slot) (NautilusWindow *window,
+					     NautilusWindowSlot *slot);
+        void                 (* set_active_slot) (NautilusWindow *window,
+						  NautilusWindowSlot *slot);
 
         /* Signals used only for keybindings */
         gboolean (* go_up) (NautilusWindow *window, gboolean close);
@@ -102,25 +127,17 @@ struct NautilusWindow {
         
         /** CORBA-related elements **/
         NautilusApplication *application;
-        
-        /** State information **/
-        
-        /* Information about current location/selection */        
-        NautilusBookmark *current_location_bookmark;
-        NautilusBookmark *last_location_bookmark;
-
-        /* Current views stuff */
-        NautilusView *content_view;
-        
-        /* Pending changes */
-        NautilusView *new_content_view;
 };
 
 GType            nautilus_window_get_type             (void);
 void             nautilus_window_show_window          (NautilusWindow    *window);
 void             nautilus_window_close                (NautilusWindow    *window);
-char *           nautilus_window_get_location_uri     (NautilusWindow    *window);
-GFile *          nautilus_window_get_location         (NautilusWindow    *window);
+
+void             nautilus_window_connect_content_view (NautilusWindow    *window,
+						       NautilusView      *view);
+void             nautilus_window_disconnect_content_view (NautilusWindow    *window,
+							  NautilusView      *view);
+
 void             nautilus_window_go_to                (NautilusWindow    *window,
                                                        GFile            *location);
 void             nautilus_window_go_to_with_selection (NautilusWindow    *window,
@@ -135,7 +152,6 @@ void		 nautilus_window_set_search_mode      (NautilusWindow    *window,
                                                        gboolean           search_mode,
                                                        NautilusSearchDirectory *search_directory);
 void             nautilus_window_launch_cd_burner     (NautilusWindow    *window);
-void             nautilus_window_update_title         (NautilusWindow    *window);
 void             nautilus_window_display_error        (NautilusWindow    *window,
                                                        const char        *error_msg);
 void		 nautilus_window_reload		      (NautilusWindow	 *window);
@@ -149,8 +165,6 @@ void             nautilus_window_allow_stop           (NautilusWindow    *window
 void             nautilus_window_allow_burn_cd        (NautilusWindow    *window,
                                                        gboolean           allow);
 GtkUIManager *   nautilus_window_get_ui_manager       (NautilusWindow    *window);
-void             nautilus_window_add_extra_location_widget (NautilusWindow  *window,
-                                                            GtkWidget       *widget);
 gboolean         nautilus_window_has_menubar_and_statusbar (NautilusWindow *window);
 
 #endif

@@ -81,7 +81,7 @@ static void     corba_quit                      (PortableServer_Servant  servant
 						 CORBA_Environment      *ev);
 static void     corba_restart                   (PortableServer_Servant  servant,
 						 CORBA_Environment      *ev);
-static gboolean restore_window_states           (NautilusShell          *shell);
+//static gboolean restore_window_states           (NautilusShell          *shell);
 
 BONOBO_CLASS_BOILERPLATE_FULL (NautilusShell, nautilus_shell,
 			       Nautilus_Shell,
@@ -187,11 +187,11 @@ open_windows_at_idle (gpointer _data)
 	GList *l;
 
 	if (data->uris == NULL) {
-		if (!restore_window_states (data->shell)) {
+//		if (!restore_window_states (data->shell)) {
 			/* Open a window pointing at the default location. */
 			open_window (data->shell, NULL, data->startup_id,
 				     data->geometry, data->browser_window);
-		}
+//		}
 	} else {
 		/* Open windows at each requested location. */
 		for (l = data->uris; l != NULL; l = l->next) {
@@ -369,6 +369,8 @@ corba_quit (PortableServer_Servant servant,
 #define WINDOW_STATE_ATTRIBUTE_LOCATION	4
 #define WINDOW_STATE_ATTRIBUTE_SCREEN	5
 
+#if 0
+
 static void
 save_window_states (void)
 {
@@ -526,10 +528,12 @@ restore_window_states (NautilusShell *shell)
 	return result;
 }
 
+#endif
+
 static gboolean
 restart_at_idle (gpointer data)
 {
-	save_window_states ();
+//	save_window_states ();
 
 	nautilus_main_event_loop_quit (TRUE);
 	g_setenv ("_NAUTILUS_RESTART", "yes", 1);

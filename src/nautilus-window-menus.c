@@ -199,9 +199,11 @@ action_connect_to_server_callback (GtkAction *action,
 				   gpointer user_data)
 {
 	NautilusWindow *window = NAUTILUS_WINDOW (user_data);
+	NautilusWindowSlot *slot;
 	GtkWidget *dialog;
 	GFile *location;
-	location = nautilus_window_get_location (window);
+	slot = window->details->active_slot;
+	location = nautilus_window_slot_get_location (slot);
 	dialog = nautilus_connect_server_dialog_new (window, location);
 	if (location) {
 		g_object_unref (location);
@@ -239,7 +241,13 @@ static void
 action_stop_callback (GtkAction *action, 
 		      gpointer user_data)
 {
-	nautilus_window_stop_loading (NAUTILUS_WINDOW (user_data));
+	NautilusWindow *window;
+	NautilusWindowSlot *slot;
+
+	window = NAUTILUS_WINDOW (user_data);
+	slot = window->details->active_slot;
+
+	nautilus_window_slot_stop_loading (slot);
 }
 
 static void
@@ -751,12 +759,15 @@ nautilus_window_initialize_menus_constructed (NautilusWindow *window)
 static GList *
 get_extension_menus (NautilusWindow *window)
 {
+	NautilusWindowSlot *slot;
 	GList *providers;
 	GList *items;
 	GList *l;
 	
 	providers = nautilus_module_get_extensions_for_type (NAUTILUS_TYPE_MENU_PROVIDER);
 	items = NULL;
+
+	slot = window->details->active_slot;
 
 	for (l = providers; l != NULL; l = l->next) {
 		NautilusMenuProvider *provider;
@@ -765,7 +776,7 @@ get_extension_menus (NautilusWindow *window)
 		provider = NAUTILUS_MENU_PROVIDER (l->data);
 		file_items = nautilus_menu_provider_get_background_items (provider,
 									  GTK_WIDGET (window),
-									  window->details->viewed_file);
+									  slot->viewed_file);
 		items = g_list_concat (items, file_items);
 	}
 

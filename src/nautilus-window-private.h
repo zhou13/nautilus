@@ -29,6 +29,7 @@
 #define NAUTILUS_WINDOW_PRIVATE_H
 
 #include "nautilus-window.h"
+#include "nautilus-window-slot.h"
 #include "nautilus-spatial-window.h"
 #include "nautilus-navigation-window.h"
 
@@ -37,23 +38,12 @@
 #include <bonobo/bonobo-ui-toolbar-button-item.h>
 #include <libnautilus-private/nautilus-directory.h>
 
-typedef enum {
-        NAUTILUS_LOCATION_CHANGE_STANDARD,
-        NAUTILUS_LOCATION_CHANGE_BACK,
-        NAUTILUS_LOCATION_CHANGE_FORWARD,
-        NAUTILUS_LOCATION_CHANGE_RELOAD,
-        NAUTILUS_LOCATION_CHANGE_REDIRECT,
-        NAUTILUS_LOCATION_CHANGE_FALLBACK
-} NautilusLocationChangeType;
-
 /* FIXME bugzilla.gnome.org 42575: Migrate more fields into here. */
 struct NautilusWindowDetails
 {
         GtkWidget *table;
         GtkWidget *statusbar;
         GtkWidget *menubar;
-
-        GtkWidget *extra_location_widgets;
         
         GtkUIManager *ui_manager;
         GtkActionGroup *main_action_group; /* owned by ui_manager */
@@ -66,25 +56,18 @@ struct NautilusWindowDetails
         GtkActionGroup *bookmarks_action_group;
         guint refresh_bookmarks_menu_idle_id;
         guint bookmarks_merge_id;
-        
-        /* Current location. */
-        GFile *location;
-	char *title;
-	NautilusFile *viewed_file;
-        gboolean viewed_file_seen;
-	gboolean viewed_file_in_trash;
-	gboolean allow_stop;
 
-        /* New location. */
-        NautilusLocationChangeType location_change_type;
-        guint location_change_distance;
-        GFile *pending_location;
-        char *pending_scroll_to;
-        GList *pending_selection;
-        NautilusFile *determine_view_file;
-        GCancellable *mount_cancellable;
-        GError *mount_error;
-        gboolean tried_mount;
+	/* available slots, and active slot.
+ 	 * Both of them may never be NULL.
+ 	 */
+	GList *slots;
+	NautilusWindowSlot *active_slot;
+
+	NautilusWindowShowHiddenFilesMode show_hidden_files_mode;
+
+	/* View As menu */
+	GList *short_list_viewers;
+	char *extra_viewer;
 
         /* View As choices */
         GtkActionGroup *view_as_action_group; /* owned by ui_manager */
@@ -92,17 +75,6 @@ struct NautilusWindowDetails
         GtkRadioAction *extra_viewer_radio_action;
         guint short_list_merge_id;
         guint extra_viewer_merge_id;
-        GList *short_list_viewers;
-        char *extra_viewer;
-
-        /* Deferred location change. */
-        GFile *location_to_change_to_at_idle;
-        guint location_change_at_idle_id;
-
-        NautilusWindowShowHiddenFilesMode show_hidden_files_mode;
-        gboolean search_mode;
-
-        GCancellable *find_mount_cancellable;
 };
 
 struct _NautilusNavigationWindowDetails {
@@ -132,7 +104,7 @@ struct _NautilusNavigationWindowDetails {
 
         guint extensions_toolbar_merge_id;
         GtkActionGroup *extensions_toolbar_action_group;
-        
+
 	/* Throbber */
         gboolean    throbber_active;
         GtkWidget  *throbber;
@@ -178,6 +150,7 @@ typedef void (*NautilusBookmarkFailedCallback) (NautilusWindow *window,
                                                 NautilusBookmark *bookmark);
 
 void               nautilus_window_set_status                            (NautilusWindow    *window,
+									  NautilusWindowSlot *slot,
                                                                           const char        *status);
 void               nautilus_window_load_view_as_menus                    (NautilusWindow    *window);
 void               nautilus_window_load_extension_menus                  (NautilusWindow    *window);
@@ -201,11 +174,18 @@ void               nautilus_window_zoom_out                              (Nautil
 void               nautilus_window_zoom_to_level                         (NautilusWindow    *window,
                                                                           NautilusZoomLevel  level);
 void               nautilus_window_zoom_to_default                       (NautilusWindow    *window);
-void		   nautilus_window_show_view_as_dialog			 (NautilusWindow    *window);
-void               nautilus_window_set_content_view_widget               (NautilusWindow    *window,
-                                                                          NautilusView       *content_view);
-void               nautilus_window_set_viewed_file                       (NautilusWindow    *window,
-                                                                          NautilusFile      *file);
+
+NautilusWindowSlot *nautilus_window_open_slot                            (NautilusWindow     *window);
+void                nautilus_window_close_slot                           (NautilusWindow     *window,
+									  NautilusWindowSlot *slot);
+
+NautilusWindowSlot *nautilus_window_get_slot_for_view                    (NautilusWindow *window,
+									  NautilusView   *view);
+
+NautilusWindowSlot * nautilus_window_get_active_slot                     (NautilusWindow    *window);
+void                 nautilus_window_set_active_slot                     (NautilusWindow     *window,
+									  NautilusWindowSlot *slot);
+
 void               nautilus_send_history_list_changed                    (void);
 void               nautilus_window_add_current_location_to_history_list  (NautilusWindow    *window);
 void               nautilus_remove_from_history_list_no_notify           (GFile             *location);
@@ -215,8 +195,16 @@ gboolean           nautilus_add_to_history_list_no_notify                (GFile 
 									  GIcon            *icon);
 GList *            nautilus_get_history_list                             (void);
 void               nautilus_window_bookmarks_preference_changed_callback (gpointer           user_data);
-void		   nautilus_window_update_icon				 (NautilusWindow    *window);
 void               nautilus_window_constructed                           (NautilusWindow    *window);
+
+
+/* sync window GUI with current slot. Used when changing slots,
+ * and when updating the slot state.
+ */
+void nautilus_window_sync_status           (NautilusWindow *window);
+void nautilus_window_sync_allow_stop       (NautilusWindow *window);
+void nautilus_window_sync_title            (NautilusWindow *window);
+void nautilus_window_sync_location_widgets (NautilusWindow *window);
 
 /* Navigation window menus */
 void               nautilus_navigation_window_initialize_actions                    (NautilusNavigationWindow    *window);
