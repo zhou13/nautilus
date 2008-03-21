@@ -71,6 +71,7 @@ nautilus_window_slot_active (NautilusWindowSlot *slot)
 	g_assert (NAUTILUS_IS_WINDOW_SLOT (slot));
 
 	window = NAUTILUS_WINDOW (slot->window);
+	g_assert (g_list_find (window->details->slots, slot) != NULL);
 	g_assert (slot == window->details->active_slot);
 
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_SLOT_CLASS, slot,
@@ -94,6 +95,9 @@ nautilus_window_slot_inactive (NautilusWindowSlot *slot)
 	NautilusWindow *window;
 
 	g_assert (NAUTILUS_IS_WINDOW_SLOT (slot));
+
+	window = NAUTILUS_WINDOW (slot->window);
+	g_assert (g_list_find (window->details->slots, slot) != NULL);
 	g_assert (slot == window->details->active_slot);
 
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_SLOT_CLASS, slot,
@@ -125,11 +129,19 @@ nautilus_window_slot_init (NautilusWindowSlot *slot)
 	gtk_widget_show (slot->view_box);
 }
 
+static NautilusWindowSlot *
+real_get_close_successor (NautilusWindowSlot *slot)
+{
+	return NULL;
+}
+
 static void
 nautilus_window_slot_class_init (NautilusWindowSlotClass *class)
 {
 	class->active = real_active;
 	class->inactive = real_inactive;
+	class->get_close_successor = real_get_close_successor;
+
 	G_OBJECT_CLASS (class)->finalize = nautilus_window_slot_finalize;
 }
 
@@ -321,10 +333,24 @@ nautilus_window_slot_add_extra_location_widget (NautilusWindowSlot *slot,
 	gtk_widget_show (slot->extra_location_widgets);
 }
 
+/* gets the slot that is supposed to be displayed after closing
+ * the active slot.
+ */
+NautilusWindowSlot *
+nautilus_window_slot_get_close_successor (NautilusWindowSlot *slot)
+{
+	return EEL_CALL_METHOD_WITH_RETURN_VALUE (NAUTILUS_WINDOW_SLOT_CLASS, slot,
+						  get_close_successor, (slot));
+}
+
+
 static void
 nautilus_window_slot_finalize (GObject *object)
 {
-	NautilusWindowSlot *slot = NAUTILUS_WINDOW_SLOT (object);
+	NautilusWindowSlot *slot;
+	GtkWidget *widget;
+
+	slot = NAUTILUS_WINDOW_SLOT (object);
 
 	nautilus_window_slot_set_viewed_file (slot, NULL);
 	/* TODO? why do we unref here? the file is NULL.
@@ -348,6 +374,20 @@ nautilus_window_slot_finalize (GObject *object)
 	if (slot->find_mount_cancellable != NULL) {
 		g_cancellable_cancel (slot->find_mount_cancellable);
 		slot->find_mount_cancellable = NULL;
+	}
+
+	if (slot->content_view) {
+		widget = nautilus_view_get_widget (slot->content_view);
+		gtk_widget_destroy (widget);
+		g_object_unref (slot->content_view);
+		slot->content_view = NULL;
+	}
+
+	if (slot->new_content_view) {
+		widget = nautilus_view_get_widget (slot->new_content_view);
+		gtk_widget_destroy (widget);
+		g_object_unref (slot->new_content_view);
+		slot->new_content_view = NULL;
 	}
 
 	g_free (slot->title);

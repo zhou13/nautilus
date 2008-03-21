@@ -428,6 +428,29 @@ action_new_window_callback (GtkAction *action,
 }
 
 static void
+action_new_tab_callback (GtkAction *action,
+			 gpointer user_data)
+{
+	NautilusWindow *window;
+	NautilusWindowSlot *current_slot;
+	NautilusWindowSlot *new_slot;
+	GFile *current_location;
+
+	window = NAUTILUS_WINDOW (user_data);
+	current_slot = window->details->active_slot;
+	current_location = nautilus_window_slot_get_location (current_slot);
+
+	window = NAUTILUS_WINDOW (current_slot->window);
+
+	if (current_location != NULL) {
+		new_slot = nautilus_window_open_slot (window);
+		nautilus_window_set_active_slot (window, new_slot);
+		nautilus_window_slot_go_to (new_slot, current_location);
+		g_object_unref (current_location);
+	}
+}
+
+static void
 action_folder_window_callback (GtkAction *action,
 			       gpointer user_data)
 {
@@ -477,6 +500,9 @@ static const GtkActionEntry navigation_entries[] = {
   /* name, stock id, label */  { "New Window", "window-new", N_("New _Window"),
                                  "<control>N", N_("Open another Nautilus window for the displayed location"),
                                  G_CALLBACK (action_new_window_callback) },
+  /* name, stock id, label */  { "New Tab", "tab-new", N_("New _Tab"),
+                                 "<control>T", N_("Open another tab for the displayed location"),
+                                 G_CALLBACK (action_new_tab_callback) },
   /* name, stock id, label */  { "Folder Window", "folder", N_("Open Folder W_indow"),
                                  NULL, N_("Open a folder window for the displayed location"),
                                  G_CALLBACK (action_folder_window_callback) },

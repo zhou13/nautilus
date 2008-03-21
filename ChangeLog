@@ -1,3 +1,21 @@
+2007-03-21  Christian Neumair  <cneumair@gnome.org>
+
+	* libnautilus-private/nautilus-window-info.h:
+	Add NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB to NautilusWindowOpenFlags.
+
+	* src/nautilus-window-slot.[ch]: 
+	* src/nautilus-navigation-window-slot.[ch]:
+	* src/*.[ch]:
+	Add code for handling back/forward lists, add get_close_successor()
+	API for determining which slot will follow the current one before
+	close.
+	Add nautilus_window_slot_go_to(_location) defines and use them in the
+	window "go to" code.
+	Properly destroy slots and views when closing slot.
+	Add "New Tab" menu item.
+	Beginnings of notebook tab handling.
+	Some more minor fixes and comments.
+
 2008-03-21  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-places-sidebar.c: (update_places):

@@ -184,6 +184,36 @@ location_button_create (NautilusNavigationWindow *window)
 	return button;
 }
 
+static gboolean
+notebook_switch_page_cb (GtkNotebook *notebook,
+			 GtkNotebookPage *page,
+			 unsigned int page_num,
+			 NautilusNavigationWindow *window)
+{
+	NautilusWindow *nautilus_window;
+	NautilusWindowSlot *slot;
+	GtkWidget *widget;
+	GList *l;
+
+	nautilus_window = NAUTILUS_WINDOW (window);
+
+	widget = gtk_notebook_get_nth_page (GTK_NOTEBOOK (window->notebook), page_num);
+	g_assert (widget != NULL);
+
+	/* find slot corresponding to the target page */
+	for (l = nautilus_window->details->slots; l != NULL; l = l->next) {
+		slot = NAUTILUS_WINDOW_SLOT (l->data);
+		if (slot->content_box == widget) {
+			break;
+		}
+	}
+
+	g_assert (slot != NULL);
+	nautilus_window_set_active_slot (nautilus_window, slot);
+
+	return FALSE;
+}
+
 static void
 nautilus_navigation_window_init (NautilusNavigationWindow *window)
 {
@@ -209,6 +239,10 @@ nautilus_navigation_window_init (NautilusNavigationWindow *window)
 	nautilus_horizontal_splitter_pack2 (
 		NAUTILUS_HORIZONTAL_SPLITTER (window->details->content_paned),
 		window->notebook);
+	g_signal_connect (window->notebook,
+			  "switch-page",
+			  G_CALLBACK (notebook_switch_page_cb),
+			  window);
 	gtk_notebook_set_show_tabs (GTK_NOTEBOOK (window->notebook), FALSE);
 	gtk_notebook_set_show_border (GTK_NOTEBOOK (window->notebook), FALSE);
 	gtk_widget_show (window->notebook);
@@ -712,8 +746,6 @@ nautilus_navigation_window_finalize (GObject *object)
 	window = NAUTILUS_NAVIGATION_WINDOW (object);
 
 	nautilus_navigation_window_remove_go_menu_callback (window);
-	nautilus_navigation_window_clear_back_list (window);
-	nautilus_navigation_window_clear_forward_list (window);
 
 	G_OBJECT_CLASS (parent_class)->finalize (object);
 }
@@ -1188,30 +1220,6 @@ real_set_search_mode (NautilusWindow *window, gboolean search_mode,
 	nautilus_query_editor_grab_focus (NAUTILUS_QUERY_EDITOR (query_editor));
 }
 
-void
-nautilus_navigation_window_clear_forward_list (NautilusNavigationWindow *window)
-{
-	NautilusNavigationWindowSlot *slot;
-
-	slot = NAUTILUS_NAVIGATION_WINDOW_SLOT (NAUTILUS_WINDOW (window)->details->active_slot);
-	g_assert (slot != NULL);
-
-	eel_g_object_list_free (slot->forward_list);
-	slot->forward_list = NULL;
-}
-
-void
-nautilus_navigation_window_clear_back_list (NautilusNavigationWindow *window)
-{
-	NautilusNavigationWindowSlot *slot;
-
-	slot = NAUTILUS_NAVIGATION_WINDOW_SLOT (NAUTILUS_WINDOW (window)->details->active_slot);
-	g_assert (slot != NULL);
-
-	eel_g_object_list_free (slot->back_list);
-	slot->back_list = NULL;
-}
-
 static void
 side_panel_image_changed_callback (NautilusSidebar *side_panel,
                                    gpointer callback_data)
@@ -1592,17 +1600,34 @@ real_get_default_size (NautilusWindow *window,
 static NautilusWindowSlot *
 real_open_slot (NautilusWindow *window)
 {
+	NautilusNavigationWindow *navigation_window;
 	NautilusWindowSlot *slot;
+	GtkNotebook *notebook;
 
-	/* these will be removed once we have real tab support */
-	g_assert (window->details->active_slot == NULL);
-	g_assert (window->details->slots == NULL);
+	navigation_window = NAUTILUS_NAVIGATION_WINDOW (window);
+	notebook = GTK_NOTEBOOK (navigation_window->notebook);
 
 	slot = (NautilusWindowSlot *) g_object_new (NAUTILUS_TYPE_NAVIGATION_WINDOW_SLOT, NULL);
 	slot->window = window;
-	gtk_notebook_append_page (GTK_NOTEBOOK (NAUTILUS_NAVIGATION_WINDOW (window)->notebook),
+
+	g_signal_handlers_block_by_func (navigation_window->notebook,
+					 G_CALLBACK (notebook_switch_page_cb),
+					 window);
+	/* multiview-TODO add some way to influence the position.
+ 	 * We need
+ 	 *  + "behind active tab" [for views]
+ 	 *  + "at the end" [for loading sessions]
+ 	 */
+	gtk_notebook_append_page (notebook,
 				  slot->content_box,
 				  NULL);
+	g_signal_handlers_unblock_by_func (notebook,
+					   G_CALLBACK (notebook_switch_page_cb),
+					   window);
+
+	gtk_notebook_set_show_tabs (notebook,
+				    gtk_notebook_get_n_pages (notebook) > 1);
+
 	gtk_widget_show (slot->content_box);
 
 	return slot;
@@ -1612,11 +1637,29 @@ static void
 real_close_slot (NautilusWindow *window,
 		 NautilusWindowSlot *slot)
 {
-	/* multiview-TODO these will be removed once we have real tab support */
-	g_assert (window->details->active_slot == slot);
-	g_assert (g_list_length (window->details->slots) == 1);
+	NautilusNavigationWindow *navigation_window;
+	GtkNotebook *notebook;
+	int page_num;
 
-	/* multiview-TODO remove notebook tab */
+	navigation_window = NAUTILUS_NAVIGATION_WINDOW (window);
+	notebook = GTK_NOTEBOOK (navigation_window->notebook);
+
+	page_num = gtk_notebook_page_num (notebook, slot->content_box);
+	g_assert (page_num >= 0);
+
+	g_signal_handlers_block_by_func (notebook,
+					 G_CALLBACK (notebook_switch_page_cb),
+					 window);
+	gtk_notebook_remove_page (notebook, page_num);
+	g_signal_handlers_unblock_by_func (notebook,
+					   G_CALLBACK (notebook_switch_page_cb),
+					   window);
+
+	gtk_notebook_set_show_tabs (notebook,
+				    gtk_notebook_get_n_pages (notebook) > 1);
+
+	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS,
+			 close_slot, (window, slot));
 }
 
 static void

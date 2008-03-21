@@ -181,6 +181,8 @@ void                nautilus_window_close_slot                           (Nautil
 
 NautilusWindowSlot *nautilus_window_get_slot_for_view                    (NautilusWindow *window,
 									  NautilusView   *view);
+NautilusWindowSlot *nautilus_window_get_slot_for_content_box             (NautilusWindow *window,
+									  GtkWidget *content_box);
 
 NautilusWindowSlot * nautilus_window_get_active_slot                     (NautilusWindow    *window);
 void                 nautilus_window_set_active_slot                     (NautilusWindow     *window,

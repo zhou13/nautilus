@@ -46,8 +46,12 @@ typedef enum {
 struct NautilusWindowSlotClass {
 	GObjectClass parent_class;
 
+	/* wrapped NautilusWindowInfo signals, for overloading */
 	void (* active)   (NautilusWindowSlot *slot);
 	void (* inactive) (NautilusWindowSlot *slot);
+
+	/* gets the slot to make active after this slot has been closed. */
+	NautilusWindowSlot * (* get_close_successor) (NautilusWindowSlot *slot);
 };
 
 /* Each NautilusWindowSlot corresponds to
@@ -113,8 +117,20 @@ void    nautilus_window_slot_update_icon		   (NautilusWindowSlot *slot);
 GFile * nautilus_window_slot_get_location		   (NautilusWindowSlot *slot);
 char *  nautilus_window_slot_get_location_uri		   (NautilusWindowSlot *slot);
 
+NautilusWindowSlot *
+	nautilus_window_slot_get_close_successor           (NautilusWindowSlot *slot);
 void    nautilus_window_slot_close			   (NautilusWindowSlot *slot);
 void    nautilus_window_slot_reload			   (NautilusWindowSlot *slot);
+
+#define nautilus_window_slot_go_to(slot,location) \
+	nautilus_window_slot_open_location(slot, location, FALSE)
+
+#define nautilus_window_slot_go_to_with_selection(slot,location,new_selection) \
+	nautilus_window_slot_open_location_with_selection(slot, location, new_selection, FALSE)
+
+void    nautilus_window_slot_go_home			   (NautilusWindow    *window);
+void    nautilus_window_slot_go_up			   (NautilusWindow    *window,
+							    gboolean           close_behind);
 
 void    nautilus_window_slot_set_content_view_widget	   (NautilusWindowSlot *slot,
 							    NautilusView       *content_view);

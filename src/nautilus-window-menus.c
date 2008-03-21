@@ -191,7 +191,17 @@ static void
 action_close_window_callback (GtkAction *action, 
 			      gpointer user_data)
 {
-	nautilus_window_close (NAUTILUS_WINDOW (user_data));
+	NautilusWindow *window;
+	NautilusWindowSlot *slot;
+
+	/* multiview-TODO rename this action, decide
+ 	 * whether we need a "close all" action
+ 	 */
+
+	window = NAUTILUS_WINDOW (user_data);
+	slot = window->details->active_slot;
+
+	nautilus_window_slot_close (slot);
 }
 
 static void

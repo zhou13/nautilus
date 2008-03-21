@@ -1659,6 +1659,7 @@ slot_active (NautilusWindowSlot *slot,
 	schedule_update_menus (view);
 
 	/* initialise show hidden mode */
+	/* multiview-TODO this always causes a reload for loaded views. */
 	fm_directory_view_init_show_hidden_files (view);
 }
 
@@ -1902,6 +1903,7 @@ fm_directory_view_destroy (GtkObject *object)
 	fm_directory_view_unmerge_menus (view);
 	
 	/* We don't own the window, so no unref */
+	view->details->slot = NULL;
 	view->details->window = NULL;
 	
 	fm_directory_view_stop (view);
@@ -3684,8 +3686,11 @@ delayed_rename_file_hack_callback (RenameData *data)
 	view = data->view;
 	new_file = data->new_file;
 
-	EEL_CALL_METHOD (FM_DIRECTORY_VIEW_CLASS, view, start_renaming_file, (view, new_file, FALSE));
-	fm_directory_view_reveal_selection (view);
+	if (view->details->window != NULL &&
+	    view->details->active) {
+		EEL_CALL_METHOD (FM_DIRECTORY_VIEW_CLASS, view, start_renaming_file, (view, new_file, FALSE));
+		fm_directory_view_reveal_selection (view);
+	}
 	
 	g_object_unref (data->view);
 	nautilus_file_unref (data->new_file);
@@ -6628,8 +6633,9 @@ clipboard_targets_received (GtkClipboard     *clipboard,
 	view = FM_DIRECTORY_VIEW (user_data);
 	can_paste = FALSE;
 
-	if (view->details->window == NULL) {
-		/* We've been destroyed since call */
+	if (view->details->window == NULL ||
+	    !view->details->active) {
+		/* We've been destroyed or became inactive since call */
 		g_object_unref (view);
 		return;
 	}
@@ -7726,6 +7732,7 @@ metadata_for_directory_as_file_ready_callback (NautilusFile *file,
 	g_assert (view->details->directory_as_file == file);
 	g_assert (view->details->metadata_for_directory_as_file_pending);
 
+	g_assert (view->details->metadata_for_directory_as_file_pending);
 	view->details->metadata_for_directory_as_file_pending = FALSE;
 	
 	finish_loading_if_all_metadata_loaded (view);
@@ -7744,6 +7751,7 @@ metadata_for_files_in_directory_ready_callback (NautilusDirectory *directory,
 	g_assert (view->details->model == directory);
 	g_assert (view->details->metadata_for_files_in_directory_pending);
 
+	g_assert (view->details->metadata_for_files_in_directory_pending);
 	view->details->metadata_for_files_in_directory_pending = FALSE;
 	
 	finish_loading_if_all_metadata_loaded (view);

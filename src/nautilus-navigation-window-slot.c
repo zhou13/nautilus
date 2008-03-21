@@ -34,16 +34,92 @@ static void nautilus_navigation_window_slot_class_init (NautilusNavigationWindow
 G_DEFINE_TYPE (NautilusNavigationWindowSlot, nautilus_navigation_window_slot, NAUTILUS_TYPE_WINDOW_SLOT)
 #define parent_class nautilus_navigation_window_slot_parent_class
 
+void
+nautilus_navigation_window_slot_clear_forward_list (NautilusNavigationWindowSlot *slot)
+{
+	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW_SLOT (slot));
+
+	eel_g_object_list_free (slot->forward_list);
+	slot->forward_list = NULL;
+}
+
+void
+nautilus_navigation_window_slot_clear_back_list (NautilusNavigationWindowSlot *slot)
+{
+	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW_SLOT (slot));
+
+	eel_g_object_list_free (slot->back_list);
+	slot->back_list = NULL;
+}
+
 static void
 nautilus_navigation_window_slot_active (NautilusWindowSlot *slot)
 {
-	NautilusWindow *window;
+	NautilusNavigationWindow *window;
+	NautilusNavigationWindowSlot *navigation_slot;
+	int page_num;
 
-	window = slot->window;
+	navigation_slot = NAUTILUS_NAVIGATION_WINDOW_SLOT (slot);
+	window = NAUTILUS_NAVIGATION_WINDOW (slot->window);
+
+	page_num = gtk_notebook_page_num (GTK_NOTEBOOK (window->notebook),
+					  slot->content_box);
+	g_assert (page_num >= 0);
+
+	gtk_notebook_set_current_page (GTK_NOTEBOOK (window->notebook), page_num);
 
 	EEL_CALL_PARENT (NAUTILUS_WINDOW_SLOT_CLASS, active, (slot));
 
-	nautilus_navigation_window_load_extension_toolbar_items (NAUTILUS_NAVIGATION_WINDOW (window));
+	nautilus_navigation_window_load_extension_toolbar_items (window);
+}
+ 
+static NautilusWindowSlot *
+nautilus_navigation_window_slot_get_close_successor (NautilusWindowSlot *slot)
+{
+	NautilusWindowSlot *successor;
+	NautilusNavigationWindow *window;
+	GtkNotebook *notebook;
+	GtkWidget *widget;
+	int page_num, n_pages;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (slot->window);
+	notebook = GTK_NOTEBOOK (window->notebook);
+
+	n_pages = gtk_notebook_get_n_pages (notebook);
+
+	page_num = gtk_notebook_page_num (notebook, slot->content_box);
+	g_assert (page_num >= 0);
+
+	if (page_num == n_pages - 1) {
+		/* use previous page */
+		page_num--;
+	} else {
+		/* use next page */
+		page_num++;
+	}
+
+	successor = NULL;
+
+	widget = gtk_notebook_get_nth_page (notebook, page_num);
+	if (widget != NULL) {
+		successor = nautilus_window_get_slot_for_content_box (slot->window, widget);
+		if (successor == slot) {
+			successor = NULL;
+		}
+	}
+
+	return successor;
+}
+
+static void
+nautilus_navigation_window_slot_finalize (GObject *object)
+{
+	NautilusNavigationWindowSlot *slot;
+
+	slot = NAUTILUS_NAVIGATION_WINDOW_SLOT (object);
+
+	nautilus_navigation_window_slot_clear_forward_list (slot);
+	nautilus_navigation_window_slot_clear_back_list (slot);
 }
 
 static void
@@ -55,4 +131,7 @@ static void
 nautilus_navigation_window_slot_class_init (NautilusNavigationWindowSlotClass *class)
 {
 	NAUTILUS_WINDOW_SLOT_CLASS (class)->active = nautilus_navigation_window_slot_active; 
+	NAUTILUS_WINDOW_SLOT_CLASS (class)->get_close_successor = nautilus_navigation_window_slot_get_close_successor;
+
+	G_OBJECT_CLASS (class)->finalize = nautilus_navigation_window_slot_finalize;
 }

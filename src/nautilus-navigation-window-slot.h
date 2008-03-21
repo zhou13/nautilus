@@ -45,7 +45,6 @@ typedef enum {
 } NautilusBarMode;
 
 struct NautilusNavigationWindowSlot {
-	GtkWidget *content_box;
 	NautilusWindowSlot parent;
 
 	NautilusBarMode bar_mode;
@@ -66,6 +65,9 @@ struct NautilusNavigationWindowSlotClass {
 };
 
 GType nautilus_navigation_window_slot_get_type (void);
+
+void nautilus_navigation_window_slot_clear_forward_list (NautilusNavigationWindowSlot *slot);
+void nautilus_navigation_window_slot_clear_back_list    (NautilusNavigationWindowSlot *slot);
 
 #endif /* NAUTILUS_NAVIGATION_WINDOW_SLOT_H */
 

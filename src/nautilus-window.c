@@ -37,6 +37,8 @@
 #include "nautilus-main.h"
 #include "nautilus-window-manage-views.h"
 #include "nautilus-window-bookmarks.h"
+#include "nautilus-window-slot.h"
+#include "nautilus-navigation-window-slot.h"
 #include "nautilus-zoom-control.h"
 #include "nautilus-search-bar.h"
 #include <eel/eel-debug.h>
@@ -240,7 +242,7 @@ nautilus_window_go_to (NautilusWindow *window, GFile *location)
 {
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	nautilus_window_slot_open_location (window->details->active_slot, location, FALSE);
+	nautilus_window_slot_go_to (window->details->active_slot, location);
 }
 
 
@@ -249,7 +251,7 @@ nautilus_window_go_to_with_selection (NautilusWindow *window, GFile *location, G
 {
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	nautilus_window_slot_open_location_with_selection (window->details->active_slot, location, new_selection, FALSE);
+	nautilus_window_slot_go_to_with_selection (window->details->active_slot, location, new_selection);
 }
 
 static gboolean
@@ -645,7 +647,6 @@ nautilus_window_destroy (GtkObject *object)
 {
 	NautilusWindow *window;
 	NautilusWindowSlot *slot;
-	GtkWidget *widget;
 	GList *l;
 
 	window = NAUTILUS_WINDOW (object);
@@ -657,18 +658,7 @@ nautilus_window_destroy (GtkObject *object)
 		slot = l->data;
 
 		cancel_view_as_callback (slot);
-
-		if (slot->content_view) {
-			g_object_unref (slot->content_view);
-			slot->content_view = NULL;
-		}
-
-		if (slot->new_content_view) {
-			widget = nautilus_view_get_widget (slot->new_content_view);
-			gtk_widget_destroy (widget);
-			g_object_unref (slot->new_content_view);
-			slot->new_content_view = NULL;
-		}
+		g_object_unref (slot);
 	}
 
 	GTK_OBJECT_CLASS (nautilus_window_parent_class)->destroy (object);
@@ -707,6 +697,7 @@ nautilus_window_constructor (GType type,
 {
 	GObject *object;
 	NautilusWindow *window;
+	NautilusWindowSlot *slot;
 
 	object = (* G_OBJECT_CLASS (nautilus_window_parent_class)->constructor) (type,
 										 n_construct_properties,
@@ -714,7 +705,6 @@ nautilus_window_constructor (GType type,
 
 	window = NAUTILUS_WINDOW (object);
 
-	NautilusWindowSlot *slot;
 	slot = nautilus_window_open_slot (window);
 	nautilus_window_set_active_slot (window, slot);
 
@@ -755,7 +745,17 @@ nautilus_window_show_window (NautilusWindow *window)
 void
 nautilus_window_close (NautilusWindow *window)
 {
+	NautilusWindowSlot *slot;
+	GList *l;
+
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
+
+	nautilus_window_set_active_slot (window, NULL);
+
+	for (l = window->details->slots; l != NULL; l = l->next) {
+		slot = NAUTILUS_WINDOW_SLOT (l->data);
+		nautilus_window_close_slot (window, slot);
+	}
 
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
 			 close, (window));
@@ -781,6 +781,13 @@ nautilus_window_open_slot (NautilusWindow *window)
 	return slot;
 }
 
+static void
+real_close_slot (NautilusWindow *window,
+		 NautilusWindowSlot *slot)
+{
+	g_object_unref (slot);
+}
+
 void
 nautilus_window_close_slot (NautilusWindow *window,
 			    NautilusWindowSlot *slot)
@@ -794,7 +801,6 @@ nautilus_window_close_slot (NautilusWindow *window,
 			 close_slot, (window, slot));
 
 	window->details->slots = g_list_remove (window->details->slots, slot);
-	nautilus_window_slot_set_allow_stop (slot, FALSE);
 }
 
 void
@@ -804,10 +810,12 @@ nautilus_window_set_active_slot (NautilusWindow *window,
 	NautilusWindowSlot *old_slot;
 
 	g_assert (NAUTILUS_IS_WINDOW (window));
-	g_assert (NAUTILUS_IS_WINDOW_SLOT (new_slot));
-	g_assert (window == new_slot->window);
 
-	g_assert (g_list_find (window->details->slots, new_slot) != NULL);
+	if (new_slot != NULL) {
+		g_assert (NAUTILUS_IS_WINDOW_SLOT (new_slot));
+		g_assert (window == new_slot->window);
+		g_assert (g_list_find (window->details->slots, new_slot) != NULL);
+	}
 
 	old_slot = window->details->active_slot;
 
@@ -827,17 +835,20 @@ nautilus_window_set_active_slot (NautilusWindow *window,
 
 	window->details->active_slot = new_slot;
 
-	/* inform sidebar panels */
-	nautilus_window_report_location_change (window, TRUE);
-	/* TODO decide whether "selection-changed" should be emitted */
 
-	if (new_slot->content_view != NULL) {
-		/* inform window */
-		nautilus_window_connect_content_view (window, new_slot->content_view);
+	if (new_slot != NULL) {
+		/* inform sidebar panels */
+		nautilus_window_report_location_change (window, TRUE);
+		/* TODO decide whether "selection-changed" should be emitted */
+
+		if (new_slot->content_view != NULL) {
+			/* inform window */
+			nautilus_window_connect_content_view (window, new_slot->content_view);
+		}
+
+		/* inform slot & view */
+		g_signal_emit_by_name (new_slot, "active");
 	}
-
-	/* inform slot & view */
-	g_signal_emit_by_name (new_slot, "active");
 }
 
 void
@@ -847,18 +858,11 @@ nautilus_window_slot_close (NautilusWindowSlot *slot)
 
 	window = slot->window;
 
-	if (g_list_length (window->details->slots) > 1) {
-		EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-				 close_slot, (window, slot));
-		g_object_unref (slot);
-	} else {
-		/* no slot_closed will be emitted for the last slot.
- 		 * All the NautilusWindowInfo clients life inside the window, so they
- 		 * will be destroyed anyway.
- 		 *
- 		 * This is just for convenience, because otherwise we'd have to handle
- 		 * windows without any active slot.
- 		 */
+	nautilus_window_set_active_slot (window,	
+					 nautilus_window_slot_get_close_successor (slot));
+	nautilus_window_close_slot (window, slot);
+
+	if (g_list_length (window->details->slots) == 0) {
 		nautilus_window_close (window);
 	}
 }
@@ -1255,9 +1259,12 @@ load_view_as_menus_callback (NautilusFile *file,
 
 	slot = callback_data;
 	window = NAUTILUS_WINDOW (slot->window);
-	
-	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-                         load_view_as_menu, (window));
+
+	if (slot == window->details->active_slot) {
+		/* slot may have changed in the meantime */
+		EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
+				 load_view_as_menu, (window));
+	}
 }
 
 static void
@@ -1347,7 +1354,7 @@ real_connect_content_view (NautilusWindow *window,
          * views in the menu are for the old location).
          */
 	if (slot->pending_location == NULL) {
-		nautilus_window_synch_view_as_menus (window);
+		nautilus_window_load_view_as_menus (window);
 	}
 
 	nautilus_view_grab_focus (view);
@@ -1642,6 +1649,24 @@ nautilus_window_get_slot_for_view (NautilusWindow *window,
 	return NULL;
 }
 
+NautilusWindowSlot *
+nautilus_window_get_slot_for_content_box (NautilusWindow *window,
+					  GtkWidget *content_box)
+{
+	NautilusWindowSlot *slot;
+	GList *l;
+
+	for (l = window->details->slots; l != NULL; l = l->next) {
+		slot = NAUTILUS_WINDOW_SLOT (l->data);
+
+		if (slot->content_box == content_box) {
+			return slot;
+		}
+	}
+
+	return NULL;
+}
+
 void
 nautilus_window_add_current_location_to_history_list (NautilusWindow *window)
 {
@@ -1655,6 +1680,7 @@ void
 nautilus_forget_history (void) 
 {
 	NautilusWindowSlot *slot;
+	NautilusNavigationWindowSlot *navigation_slot;
 	GList *window_node, *l;
 
 	/* Clear out each window's back & forward lists. Also, remove 
@@ -1669,10 +1695,15 @@ nautilus_forget_history (void)
 			NautilusNavigationWindow *window;
 			
 			window = NAUTILUS_NAVIGATION_WINDOW (window_node->data);
-			
-			nautilus_navigation_window_clear_back_list (window);
-			nautilus_navigation_window_clear_forward_list (window);
-			
+
+			for (l = NAUTILUS_WINDOW (window_node->data)->details->slots;
+			     l != NULL; l = l->next) {
+				navigation_slot = l->data;
+
+				nautilus_navigation_window_slot_clear_back_list (navigation_slot);
+				nautilus_navigation_window_slot_clear_forward_list (navigation_slot);
+			}
+
 			nautilus_navigation_window_allow_back (window, FALSE);
 			nautilus_navigation_window_allow_forward (window, FALSE);
 		}
@@ -1834,6 +1865,7 @@ nautilus_window_class_init (NautilusWindowClass *class)
 	class->disconnect_content_view = real_disconnect_content_view;
 	class->load_view_as_menu = real_load_view_as_menu;
 	class->set_allow_up = real_set_allow_up;
+	class->close_slot = real_close_slot;
 
 	g_object_class_install_property (G_OBJECT_CLASS (class),
 					 ARG_APP,

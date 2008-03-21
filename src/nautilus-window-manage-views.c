@@ -274,6 +274,9 @@ handle_go_forward (NautilusNavigationWindow *window, GFile *location)
         g_list_free_1 (link);
 }
 
+/*
+ * multiview-TODO: handle this on a per-slot basis
+ */
 static void
 handle_go_elsewhere (NautilusWindow *window, GFile *location)
 {
@@ -286,7 +289,7 @@ handle_go_elsewhere (NautilusWindow *window, GFile *location)
 		navigation_slot = (NautilusNavigationWindowSlot *) slot;
 
                 /* Clobber the entire forward list, and move displayed location to back list */
-                nautilus_navigation_window_clear_forward_list (NAUTILUS_NAVIGATION_WINDOW (window));
+                nautilus_navigation_window_slot_clear_forward_list (navigation_slot);
                 
                 if (slot->location != NULL) {
                         /* If we're returning to the same uri somehow, don't put this uri on back list. 
@@ -340,7 +343,6 @@ viewed_file_changed_callback (NautilusFile *file,
         g_assert (NAUTILUS_IS_FILE (file));
 	g_assert (NAUTILUS_IS_WINDOW (window));
 
-	slot = window->details->active_slot;
 	g_assert (file == slot->viewed_file);
 
         if (!nautilus_file_is_not_yet_confirmed (file)) {
@@ -499,6 +501,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 {
 	NautilusWindow *window;
         NautilusWindow *target_window;
+        NautilusWindowSlot *target_slot;
         gboolean do_load_location = TRUE;
 	GFile *old_location;
 	char *old_uri, *new_uri;
@@ -506,6 +509,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 	window = slot->window;
         
         target_window = NULL;
+	target_slot = NULL;
 
 	old_uri = nautilus_window_slot_get_location_uri (slot);
 	if (old_uri == NULL) {
@@ -586,6 +590,12 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 
         g_assert (target_window != NULL);
 
+	if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0 &&
+	    NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
+		g_assert (target_window == window);
+		target_slot = nautilus_window_open_slot (window);
+	}
+
         if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND) != 0) {
                 if (NAUTILUS_IS_SPATIAL_WINDOW (window) && !NAUTILUS_IS_DESKTOP_WINDOW (window)) {
                         if (GTK_WIDGET_VISIBLE (target_window)) {
@@ -611,7 +621,11 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 		g_object_unref (old_location);
 	}
 
-        begin_location_change (target_window->details->active_slot, location, new_selection,
+	if (target_slot == NULL) {
+		target_slot = target_window->details->active_slot;
+	}
+
+        begin_location_change (target_slot, location, new_selection,
                                NAUTILUS_LOCATION_CHANGE_STANDARD, 0, NULL);
 }
 
@@ -1115,6 +1129,11 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 			/* Clean up state of already-showing window */
 			end_location_change (slot);
 
+			/* TODO? shouldn't we call
+			 *   cancel_viewed_file_changed_callback (slot);
+			 * at this point, or in end_location_change()
+			 */
+
 			/* We disconnected this, so we need to re-connect it */
 			viewed_file = nautilus_file_get (slot->location);
 			nautilus_window_slot_set_viewed_file (slot, viewed_file);
@@ -1282,6 +1301,10 @@ nautilus_window_report_load_underway (NautilusWindow *window,
 
 	slot = nautilus_window_get_slot_for_view (window, view);
 	g_assert (slot != NULL);
+	if (slot == NULL) {
+		/* maybe the slot was immediately closed after opening it. */
+		return;
+	}
 
         if (view == slot->new_content_view) {
 		location_has_really_changed (slot);
