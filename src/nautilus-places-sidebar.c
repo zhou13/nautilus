@@ -271,7 +271,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 				       mount_uri, NULL, NULL, NULL, 0);
 		g_object_unref (icon);
 		g_free (display_name);
-		if (strcmp (location, mount_uri) == 0) {
+		if (eel_strcmp (location, mount_uri) == 0) {
 			gtk_tree_selection_select_iter (selection, &last_iter);
 		}	
 		g_free (mount_uri);
@@ -283,7 +283,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 			       _("Desktop"), icon,
 			       mount_uri, NULL, NULL, NULL, 0);
 	g_object_unref (icon);
-	if (strcmp (location, mount_uri) == 0) {
+	if (eel_strcmp (location, mount_uri) == 0) {
 		gtk_tree_selection_select_iter (selection, &last_iter);
 	}	
 	g_free (mount_uri);
@@ -295,7 +295,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 			       _("File System"), icon,
 			       mount_uri, NULL, NULL, NULL, 0);
 	g_object_unref (icon);
-	if (strcmp (location, mount_uri) == 0) {
+	if (eel_strcmp (location, mount_uri) == 0) {
 		gtk_tree_selection_select_iter (selection, &last_iter);
 	}
 
@@ -321,7 +321,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 					last_iter = add_place (sidebar, PLACES_MOUNTED_VOLUME,
 							       name, icon, mount_uri,
 							       drive, volume, mount, 0);
-					if (strcmp (location, mount_uri) == 0) {
+					if (eel_strcmp (location, mount_uri) == 0) {
 						gtk_tree_selection_select_iter (selection, &last_iter);
 					}
 					g_object_unref (mount);
@@ -391,7 +391,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 			last_iter = add_place (sidebar, PLACES_MOUNTED_VOLUME,
 					       name, icon, mount_uri,
 					       NULL, volume, mount, 0);
-			if (strcmp (location, mount_uri) == 0) {
+			if (eel_strcmp (location, mount_uri) == 0) {
 				gtk_tree_selection_select_iter (selection, &last_iter);
 			}
 			g_object_unref (mount);
@@ -430,7 +430,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 		last_iter = add_place (sidebar, PLACES_MOUNTED_VOLUME,
 				       name, icon, mount_uri,
 				       NULL, NULL, mount, 0);
-		if (strcmp (location, mount_uri) == 0) {
+		if (eel_strcmp (location, mount_uri) == 0) {
 			gtk_tree_selection_select_iter (selection, &last_iter);
 		}
 		g_object_unref (mount);
@@ -445,7 +445,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 	last_iter = add_place (sidebar, PLACES_BUILT_IN,
 			       _("Trash"), icon, mount_uri,
 			       NULL, NULL, NULL, 0);
-	if (strcmp (location, mount_uri) == 0) {
+	if (eel_strcmp (location, mount_uri) == 0) {
 		gtk_tree_selection_select_iter (selection, &last_iter);
 	}
 	g_object_unref (icon);
@@ -473,7 +473,7 @@ update_places (NautilusPlacesSidebar *sidebar)
 		last_iter = add_place (sidebar, PLACES_BOOKMARK,
 				       name, icon, mount_uri,
 				       NULL, NULL, NULL, index);
-		if (strcmp (location, mount_uri) == 0) {
+		if (eel_strcmp (location, mount_uri) == 0) {
 			gtk_tree_selection_select_iter (selection, &last_iter);
 		}
 		g_free (name);

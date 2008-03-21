@@ -1,4 +1,9 @@
-2008-03-20  Chrisian Neumair  <cneumair@gnome-de.org>
+2008-03-21  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-places-sidebar.c: (update_places):
+	Use eel_strcp() instead of strcmp().
+
+2008-03-20  Chrisian Neumair  <cneumair@gnome.org>
 
 	* src/*.[ch]:
 	* libnautilus-private/*.[ch]:
