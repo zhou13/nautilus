@@ -2135,17 +2135,12 @@ nautilus_window_manage_views_destroy (NautilusWindow *window)
 }
 
 void
-nautilus_window_manage_views_finalize (NautilusWindow *window)
+nautilus_window_manage_views_close_slot (NautilusWindow *window,
+					 NautilusWindowSlot *slot)
 {
 
-	NautilusWindowSlot *slot;
-	GList *l;
-
-	for (l = window->details->slots; l != NULL; l = l->next) {
-		slot = l->data;
-		free_location_change (slot);
-		cancel_viewed_file_changed_callback (slot);
-	}
+	free_location_change (slot);
+	cancel_viewed_file_changed_callback (slot);
 }
 
 void

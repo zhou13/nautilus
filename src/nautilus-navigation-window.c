@@ -201,14 +201,9 @@ notebook_switch_page_cb (GtkNotebook *notebook,
 	g_assert (widget != NULL);
 
 	/* find slot corresponding to the target page */
-	for (l = nautilus_window->details->slots; l != NULL; l = l->next) {
-		slot = NAUTILUS_WINDOW_SLOT (l->data);
-		if (slot->content_box == widget) {
-			break;
-		}
-	}
-
+	slot = nautilus_window_get_slot_for_content_box (widget);
 	g_assert (slot != NULL);
+
 	nautilus_window_set_active_slot (nautilus_window, slot);
 
 	return FALSE;

@@ -31,7 +31,9 @@
 #include "nautilus-navigation-window.h"
 
 void                    nautilus_window_manage_views_destroy          (NautilusWindow           *window);
-void                    nautilus_window_manage_views_finalize         (NautilusWindow           *window);
+
+void                    nautilus_window_manage_views_close_slot       (NautilusWindow           *window,
+								       NautilusWindowSlot       *slot);
 
 void                    nautilus_navigation_window_set_sidebar_panels (NautilusNavigationWindow *window,
                                                                        GList                    *view_identifier_list);

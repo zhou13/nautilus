@@ -1,5 +1,13 @@
 2007-03-21  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window-manage-views.[ch]:
+	* src/nautilus-window.[ch]:
+	Disconnect location change code when closing slot, rather than at
+	window finalization time. Also assert() that all views are destroyed in
+	finalize(), since the window's close() function must have run.
+
+2007-03-21  Christian Neumair  <cneumair@gnome.org>
+
 	* libnautilus-private/nautilus-window-info.h:
 	Add NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB to NautilusWindowOpenFlags.
 

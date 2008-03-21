@@ -646,20 +646,10 @@ static void
 nautilus_window_destroy (GtkObject *object)
 {
 	NautilusWindow *window;
-	NautilusWindowSlot *slot;
-	GList *l;
 
 	window = NAUTILUS_WINDOW (object);
 
-
 	nautilus_window_manage_views_destroy (window);
-
-	for (l = window->details->slots; l != NULL; l = l->next) {
-		slot = l->data;
-
-		cancel_view_as_callback (slot);
-		g_object_unref (slot);
-	}
 
 	GTK_OBJECT_CLASS (nautilus_window_parent_class)->destroy (object);
 }
@@ -668,22 +658,15 @@ static void
 nautilus_window_finalize (GObject *object)
 {
 	NautilusWindow *window;
-	NautilusWindowSlot *slot;
-	GList *l;
-	
+
 	window = NAUTILUS_WINDOW (object);
 
 	nautilus_window_remove_bookmarks_menu_callback (window);
-	
-	nautilus_window_manage_views_finalize (window);
 
 	free_stored_viewers (window);
 
-	for (l = window->details->slots; l != NULL; l = l->next) {
-		slot = NAUTILUS_WINDOW_SLOT (l->data);
-		g_object_unref (G_OBJECT (slot));
-	}
-
+	/* nautilus_window_close() should have run */
+	g_assert (window->details->slots == NULL);
 
 	g_object_unref (window->details->ui_manager);
 
@@ -785,6 +768,8 @@ static void
 real_close_slot (NautilusWindow *window,
 		 NautilusWindowSlot *slot)
 {
+	nautilus_window_manage_views_close_slot (window, slot);
+	cancel_view_as_callback (slot);
 	g_object_unref (slot);
 }
 
