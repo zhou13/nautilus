@@ -1,5 +1,10 @@
 2007-03-21  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-navigation-window.c: (notebook_switch_page_cb): Reuse
+	nautilus_window_get_slot_for_content_box().
+
+2007-03-21  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-window-manage-views.[ch]:
 	* src/nautilus-window.[ch]:
 	Disconnect location change code when closing slot, rather than at
