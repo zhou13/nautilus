@@ -1358,9 +1358,6 @@ update_filtering_from_preferences (FMTreeView *view)
 			(view->details->child_model,
 			 mode == NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_ENABLE);
 	}
-	fm_tree_model_set_show_backup_files
-		(view->details->child_model,
-		 eel_preferences_get_boolean (NAUTILUS_PREFERENCES_SHOW_BACKUP_FILES));
 	fm_tree_model_set_show_only_directories
 		(view->details->child_model,
 		 eel_preferences_get_boolean (NAUTILUS_PREFERENCES_TREE_SHOW_ONLY_DIRECTORIES));

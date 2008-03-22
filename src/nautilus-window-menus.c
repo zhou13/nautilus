@@ -39,15 +39,19 @@
 #include "nautilus-window-private.h"
 #include "nautilus-desktop-window.h"
 #include "nautilus-search-bar.h"
+#include <eel/eel-preferences.h>
 #include <gtk/gtkmain.h>
 #include <gtk/gtkaboutdialog.h>
 #include <gtk/gtkenums.h>
 #include <gtk/gtkversion.h>
+#include <gtk/gtkaction.h>
+#include <gtk/gtktoggleaction.h>
 #include <gio/gio.h>
 #include <glib/gi18n.h>
 #include <libgnomeui/gnome-help.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
+#include <libnautilus-private/nautilus-global-preferences.h>
 #include <libnautilus-private/nautilus-icon-names.h>
 #include <libnautilus-private/nautilus-ui-utilities.h>
 #include <libnautilus-private/nautilus-module.h>
@@ -361,6 +365,48 @@ action_zoom_normal_callback (GtkAction *action,
 			     gpointer user_data) 
 {
 	nautilus_window_zoom_to_default (NAUTILUS_WINDOW (user_data));
+}
+
+static void
+action_show_hidden_files_callback (GtkAction *action, 
+				   gpointer callback_data)
+{
+	NautilusWindow *window;
+	NautilusWindowShowHiddenFilesMode mode;
+
+	window = NAUTILUS_WINDOW (callback_data);
+
+	if (gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action))) {
+		mode = NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_ENABLE;
+	} else {
+		mode = NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DISABLE;
+	}
+
+	nautilus_window_info_set_hidden_files_mode (window, mode);
+}
+
+static void
+show_hidden_files_preference_callback (gpointer callback_data)
+{
+	NautilusWindow *window;
+	GtkAction *action;
+
+	window = NAUTILUS_WINDOW (callback_data);
+
+	if (window->details->show_hidden_files_mode == NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DEFAULT) {
+		action = gtk_action_group_get_action (window->details->main_action_group, NAUTILUS_ACTION_SHOW_HIDDEN_FILES);
+		g_assert (GTK_IS_ACTION (action));
+
+		/* update button */
+		g_signal_handlers_block_by_func (action, action_show_hidden_files_callback, window);
+		gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action),
+					      eel_preferences_get_boolean (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES));
+		g_signal_handlers_unblock_by_func (action, action_show_hidden_files_callback, window);
+
+		/* inform views */
+		nautilus_window_info_set_hidden_files_mode (window, NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DEFAULT);
+
+	}
 }
 
 static void
@@ -704,6 +750,14 @@ static const GtkActionEntry main_entries[] = {
                                  G_CALLBACK (action_go_to_burn_cd_callback) },
 };
 
+static const GtkToggleActionEntry main_toggle_entries[] = {
+  /* name, stock id */         { "Show Hidden Files", NULL,
+  /* label, accelerator */       N_("Show _Hidden Files"), "<control>H",
+  /* tooltip */                  N_("Toggle the display of hidden files in the current window"),
+                                 G_CALLBACK (action_show_hidden_files_callback),
+                                 TRUE },
+};
+
 /**
  * nautilus_window_initialize_menus
  * 
@@ -724,12 +778,26 @@ nautilus_window_initialize_menus (NautilusWindow *window)
 	gtk_action_group_add_actions (action_group, 
 				      main_entries, G_N_ELEMENTS (main_entries),
 				      window);
+	gtk_action_group_add_toggle_actions (action_group, 
+					     main_toggle_entries, G_N_ELEMENTS (main_toggle_entries),
+					     window);
 
 	action = gtk_action_group_get_action (action_group, NAUTILUS_ACTION_UP);
 	g_object_set (action, "short_label", _("_Up"), NULL);
 
 	action = gtk_action_group_get_action (action_group, NAUTILUS_ACTION_HOME);
 	g_object_set (action, "short_label", _("_Home"), NULL);
+
+	action = gtk_action_group_get_action (action_group, NAUTILUS_ACTION_SHOW_HIDDEN_FILES);
+	g_signal_handlers_block_by_func (action, action_show_hidden_files_callback, window);
+	gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action),
+				      eel_preferences_get_boolean (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES));
+	g_signal_handlers_unblock_by_func (action, action_show_hidden_files_callback, window);
+
+
+	eel_preferences_add_callback_while_alive (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES,
+						  show_hidden_files_preference_callback,
+						  window, G_OBJECT (window));
 
 	window->details->ui_manager = gtk_ui_manager_new ();
 	ui_manager = window->details->ui_manager;

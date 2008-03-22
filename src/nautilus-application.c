@@ -869,7 +869,6 @@ nautilus_application_close_all_navigation_windows (void)
 	list_copy = g_list_copy (nautilus_application_window_list);
 	for (l = list_copy; l != NULL; l = l->next) {
 		NautilusWindow *window;
-		GList *l;
 		
 		window = NAUTILUS_WINDOW (l->data);
 		

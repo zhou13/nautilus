@@ -62,7 +62,6 @@
 #include <gtk/gtkmessagedialog.h>
 #include <gtk/gtkfilechooserbutton.h>
 #include <gtk/gtkhbox.h>
-#include <gtk/gtktoggleaction.h>
 #include <gtk/gtkentry.h>
 #include <gtk/gtkenums.h>
 #include <gtk/gtkbindings.h>
@@ -327,7 +326,6 @@ static void     reset_update_interval                          (FMDirectoryView 
 static void     schedule_idle_display_of_pending_files         (FMDirectoryView      *view);
 static void     unschedule_display_of_pending_files            (FMDirectoryView      *view);
 static void     disconnect_model_handlers                      (FMDirectoryView      *view);
-static void     filtering_changed_callback                     (gpointer              callback_data);
 static void     metadata_for_directory_as_file_ready_callback  (NautilusFile         *file,
 								gpointer              callback_data);
 static void     metadata_for_files_in_directory_ready_callback (NautilusDirectory    *directory,
@@ -354,8 +352,6 @@ static void action_paste_files_callback            (GtkAction *action,
 static void action_rename_callback                 (GtkAction *action,
 						    gpointer   callback_data);
 static void action_rename_select_all_callback      (GtkAction *action,
-						    gpointer   callback_data);
-static void action_show_hidden_files_callback      (GtkAction *action,
 						    gpointer   callback_data);
 static void action_paste_files_into_callback       (GtkAction *action,
 						    gpointer   callback_data);
@@ -1147,29 +1143,14 @@ action_reset_to_defaults_callback (GtkAction *action,
 
 
 static void
-action_show_hidden_files_callback (GtkAction *action, 
-				   gpointer callback_data)
+hidden_files_mode_changed (NautilusWindow *window,
+			   gpointer callback_data)
 {
-	FMDirectoryView	*directory_view;
-	NautilusWindowShowHiddenFilesMode mode;
+	FMDirectoryView *directory_view;
 
-	g_assert (FM_IS_DIRECTORY_VIEW (callback_data));
 	directory_view = FM_DIRECTORY_VIEW (callback_data);
-	
-	directory_view->details->show_hidden_files = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action));
-	directory_view->details->show_backup_files = directory_view->details->show_hidden_files;
-	
-	if (directory_view->details->show_hidden_files) {
-		mode = NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_ENABLE;
-	} else {
-		mode = NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DISABLE;
-	}
-	/* multiview-TODO listen to hidden file modes changes, block handler here. */
-	nautilus_window_info_set_hidden_files_mode (directory_view->details->window,
-						    mode);
-	if (directory_view->details->model != NULL) {
-		load_directory (directory_view, directory_view->details->model);
-	}
+
+	fm_directory_view_init_show_hidden_files (directory_view);
 }
 
 static void
@@ -1657,10 +1638,6 @@ slot_active (NautilusWindowSlot *slot,
 
 	fm_directory_view_merge_menus (view);
 	schedule_update_menus (view);
-
-	/* initialise show hidden mode */
-	/* multiview-TODO this always causes a reload for loaded views. */
-	fm_directory_view_init_show_hidden_files (view);
 }
 
 static void
@@ -1856,10 +1833,6 @@ fm_directory_view_init (FMDirectoryView *view)
 				      click_policy_changed_callback, view);
 	eel_preferences_add_callback (NAUTILUS_PREFERENCES_SORT_DIRECTORIES_FIRST, 
 				      sort_directories_first_changed_callback, view);
-	eel_preferences_add_callback (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES,
-					 filtering_changed_callback, view);
-	eel_preferences_add_callback (NAUTILUS_PREFERENCES_SHOW_BACKUP_FILES,
-					 filtering_changed_callback, view);
 }
 
 static void
@@ -1962,15 +1935,6 @@ fm_directory_view_finalize (GObject *object)
 
 	view = FM_DIRECTORY_VIEW (object);
 
-	if (!view->details->ignore_hidden_file_preferences) {
-		/* fm_directory_view_ignore_hidden_file_preferences is a one-way switch,
-		 * and may have removed these callbacks already.
-		 */
-		eel_preferences_remove_callback (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES,
-						 filtering_changed_callback, view);
-		eel_preferences_remove_callback (NAUTILUS_PREFERENCES_SHOW_BACKUP_FILES,
-						 filtering_changed_callback, view);
-	}
 	eel_preferences_remove_callback (NAUTILUS_PREFERENCES_CONFIRM_TRASH,
 					 schedule_update_menus_callback, view);
 	eel_preferences_remove_callback (NAUTILUS_PREFERENCES_ENABLE_DELETE,
@@ -6231,7 +6195,6 @@ fm_directory_view_init_show_hidden_files (FMDirectoryView *view)
 	NautilusWindowShowHiddenFilesMode mode;
 	gboolean show_hidden_changed;
 	gboolean show_hidden_default_setting;
-	GtkAction *action;
 
 	if (view->details->ignore_hidden_file_preferences) {
 		return;
@@ -6258,12 +6221,7 @@ fm_directory_view_init_show_hidden_files (FMDirectoryView *view)
 			view->details->show_backup_files = FALSE;
 		}
 	}
- 
-	action = gtk_action_group_get_action (view->details->dir_action_group,
-					      FM_ACTION_SHOW_HIDDEN_FILES);
-	gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action),
-				      view->details->show_hidden_files);
-	
+
 	if (show_hidden_changed && (view->details->model != NULL)) {
 		load_directory (view, view->details->model);	
 	}
@@ -6382,6 +6340,12 @@ static const GtkActionEntry directory_view_entries[] = {
   /* label, accelerator */       N_("_Delete"), "<shift>Delete",
   /* tooltip */                  N_("Delete each selected item, without moving to the Trash"),
                                  G_CALLBACK (action_delete_callback) },
+  /*
+   * multiview-TODO: decide whether "Reset to Defaults" should
+   * be window-wide, and not just view-wide.
+   * Since this also resets the "Show hidden files" mode,
+   * it is a mixture of both ATM.
+   */
   /* name, stock id */         { "Reset to Defaults", NULL,
   /* label, accelerator */       N_("Reset View to _Defaults"), NULL,
   /* tooltip */                  N_("Reset sorting order and zoom level to match preferences for this view"),
@@ -6465,14 +6429,6 @@ static const GtkActionEntry directory_view_entries[] = {
                                  G_CALLBACK (action_location_delete_callback) },
 };
 
-static const GtkToggleActionEntry directory_view_toggle_entries[] = {
-  /* name, stock id */         { "Show Hidden Files", NULL,
-  /* label, accelerator */       N_("Show _Hidden Files"), "<control>H",
-  /* tooltip */                  N_("Toggle the display of hidden files in the current window"),
-                                 G_CALLBACK (action_show_hidden_files_callback),
-                                 TRUE },
-};
-
 static void
 connect_proxy (FMDirectoryView *view,
 	       GtkAction *action,
@@ -6549,9 +6505,7 @@ real_merge_menus (FMDirectoryView *view)
 	gtk_action_group_add_actions (action_group, 
 				      directory_view_entries, G_N_ELEMENTS (directory_view_entries),
 				      view);
-	gtk_action_group_add_toggle_actions (action_group, 
-					     directory_view_toggle_entries, G_N_ELEMENTS (directory_view_toggle_entries),
-					     view);
+
 	/* Translators: %s is a directory */
 	tooltip = g_strdup_printf (_("Run or manage scripts from %s"), "~/.gnome2/nautilus-scripts");
 	/* Create a script action here specially because its tooltip is dynamic */
@@ -7879,7 +7833,6 @@ fm_directory_view_reset_to_defaults (FMDirectoryView *view)
 	if (mode != NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DEFAULT) {
 		nautilus_window_info_set_hidden_files_mode (view->details->window,
 							    NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DEFAULT);
-		fm_directory_view_init_show_hidden_files (view);
 	}
 }
 
@@ -8179,38 +8132,6 @@ schedule_update_menus_callback (gpointer callback_data)
 	schedule_update_menus (FM_DIRECTORY_VIEW (callback_data));
 }
 
-static void
-filtering_changed_callback (gpointer callback_data)
-{
-	FMDirectoryView	*directory_view;
-	gboolean new_show_hidden;
-	NautilusWindowShowHiddenFilesMode mode;
-	GtkAction *action;
-
-	directory_view = FM_DIRECTORY_VIEW (callback_data);
-	new_show_hidden = eel_preferences_get_boolean (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES);
-	mode = nautilus_window_info_get_hidden_files_mode (directory_view->details->window);
-
-	/* only apply global show hidden files pref if local setting has not been set for this window */
-	if (new_show_hidden != directory_view->details->show_hidden_files
-	    && mode == NAUTILUS_WINDOW_SHOW_HIDDEN_FILES_DEFAULT) {
-		directory_view->details->show_hidden_files = new_show_hidden;
-		directory_view->details->show_backup_files = new_show_hidden;
-
-		action = gtk_action_group_get_action (directory_view->details->dir_action_group,
-						      FM_ACTION_SHOW_HIDDEN_FILES);
-		g_signal_handlers_block_by_func (action, action_show_hidden_files_callback, directory_view);
-		gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action),
-					      directory_view->details->show_hidden_files);
-		g_signal_handlers_unblock_by_func (action, action_show_hidden_files_callback, directory_view);
-
-		/* Reload the current uri so that the filtering changes take place. */
-		if (directory_view->details->model != NULL) {
-			load_directory (directory_view, directory_view->details->model);
-		}
-	}
-}
-
 void
 fm_directory_view_ignore_hidden_file_preferences (FMDirectoryView *view)
 {
@@ -8219,13 +8140,6 @@ fm_directory_view_ignore_hidden_file_preferences (FMDirectoryView *view)
 	if (view->details->ignore_hidden_file_preferences) {
 		return;
 	}
-
-	eel_preferences_remove_callback (NAUTILUS_PREFERENCES_SHOW_HIDDEN_FILES,
-					      filtering_changed_callback,
-					      view);
-	eel_preferences_remove_callback (NAUTILUS_PREFERENCES_SHOW_BACKUP_FILES,
-					      filtering_changed_callback,
-					      view);
 
 	view->details->show_hidden_files = FALSE;
 	view->details->show_backup_files = FALSE;
@@ -8741,6 +8655,11 @@ fm_directory_view_set_property (GObject         *object,
 	  g_signal_connect_object (directory_view->details->slot,
 				   "inactive", G_CALLBACK (slot_inactive),
 				   directory_view, 0);
+
+	  g_signal_connect_object (directory_view->details->window,
+				   "hidden-files-mode-changed", G_CALLBACK (hidden_files_mode_changed),
+				   directory_view, 0);
+	  fm_directory_view_init_show_hidden_files (directory_view);
 
 	  if (directory_view->details->slot == 
 	      nautilus_window_info_get_active_slot (window)) {

@@ -1778,8 +1778,7 @@ nautilus_window_set_hidden_files_mode (NautilusWindowInfo *window,
 {
 	window->details->show_hidden_files_mode = mode;
 
-	g_signal_emit_by_name (window, "hidden_files_mode_changed",
-			       mode);
+	g_signal_emit_by_name (window, "hidden_files_mode_changed");
 }
 
 static NautilusBookmarkList *
