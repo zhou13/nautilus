@@ -43,6 +43,7 @@ G_DEFINE_TYPE_WITH_CODE (NautilusWindowSlot,
 			 G_TYPE_OBJECT,
 			 G_IMPLEMENT_INTERFACE (NAUTILUS_TYPE_WINDOW_SLOT_INFO,
 						nautilus_window_slot_info_iface_init))
+#define parent_class nautilus_window_slot_parent_class
 
 static void
 real_active (NautilusWindowSlot *slot)
@@ -391,6 +392,8 @@ nautilus_window_slot_finalize (GObject *object)
 	}
 
 	g_free (slot->title);
+
+	G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
 static void

@@ -1,5 +1,12 @@
 2008-03-22  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-navigation-window-slot.c
+	(nautilus_navigation_window_slot_finalize):
+	* src/nautilus-window-slot.c (nautilus_window_slot_finalize):
+	Call parent method.
+
+2008-03-22  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-window-manage-views.c
 	(nautilus_window_emit_location_change),
 	(nautilus_window_report_location_change),

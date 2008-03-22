@@ -120,6 +120,8 @@ nautilus_navigation_window_slot_finalize (GObject *object)
 
 	nautilus_navigation_window_slot_clear_forward_list (slot);
 	nautilus_navigation_window_slot_clear_back_list (slot);
+
+	G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
 static void
