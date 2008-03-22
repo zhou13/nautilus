@@ -1,5 +1,17 @@
 2008-03-22  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_emit_location_change),
+	(nautilus_window_report_location_change),
+	(location_has_really_changed):
+	* src/nautilus-window-manage-views.h:
+	* src/nautilus-window.c (nautilus_window_set_active_slot):
+	Split out emission code from nautilus_window_report_location_change() into
+	nautilus_window_emit_location_change(), use it with a location copy
+	in location_has_really_changed().
+
+2008-03-22  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-spatial-window.c (real_close_slot):
 	Call parent method.
 

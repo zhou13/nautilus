@@ -825,7 +825,7 @@ nautilus_window_set_active_slot (NautilusWindow *window,
 
 	if (new_slot != NULL) {
 		/* inform sidebar panels */
-		nautilus_window_report_location_change (window, TRUE);
+		nautilus_window_report_location_change (window);
 		/* TODO decide whether "selection-changed" should be emitted */
 
 		if (new_slot->content_view != NULL) {

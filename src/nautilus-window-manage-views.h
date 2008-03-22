@@ -68,7 +68,6 @@ void nautilus_window_report_view_failed       (NautilusWindow     *window,
                                                NautilusView       *view);
 void nautilus_window_report_load_complete     (NautilusWindow     *window,
                                                NautilusView       *view);
-void nautilus_window_report_location_change   (NautilusWindow     *window,
-					       gboolean            current_location);
+void nautilus_window_report_location_change   (NautilusWindow     *window);
 
 #endif /* NAUTILUS_WINDOW_MANAGE_VIEWS_H */

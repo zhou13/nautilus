@@ -1313,46 +1313,44 @@ nautilus_window_report_load_underway (NautilusWindow *window,
         }
 }
 
-/* reports location change to window's "loading-uri" clients, i.e.
- * sidebar panels
- *
- * Usually, we emit the pending location.
- *
- * If current_location is true, this emission happens due to
- * switching the active slot. In this case, we want to re-emit
- * with the current location of the new slot if no URI is pending.
- *
- * If current_location is false, this emission happens due to
- * switching the view INSIDE the active slot. In this case, we
- * do not want to emit if no URI is pending.
- */
-void
-nautilus_window_report_location_change (NautilusWindow *window,
-					gboolean current_location)
+static void
+nautilus_window_emit_location_change (NautilusWindow *window,
+				      GFile *location)
 {
-	NautilusWindowSlot *slot;
-	GFile *location_copy;
 	char *uri;
 
-	slot = window->details->active_slot;
+	uri = g_file_get_uri (location);
+	g_signal_emit_by_name (window, "loading_uri", uri);
+	g_free (uri);
+}
 
-	location_copy = NULL;
+/* reports location change to window's "loading-uri" clients, i.e.
+ * sidebar panels [used when switching tabs]. It will emit the pending
+ * location, or the existing location if none is pending.
+ */
+void
+nautilus_window_report_location_change (NautilusWindow *window)
+{
+	NautilusWindowSlot *slot;
+	GFile *location;
+
+	g_assert (NAUTILUS_IS_WINDOW (window));
+
+	slot = window->details->active_slot;
+	g_assert (NAUTILUS_IS_WINDOW_SLOT (slot));
+
+	location = NULL;
 
 	if (slot->pending_location != NULL) {
-		location_copy = g_object_ref (slot->pending_location);
+		location = slot->pending_location;
 	}
 
-	if (current_location &&
-	    location_copy == NULL &&
-	    slot->location != NULL) {
-		location_copy = g_object_ref (slot->location);
+	if (location == NULL && slot->location != NULL) {
+		location = slot->location;
 	}
 
-	if (location_copy != NULL) {
-		uri = g_file_get_uri (location_copy);
-		g_signal_emit_by_name (window, "loading_uri", uri);
-		g_free (uri);
-		g_object_unref (location_copy);
+	if (location != NULL) {
+		nautilus_window_emit_location_change (window, location);
 	}
 }
 
@@ -1362,6 +1360,7 @@ location_has_really_changed (NautilusWindowSlot *slot)
 {
 	NautilusWindow *window;
 	GtkWidget *widget;
+	GFile *location_copy;
 
 	window = slot->window;
 
@@ -1381,10 +1380,19 @@ location_has_really_changed (NautilusWindowSlot *slot)
 		update_for_new_location (slot);
 	}
 
+	location_copy = NULL;
+	if (slot->location != NULL) {
+		location_copy = g_object_ref (slot->location);
+	}
+
 	free_location_change (slot);
 
-	if (slot == window->details->active_slot) {
-		nautilus_window_report_location_change (window, FALSE);
+	if (location_copy != NULL) {
+		if (slot == window->details->active_slot) {
+			nautilus_window_emit_location_change (window, location_copy);
+		}
+
+		g_object_unref (location_copy);
 	}
 }
 
