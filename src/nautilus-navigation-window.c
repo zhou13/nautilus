@@ -1042,7 +1042,12 @@ real_disconnect_content_view (NautilusWindow *nautilus_window,
 		 G_CALLBACK (zoom_level_changed_callback), 
 		 window);	
 
-	gtk_widget_hide (window->zoom_control);
+	if (window->zoom_control != NULL) {
+		/* if we run in destroy(), the
+ 		 * zoom control is already gone
+		 */
+		gtk_widget_hide (window->zoom_control);
+	}
 }
 
 static void

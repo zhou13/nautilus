@@ -520,7 +520,6 @@ static void
 real_close_slot (NautilusWindow *window,
 		 NautilusWindowSlot *slot)
 {
-	g_assert (window->details->active_slot == slot);
 	g_assert (g_list_length (window->details->slots) == 1);
 
 	/* nothing to do */

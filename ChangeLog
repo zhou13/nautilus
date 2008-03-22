@@ -1,4 +1,16 @@
-2008-03-22  Christian Neumair  <chris@ubuntu-t43>
+2008-03-22  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-navigation-window.c: (real_disconnect_content_view):
+	Do not try to hide zoom control if we are already destroyed.
+
+	* src/nautilus-spatial-window.c (real_close_slot):
+	Do not assert that the slot is currently active.
+
+	* src/nautilus-window.c (nautilus_window_destroy),
+	(nautilus_window_close):
+	Move slot close code from close() to destroy().
+
+2008-03-22  Christian Neumair  <cneumair@gnome.org>
 
 	* src/file-manager/fm-directory-view.c (hidden_files_mode_changed),
 	(slot_active), (fm_directory_view_init),

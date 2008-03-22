@@ -646,8 +646,20 @@ static void
 nautilus_window_destroy (GtkObject *object)
 {
 	NautilusWindow *window;
+	NautilusWindowSlot *slot;
+	GList *l, *slots;
 
 	window = NAUTILUS_WINDOW (object);
+
+	nautilus_window_set_active_slot (window, NULL);
+
+	/* close all slots */
+	slots = g_list_copy (window->details->slots);
+	for (l = slots; l != NULL; l = l->next) {
+		slot = NAUTILUS_WINDOW_SLOT (l->data);
+		nautilus_window_close_slot (window, slot);
+	}
+	g_list_free (slots);
 
 	nautilus_window_manage_views_destroy (window);
 
@@ -728,19 +740,7 @@ nautilus_window_show_window (NautilusWindow *window)
 void
 nautilus_window_close (NautilusWindow *window)
 {
-	NautilusWindowSlot *slot;
-	GList *l, *slots;
-
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
-
-	nautilus_window_set_active_slot (window, NULL);
-
-	slots = g_list_copy (window->details->slots);
-	for (l = slots; l != NULL; l = l->next) {
-		slot = NAUTILUS_WINDOW_SLOT (l->data);
-		nautilus_window_close_slot (window, slot);
-	}
-	g_list_free (slots);
 
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
 			 close, (window));
