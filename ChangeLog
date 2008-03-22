@@ -1,5 +1,10 @@
 2008-03-22  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-spatial-window.c (real_close_slot):
+	Call parent method.
+
+2008-03-22  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-navigation-window.c: (real_disconnect_content_view):
 	Do not try to hide zoom control if we are already destroyed.
 

@@ -44,6 +44,7 @@
 #include "nautilus-zoom-control.h"
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gtk-extensions.h>
+#include <eel/eel-gtk-macros.h>
 #include <eel/eel-string.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gdk/gdkkeysyms.h>
@@ -97,6 +98,7 @@ static const GtkTargetEntry location_button_drag_types[] = {
 };
 
 G_DEFINE_TYPE(NautilusSpatialWindow, nautilus_spatial_window, NAUTILUS_TYPE_WINDOW)
+#define parent_class nautilus_spatial_window_parent_class
 
 static gboolean
 save_window_geometry_timeout (gpointer callback_data)
@@ -523,6 +525,8 @@ real_close_slot (NautilusWindow *window,
 	g_assert (g_list_length (window->details->slots) == 1);
 
 	/* nothing to do */
+	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS,
+			 close_slot, (window, slot));
 }
 
 static void
