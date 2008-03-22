@@ -1,3 +1,8 @@
+2007-03-22  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-window.c: (nautilus_window_close): Copy slot list
+	before freeing slots, since it will change the list.
+
 2007-03-21  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-navigation-window.c: (notebook_switch_page_cb): Reuse
