@@ -1301,10 +1301,6 @@ nautilus_window_report_load_underway (NautilusWindow *window,
 
 	slot = nautilus_window_get_slot_for_view (window, view);
 	g_assert (slot != NULL);
-	if (slot == NULL) {
-		/* maybe the slot was immediately closed after opening it. */
-		return;
-	}
 
         if (view == slot->new_content_view) {
 		location_has_really_changed (slot);
