@@ -34,7 +34,7 @@
 
 static void nautilus_window_slot_init       (NautilusWindowSlot *slot);
 static void nautilus_window_slot_class_init (NautilusWindowSlotClass *class);
-static void nautilus_window_slot_finalize   (GObject *object);
+static void nautilus_window_slot_dispose    (GObject *object);
 
 static void nautilus_window_slot_info_iface_init (NautilusWindowSlotInfoIface *iface);
 
@@ -128,6 +128,8 @@ nautilus_window_slot_init (NautilusWindowSlot *slot)
 	slot->view_box = gtk_vbox_new (FALSE, 0);
 	gtk_box_pack_start (GTK_BOX (content_box), slot->view_box, TRUE, TRUE, 0);
 	gtk_widget_show (slot->view_box);
+
+	slot->title = g_strdup (_("Loading..."));
 }
 
 static NautilusWindowSlot *
@@ -143,7 +145,7 @@ nautilus_window_slot_class_init (NautilusWindowSlotClass *class)
 	class->inactive = real_inactive;
 	class->get_close_successor = real_get_close_successor;
 
-	G_OBJECT_CLASS (class)->finalize = nautilus_window_slot_finalize;
+	G_OBJECT_CLASS (class)->dispose = nautilus_window_slot_dispose;
 }
 
 static int
@@ -346,7 +348,7 @@ nautilus_window_slot_get_close_successor (NautilusWindowSlot *slot)
 
 
 static void
-nautilus_window_slot_finalize (GObject *object)
+nautilus_window_slot_dispose (GObject *object)
 {
 	NautilusWindowSlot *slot;
 	GtkWidget *widget;
@@ -363,13 +365,17 @@ nautilus_window_slot_finalize (GObject *object)
 		 * It was already here before the slot move, though */
 		g_object_ref (slot->location);
 	}
+
 	eel_g_list_free_deep (slot->pending_selection);
+	slot->pending_selection = NULL;
 
 	if (slot->current_location_bookmark != NULL) {
 		g_object_unref (slot->current_location_bookmark);
+		slot->current_location_bookmark = NULL;
 	}
 	if (slot->last_location_bookmark != NULL) {
 		g_object_unref (slot->last_location_bookmark);
+		slot->last_location_bookmark = NULL;
 	}
 
 	if (slot->find_mount_cancellable != NULL) {
@@ -392,8 +398,9 @@ nautilus_window_slot_finalize (GObject *object)
 	}
 
 	g_free (slot->title);
+	slot->title = NULL;
 
-	G_OBJECT_CLASS (parent_class)->finalize (object);
+	G_OBJECT_CLASS (parent_class)->dispose (object);
 }
 
 static void

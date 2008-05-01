@@ -70,7 +70,9 @@ nautilus_navigation_window_slot_active (NautilusWindowSlot *slot)
 
 	EEL_CALL_PARENT (NAUTILUS_WINDOW_SLOT_CLASS, active, (slot));
 
-	nautilus_navigation_window_load_extension_toolbar_items (window);
+	if (slot->viewed_file != NULL) {
+		nautilus_navigation_window_load_extension_toolbar_items (window);
+	}
 }
  
 static NautilusWindowSlot *
@@ -112,7 +114,7 @@ nautilus_navigation_window_slot_get_close_successor (NautilusWindowSlot *slot)
 }
 
 static void
-nautilus_navigation_window_slot_finalize (GObject *object)
+nautilus_navigation_window_slot_dispose (GObject *object)
 {
 	NautilusNavigationWindowSlot *slot;
 
@@ -121,7 +123,7 @@ nautilus_navigation_window_slot_finalize (GObject *object)
 	nautilus_navigation_window_slot_clear_forward_list (slot);
 	nautilus_navigation_window_slot_clear_back_list (slot);
 
-	G_OBJECT_CLASS (parent_class)->finalize (object);
+	G_OBJECT_CLASS (parent_class)->dispose (object);
 }
 
 static void
@@ -135,5 +137,5 @@ nautilus_navigation_window_slot_class_init (NautilusNavigationWindowSlotClass *c
 	NAUTILUS_WINDOW_SLOT_CLASS (class)->active = nautilus_navigation_window_slot_active; 
 	NAUTILUS_WINDOW_SLOT_CLASS (class)->get_close_successor = nautilus_navigation_window_slot_get_close_successor;
 
-	G_OBJECT_CLASS (class)->finalize = nautilus_navigation_window_slot_finalize;
+	G_OBJECT_CLASS (class)->dispose = nautilus_navigation_window_slot_dispose;
 }

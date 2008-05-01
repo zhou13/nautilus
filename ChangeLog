@@ -1,3 +1,14 @@
+2008-05-01  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-navigation-window-slot.c
+	(nautilus_navigation_window_slot_active),
+	(nautilus_navigation_window_slot_dispose),
+	(nautilus_navigation_window_slot_class_init):
+	* src/nautilus-window-slot.c (nautilus_window_slot_init),
+	(nautilus_window_slot_class_init), (nautilus_window_slot_dispose):
+	Use dispose instead of finalize. Only load toolbar items on slot
+	activation if we have a viewed file. Set default title to "Loading...".
+
 2008-03-22  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-window-manage-views.c
