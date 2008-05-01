@@ -1,5 +1,29 @@
 2008-05-01  Christian Neumair  <cneumair@gnome.org>
 
+	* src/file-manager/fm-actions.h:
+	* src/file-manager/fm-directory-view.c
+	(action_open_new_tab_callback), (open_one_in_new_tab),
+	(real_update_menus):
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/nautilus-desktop-window.c
+	(nautilus_desktop_window_class_init):
+	* src/nautilus-navigation-window.c (real_open_slot):
+	* src/nautilus-window-manage-views.c (handle_go_back),
+	(handle_go_forward), (handle_go_elsewhere), (update_history),
+	(update_for_new_location):
+	* src/nautilus-window-private.h:
+	* src/nautilus-window-slot.c
+	(nautilus_window_slot_add_current_location_to_history_list):
+	* src/nautilus-window-slot.h:
+	* src/nautilus-window.c (nautilus_add_bookmark_to_history_list),
+	(nautilus_add_to_history_list_no_notify),
+	(nautilus_forget_history), (nautilus_window_class_init):
+	* src/nautilus-window.h:
+	Add "Open in New Tab" item. Move bookmark history handling code from
+	windows to slots.
+
+2008-05-01  Christian Neumair  <cneumair@gnome.org>
+
 	* src/Makefile.am:
 	* src/ephy-spinner.c (ephy_spinner_get_spinning):
 	* src/ephy-spinner.h:

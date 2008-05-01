@@ -315,6 +315,8 @@ static void     clipboard_changed_callback                     (NautilusClipboar
 								FMDirectoryView      *view);
 static void     open_one_in_new_window                         (gpointer              data,
 								gpointer              callback_data);
+static void     open_one_in_new_tab                            (gpointer              data,
+								gpointer              callback_data);
 static void     open_one_in_folder_window                      (gpointer              data,
 								gpointer              callback_data);
 static void     schedule_update_menus                          (FMDirectoryView      *view);
@@ -777,6 +779,26 @@ action_open_alternate_callback (GtkAction *action,
 
 	if (fm_directory_view_confirm_multiple_windows (window, g_list_length (selection))) {
 		g_list_foreach (selection, open_one_in_new_window, view);
+	}
+
+	nautilus_file_list_free (selection);
+}
+
+static void
+action_open_new_tab_callback (GtkAction *action,
+			      gpointer callback_data)
+{
+	FMDirectoryView *view;
+	GList *selection;
+	GtkWindow *window;
+
+	view = FM_DIRECTORY_VIEW (callback_data);
+	selection = fm_directory_view_get_selection (view);
+
+	window = fm_directory_view_get_containing_window (view);
+
+	if (fm_directory_view_confirm_multiple_windows (window, g_list_length (selection))) {
+		g_list_foreach (selection, open_one_in_new_tab, view);
 	}
 
 	nautilus_file_list_free (selection);
@@ -3962,6 +3984,18 @@ open_one_in_new_window (gpointer data, gpointer callback_data)
 }
 
 static void
+open_one_in_new_tab (gpointer data, gpointer callback_data)
+{
+	g_assert (NAUTILUS_IS_FILE (data));
+	g_assert (FM_IS_DIRECTORY_VIEW (callback_data));
+
+	fm_directory_view_activate_file (FM_DIRECTORY_VIEW (callback_data),
+					 NAUTILUS_FILE (data),
+					 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
+					 NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
+}
+
+static void
 open_one_in_folder_window (gpointer data, gpointer callback_data)
 {
 	g_assert (NAUTILUS_IS_FILE (data));
@@ -6270,6 +6304,10 @@ static const GtkActionEntry directory_view_entries[] = {
   /* label, accelerator */       N_("Open in Navigation Window"), "<control><shift>o",
   /* tooltip */                  N_("Open each selected item in a navigation window"),
                                  G_CALLBACK (action_open_alternate_callback) },
+  /* name, stock id */         { "OpenInNewTab", NULL,
+  /* label, accelerator */       N_("Open in New Tab"), "<control><shift>o",
+  /* tooltip */                  N_("Open each selected item in a new tab"),
+                                 G_CALLBACK (action_open_new_tab_callback) },
   /* name, stock id */         { "OpenFolderWindow", NULL,
   /* label, accelerator */       N_("Open in Folder Window"), NULL,
   /* tooltip */                  N_("Open each selected item in a folder window"),
@@ -7158,6 +7196,30 @@ real_update_menus (FMDirectoryView *view)
 
 	gtk_action_set_sensitive (action,  selection_count != 0);
 	gtk_action_set_visible (action, show_open_alternate);
+
+	/* Open in New Tab action */
+	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION) {
+		if (selection_count == 0 || selection_count == 1) {
+			label_with_underscore = g_strdup (_("Open in New Tab"));
+		} else {
+			label_with_underscore = g_strdup_printf (ngettext("Open in %'d New Tab",
+									  "Open in %'d New Tabs",
+									  selection_count), 
+								 selection_count);
+		}
+		action = gtk_action_group_get_action (view->details->dir_action_group,
+						      FM_ACTION_OPEN_IN_NEW_TAB);
+		gtk_action_set_visible (action, show_open_alternate);
+		g_object_set (action, "label", 
+			      label_with_underscore,
+			      NULL);
+		g_free (label_with_underscore);
+	} else {
+		action = gtk_action_group_get_action (view->details->dir_action_group,
+						      FM_ACTION_OPEN_IN_NEW_TAB);
+		gtk_action_set_visible (action, FALSE);
+	}
+
 	
 	action = gtk_action_group_get_action (view->details->dir_action_group,
 					      FM_ACTION_OPEN_FOLDER_WINDOW);

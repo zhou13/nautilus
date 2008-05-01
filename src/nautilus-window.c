@@ -1538,8 +1538,8 @@ remove_from_history_list (NautilusBookmark *bookmark)
 	}
 }
 
-static gboolean
-add_to_history_list (NautilusBookmark *bookmark)
+gboolean
+nautilus_add_bookmark_to_history_list (NautilusBookmark *bookmark)
 {
 	/* Note that the history is shared amongst all windows so
 	 * this is not a NautilusNavigationWindow function. Perhaps it belongs
@@ -1601,34 +1601,11 @@ nautilus_add_to_history_list_no_notify (GFile *location,
 	gboolean ret;
 
 	bookmark = nautilus_bookmark_new_with_icon (location, name, has_custom_name, icon);
-	ret = add_to_history_list (bookmark);
+	ret = nautilus_add_bookmark_to_history_list (bookmark);
 	g_object_unref (bookmark);
 
 	return ret;
 }
-
-static void
-real_add_current_location_to_history_list (NautilusWindow *window)
-{
-	NautilusWindowSlot *slot;
-
-        g_assert (NAUTILUS_IS_WINDOW (window));
-
-	slot = window->details->active_slot;
-                
-	if (add_to_history_list (slot->current_location_bookmark)) {
-		nautilus_send_history_list_changed ();
-	}
-}
-
-#if 0
-static void
-real_add_slot (NautilusWindow *window,
-	       NautilusWindowSlot *slot)
-{
-	window->details->slots = 
-}
-#endif
 
 NautilusWindowSlot *
 nautilus_window_get_slot_for_view (NautilusWindow *window,
@@ -1664,15 +1641,6 @@ nautilus_window_get_slot_for_content_box (NautilusWindow *window,
 	}
 
 	return NULL;
-}
-
-void
-nautilus_window_add_current_location_to_history_list (NautilusWindow *window)
-{
-	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
-
-	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-                         add_current_location_to_history_list, (window));
 }
 
 void
@@ -1724,9 +1692,14 @@ nautilus_forget_history (void)
 	     window_node != NULL;
 	     window_node = window_node->next) {
 		NautilusWindow *window;
-		
+		NautilusWindowSlot *slot;
+		GList *l;
+
 		window = NAUTILUS_WINDOW (window_node->data);
-		nautilus_window_add_current_location_to_history_list (NAUTILUS_WINDOW (window));
+		for (l = window->details->slots; l != NULL; l = l->next) {
+			slot = NAUTILUS_WINDOW_SLOT (l->data);
+			nautilus_window_slot_add_current_location_to_history_list (slot);
+		}
 	}
 }
 
@@ -1856,7 +1829,6 @@ nautilus_window_class_init (NautilusWindowClass *class)
 	GTK_WIDGET_CLASS (class)->size_request = nautilus_window_size_request;
 	GTK_WIDGET_CLASS (class)->realize = nautilus_window_realize;
 	GTK_WIDGET_CLASS (class)->key_press_event = nautilus_window_key_press_event;
-	class->add_current_location_to_history_list = real_add_current_location_to_history_list;
 	class->get_title = real_get_title;
 	class->sync_title = real_sync_title;
 	class->connect_content_view = real_connect_content_view;

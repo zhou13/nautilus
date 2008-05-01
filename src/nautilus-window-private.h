@@ -191,8 +191,8 @@ void                 nautilus_window_set_active_slot                     (Nautil
 									  NautilusWindowSlot *slot);
 
 void               nautilus_send_history_list_changed                    (void);
-void               nautilus_window_add_current_location_to_history_list  (NautilusWindow    *window);
 void               nautilus_remove_from_history_list_no_notify           (GFile             *location);
+gboolean           nautilus_add_bookmark_to_history_list                 (NautilusBookmark  *bookmark);
 gboolean           nautilus_add_to_history_list_no_notify                (GFile             *location,
 									  const char        *name,
 									  gboolean           has_custom_name,

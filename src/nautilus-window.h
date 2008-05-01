@@ -69,13 +69,6 @@ typedef struct {
 
 	/* Function pointers for overriding, without corresponding signals */
 
-	/* add_current_location_to_history_list is a function pointer that
-	 * subclasses may override if they wish to add something other than
-	 * NautilusWindow's idea of the "current location" to the history
-	 * list, or nothing at all.
-	 */
-        void   (* add_current_location_to_history_list) (NautilusWindow *window);
-
         char * (* get_title) (NautilusWindow *window);
         void   (* sync_title) (NautilusWindow *window,
 			       NautilusWindowSlot *slot);

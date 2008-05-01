@@ -1654,7 +1654,7 @@ real_open_slot (NautilusWindow *window,
 				   (flags & NAUTILUS_WINDOW_OPEN_SLOT_APPEND) != 0 ?
 				   -1 :
 				   gtk_notebook_get_current_page (GTK_NOTEBOOK (notebook)) + 1,
-				   TRUE); // FIXME jump_to
+				   FALSE);
 	g_signal_handlers_unblock_by_func (notebook,
 					   G_CALLBACK (notebook_switch_page_cb),
 					   window);

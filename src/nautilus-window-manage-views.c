@@ -184,18 +184,15 @@ check_last_bookmark_location_matches_slot (NautilusWindowSlot *slot)
 }
 
 static void
-handle_go_back (NautilusNavigationWindow *window, GFile *location)
+handle_go_back (NautilusNavigationWindowSlot *navigation_slot,
+		GFile *location)
 {
 	NautilusWindowSlot *slot;
-	NautilusNavigationWindowSlot *navigation_slot;
         guint i;
         GList *link;
         NautilusBookmark *bookmark;
 
-        g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
-
-	slot = NAUTILUS_WINDOW (window)->details->active_slot;
-	navigation_slot = (NautilusNavigationWindowSlot *) slot;
+	slot = NAUTILUS_WINDOW_SLOT (navigation_slot);
 
         /* Going back. Move items from the back list to the forward list. */
 	g_assert (g_list_length (navigation_slot->back_list) > slot->location_change_distance);
@@ -230,18 +227,15 @@ handle_go_back (NautilusNavigationWindow *window, GFile *location)
 }
 
 static void
-handle_go_forward (NautilusNavigationWindow *window, GFile *location)
+handle_go_forward (NautilusNavigationWindowSlot *navigation_slot,
+		   GFile *location)
 {
 	NautilusWindowSlot *slot;
-	NautilusNavigationWindowSlot *navigation_slot;
         guint i;
         GList *link;
         NautilusBookmark *bookmark;
 
-	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
-
-	slot = NAUTILUS_WINDOW (window)->details->active_slot;
-	navigation_slot = (NautilusNavigationWindowSlot *) slot;
+	slot = NAUTILUS_WINDOW_SLOT (navigation_slot);
 
         /* Going forward. Move items from the forward list to the back list. */
 	g_assert (g_list_length (navigation_slot->forward_list) > slot->location_change_distance);
@@ -278,15 +272,13 @@ handle_go_forward (NautilusNavigationWindow *window, GFile *location)
  * multiview-TODO: handle this on a per-slot basis
  */
 static void
-handle_go_elsewhere (NautilusWindow *window, GFile *location)
+handle_go_elsewhere (NautilusWindowSlot *slot, GFile *location)
 {
 #if !NEW_UI_COMPLETE
-	NautilusWindowSlot *slot;
 	NautilusNavigationWindowSlot *navigation_slot;
 
-        if (NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
-		slot = window->details->active_slot;
-		navigation_slot = (NautilusNavigationWindowSlot *) slot;
+        if (NAUTILUS_IS_NAVIGATION_WINDOW_SLOT (slot)) {
+		navigation_slot = NAUTILUS_NAVIGATION_WINDOW_SLOT (slot);
 
                 /* Clobber the entire forward list, and move displayed location to back list */
                 nautilus_navigation_window_slot_clear_forward_list (navigation_slot);
@@ -432,28 +424,26 @@ viewed_file_changed_callback (NautilusFile *file,
 }
 
 static void
-update_history (NautilusWindow *window,
+update_history (NautilusWindowSlot *slot,
                 NautilusLocationChangeType type,
                 GFile *new_location)
 {
         switch (type) {
         case NAUTILUS_LOCATION_CHANGE_STANDARD:
         case NAUTILUS_LOCATION_CHANGE_FALLBACK:
-                nautilus_window_add_current_location_to_history_list (window);
-                handle_go_elsewhere (window, new_location);
+                nautilus_window_slot_add_current_location_to_history_list (slot);
+                handle_go_elsewhere (slot, new_location);
                 return;
         case NAUTILUS_LOCATION_CHANGE_RELOAD:
                 /* for reload there is no work to do */
                 return;
         case NAUTILUS_LOCATION_CHANGE_BACK:
-                nautilus_window_add_current_location_to_history_list (window);
-                handle_go_back (NAUTILUS_NAVIGATION_WINDOW (window), 
-                                new_location);
+                nautilus_window_slot_add_current_location_to_history_list (slot);
+                handle_go_back (NAUTILUS_NAVIGATION_WINDOW_SLOT (slot), new_location);
                 return;
         case NAUTILUS_LOCATION_CHANGE_FORWARD:
-                nautilus_window_add_current_location_to_history_list (window);
-                handle_go_forward (NAUTILUS_NAVIGATION_WINDOW (window), 
-                                   new_location);
+                nautilus_window_slot_add_current_location_to_history_list (slot);
+                handle_go_forward (NAUTILUS_NAVIGATION_WINDOW_SLOT (slot), new_location);
                 return;
         case NAUTILUS_LOCATION_CHANGE_REDIRECT:
                 /* for the redirect case, the caller can do the updating */
@@ -1594,7 +1584,7 @@ update_for_new_location (NautilusWindowSlot *slot)
 
 	set_displayed_location (slot, new_location);
 
-	update_history (window, slot->location_change_type, new_location);
+	update_history (slot, slot->location_change_type, new_location);
 
 	location_really_changed =
 		slot->location == NULL ||

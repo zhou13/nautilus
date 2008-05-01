@@ -24,6 +24,7 @@
 #include "nautilus-window-slot.h"
 #include "nautilus-navigation-window-slot.h"
 
+#include "nautilus-desktop-window.h"
 #include "nautilus-window-private.h"
 #include "nautilus-window-manage-views.h"
 #include <libnautilus-private/nautilus-file.h>
@@ -327,6 +328,16 @@ nautilus_window_slot_add_extra_location_widget (NautilusWindowSlot *slot,
 	gtk_box_pack_start (GTK_BOX (slot->extra_location_widgets),
 			    widget, TRUE, TRUE, 0);
 	gtk_widget_show (slot->extra_location_widgets);
+}
+
+void
+nautilus_window_slot_add_current_location_to_history_list (NautilusWindowSlot *slot)
+{
+
+	if ((slot->window == NULL || !NAUTILUS_IS_DESKTOP_WINDOW (slot->window)) &&
+	    nautilus_add_bookmark_to_history_list (slot->current_location_bookmark)) {
+		nautilus_send_history_list_changed ();
+	}
 }
 
 static void
