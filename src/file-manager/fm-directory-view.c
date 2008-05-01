@@ -8179,7 +8179,10 @@ fm_directory_view_update_menus (FMDirectoryView *view)
 {
 	g_return_if_fail (FM_IS_DIRECTORY_VIEW (view));
 
-	g_assert (view->details->active);
+	if (!view->details->active) {
+		return;
+	}
+
 
 	EEL_CALL_METHOD
 		(FM_DIRECTORY_VIEW_CLASS, view,

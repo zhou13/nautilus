@@ -1,5 +1,13 @@
 2008-05-01  Christian Neumair  <cneumair@gnome.org>
 
+	* src/file-manager/fm-directory-view.c
+	(fm_directory_view_update_menus):
+	Do not update menus if not active, instead of asserting activeness.
+	Sometimes menu updates are triggered due to inactive views, and not due
+	to user interaction.
+
+2008-05-01  Christian Neumair  <cneumair@gnome.org>
+
 	* src/file-manager/fm-actions.h:
 	* src/file-manager/fm-directory-view.c
 	(action_open_new_tab_callback), (open_one_in_new_tab),
