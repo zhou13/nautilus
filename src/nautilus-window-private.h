@@ -61,6 +61,7 @@ struct NautilusWindowDetails
  	 * Both of them may never be NULL.
  	 */
 	GList *slots;
+	GList *active_slots;
 	NautilusWindowSlot *active_slot;
 
 	NautilusWindowShowHiddenFilesMode show_hidden_files_mode;
@@ -175,7 +176,8 @@ void               nautilus_window_zoom_to_level                         (Nautil
                                                                           NautilusZoomLevel  level);
 void               nautilus_window_zoom_to_default                       (NautilusWindow    *window);
 
-NautilusWindowSlot *nautilus_window_open_slot                            (NautilusWindow     *window);
+NautilusWindowSlot *nautilus_window_open_slot                            (NautilusWindow     *window,
+									  NautilusWindowOpenSlotFlags flags);
 void                nautilus_window_close_slot                           (NautilusWindow     *window,
 									  NautilusWindowSlot *slot);
 
@@ -204,8 +206,10 @@ void               nautilus_window_constructed                           (Nautil
  * and when updating the slot state.
  */
 void nautilus_window_sync_status           (NautilusWindow *window);
-void nautilus_window_sync_allow_stop       (NautilusWindow *window);
-void nautilus_window_sync_title            (NautilusWindow *window);
+void nautilus_window_sync_allow_stop       (NautilusWindow *window,
+					    NautilusWindowSlot *slot);
+void nautilus_window_sync_title            (NautilusWindow *window,
+					    NautilusWindowSlot *slot);
 void nautilus_window_sync_location_widgets (NautilusWindow *window);
 
 /* Navigation window menus */

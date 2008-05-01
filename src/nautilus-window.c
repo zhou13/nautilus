@@ -334,32 +334,30 @@ update_cursor (NautilusWindow *window)
 }
 
 void
-nautilus_window_sync_allow_stop (NautilusWindow *window)
+nautilus_window_sync_allow_stop (NautilusWindow *window,
+				 NautilusWindowSlot *slot)
 {
-	NautilusWindowSlot *slot;
 	GtkAction *action;
 	gboolean allow_stop;
 
 	g_assert (NAUTILUS_IS_WINDOW (window));
 
-	slot = window->details->active_slot;
-	if (slot == NULL) {
-		return;
-	}
-
 	action = gtk_action_group_get_action (window->details->main_action_group,
 					      NAUTILUS_ACTION_STOP);
 	allow_stop = gtk_action_get_sensitive (action);
 
-	if (allow_stop != slot->allow_stop) {
-		gtk_action_set_sensitive (action, slot->allow_stop);
+	if (slot != window->details->active_slot ||
+	    allow_stop != slot->allow_stop) {
+		if (slot == window->details->active_slot) {
+			gtk_action_set_sensitive (action, slot->allow_stop);
+		}
 
 		if (GTK_WIDGET_REALIZED (GTK_WIDGET (window))) {
 			update_cursor (window);
 		}
 
 		EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-				 set_throbber_active, (window, slot->allow_stop));
+				 sync_allow_stop, (window, slot));
 	}
 }
 
@@ -374,9 +372,7 @@ nautilus_window_slot_set_allow_stop (NautilusWindowSlot *slot,
 	slot->allow_stop = allow;
 
 	window = NAUTILUS_WINDOW (slot->window);
-	if (slot == window->details->active_slot) {
-		nautilus_window_sync_allow_stop (window);
-	}
+	nautilus_window_sync_allow_stop (window, slot);
 }
 
 void
@@ -700,7 +696,7 @@ nautilus_window_constructor (GType type,
 
 	window = NAUTILUS_WINDOW (object);
 
-	slot = nautilus_window_open_slot (window);
+	slot = nautilus_window_open_slot (window, 0);
 	nautilus_window_set_active_slot (window, slot);
 
 	nautilus_window_initialize_menus_constructed (window);
@@ -749,14 +745,15 @@ nautilus_window_close (NautilusWindow *window)
 }
 
 NautilusWindowSlot *
-nautilus_window_open_slot (NautilusWindow *window)
+nautilus_window_open_slot (NautilusWindow *window,
+			   NautilusWindowOpenSlotFlags flags)
 {
 	NautilusWindowSlot *slot;
 
 	g_assert (NAUTILUS_IS_WINDOW (window));
 
 	slot = EEL_CALL_METHOD_WITH_RETURN_VALUE (NAUTILUS_WINDOW_CLASS, window,
-						  open_slot, (window));
+						  open_slot, (window, flags));
 
 	g_assert (NAUTILUS_IS_WINDOW_SLOT (slot));
 	g_assert (window == slot->window);
@@ -824,6 +821,9 @@ nautilus_window_set_active_slot (NautilusWindow *window,
 
 
 	if (new_slot != NULL) {
+		window->details->active_slots = g_list_remove (window->details->active_slots, new_slot);
+		window->details->active_slots = g_list_prepend (window->details->active_slots, new_slot);
+
 		/* inform sidebar panels */
 		nautilus_window_report_location_change (window);
 		/* TODO decide whether "selection-changed" should be emitted */
@@ -838,19 +838,35 @@ nautilus_window_set_active_slot (NautilusWindow *window,
 	}
 }
 
+static inline NautilusWindowSlot *
+get_last_active_slot (NautilusWindow *window)
+{
+	if (window->details->active_slots != NULL) {
+		return NAUTILUS_WINDOW_SLOT (window->details->active_slots->data);
+	}
+
+	return NULL;
+}
+
 void
 nautilus_window_slot_close (NautilusWindowSlot *slot)
 {
 	NautilusWindow *window;
 
 	window = slot->window;
+	if (window != NULL) {
+		window->details->active_slots = g_list_remove (window->details->active_slots, slot);
 
-	nautilus_window_set_active_slot (window,	
-					 nautilus_window_slot_get_close_successor (slot));
-	nautilus_window_close_slot (window, slot);
+		if (window->details->active_slot == slot) {
+			nautilus_window_set_active_slot (window,
+							 get_last_active_slot (window));
+		}
 
-	if (g_list_length (window->details->slots) == 0) {
-		nautilus_window_close (window);
+		nautilus_window_close_slot (window, slot);
+
+		if (g_list_length (window->details->slots) == 0) {
+			nautilus_window_close (window);
+		}
 	}
 }
 
@@ -1302,29 +1318,25 @@ real_get_title (NautilusWindow *window)
 }
 
 static void
-real_set_title (NautilusWindow *window,
-		const char *title)
+real_sync_title (NautilusWindow *window,
+		 NautilusWindowSlot *slot)
 {
-	NautilusWindowSlot *slot;
 	char *copy;
 
-	slot = window->details->active_slot;
-
-	copy = g_strdup (slot->title);
-	g_signal_emit_by_name (window, "title_changed",
-			       slot->title);
-	g_free (copy);
+	if (slot == window->details->active_slot) {
+		copy = g_strdup (slot->title);
+		g_signal_emit_by_name (window, "title_changed",
+				       slot->title);
+		g_free (copy);
+	}
 }
 
 void
-nautilus_window_sync_title (NautilusWindow *window)
+nautilus_window_sync_title (NautilusWindow *window,
+			    NautilusWindowSlot *slot)
 {
-	NautilusWindowSlot *slot;
-
-	slot = window->details->active_slot;
-
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-			 set_title, (window, slot->title));
+			 sync_title, (window, slot));
 }
 
 static void
@@ -1846,7 +1858,7 @@ nautilus_window_class_init (NautilusWindowClass *class)
 	GTK_WIDGET_CLASS (class)->key_press_event = nautilus_window_key_press_event;
 	class->add_current_location_to_history_list = real_add_current_location_to_history_list;
 	class->get_title = real_get_title;
-	class->set_title = real_set_title;
+	class->sync_title = real_sync_title;
 	class->connect_content_view = real_connect_content_view;
 	class->disconnect_content_view = real_disconnect_content_view;
 	class->load_view_as_menu = real_load_view_as_menu;

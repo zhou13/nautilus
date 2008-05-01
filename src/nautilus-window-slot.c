@@ -54,8 +54,8 @@ real_active (NautilusWindowSlot *slot)
 
 	/* sync window to new slot */
 	nautilus_window_sync_status (window);
-	nautilus_window_sync_allow_stop (window);
-	nautilus_window_sync_title (window);
+	nautilus_window_sync_allow_stop (window, slot);
+	nautilus_window_sync_title (window, slot);
 	nautilus_window_sync_location_widgets (window);
 
 	if (slot->viewed_file != NULL) {
@@ -132,18 +132,11 @@ nautilus_window_slot_init (NautilusWindowSlot *slot)
 	slot->title = g_strdup (_("Loading..."));
 }
 
-static NautilusWindowSlot *
-real_get_close_successor (NautilusWindowSlot *slot)
-{
-	return NULL;
-}
-
 static void
 nautilus_window_slot_class_init (NautilusWindowSlotClass *class)
 {
 	class->active = real_active;
 	class->inactive = real_inactive;
-	class->get_close_successor = real_get_close_successor;
 
 	G_OBJECT_CLASS (class)->dispose = nautilus_window_slot_dispose;
 }
@@ -245,8 +238,8 @@ nautilus_window_slot_set_title (NautilusWindowSlot *slot,
                 nautilus_send_history_list_changed ();
         }
 
-	if (changed && window->details->active_slot == slot) {
-		nautilus_window_sync_title (window);
+	if (changed) {
+		nautilus_window_sync_title (window, slot);
 	}
 }
 
@@ -336,17 +329,6 @@ nautilus_window_slot_add_extra_location_widget (NautilusWindowSlot *slot,
 	gtk_widget_show (slot->extra_location_widgets);
 }
 
-/* gets the slot that is supposed to be displayed after closing
- * the active slot.
- */
-NautilusWindowSlot *
-nautilus_window_slot_get_close_successor (NautilusWindowSlot *slot)
-{
-	return EEL_CALL_METHOD_WITH_RETURN_VALUE (NAUTILUS_WINDOW_SLOT_CLASS, slot,
-						  get_close_successor, (slot));
-}
-
-
 static void
 nautilus_window_slot_dispose (GObject *object)
 {
@@ -396,6 +378,8 @@ nautilus_window_slot_dispose (GObject *object)
 		g_object_unref (slot->new_content_view);
 		slot->new_content_view = NULL;
 	}
+
+	slot->window = NULL;
 
 	g_free (slot->title);
 	slot->title = NULL;

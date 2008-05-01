@@ -57,6 +57,7 @@ typedef struct NautilusWindowSlot NautilusWindowSlot;
 #endif
 
 typedef struct NautilusWindowSlotClass NautilusWindowSlotClass;
+typedef enum NautilusWindowOpenSlotFlags NautilusWindowOpenSlotFlags;
 
 GType          nautilus_window_slot_get_type (void);
 
@@ -76,8 +77,8 @@ typedef struct {
         void   (* add_current_location_to_history_list) (NautilusWindow *window);
 
         char * (* get_title) (NautilusWindow *window);
-        void   (* set_title) (NautilusWindow *window,
-			      const char *title);
+        void   (* sync_title) (NautilusWindow *window,
+			       NautilusWindowSlot *slot);
         NautilusIconInfo * (* get_icon) (NautilusWindow *window,
 					 NautilusWindowSlot *slot);
 
@@ -92,8 +93,8 @@ typedef struct {
         void   (* disconnect_content_view) (NautilusWindow *window, 
                                             NautilusView *new_view);
 
-        void   (* set_throbber_active) (NautilusWindow *window,
-                                        gboolean active);
+        void   (* sync_allow_stop) (NautilusWindow *window,
+				    NautilusWindowSlot *slot);
 	void   (* set_allow_up) (NautilusWindow *window, gboolean allow);
 	void   (* reload)              (NautilusWindow *window);
         void   (* prompt_for_location) (NautilusWindow *window, const char *initial);
@@ -102,7 +103,8 @@ typedef struct {
         void   (* show_window)  (NautilusWindow *window);
         void   (* close) (NautilusWindow *window);
 
-        NautilusWindowSlot * (* open_slot) (NautilusWindow *window);
+        NautilusWindowSlot * (* open_slot) (NautilusWindow *window,
+					    NautilusWindowOpenSlotFlags flags);
         void                 (* close_slot) (NautilusWindow *window,
 					     NautilusWindowSlot *slot);
         void                 (* set_active_slot) (NautilusWindow *window,
@@ -117,6 +119,11 @@ typedef enum {
         NAUTILUS_WINDOW_POSITION_SET,
         NAUTILUS_WINDOW_SHOULD_SHOW
 } NautilusWindowShowState;
+
+enum NautilusWindowOpenSlotFlags {
+	NAUTILUS_WINDOW_OPEN_SLOT_NONE = 0,
+	NAUTILUS_WINDOW_OPEN_SLOT_APPEND = 1
+};
 
 typedef struct NautilusWindowDetails NautilusWindowDetails;
 

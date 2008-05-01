@@ -1,5 +1,55 @@
 2008-05-01  Christian Neumair  <cneumair@gnome.org>
 
+	* src/Makefile.am:
+	* src/ephy-spinner.c (ephy_spinner_get_spinning):
+	* src/ephy-spinner.h:
+	* src/nautilus-navigation-window-menus.c (action_new_tab_callback):
+	* src/nautilus-navigation-window-slot.c
+	(nautilus_navigation_window_slot_class_init):
+	* src/nautilus-navigation-window.c (notebook_tab_close_requested),
+	(nautilus_navigation_window_init), (real_sync_title),
+	(real_sync_allow_stop), (real_open_slot),
+	(nautilus_navigation_window_class_init):
+	* src/nautilus-notebook.c (nautilus_notebook_set_dnd_enabled),
+	(nautilus_notebook_get_property), (nautilus_notebook_set_property),
+	(nautilus_notebook_class_init), (find_notebook_at_pointer),
+	(is_in_notebook_window), (find_tab_num_at_pos), (button_press_cb),
+	(notebook_drag_data_received_cb), (nautilus_notebook_init),
+	(nautilus_notebook_sync_loading),
+	(nautilus_notebook_sync_tab_label), (close_button_clicked_cb),
+	(tab_label_style_set_cb), (build_tab_label),
+	(nautilus_notebook_insert_page), (nautilus_notebook_add_tab),
+	(nautilus_notebook_remove):
+	* src/nautilus-notebook.h:
+	* src/nautilus-spatial-window.c (real_sync_title),
+	(real_sync_allow_stop), (real_open_slot),
+	(nautilus_spatial_window_class_init):
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_slot_open_location_full),
+	(mount_not_mounted_callback):
+	* src/nautilus-window-private.h:
+	* src/nautilus-window-slot.c (real_active),
+	(nautilus_window_slot_class_init),
+	(nautilus_window_slot_set_title), (nautilus_window_slot_dispose):
+	* src/nautilus-window-slot.h:
+	* src/nautilus-window.c (nautilus_window_sync_allow_stop),
+	(nautilus_window_slot_set_allow_stop),
+	(nautilus_window_constructor), (nautilus_window_open_slot),
+	(nautilus_window_set_active_slot), (get_last_active_slot),
+	(nautilus_window_slot_close), (real_sync_title),
+	(nautilus_window_sync_title), (nautilus_window_class_init):
+	* src/nautilus-window.h:
+	* src/nautilus-notebook.[ch]:
+	Import Epiphany's EphyNotebook with some changes.
+	Support a flag to control whether tabs are opened at the end, or after
+	the currently active tab.
+	Rename NautilusWindow's set_throbber_active() method to
+	sync_allow_stop(), and set_title() to sync_title().
+	Adapt GUI synchronization so that notebook tab labels are updated as
+	the state of the slot changes.
+
+2008-05-01  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-navigation-window-slot.c
 	(nautilus_navigation_window_slot_active),
 	(nautilus_navigation_window_slot_dispose),

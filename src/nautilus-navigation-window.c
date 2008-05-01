@@ -40,6 +40,7 @@
 #include "nautilus-query-editor.h"
 #include "nautilus-search-bar.h"
 #include "nautilus-navigation-window-slot.h"
+#include "nautilus-notebook.h"
 #include "nautilus-window-manage-views.h"
 #include "nautilus-zoom-control.h"
 #include <eel/eel-gtk-extensions.h>
@@ -208,6 +209,16 @@ notebook_switch_page_cb (GtkNotebook *notebook,
 	return FALSE;
 }
 
+/* emitted when the user clicks the "close" button of tabs */
+static void
+notebook_tab_close_requested (NautilusNotebook *notebook,
+			      NautilusWindowSlot *slot,
+			      NautilusWindow *window)
+{
+	g_assert (slot->window == window);
+	nautilus_window_slot_close (slot);
+}
+
 static void
 nautilus_navigation_window_init (NautilusNavigationWindow *window)
 {
@@ -229,7 +240,11 @@ nautilus_navigation_window_init (NautilusNavigationWindow *window)
 			  0,                                  0);
 	gtk_widget_show (window->details->content_paned);
 
-	window->notebook = gtk_notebook_new ();
+	window->notebook = g_object_new (NAUTILUS_TYPE_NOTEBOOK, NULL);
+	g_signal_connect (window->notebook,
+			  "tab-close-request",
+			  G_CALLBACK (notebook_tab_close_requested),
+			  window);
 	nautilus_horizontal_splitter_pack2 (
 		NAUTILUS_HORIZONTAL_SPLITTER (window->details->content_paned),
 		window->notebook);
@@ -954,21 +969,30 @@ real_load_view_as_menu (NautilusWindow *window)
 }
 
 static void
-real_set_title (NautilusWindow *window,
-		const char *title)
+real_sync_title (NautilusWindow *window,
+		 NautilusWindowSlot *slot)
 {
+	NautilusNavigationWindow *navigation_window;
+	NautilusNotebook *notebook;
 	char *full_title;
 	char *window_title;
 
+	navigation_window = NAUTILUS_NAVIGATION_WINDOW (window);
+
 	EEL_CALL_PARENT (NAUTILUS_WINDOW_CLASS,
-			 set_title, (window, title));
+			 sync_title, (window, slot));
 
-	full_title = g_strdup_printf (_("%s - File Browser"), title);
+	if (slot == window->details->active_slot) {
+		full_title = g_strdup_printf (_("%s - File Browser"), slot->title);
 
-	window_title = eel_str_middle_truncate (full_title, MAX_TITLE_LENGTH);
-	gtk_window_set_title (GTK_WINDOW (window), window_title);
-	g_free (window_title);
-	g_free (full_title);
+		window_title = eel_str_middle_truncate (full_title, MAX_TITLE_LENGTH);
+		gtk_window_set_title (GTK_WINDOW (window), window_title);
+		g_free (window_title);
+		g_free (full_title);
+	}
+
+	notebook = NAUTILUS_NOTEBOOK (navigation_window->notebook);
+	nautilus_notebook_sync_tab_label (notebook, slot);
 }
 
 static NautilusIconInfo *
@@ -1051,10 +1075,17 @@ real_disconnect_content_view (NautilusWindow *nautilus_window,
 }
 
 static void
-real_set_throbber_active (NautilusWindow *window, gboolean active)
+real_sync_allow_stop (NautilusWindow *window,
+		      NautilusWindowSlot *slot)
 {
-	nautilus_navigation_window_set_throbber_active
-		(NAUTILUS_NAVIGATION_WINDOW (window), active);
+	NautilusNavigationWindow *navigation_window;
+	NautilusNotebook *notebook;
+
+	navigation_window = NAUTILUS_NAVIGATION_WINDOW (window);
+	nautilus_navigation_window_set_throbber_active (navigation_window, slot->allow_stop);
+
+	notebook = NAUTILUS_NOTEBOOK (navigation_window->notebook);
+	nautilus_notebook_sync_loading (notebook, slot);
 }
 
 static void
@@ -1597,19 +1628,20 @@ real_get_default_size (NautilusWindow *window,
 }
 
 static NautilusWindowSlot *
-real_open_slot (NautilusWindow *window)
+real_open_slot (NautilusWindow *window,
+		NautilusWindowOpenSlotFlags flags)
 {
 	NautilusNavigationWindow *navigation_window;
 	NautilusWindowSlot *slot;
-	GtkNotebook *notebook;
+	NautilusNotebook *notebook;
 
 	navigation_window = NAUTILUS_NAVIGATION_WINDOW (window);
-	notebook = GTK_NOTEBOOK (navigation_window->notebook);
+	notebook = NAUTILUS_NOTEBOOK (navigation_window->notebook);
 
 	slot = (NautilusWindowSlot *) g_object_new (NAUTILUS_TYPE_NAVIGATION_WINDOW_SLOT, NULL);
 	slot->window = window;
 
-	g_signal_handlers_block_by_func (navigation_window->notebook,
+	g_signal_handlers_block_by_func (notebook,
 					 G_CALLBACK (notebook_switch_page_cb),
 					 window);
 	/* multiview-TODO add some way to influence the position.
@@ -1617,16 +1649,15 @@ real_open_slot (NautilusWindow *window)
  	 *  + "behind active tab" [for views]
  	 *  + "at the end" [for loading sessions]
  	 */
-	gtk_notebook_append_page (notebook,
-				  slot->content_box,
-				  NULL);
+	nautilus_notebook_add_tab (notebook,
+				   slot,
+				   (flags & NAUTILUS_WINDOW_OPEN_SLOT_APPEND) != 0 ?
+				   -1 :
+				   gtk_notebook_get_current_page (GTK_NOTEBOOK (notebook)) + 1,
+				   TRUE); // FIXME jump_to
 	g_signal_handlers_unblock_by_func (notebook,
 					   G_CALLBACK (notebook_switch_page_cb),
 					   window);
-
-	gtk_notebook_set_show_tabs (notebook,
-				    gtk_notebook_get_n_pages (notebook) > 1);
-
 	gtk_widget_show (slot->content_box);
 
 	return slot;
@@ -1676,10 +1707,10 @@ nautilus_navigation_window_class_init (NautilusNavigationWindowClass *class)
 	NAUTILUS_WINDOW_CLASS (class)->load_view_as_menu = real_load_view_as_menu;
 	NAUTILUS_WINDOW_CLASS (class)->connect_content_view = real_connect_content_view;
 	NAUTILUS_WINDOW_CLASS (class)->disconnect_content_view = real_disconnect_content_view;
-	NAUTILUS_WINDOW_CLASS (class)->set_throbber_active = real_set_throbber_active;
+	NAUTILUS_WINDOW_CLASS (class)->sync_allow_stop = real_sync_allow_stop;
 	NAUTILUS_WINDOW_CLASS (class)->prompt_for_location = real_prompt_for_location;
 	NAUTILUS_WINDOW_CLASS (class)->set_search_mode = real_set_search_mode;
-	NAUTILUS_WINDOW_CLASS (class)->set_title = real_set_title;
+	NAUTILUS_WINDOW_CLASS (class)->sync_title = real_sync_title;
 	NAUTILUS_WINDOW_CLASS (class)->get_icon = real_get_icon;
 	NAUTILUS_WINDOW_CLASS (class)->get_default_size = real_get_default_size;
 	NAUTILUS_WINDOW_CLASS (class)->close = real_window_close;

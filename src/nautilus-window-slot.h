@@ -49,9 +49,6 @@ struct NautilusWindowSlotClass {
 	/* wrapped NautilusWindowInfo signals, for overloading */
 	void (* active)   (NautilusWindowSlot *slot);
 	void (* inactive) (NautilusWindowSlot *slot);
-
-	/* gets the slot to make active after this slot has been closed. */
-	NautilusWindowSlot * (* get_close_successor) (NautilusWindowSlot *slot);
 };
 
 /* Each NautilusWindowSlot corresponds to
@@ -117,8 +114,6 @@ void    nautilus_window_slot_update_icon		   (NautilusWindowSlot *slot);
 GFile * nautilus_window_slot_get_location		   (NautilusWindowSlot *slot);
 char *  nautilus_window_slot_get_location_uri		   (NautilusWindowSlot *slot);
 
-NautilusWindowSlot *
-	nautilus_window_slot_get_close_successor           (NautilusWindowSlot *slot);
 void    nautilus_window_slot_close			   (NautilusWindowSlot *slot);
 void    nautilus_window_slot_reload			   (NautilusWindowSlot *slot);
 

@@ -75,44 +75,6 @@ nautilus_navigation_window_slot_active (NautilusWindowSlot *slot)
 	}
 }
  
-static NautilusWindowSlot *
-nautilus_navigation_window_slot_get_close_successor (NautilusWindowSlot *slot)
-{
-	NautilusWindowSlot *successor;
-	NautilusNavigationWindow *window;
-	GtkNotebook *notebook;
-	GtkWidget *widget;
-	int page_num, n_pages;
-
-	window = NAUTILUS_NAVIGATION_WINDOW (slot->window);
-	notebook = GTK_NOTEBOOK (window->notebook);
-
-	n_pages = gtk_notebook_get_n_pages (notebook);
-
-	page_num = gtk_notebook_page_num (notebook, slot->content_box);
-	g_assert (page_num >= 0);
-
-	if (page_num == n_pages - 1) {
-		/* use previous page */
-		page_num--;
-	} else {
-		/* use next page */
-		page_num++;
-	}
-
-	successor = NULL;
-
-	widget = gtk_notebook_get_nth_page (notebook, page_num);
-	if (widget != NULL) {
-		successor = nautilus_window_get_slot_for_content_box (slot->window, widget);
-		if (successor == slot) {
-			successor = NULL;
-		}
-	}
-
-	return successor;
-}
-
 static void
 nautilus_navigation_window_slot_dispose (GObject *object)
 {
@@ -135,7 +97,6 @@ static void
 nautilus_navigation_window_slot_class_init (NautilusNavigationWindowSlotClass *class)
 {
 	NAUTILUS_WINDOW_SLOT_CLASS (class)->active = nautilus_navigation_window_slot_active; 
-	NAUTILUS_WINDOW_SLOT_CLASS (class)->get_close_successor = nautilus_navigation_window_slot_get_close_successor;
 
 	G_OBJECT_CLASS (class)->dispose = nautilus_navigation_window_slot_dispose;
 }

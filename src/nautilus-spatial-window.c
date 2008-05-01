@@ -456,9 +456,11 @@ sync_window_title (NautilusWindow *window)
 }
 
 static void
-real_set_title (NautilusWindow *window,
-		const char *title)
+real_sync_title (NautilusWindow *window,
+		 NautilusWindowSlot *slot)
 {
+	g_assert (slot == window->details->active_slot);
+
 	sync_window_title (window);
 }
 
@@ -483,7 +485,8 @@ real_get_default_size (NautilusWindow *window,
 }
 
 static void
-real_set_throbber_active (NautilusWindow *window, gboolean active)
+real_sync_allow_stop (NautilusWindow *window,
+		      NautilusWindowSlot *slot)
 {
 }
 
@@ -503,7 +506,8 @@ real_set_allow_up (NautilusWindow *window, gboolean allow)
 }
 
 static NautilusWindowSlot *
-real_open_slot (NautilusWindow *window)
+real_open_slot (NautilusWindow *window,
+		NautilusWindowOpenSlotFlags flags)
 {
 	NautilusWindowSlot *slot;
 
@@ -1086,14 +1090,14 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 		real_set_search_mode;
 	NAUTILUS_WINDOW_CLASS (class)->get_icon =
 		real_get_icon;
-	NAUTILUS_WINDOW_CLASS (class)->set_title = 
-		real_set_title;
+	NAUTILUS_WINDOW_CLASS (class)->sync_title = 
+		real_sync_title;
 	NAUTILUS_WINDOW_CLASS (class)->close = 
 		real_window_close;
 	NAUTILUS_WINDOW_CLASS(class)->get_default_size = real_get_default_size;
 
-	NAUTILUS_WINDOW_CLASS(class)->set_throbber_active =
-		real_set_throbber_active;
+	NAUTILUS_WINDOW_CLASS(class)->sync_allow_stop =
+		real_sync_allow_stop;
 	NAUTILUS_WINDOW_CLASS(class)->set_allow_up =
 		real_set_allow_up;
 

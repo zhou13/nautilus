@@ -593,7 +593,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 	if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0 &&
 	    NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
 		g_assert (target_window == window);
-		target_slot = nautilus_window_open_slot (window);
+		target_slot = nautilus_window_open_slot (window, 0);
 	}
 
         if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND) != 0) {
@@ -973,7 +973,7 @@ mount_not_mounted_callback (GObject *source_object,
 	error = NULL;
 	if (!g_file_mount_enclosing_volume_finish (G_FILE (source_object), res, &error)) {
 		slot->mount_error = error;
-		got_file_info_for_view_selection_callback (slot->determine_view_file, window);
+		got_file_info_for_view_selection_callback (slot->determine_view_file, slot);
 		slot->mount_error = NULL;
 		g_error_free (error);
 	} else {

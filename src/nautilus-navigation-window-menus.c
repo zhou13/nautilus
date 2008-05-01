@@ -443,7 +443,7 @@ action_new_tab_callback (GtkAction *action,
 	window = NAUTILUS_WINDOW (current_slot->window);
 
 	if (current_location != NULL) {
-		new_slot = nautilus_window_open_slot (window);
+		new_slot = nautilus_window_open_slot (window, 0);
 		nautilus_window_set_active_slot (window, new_slot);
 		nautilus_window_slot_go_to (new_slot, current_location);
 		g_object_unref (current_location);
