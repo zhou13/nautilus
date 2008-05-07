@@ -7209,6 +7209,7 @@ real_update_menus (FMDirectoryView *view)
 		}
 		action = gtk_action_group_get_action (view->details->dir_action_group,
 						      FM_ACTION_OPEN_IN_NEW_TAB);
+		gtk_action_set_sensitive (action, selection_count != 0);
 		gtk_action_set_visible (action, show_open_alternate);
 		g_object_set (action, "label", 
 			      label_with_underscore,

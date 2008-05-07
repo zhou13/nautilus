@@ -1,3 +1,11 @@
+2008-05-07  Christian Neumair  <cneumair@gnome.org>
+
+	* src/file-manager/fm-directory-view.c (real_update_menus):
+	Only make "Open in New Tab" item sensitive if items are selected.
+
+	* src/nautilus-navigation-window-ui.xml:
+	Insert separator below "New Tab" item in navigation file menu.
+
 2008-05-01  Christian Neumair  <cneumair@gnome.org>
 
 	* src/file-manager/fm-directory-view.c
