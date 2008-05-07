@@ -1141,7 +1141,9 @@ activate_files (ActivateParameters *parameters)
 
 		flags = parameters->flags;
 		if (count > 1) {
-			flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+			if ((parameters->flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) == 0) {
+				flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+			}
 		}
 
 		for (l = open_in_view_files; l != NULL; l = l->next) {

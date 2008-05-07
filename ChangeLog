@@ -1,5 +1,11 @@
 2008-05-07  Christian Neumair  <cneumair@gnome.org>
 
+	* libnautilus-private/nautilus-mime-actions.c (activate_files):
+	Do not set NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB and
+	NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW at the same time.
+
+2008-05-07  Christian Neumair  <cneumair@gnome.org>
+
 	* src/file-manager/fm-directory-view.c (real_update_menus):
 	Only make "Open in New Tab" item sensitive if items are selected.
 
