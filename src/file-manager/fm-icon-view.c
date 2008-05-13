@@ -1722,14 +1722,49 @@ icon_container_activate_alternate_callback (NautilusIconContainer *container,
 					    GList *file_list,
 					    FMIconView *icon_view)
 {
+	GdkEvent *event;
+	GdkEventButton *button_event;
+	GdkEventKey *key_event;
+	gboolean open_in_tab;
+	NautilusWindowInfo *window_info;
+	NautilusWindowOpenFlags flags;
+
 	g_assert (FM_IS_ICON_VIEW (icon_view));
 	g_assert (container == get_icon_container (icon_view));
+
+	open_in_tab = FALSE;
+
+	window_info = fm_directory_view_get_nautilus_window (FM_DIRECTORY_VIEW (icon_view));
+
+	if (nautilus_window_info_get_window_type (window_info) == NAUTILUS_WINDOW_NAVIGATION) {
+		event = gtk_get_current_event ();
+		if (event->type == GDK_BUTTON_PRESS ||
+		    event->type == GDK_BUTTON_RELEASE ||
+		    event->type == GDK_2BUTTON_PRESS ||
+		    event->type == GDK_3BUTTON_PRESS) {
+			button_event = (GdkEventButton *) event;
+			open_in_tab = (button_event->state & GDK_SHIFT_MASK) == 0;
+		} else if (event->type == GDK_KEY_PRESS ||
+			   event->type == GDK_KEY_RELEASE) {
+			key_event = (GdkEventKey *) event;
+			open_in_tab = !((key_event->state & GDK_SHIFT_MASK) != 0 &&
+				       (key_event->state & GDK_CONTROL_MASK) != 0);
+		} else {
+			open_in_tab = TRUE;
+		}
+	}
+
+	flags = NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND;
+	if (open_in_tab) {
+		flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+	} else {
+		flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+	}
 
 	fm_directory_view_activate_files (FM_DIRECTORY_VIEW (icon_view), 
 					  file_list, 
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					  NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND |
-					  NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW);
+					  flags);
 }
 
 static void

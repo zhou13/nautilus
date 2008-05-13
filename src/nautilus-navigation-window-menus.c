@@ -30,6 +30,7 @@
 #include <locale.h> 
 
 #include "nautilus-actions.h"
+#include "nautilus-notebook.h"
 #include "nautilus-navigation-action.h"
 #include "nautilus-application.h"
 #include "nautilus-bookmark-list.h"
@@ -413,6 +414,60 @@ nautilus_navigation_window_initialize_go_menu (NautilusNavigationWindow *window)
 }
 
 static void
+update_tab_action_sensitivity (NautilusNavigationWindow *window)
+{
+	GtkActionGroup *action_group;
+	GtkAction *action;
+	NautilusNotebook *notebook;
+	gboolean sensitive;
+
+	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
+
+	notebook = NAUTILUS_NOTEBOOK (window->notebook);
+	action_group = window->details->navigation_action_group;
+
+	action = gtk_action_group_get_action (action_group, "TabsPrevious");
+	sensitive = nautilus_notebook_can_set_current_page_relative (notebook, -1);
+	g_object_set (action, "sensitive", sensitive, NULL);
+
+	action = gtk_action_group_get_action (action_group, "TabsNext");
+	sensitive = nautilus_notebook_can_set_current_page_relative (notebook, 1);
+	g_object_set (action, "sensitive", sensitive, NULL);
+
+	action = gtk_action_group_get_action (action_group, "TabsMoveLeft");
+	sensitive = nautilus_notebook_can_reorder_current_child_relative (notebook, -1);
+	g_object_set (action, "sensitive", sensitive, NULL);
+
+	action = gtk_action_group_get_action (action_group, "TabsMoveRight");
+	sensitive = nautilus_notebook_can_reorder_current_child_relative (notebook, 1);
+	g_object_set (action, "sensitive", sensitive, NULL);
+}
+
+static void
+update_tab_menu (NautilusNavigationWindow *window)
+{
+	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
+
+	update_tab_action_sensitivity (window);
+}
+
+static void 
+nautilus_navigation_window_initialize_tabs_menu (NautilusNavigationWindow *window)
+{
+	g_signal_connect_object (window->notebook, "page-added",
+				 G_CALLBACK (refresh_tab_actions), window, G_CONNECT_SWAPPED);
+	g_signal_connect_object (window->notebook, "page-removed",
+				 G_CALLBACK (refresh_tab_actions), window, G_CONNECT_SWAPPED);
+	g_signal_connect_object (window->notebook, "page-reordered",
+				 G_CALLBACK (refresh_tab_actions), window, G_CONNECT_SWAPPED);
+	g_signal_connect_object (window->notebook, "switch-page",
+				 G_CALLBACK (refresh_tab_action_sensitivity), window,
+				 G_CONNECT_SWAPPED | G_CONNECT_AFTER);
+
+	refresh_tab_actions (window);
+}
+
+static void
 action_new_window_callback (GtkAction *action,
 			    gpointer user_data)
 {
@@ -494,9 +549,50 @@ action_search_callback (GtkAction *action,
 	nautilus_navigation_window_show_search (window);
 }
 
+static void
+action_tabs_previous_callback (GtkAction *action,
+			       gpointer user_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	nautilus_notebook_set_current_page_relative (NAUTILUS_NOTEBOOK (window->notebook), -1);
+}
+
+static void
+action_tabs_next_callback (GtkAction *action,
+			   gpointer user_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	nautilus_notebook_set_current_page_relative (NAUTILUS_NOTEBOOK (window->notebook), 1);
+}
+
+static void
+action_tabs_move_left_callback (GtkAction *action,
+				gpointer user_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	nautilus_notebook_reorder_current_child_relative (NAUTILUS_NOTEBOOK (window->notebook), -1);
+}
+
+static void
+action_tabs_move_right_callback (GtkAction *action,
+				 gpointer user_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	nautilus_notebook_reorder_current_child_relative (NAUTILUS_NOTEBOOK (window->notebook), 1);
+}
+
 static const GtkActionEntry navigation_entries[] = {
   /* name, stock id, label */  { "Go", NULL, N_("_Go") },
   /* name, stock id, label */  { "Bookmarks", NULL, N_("_Bookmarks") },
+  /* name, stock id, label */  { "Tabs", NULL, N_("_Tabs") },
   /* name, stock id, label */  { "New Window", "window-new", N_("New _Window"),
                                  "<control>N", N_("Open another Nautilus window for the displayed location"),
                                  G_CALLBACK (action_new_window_callback) },
@@ -524,7 +620,20 @@ static const GtkActionEntry navigation_entries[] = {
   /* name, stock id, label */  { "Search", "gtk-find", N_("_Search for Files..."),
                                  "<control>F", N_("Locate documents and folders on this computer by name or content"),
                                  G_CALLBACK (action_search_callback) },
-		     
+
+	{ "TabsPrevious", NULL, N_("_Previous Tab"), "<control>Page_Up",
+	  N_("Activate previous tab"),
+	  G_CALLBACK (action_tabs_previous_callback) },
+	{ "TabsNext", NULL, N_("_Next Tab"), "<control>Page_Down",
+	  N_("Activate next tab"),
+	  G_CALLBACK (action_tabs_next_callback) },
+	{ "TabsMoveLeft", NULL, N_("Move Tab _Left"), "<shift><control>Page_Up",
+	  N_("Move current tab to left"),
+	  G_CALLBACK (action_tabs_move_left_callback) },
+	{ "TabsMoveRight", NULL, N_("Move Tab _Right"), "<shift><control>Page_Down",
+	  N_("Move current tab to right"),
+	  G_CALLBACK (action_tabs_move_right_callback) },
+
 };
 
 static const GtkToggleActionEntry navigation_toggle_entries[] = {
@@ -633,5 +742,6 @@ nautilus_navigation_window_initialize_menus (NautilusNavigationWindow *window)
 	nautilus_navigation_window_update_spatial_menu_item (window);
 
         nautilus_navigation_window_initialize_go_menu (window);
+        nautilus_navigation_window_initialize_tabs_menu (window);
 }
 

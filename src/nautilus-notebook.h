@@ -78,6 +78,16 @@ void		nautilus_notebook_sync_tab_label (NautilusNotebook *nb,
 void		nautilus_notebook_sync_loading   (NautilusNotebook *nb,
 						  NautilusWindowSlot *slot);
 
+void		nautilus_notebook_reorder_current_child_relative (NautilusNotebook *notebook,
+								  int offset);
+void		nautilus_notebook_set_current_page_relative (NautilusNotebook *notebook,
+							     int offset);
+
+gboolean        nautilus_notebook_can_reorder_current_child_relative (NautilusNotebook *notebook,
+								      int offset);
+gboolean        nautilus_notebook_can_set_current_page_relative (NautilusNotebook *notebook,
+								 int offset);
+
 G_END_DECLS
 
 #endif /* NAUTILUS_NOTEBOOK_H */

@@ -497,7 +497,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 	char *old_uri, *new_uri;
 
 	window = slot->window;
-        
+
         target_window = NULL;
 	target_slot = NULL;
 
@@ -513,6 +513,9 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 			    new_uri);
 	g_free (old_uri);
 	g_free (new_uri);
+
+	g_assert (!((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) != 0 &&
+		    (flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0));
 
 
 	old_location = nautilus_window_slot_get_location (slot);

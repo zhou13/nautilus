@@ -650,3 +650,84 @@ nautilus_notebook_remove (GtkContainer *container,
 				    gtk_notebook_get_n_pages (gnotebook) > 1);
 
 }
+
+void
+nautilus_notebook_reorder_current_child_relative (NautilusNotebook *notebook,
+						  int offset)
+{
+	GtkNotebook *gnotebook;
+	GtkWidget *child;
+	int page;
+
+	g_return_if_fail (NAUTILUS_IS_NOTEBOOK (notebook));
+
+	if (!nautilus_notebook_can_reorder_current_child_relative (notebook, offset)) {
+		return;
+	}
+
+	gnotebook = GTK_NOTEBOOK (notebook);
+
+	page = gtk_notebook_get_current_page (gnotebook);
+	child = gtk_notebook_get_nth_page (gnotebook, page);
+	gtk_notebook_reorder_child (gnotebook, child, page + offset);
+}
+
+void
+nautilus_notebook_set_current_page_relative (NautilusNotebook *notebook,
+					     int offset)
+{
+	GtkNotebook *gnotebook;
+	int page;
+
+	g_return_if_fail (NAUTILUS_IS_NOTEBOOK (notebook));
+
+	if (!nautilus_notebook_can_set_current_page_relative (notebook, offset)) {
+		return;
+	}
+
+	gnotebook = GTK_NOTEBOOK (notebook);
+
+	page = gtk_notebook_get_current_page (gnotebook);
+	gtk_notebook_set_current_page (gnotebook, page + offset);
+
+}
+
+static gboolean
+nautilus_notebook_is_valid_relative_position (NautilusNotebook *notebook,
+					      int offset)
+{
+	GtkNotebook *gnotebook;
+	int page;
+	int n_pages;
+
+	gnotebook = GTK_NOTEBOOK (notebook);
+
+	page = gtk_notebook_get_current_page (gnotebook);
+	n_pages = gtk_notebook_get_n_pages (gnotebook) - 1;
+	if (page < 0 ||
+	    (offset < 0 && page < -offset) ||
+	    (offset > 0 && page > n_pages - offset)) {
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean
+nautilus_notebook_can_reorder_current_child_relative (NautilusNotebook *notebook,
+						      int offset)
+{
+	g_return_val_if_fail (NAUTILUS_IS_NOTEBOOK (notebook), FALSE);
+
+	return nautilus_notebook_is_valid_relative_position (notebook, offset);
+}
+
+gboolean
+nautilus_notebook_can_set_current_page_relative (NautilusNotebook *notebook,
+						 int offset)
+{
+	g_return_val_if_fail (NAUTILUS_IS_NOTEBOOK (notebook), FALSE);
+
+	return nautilus_notebook_is_valid_relative_position (notebook, offset);
+}
+

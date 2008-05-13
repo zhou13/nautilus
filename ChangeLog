@@ -1,3 +1,28 @@
+2008-05-13  Christian Neumair  <cneumair@gnome.org>
+
+	* libnautilus-private/nautilus-icon-container.c (keyboard_space):
+	* src/file-manager/fm-icon-view.c
+	(icon_container_activate_alternate_callback):
+	* src/nautilus-navigation-window-menus.c
+	(update_tab_action_sensitivity), (update_tab_menu),
+	(nautilus_navigation_window_initialize_tabs_menu),
+	(action_tabs_previous_callback), (action_tabs_next_callback),
+	(action_tabs_move_left_callback),
+	(action_tabs_move_right_callback),
+	(nautilus_navigation_window_initialize_menus):
+	* src/nautilus-navigation-window-ui.xml:
+	* src/nautilus-notebook.c
+	(nautilus_notebook_reorder_current_child_relative),
+	(nautilus_notebook_set_current_page_relative),
+	(nautilus_notebook_is_valid_relative_position),
+	(nautilus_notebook_can_reorder_current_child_relative),
+	(nautilus_notebook_can_set_current_page_relative):
+	* src/nautilus-notebook.h:
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_slot_open_location_full):
+	Add "Tabs" menu, for now it just contains actions for moving/switching
+	tabs. Refine view keybindings for opening in new window/tab.
+
 2008-05-07  Christian Neumair  <cneumair@gnome.org>
 
 	* libnautilus-private/nautilus-mime-actions.c (activate_files):
