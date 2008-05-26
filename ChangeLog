@@ -1,3 +1,16 @@
+2008-05-26  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-navigation-window-menus.c (reload_tab_menu),
+	(nautilus_navigation_window_initialize_tabs_menu):
+	* src/nautilus-window-manage-views.c
+	(viewed_file_changed_callback), (nautilus_window_slot_go_home),
+	(got_file_info_for_view_selection_callback), (create_content_view):
+	* src/nautilus-window-menus.c (action_close_window_slot_callback):
+	* src/nautilus-window-slot.h:
+	* src/nautilus-window.c (nautilus_window_go_home):
+	Add *_go_home() API to slots and use it, make tab menu code compile.
+	Rename close action function names.
+
 2008-05-13  Christian Neumair  <cneumair@gnome.org>
 
 	* libnautilus-private/nautilus-icon-container.c (keyboard_space):

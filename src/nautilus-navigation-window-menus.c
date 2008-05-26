@@ -444,9 +444,11 @@ update_tab_action_sensitivity (NautilusNavigationWindow *window)
 }
 
 static void
-update_tab_menu (NautilusNavigationWindow *window)
+reload_tab_menu (NautilusNavigationWindow *window)
 {
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
+
+	/* multiview-TODO rebuild (not yet existing) tab list */
 
 	update_tab_action_sensitivity (window);
 }
@@ -455,16 +457,16 @@ static void
 nautilus_navigation_window_initialize_tabs_menu (NautilusNavigationWindow *window)
 {
 	g_signal_connect_object (window->notebook, "page-added",
-				 G_CALLBACK (refresh_tab_actions), window, G_CONNECT_SWAPPED);
+				 G_CALLBACK (reload_tab_menu), window, G_CONNECT_SWAPPED);
 	g_signal_connect_object (window->notebook, "page-removed",
-				 G_CALLBACK (refresh_tab_actions), window, G_CONNECT_SWAPPED);
+				 G_CALLBACK (reload_tab_menu), window, G_CONNECT_SWAPPED);
 	g_signal_connect_object (window->notebook, "page-reordered",
-				 G_CALLBACK (refresh_tab_actions), window, G_CONNECT_SWAPPED);
+				 G_CALLBACK (reload_tab_menu), window, G_CONNECT_SWAPPED);
 	g_signal_connect_object (window->notebook, "switch-page",
-				 G_CALLBACK (refresh_tab_action_sensitivity), window,
+				 G_CALLBACK (update_tab_action_sensitivity), window,
 				 G_CONNECT_SWAPPED | G_CONNECT_AFTER);
 
-	refresh_tab_actions (window);
+	reload_tab_menu (window);
 }
 
 static void

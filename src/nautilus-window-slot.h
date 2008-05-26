@@ -123,8 +123,8 @@ void    nautilus_window_slot_reload			   (NautilusWindowSlot *slot);
 #define nautilus_window_slot_go_to_with_selection(slot,location,new_selection) \
 	nautilus_window_slot_open_location_with_selection(slot, location, new_selection, FALSE)
 
-void    nautilus_window_slot_go_home			   (NautilusWindow    *window);
-void    nautilus_window_slot_go_up			   (NautilusWindow    *window,
+void    nautilus_window_slot_go_home			   (NautilusWindowSlot *slot);
+void    nautilus_window_slot_go_up			   (NautilusWindowSlot *slot,
 							    gboolean           close_behind);
 
 void    nautilus_window_slot_set_content_view_widget	   (NautilusWindowSlot *slot,

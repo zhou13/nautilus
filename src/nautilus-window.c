@@ -407,16 +407,9 @@ nautilus_window_allow_reload (NautilusWindow *window, gboolean allow)
 void
 nautilus_window_go_home (NautilusWindow *window)
 {
-	NautilusWindowSlot *slot;
-	GFile *home;
-
 	g_return_if_fail (NAUTILUS_IS_WINDOW (window));
 
-	slot = window->details->active_slot;
-
-	home = g_file_new_for_path (g_get_home_dir ());
-	nautilus_window_slot_open_location (slot, home, FALSE);
-	g_object_unref (home);
+	nautilus_window_slot_go_home (window->details->active_slot);
 }
 
 void

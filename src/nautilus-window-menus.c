@@ -192,15 +192,11 @@ nautilus_menus_append_bookmark_to_menu (NautilusWindow *window,
 }
 
 static void
-action_close_window_callback (GtkAction *action, 
-			      gpointer user_data)
+action_close_window_slot_callback (GtkAction *action,
+				   gpointer user_data)
 {
 	NautilusWindow *window;
 	NautilusWindowSlot *slot;
-
-	/* multiview-TODO rename this action, decide
- 	 * whether we need a "close all" action
- 	 */
 
 	window = NAUTILUS_WINDOW (user_data);
 	slot = window->details->active_slot;
@@ -662,7 +658,7 @@ static const GtkActionEntry main_entries[] = {
   /* name, stock id */         { "Close", GTK_STOCK_CLOSE,
   /* label, accelerator */       N_("_Close"), "<control>W",
   /* tooltip */                  N_("Close this folder"),
-                                 G_CALLBACK (action_close_window_callback) },
+                                 G_CALLBACK (action_close_window_slot_callback) },
                                { "Backgrounds and Emblems", NULL,
                                  N_("_Backgrounds and Emblems..."),               
                                  NULL, N_("Display patterns, colors, and emblems that can be used to customize appearance"),

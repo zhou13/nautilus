@@ -268,9 +268,6 @@ handle_go_forward (NautilusNavigationWindowSlot *navigation_slot,
         g_list_free_1 (link);
 }
 
-/*
- * multiview-TODO: handle this on a per-slot basis
- */
 static void
 handle_go_elsewhere (NautilusWindowSlot *slot, GFile *location)
 {
@@ -379,7 +376,6 @@ viewed_file_changed_callback (NautilusFile *file,
 					g_object_unref (parent);
 				}
 				
-				/* multiview-TODO make _go_to_*() slot-specific */
 				if (go_to_file != NULL) {
 					/* the path bar URI will be set to go_to_uri immediately
 					 * in begin_location_change, but we don't want the
@@ -391,10 +387,10 @@ viewed_file_changed_callback (NautilusFile *file,
 						nautilus_path_bar_clear_buttons (NAUTILUS_PATH_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->path_bar));
 					}
 
-					nautilus_window_go_to (NAUTILUS_WINDOW (window), go_to_file);
+					nautilus_window_slot_go_to (slot, go_to_file);
 					g_object_unref (go_to_file);
 				} else {
-					nautilus_window_go_home (NAUTILUS_WINDOW (window));
+					nautilus_window_slot_go_home (slot);
 				}
 			} else {
 				nautilus_window_close (window);
@@ -654,7 +650,19 @@ nautilus_window_slot_open_location_with_selection (NautilusWindowSlot *slot,
 	nautilus_window_slot_open_location_full (slot, location,
 						 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
 						 flags, selection);
-}					      
+}
+
+void
+nautilus_window_slot_go_home (NautilusWindowSlot *slot)
+{			      
+	GFile *home;
+
+	g_return_if_fail (NAUTILUS_IS_WINDOW_SLOT (slot));
+
+	home = g_file_new_for_path (g_get_home_dir ());
+	nautilus_window_slot_open_location (slot, home, FALSE);
+	g_object_unref (home);
+}
 
 #if 0
 static char *
@@ -1102,13 +1110,13 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 
 				if (!nautilus_is_root_directory (location)) {
 					if (!nautilus_is_home_directory (location)) {	
-						nautilus_window_go_home (NAUTILUS_WINDOW (window));
+						nautilus_window_slot_go_home (NAUTILUS_WINDOW (window)->details->active_slot);
 					} else {
 						GFile *root;
 
 						root = g_file_new_for_path ("/");
 						/* the last fallback is to go to a known place that can't be deleted! */
-						nautilus_window_go_to (NAUTILUS_WINDOW (window), root);
+						nautilus_window_slot_go_to (NAUTILUS_WINDOW (window)->details->active_slot, location);
 						g_object_unref (root);
 					}
 				} else {
@@ -1228,7 +1236,7 @@ create_content_view (NautilusWindowSlot *slot,
 	} else {
 		/* Something is busted, there was no location to load.
 		   Just load the homedir. */
-		nautilus_window_go_home (NAUTILUS_WINDOW (window));
+		nautilus_window_slot_go_home (slot);
 		
 	}
 }
