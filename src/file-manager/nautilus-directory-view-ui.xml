@@ -17,8 +17,8 @@
 		</placeholder>
 		<placeholder name="Open Placeholder">
 			<menuitem name="Open" action="Open"/>
-			<menuitem name="OpenAlternate" action="OpenAlternate"/>
 			<menuitem name="OpenInNewTab" action="OpenInNewTab"/>
+			<menuitem name="OpenAlternate" action="OpenAlternate"/>
 			<placeholder name="Applications Placeholder">
                         </placeholder>
 			<menu action="Open With">

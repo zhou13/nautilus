@@ -488,9 +488,11 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 	NautilusWindow *window;
         NautilusWindow *target_window;
         NautilusWindowSlot *target_slot;
+	NautilusWindowOpenFlags slot_flags;
         gboolean do_load_location = TRUE;
 	GFile *old_location;
 	char *old_uri, *new_uri;
+	int new_slot_position;
 
 	window = slot->window;
 
@@ -582,7 +584,15 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 	if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0 &&
 	    NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
 		g_assert (target_window == window);
-		target_slot = nautilus_window_open_slot (window, 0);
+
+		slot_flags = 0;
+
+		new_slot_position = eel_preferences_get_enum (NAUTILUS_PREFERENCES_NEW_TAB_POSITION);
+		if (new_slot_position == NAUTILUS_NEW_TAB_POSITION_END) {
+			slot_flags = NAUTILUS_WINDOW_OPEN_SLOT_APPEND;
+		}
+
+		target_slot = nautilus_window_open_slot (window, slot_flags);
 	}
 
         if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND) != 0) {

@@ -1,3 +1,30 @@
+2008-05-30  Christian Neumair  <cneumair@gnome.org>
+
+	* libnautilus-private/apps_nautilus_preferences.schemas.in:
+	* libnautilus-private/nautilus-global-preferences.c
+	(global_preferences_register_enumerations):
+	* libnautilus-private/nautilus-global-preferences.h:
+	* src/file-manager/fm-directory-view.c (open_one_in_new_tab),
+	(real_update_menus):
+	* src/file-manager/fm-icon-view.c
+	(icon_container_activate_alternate_callback):
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	* src/nautilus-actions.h:
+	* src/nautilus-navigation-window-menus.c
+	(nautilus_navigation_window_update_tab_menu_item_visibility),
+	(action_new_tab_callback),
+	(nautilus_navigation_window_initialize_menus):
+	* src/nautilus-navigation-window-ui.xml:
+	* src/nautilus-navigation-window.c
+	(nautilus_navigation_window_init), (enable_tabs_changed):
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_slot_open_location_full):
+	* src/nautilus-window-private.h:
+	Make "New Tab" appear above "New Window" menu items.
+	Add GConf keys for enabling tab support, and for determining
+	whether a tab should be opened after the current tab, or at the end.
+	Show/hide tab widgets depending on the preferences.
+
 2008-05-26  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-navigation-window-menus.c (reload_tab_menu),

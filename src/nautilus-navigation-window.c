@@ -114,6 +114,7 @@ static void path_bar_location_changed_callback       (GtkWidget                *
 						      NautilusNavigationWindow *window);
 static void always_use_location_entry_changed        (gpointer                  callback_data);
 static void always_use_browser_changed               (gpointer                  callback_data);
+static void enable_tabs_changed			     (gpointer                  callback_data);
 
 static void nautilus_navigation_window_set_bar_mode  (NautilusNavigationWindow *window, 
 						      NautilusBarMode           mode);
@@ -386,6 +387,10 @@ nautilus_navigation_window_init (NautilusNavigationWindow *window)
 	eel_preferences_add_callback_while_alive (NAUTILUS_PREFERENCES_ALWAYS_USE_BROWSER,
 						  always_use_browser_changed,
 						  window, G_OBJECT (window));
+
+	eel_preferences_add_callback_while_alive (NAUTILUS_PREFERENCES_ENABLE_TABS,
+						  enable_tabs_changed,
+						  window, G_OBJECT (window));
 }
 
 static void
@@ -421,6 +426,16 @@ always_use_browser_changed (gpointer callback_data)
 	window = NAUTILUS_NAVIGATION_WINDOW (callback_data);
 
 	nautilus_navigation_window_update_spatial_menu_item (window);
+}
+
+static void
+enable_tabs_changed (gpointer callback_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (callback_data);
+
+	nautilus_navigation_window_update_tab_menu_item_visibility (window);
 }
 
 static int

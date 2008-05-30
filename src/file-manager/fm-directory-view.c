@@ -3989,6 +3989,10 @@ open_one_in_new_tab (gpointer data, gpointer callback_data)
 	g_assert (NAUTILUS_IS_FILE (data));
 	g_assert (FM_IS_DIRECTORY_VIEW (callback_data));
 
+	if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		return;
+	}
+
 	fm_directory_view_activate_file (FM_DIRECTORY_VIEW (callback_data),
 					 NAUTILUS_FILE (data),
 					 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
@@ -7198,7 +7202,8 @@ real_update_menus (FMDirectoryView *view)
 	gtk_action_set_visible (action, show_open_alternate);
 
 	/* Open in New Tab action */
-	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION) {
+	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION &&
+	    eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
 		if (selection_count == 0 || selection_count == 1) {
 			label_with_underscore = g_strdup (_("Open in New Tab"));
 		} else {

@@ -245,6 +245,23 @@ nautilus_navigation_window_update_spatial_menu_item (NautilusNavigationWindow *w
 				!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_BROWSER));
 }
 
+void
+nautilus_navigation_window_update_tab_menu_item_visibility (NautilusNavigationWindow *window) 
+{
+	GtkAction *action;
+
+	action = gtk_action_group_get_action (window->details->navigation_action_group,
+					      NAUTILUS_ACTION_TABS);
+	gtk_action_set_visible (action,
+				eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS));
+
+	action = gtk_action_group_get_action (window->details->navigation_action_group,
+					      NAUTILUS_ACTION_NEW_TAB);
+	gtk_action_set_visible (action,
+				eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS));
+
+}
+
 static void
 action_add_bookmark_callback (GtkAction *action,
 			      gpointer user_data)
@@ -491,7 +508,13 @@ action_new_tab_callback (GtkAction *action,
 	NautilusWindow *window;
 	NautilusWindowSlot *current_slot;
 	NautilusWindowSlot *new_slot;
+	NautilusWindowOpenFlags flags;
 	GFile *current_location;
+	int new_slot_position;
+
+	if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		return;
+	}
 
 	window = NAUTILUS_WINDOW (user_data);
 	current_slot = window->details->active_slot;
@@ -500,7 +523,15 @@ action_new_tab_callback (GtkAction *action,
 	window = NAUTILUS_WINDOW (current_slot->window);
 
 	if (current_location != NULL) {
-		new_slot = nautilus_window_open_slot (window, 0);
+		flags = 0;
+
+		new_slot_position = eel_preferences_get_enum (NAUTILUS_PREFERENCES_NEW_TAB_POSITION);
+		if (new_slot_position == NAUTILUS_NEW_TAB_POSITION_END) {
+			flags = NAUTILUS_WINDOW_OPEN_SLOT_APPEND;
+		}
+
+
+		new_slot = nautilus_window_open_slot (window, flags);
 		nautilus_window_set_active_slot (window, new_slot);
 		nautilus_window_slot_go_to (new_slot, current_location);
 		g_object_unref (current_location);
@@ -742,6 +773,7 @@ nautilus_navigation_window_initialize_menus (NautilusNavigationWindow *window)
 
 	nautilus_navigation_window_update_show_hide_menu_items (window);
 	nautilus_navigation_window_update_spatial_menu_item (window);
+	nautilus_navigation_window_update_tab_menu_item_visibility (window);
 
         nautilus_navigation_window_initialize_go_menu (window);
         nautilus_navigation_window_initialize_tabs_menu (window);
