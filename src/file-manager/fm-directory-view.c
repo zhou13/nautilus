@@ -315,8 +315,6 @@ static void     clipboard_changed_callback                     (NautilusClipboar
 								FMDirectoryView      *view);
 static void     open_one_in_new_window                         (gpointer              data,
 								gpointer              callback_data);
-static void     open_one_in_new_tab                            (gpointer              data,
-								gpointer              callback_data);
 static void     open_one_in_folder_window                      (gpointer              data,
 								gpointer              callback_data);
 static void     schedule_update_menus                          (FMDirectoryView      *view);
@@ -608,8 +606,10 @@ fm_directory_view_get_containing_window (FMDirectoryView *view)
 	return GTK_WINDOW (window);
 }
 
-gboolean
-fm_directory_view_confirm_multiple_windows (GtkWindow *parent_window, int count)
+static gboolean
+fm_directory_view_confirm_multiple (GtkWindow *parent_window,
+				    int count,
+				    gboolean tabs)
 {
 	GtkDialog *dialog;
 	char *prompt;
@@ -621,8 +621,13 @@ fm_directory_view_confirm_multiple_windows (GtkWindow *parent_window, int count)
 	}
 
 	prompt = _("Are you sure you want to open all files?");
-	detail = g_strdup_printf (ngettext("This will open %'d separate window.",
-					   "This will open %'d separate windows.", count), count);
+	if (tabs) {
+		detail = g_strdup_printf (ngettext("This will open %'d separate tab.",
+						   "This will open %'d separate tabs.", count), count);
+	} else {
+		detail = g_strdup_printf (ngettext("This will open %'d separate window.",
+						   "This will open %'d separate windows.", count), count);
+	}
 	dialog = eel_show_yes_no_dialog (prompt, detail, 
 					 GTK_STOCK_OK, GTK_STOCK_CANCEL,
 					 parent_window);
@@ -695,7 +700,8 @@ void
 fm_directory_view_activate_files (FMDirectoryView *view,
 				  GList *files,
 				  NautilusWindowOpenMode mode,
-				  NautilusWindowOpenFlags flags)
+				  NautilusWindowOpenFlags flags,
+				  gboolean confirm_multiple)
 {
 	char *path;
 
@@ -705,7 +711,8 @@ fm_directory_view_activate_files (FMDirectoryView *view,
 				      files,
 				      path,
 				      mode,
-				      flags);
+				      flags,
+				      confirm_multiple);
 
 	g_free (path);
 }
@@ -742,7 +749,8 @@ action_open_callback (GtkAction *action,
 	fm_directory_view_activate_files (view,
 					  selection,
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					  0);
+					  0,
+					  TRUE);
 	nautilus_file_list_free (selection);
 }
 
@@ -759,7 +767,8 @@ action_open_close_parent_callback (GtkAction *action,
 	fm_directory_view_activate_files (view,
 					  selection,
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					  NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND);
+					  NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND,
+					  TRUE);
 	nautilus_file_list_free (selection);
 }
 
@@ -777,7 +786,7 @@ action_open_alternate_callback (GtkAction *action,
 
 	window = fm_directory_view_get_containing_window (view);
 
-	if (fm_directory_view_confirm_multiple_windows (window, g_list_length (selection))) {
+	if (fm_directory_view_confirm_multiple (window, g_list_length (selection), FALSE)) {
 		g_list_foreach (selection, open_one_in_new_window, view);
 	}
 
@@ -792,13 +801,21 @@ action_open_new_tab_callback (GtkAction *action,
 	GList *selection;
 	GtkWindow *window;
 
+	if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		return;
+	}
+
 	view = FM_DIRECTORY_VIEW (callback_data);
 	selection = fm_directory_view_get_selection (view);
 
 	window = fm_directory_view_get_containing_window (view);
 
-	if (fm_directory_view_confirm_multiple_windows (window, g_list_length (selection))) {
-		g_list_foreach (selection, open_one_in_new_tab, view);
+	if (fm_directory_view_confirm_multiple (window, g_list_length (selection), TRUE)) {
+		fm_directory_view_activate_files (view,
+						  selection,
+						  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
+						  NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB,
+						  FALSE);
 	}
 
 	nautilus_file_list_free (selection);
@@ -817,7 +834,7 @@ action_open_folder_window_callback (GtkAction *action,
 
 	window = fm_directory_view_get_containing_window (view);
 
-	if (fm_directory_view_confirm_multiple_windows (window, g_list_length (selection))) {
+	if (fm_directory_view_confirm_multiple (window, g_list_length (selection), FALSE)) {
 		g_list_foreach (selection, open_one_in_folder_window, view);
 	}
 
@@ -3981,22 +3998,6 @@ open_one_in_new_window (gpointer data, gpointer callback_data)
 					 NAUTILUS_FILE (data),
 					 NAUTILUS_WINDOW_OPEN_IN_NAVIGATION,
 					 0);
-}
-
-static void
-open_one_in_new_tab (gpointer data, gpointer callback_data)
-{
-	g_assert (NAUTILUS_IS_FILE (data));
-	g_assert (FM_IS_DIRECTORY_VIEW (callback_data));
-
-	if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
-		return;
-	}
-
-	fm_directory_view_activate_file (FM_DIRECTORY_VIEW (callback_data),
-					 NAUTILUS_FILE (data),
-					 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					 NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
 }
 
 static void

@@ -1,3 +1,28 @@
+2008-05-31  Christian Neumair  <cneumair@gnome.org>
+
+	* libnautilus-private/nautilus-mime-actions.c
+	(confirm_multiple_windows), (activate_files),
+	(activation_mountable_mounted), (nautilus_mime_activate_files),
+	(nautilus_mime_activate_file):
+	* libnautilus-private/nautilus-mime-actions.h:
+	* src/file-manager/fm-directory-view.c
+	(fm_directory_view_confirm_multiple),
+	(fm_directory_view_activate_files), (action_open_callback),
+	(action_open_close_parent_callback),
+	(action_open_alternate_callback), (action_open_new_tab_callback),
+	(action_open_folder_window_callback):
+	* src/file-manager/fm-directory-view.h:
+	* src/file-manager/fm-icon-view.c
+	(icon_container_activate_callback),
+	(icon_container_activate_alternate_callback):
+	* src/file-manager/fm-list-view.c (activate_selected_items),
+	(activate_selected_items_alternate):
+	* src/file-manager/nautilus-directory-view-ui.xml:
+	Fix order and confirmation when opening multiple tabs. All tabs are
+	activated at once, instead of activating each separately. Refer to tabs
+	rather than windows in the confirmation dialog.
+	Also list "New Tab" above "New Window" in background context menu.
+
 2008-05-30  Christian Neumair  <cneumair@gnome.org>
 
 	* libnautilus-private/apps_nautilus_preferences.schemas.in:

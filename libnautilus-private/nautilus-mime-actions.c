@@ -73,6 +73,7 @@ typedef struct {
 	NautilusFileListHandle *files_handle;
 	gboolean tried_mounting;
 	char *activation_directory;
+	gboolean user_confirmation;
 } ActivateParameters;
 
 /* Number of seconds until cancel dialog shows up */
@@ -973,7 +974,9 @@ activate_mount_op_active (EelMountOperation *operation,
 }
 
 static gboolean
-confirm_multiple_windows (GtkWindow *parent_window, int count)
+confirm_multiple_windows (GtkWindow *parent_window,
+			  int count,
+			  gboolean use_tabs)
 {
 	GtkDialog *dialog;
 	char *prompt;
@@ -985,8 +988,13 @@ confirm_multiple_windows (GtkWindow *parent_window, int count)
 	}
 
 	prompt = _("Are you sure you want to open all files?");
-	detail = g_strdup_printf (ngettext("This will open %d separate window.",
-					   "This will open %d separate windows.", count), count);
+	if (use_tabs) {
+		detail = g_strdup_printf (ngettext("This will open %d separate tab.",
+						   "This will open %d separate tabs.", count), count);
+	} else {
+		detail = g_strdup_printf (ngettext("This will open %d separate window.",
+						   "This will open %d separate windows.", count), count);
+	}
 	dialog = eel_show_yes_no_dialog (prompt, detail, 
 					 GTK_STOCK_OK, GTK_STOCK_CANCEL,
 					 parent_window);
@@ -1002,6 +1010,7 @@ static void
 activate_files (ActivateParameters *parameters)
 {
 	NautilusWindowInfo *window_info;
+	NautilusWindowOpenFlags flags;
 	NautilusFile *file;
 	GList *launch_desktop_files;
 	GList *launch_files;
@@ -1135,16 +1144,33 @@ activate_files (ActivateParameters *parameters)
 
 	open_in_view_files = g_list_reverse (open_in_view_files);
 	count = g_list_length (open_in_view_files);
-	if (parameters->slot_info != NULL &&
-	    confirm_multiple_windows (parameters->parent_window, count)) {
-		NautilusWindowOpenFlags flags;
 
-		flags = parameters->flags;
-		if (count > 1) {
-			if ((parameters->flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) == 0) {
-				flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
-			}
+	flags = parameters->flags;
+	if (count > 1) {
+		if (eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS) &&
+		    (parameters->flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) == 0) {
+			flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+		} else {
+			flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
 		}
+	}
+
+	if (parameters->slot_info != NULL &&
+	    (!parameters->user_confirmation ||
+	     confirm_multiple_windows (parameters->parent_window, count,
+				       (flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0))) {
+
+		if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0 &&
+		    eel_preferences_get_enum (NAUTILUS_PREFERENCES_NEW_TAB_POSITION) ==
+		    NAUTILUS_NEW_TAB_POSITION_AFTER_CURRENT_TAB) {
+			/* When inserting N tabs after the current one,
+			 * we first open tab N, then tab N-1, ..., then tab 0.
+			 * Each of them is appended to the current tab, i.e.
+			 * prepended to the list of tabs to open.
+			 */
+			open_in_view_files = g_list_reverse (open_in_view_files);
+		}
+
 
 		for (l = open_in_view_files; l != NULL; l = l->next) {
 			GFile *f;
@@ -1466,6 +1492,7 @@ activation_mountable_mounted (NautilusFile  *file,
 {
 	ActivateParameters *parameters = callback_data;
 	NautilusFile *target_file;
+	int position;
 
 	/* Remove from list of files that have to be mounted */
 	parameters->mountables = g_list_remove (parameters->mountables, file); 
@@ -1473,13 +1500,16 @@ activation_mountable_mounted (NautilusFile  *file,
 
 	if (error == NULL) {
 		/* Replace file with the result of the mount */
-		
 		target_file = nautilus_file_get (result_location);
 		
+		position = g_list_index (parameters->files, file);
+
 		parameters->files = g_list_remove (parameters->files, file); 
 		nautilus_file_unref (file);
 		
-		parameters->files = g_list_prepend (parameters->files, target_file);
+		parameters->files = g_list_insert (parameters->files,
+						   target_file,
+						   position);
 	} else {
 		/* Remove failed file */
 		
@@ -1547,7 +1577,8 @@ nautilus_mime_activate_files (GtkWindow *parent_window,
 			      GList *files,
 			      const char *launch_directory,
 			      NautilusWindowOpenMode mode,
-			      NautilusWindowOpenFlags flags)
+			      NautilusWindowOpenFlags flags,
+			      gboolean user_confirmation)
 {
 	ActivateParameters *parameters;
 	char *file_name;
@@ -1575,6 +1606,7 @@ nautilus_mime_activate_files (GtkWindow *parent_window,
 	parameters->files = nautilus_file_list_copy (files);
 	parameters->mode = mode;
 	parameters->flags = flags;
+	parameters->user_confirmation = user_confirmation;
 
 	file_count = g_list_length (files);
 	if (file_count == 1) {
@@ -1627,6 +1659,6 @@ nautilus_mime_activate_file (GtkWindow *parent_window,
 	g_return_if_fail (NAUTILUS_IS_FILE (file));
 
 	files = g_list_prepend (NULL, file);
-	nautilus_mime_activate_files (parent_window, slot_info, files, launch_directory, mode, flags);
+	nautilus_mime_activate_files (parent_window, slot_info, files, launch_directory, mode, flags, FALSE);
 	g_list_free (files);
 }

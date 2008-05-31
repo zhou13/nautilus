@@ -230,7 +230,8 @@ activate_selected_items (FMListView *view)
 	fm_directory_view_activate_files (FM_DIRECTORY_VIEW (view),
 					  file_list,
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					  0);
+					  0,
+					  TRUE);
 	nautilus_file_list_free (file_list);
 
 }
@@ -252,7 +253,8 @@ activate_selected_items_alternate (FMListView *view,
 					  file_list,
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
 					  NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND |
-					  NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW);
+					  NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW,
+					  TRUE);
 	nautilus_file_list_free (file_list);
 
 }

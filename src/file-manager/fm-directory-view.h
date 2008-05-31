@@ -388,15 +388,14 @@ gboolean            fm_directory_view_get_loading                      (FMDirect
 void                fm_directory_view_activate_files                   (FMDirectoryView        *view,
 									GList                  *files,
 									NautilusWindowOpenMode  mode,
-									NautilusWindowOpenFlags flags);
+									NautilusWindowOpenFlags flags,
+									gboolean                confirm_multiple);
 void                fm_directory_view_activate_file                    (FMDirectoryView        *view,
 									NautilusFile           *file,
 									NautilusWindowOpenMode  mode,
 									NautilusWindowOpenFlags flags);
 void                fm_directory_view_start_batching_selection_changes (FMDirectoryView  *view);
 void                fm_directory_view_stop_batching_selection_changes  (FMDirectoryView  *view);
-gboolean            fm_directory_view_confirm_multiple_windows         (GtkWindow        *parent_window,
-									int               window_count);
 void                fm_directory_view_queue_file_change                (FMDirectoryView  *view,
 									NautilusFile     *file);
 void                fm_directory_view_notify_selection_changed         (FMDirectoryView  *view);

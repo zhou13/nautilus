@@ -1714,7 +1714,8 @@ icon_container_activate_callback (NautilusIconContainer *container,
 
 	fm_directory_view_activate_files (FM_DIRECTORY_VIEW (icon_view),
 					  file_list, 
-					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, 0);
+					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, 0,
+					  TRUE);
 }
 
 static void
@@ -1764,7 +1765,8 @@ icon_container_activate_alternate_callback (NautilusIconContainer *container,
 	fm_directory_view_activate_files (FM_DIRECTORY_VIEW (icon_view), 
 					  file_list, 
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					  flags);
+					  flags,
+					  TRUE);
 }
 
 static void

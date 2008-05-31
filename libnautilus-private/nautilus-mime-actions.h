@@ -49,7 +49,8 @@ void                   nautilus_mime_activate_files                       (GtkWi
 									   GList                   *files,
 									   const char              *launch_directory,
 									   NautilusWindowOpenMode   mode,
-									   NautilusWindowOpenFlags  flags);
+									   NautilusWindowOpenFlags  flags,
+									   gboolean                 user_confirmation);
 void                   nautilus_mime_activate_file                        (GtkWindow               *parent_window,
 									   NautilusWindowSlotInfo  *slot_info,
 									   NautilusFile            *file,
