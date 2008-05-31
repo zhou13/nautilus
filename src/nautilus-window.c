@@ -841,18 +841,39 @@ get_last_active_slot (NautilusWindow *window)
 	return NULL;
 }
 
+static inline NautilusWindowSlot *
+get_first_inactive_slot (NautilusWindow *window)
+{
+	GList *l;
+	NautilusWindowSlot *slot;
+
+	for (l = window->details->slots; l != NULL; l = l->next) {
+		slot = NAUTILUS_WINDOW_SLOT (l->data);
+		if (slot != window->details->active_slot) {
+			return slot;
+		}
+	}
+
+	return NULL;
+}
+
 void
 nautilus_window_slot_close (NautilusWindowSlot *slot)
 {
 	NautilusWindow *window;
+	NautilusWindowSlot *next_slot;
 
 	window = slot->window;
 	if (window != NULL) {
 		window->details->active_slots = g_list_remove (window->details->active_slots, slot);
 
 		if (window->details->active_slot == slot) {
-			nautilus_window_set_active_slot (window,
-							 get_last_active_slot (window));
+			next_slot = get_last_active_slot (window);
+			if (next_slot == NULL) {
+				next_slot = get_first_inactive_slot (window);
+			}
+
+			nautilus_window_set_active_slot (window, next_slot);
 		}
 
 		nautilus_window_close_slot (window, slot);

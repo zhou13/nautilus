@@ -1,5 +1,11 @@
 2008-05-31  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window.c (get_first_inactive_slot),
+	(nautilus_window_slot_close):
+	If no previously active slot remains, use an inactive slot.
+
+2008-05-31  Christian Neumair  <cneumair@gnome.org>
+
 	* libnautilus-private/nautilus-mime-actions.c
 	(confirm_multiple_windows), (activate_files),
 	(activation_mountable_mounted), (nautilus_mime_activate_files),
