@@ -117,13 +117,16 @@ char *  nautilus_window_slot_get_location_uri		   (NautilusWindowSlot *slot);
 void    nautilus_window_slot_close			   (NautilusWindowSlot *slot);
 void    nautilus_window_slot_reload			   (NautilusWindowSlot *slot);
 
-#define nautilus_window_slot_go_to(slot,location) \
-	nautilus_window_slot_open_location(slot, location, FALSE)
+#define nautilus_window_slot_go_to(slot,location, new_tab) \
+	nautilus_window_slot_open_location_full(slot, location, NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, \
+						(new_tab ? NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB : 0), \
+						NULL)
 
 #define nautilus_window_slot_go_to_with_selection(slot,location,new_selection) \
 	nautilus_window_slot_open_location_with_selection(slot, location, new_selection, FALSE)
 
-void    nautilus_window_slot_go_home			   (NautilusWindowSlot *slot);
+void    nautilus_window_slot_go_home			   (NautilusWindowSlot *slot,
+							    gboolean            new_tab);
 void    nautilus_window_slot_go_up			   (NautilusWindowSlot *slot,
 							    gboolean           close_behind);
 

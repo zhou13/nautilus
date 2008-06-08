@@ -112,7 +112,8 @@ void     nautilus_navigation_window_show_status_bar      (NautilusNavigationWind
 gboolean nautilus_navigation_window_status_bar_showing   (NautilusNavigationWindow *window);
 void     nautilus_navigation_window_back_or_forward      (NautilusNavigationWindow *window,
                                                           gboolean                  back,
-                                                          guint                     distance);
+                                                          guint                     distance,
+							  gboolean                  new_tab);
 void     nautilus_navigation_window_show_search          (NautilusNavigationWindow *window);
 
 #endif

@@ -139,13 +139,14 @@ void             nautilus_window_disconnect_content_view (NautilusWindow    *win
 							  NautilusView      *view);
 
 void             nautilus_window_go_to                (NautilusWindow    *window,
-                                                       GFile            *location);
+                                                       GFile             *location);
 void             nautilus_window_go_to_with_selection (NautilusWindow    *window,
                                                        GFile             *location,
                                                        GList             *new_selection);
 void             nautilus_window_go_home              (NautilusWindow    *window);
 void             nautilus_window_go_up                (NautilusWindow    *window,
-                                                       gboolean           close_behind);
+                                                       gboolean           close_behind,
+						       gboolean           new_tab);
 void             nautilus_window_prompt_for_location  (NautilusWindow    *window,
                                                        const char        *initial);
 void		 nautilus_window_set_search_mode      (NautilusWindow    *window,

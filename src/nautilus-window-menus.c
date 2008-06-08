@@ -115,6 +115,22 @@ bookmark_holder_free_cover (gpointer callback_data, GClosure *closure)
 	bookmark_holder_free (callback_data);
 }
 
+static gboolean
+should_open_in_new_tab (void)
+{
+	/* FIXME this is duplicated */
+	GdkEvent *event;
+
+	event = gtk_get_current_event ();
+	if (event->type == GDK_BUTTON_PRESS || event->type == GDK_BUTTON_RELEASE) {
+		return event->button.button == 2;
+	}
+
+	gdk_event_free (event);
+
+	return FALSE;
+}
+
 static void
 activate_bookmark_in_menu_item (GtkAction *action, gpointer user_data)
 {
@@ -127,7 +143,9 @@ activate_bookmark_in_menu_item (GtkAction *action, gpointer user_data)
 		holder->failed_callback (holder->window, holder->bookmark);
 	} else {
 	        location = nautilus_bookmark_get_location (holder->bookmark);
-	        nautilus_window_go_to (holder->window, location);
+	        nautilus_window_slot_go_to (holder->window->details->active_slot, 
+					    location, 
+					    should_open_in_new_tab ());
 	        g_object_unref (location);
         }
 }
@@ -272,7 +290,8 @@ static void
 action_home_callback (GtkAction *action, 
 		      gpointer user_data) 
 {
-	nautilus_window_go_home (NAUTILUS_WINDOW (user_data));
+	nautilus_window_slot_go_home (NAUTILUS_WINDOW (user_data)->details->active_slot, 
+				      should_open_in_new_tab ());
 }
 
 static void
@@ -281,8 +300,9 @@ action_go_to_computer_callback (GtkAction *action,
 {
 	GFile *computer;
 	computer = g_file_new_for_uri (COMPUTER_URI);
-	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       computer);
+	nautilus_window_slot_go_to (NAUTILUS_WINDOW (user_data)->details->active_slot,
+				    computer,
+				    should_open_in_new_tab ());
 	g_object_unref (computer);
 }
 
@@ -292,8 +312,9 @@ action_go_to_network_callback (GtkAction *action,
 {
 	GFile *network;
 	network = g_file_new_for_uri (NETWORK_URI);
-	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       network);
+	nautilus_window_slot_go_to (NAUTILUS_WINDOW (user_data)->details->active_slot,
+				    network,
+				    should_open_in_new_tab ());
 	g_object_unref (network);
 }
 
@@ -307,8 +328,9 @@ action_go_to_templates_callback (GtkAction *action,
 	path = nautilus_get_templates_directory ();
 	location = g_file_new_for_path (path);
 	g_free (path);
-	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       location);
+	nautilus_window_slot_go_to (NAUTILUS_WINDOW (user_data)->details->active_slot,
+				    location,
+				    should_open_in_new_tab ());
 	g_object_unref (location);
 }
 
@@ -318,8 +340,9 @@ action_go_to_trash_callback (GtkAction *action,
 {
 	GFile *trash;
 	trash = g_file_new_for_uri ("trash:///");
-	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       trash);
+	nautilus_window_slot_go_to (NAUTILUS_WINDOW (user_data)->details->active_slot,
+				    trash,
+				    should_open_in_new_tab ());
 	g_object_unref (trash);
 }
 
@@ -329,8 +352,9 @@ action_go_to_burn_cd_callback (GtkAction *action,
 {
 	GFile *burn;
 	burn = g_file_new_for_uri (BURN_CD_URI);
-	nautilus_window_go_to (NAUTILUS_WINDOW (user_data),
-			       burn);
+	nautilus_window_slot_go_to (NAUTILUS_WINDOW (user_data)->details->active_slot,
+				    burn,
+				    should_open_in_new_tab ());
 	g_object_unref (burn);
 	
 }
@@ -534,7 +558,7 @@ static void
 action_up_callback (GtkAction *action, 
 		     gpointer user_data) 
 {
-	nautilus_window_go_up (NAUTILUS_WINDOW (user_data), FALSE);
+	nautilus_window_go_up (NAUTILUS_WINDOW (user_data), FALSE, should_open_in_new_tab ());
 }
 
 static void
@@ -601,18 +625,89 @@ menu_item_deselect_cb (GtkMenuItem *proxy,
 			   window->details->help_message_cid);
 }
 
+static GtkWidget *
+get_event_widget (GtkWidget *proxy)
+{
+	GtkWidget *widget;
+
+	/**
+	 * Finding the interesting widget requires internal knowledge of
+	 * the widgets in question. This can't be helped, but by keeping
+	 * the sneaky code in one place, it can easily be updated.
+	 */
+	if (GTK_IS_MENU_ITEM (proxy)) {
+		/* Menu items already forward middle clicks */
+		widget = NULL;
+	} else if (GTK_IS_MENU_TOOL_BUTTON (proxy)) {
+		/**
+		 * The menu tool button's button is the first child
+		 * of the child hbox.
+		 */
+		GtkContainer *container =
+			GTK_CONTAINER (gtk_bin_get_child (GTK_BIN (proxy)));
+		widget = GTK_WIDGET (gtk_container_get_children (container)->data);
+	} else if (GTK_IS_TOOL_BUTTON (proxy)) {
+		/* The tool button's button is the direct child */
+		widget = gtk_bin_get_child (GTK_BIN (proxy));
+	} else if (GTK_IS_BUTTON (proxy)) {
+		widget = proxy;
+	} else {
+		/* Don't touch anything we don't know about */
+		widget = NULL;
+	}
+
+	return widget;
+}
+
+static gboolean
+proxy_button_press_event_cb (GtkButton *button,
+			     GdkEventButton *event,
+			     gpointer user_data)
+{
+	if (event->button == 2) {
+		gtk_button_pressed (button);
+	}
+
+	return FALSE;
+}
+
+static gboolean
+proxy_button_release_event_cb (GtkButton *button,
+			       GdkEventButton *event,
+			       gpointer user_data)
+{
+	if (event->button == 2) {
+		gtk_button_released (button);
+	}
+
+	return FALSE;
+}
+
 static void
 disconnect_proxy_cb (GtkUIManager *manager,
 		     GtkAction *action,
 		     GtkWidget *proxy,
 		     NautilusWindow *window)
 {
+	GtkWidget *widget;
+
 	if (GTK_IS_MENU_ITEM (proxy)) {
 		g_signal_handlers_disconnect_by_func
 			(proxy, G_CALLBACK (menu_item_select_cb), window);
 		g_signal_handlers_disconnect_by_func
 			(proxy, G_CALLBACK (menu_item_deselect_cb), window);
 	}
+
+	widget = get_event_widget (proxy);
+	if (widget) {
+		g_signal_handlers_disconnect_by_func (widget,
+						      G_CALLBACK (proxy_button_press_event_cb),
+						      action);
+		g_signal_handlers_disconnect_by_func (widget,
+						      G_CALLBACK (proxy_button_release_event_cb),
+						      action);
+	}
+
 }
 
 static void
@@ -648,6 +743,15 @@ connect_proxy_cb (GtkUIManager *manager,
 		}
 	}
 	
+	widget = get_event_widget (proxy);
+	if (widget) {
+		g_signal_connect (widget, "button-press-event",
+				  G_CALLBACK (proxy_button_press_event_cb),
+				  action);
+		g_signal_connect (widget, "button-release-event",
+				  G_CALLBACK (proxy_button_release_event_cb),
+				  action);
+	}
 }
 
 static const GtkActionEntry main_entries[] = {

@@ -74,18 +74,36 @@ action_close_all_windows_callback (GtkAction *action,
 	nautilus_application_close_all_navigation_windows ();
 }
 
+static gboolean
+should_open_in_new_tab (void)
+{
+	/* FIXME this is duplicated */
+	GdkEvent *event;
+
+	event = gtk_get_current_event ();
+	if (event->type == GDK_BUTTON_PRESS || event->type == GDK_BUTTON_RELEASE) {
+		return event->button.button == 2;
+	}
+
+	gdk_event_free (event);
+
+	return FALSE;
+}
+
 static void
 action_back_callback (GtkAction *action, 
 		      gpointer user_data) 
 {
-	nautilus_navigation_window_go_back (NAUTILUS_NAVIGATION_WINDOW (user_data));
+	nautilus_navigation_window_back_or_forward (NAUTILUS_NAVIGATION_WINDOW (user_data), 
+						    TRUE, 0, should_open_in_new_tab ());
 }
 
 static void
 action_forward_callback (GtkAction *action, 
 			 gpointer user_data) 
 {
-	nautilus_navigation_window_go_forward (NAUTILUS_NAVIGATION_WINDOW (user_data));
+	nautilus_navigation_window_back_or_forward (NAUTILUS_NAVIGATION_WINDOW (user_data), 
+			                            TRUE, 0, should_open_in_new_tab ());
 }
 
 static void
@@ -672,7 +690,7 @@ action_new_tab_callback (GtkAction *action,
 
 		new_slot = nautilus_window_open_slot (window, flags);
 		nautilus_window_set_active_slot (window, new_slot);
-		nautilus_window_slot_go_to (new_slot, current_location);
+		nautilus_window_slot_go_to (new_slot, current_location, FALSE);
 		g_object_unref (current_location);
 	}
 }

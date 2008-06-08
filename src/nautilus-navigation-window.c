@@ -596,7 +596,7 @@ path_bar_location_changed_callback (GtkWidget *widget,
 	/* check whether we already visited the target location */
 	i = bookmark_list_get_uri_index (slot->back_list, location);
 	if (i >= 0) {
-		nautilus_navigation_window_back_or_forward (window, TRUE, i);
+		nautilus_navigation_window_back_or_forward (window, TRUE, i, FALSE);
 	} else {
 		nautilus_window_go_to (NAUTILUS_WINDOW (window), location);
 	}
@@ -966,13 +966,13 @@ nautilus_navigation_window_remove_sidebar_panel (NautilusNavigationWindow *windo
 void
 nautilus_navigation_window_go_back (NautilusNavigationWindow *window)
 {
-	nautilus_navigation_window_back_or_forward (window, TRUE, 0);
+	nautilus_navigation_window_back_or_forward (window, TRUE, 0, FALSE);
 }
 
 void
 nautilus_navigation_window_go_forward (NautilusNavigationWindow *window)
 {
-	nautilus_navigation_window_back_or_forward (window, FALSE, 0);
+	nautilus_navigation_window_back_or_forward (window, FALSE, 0, FALSE);
 }
 
 void

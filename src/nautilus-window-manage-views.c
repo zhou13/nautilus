@@ -387,10 +387,10 @@ viewed_file_changed_callback (NautilusFile *file,
 						nautilus_path_bar_clear_buttons (NAUTILUS_PATH_BAR (NAUTILUS_NAVIGATION_WINDOW (window)->path_bar));
 					}
 
-					nautilus_window_slot_go_to (slot, go_to_file);
+					nautilus_window_slot_go_to (slot, go_to_file, FALSE);
 					g_object_unref (go_to_file);
 				} else {
-					nautilus_window_slot_go_home (slot);
+					nautilus_window_slot_go_home (slot, FALSE);
 				}
 			} else {
 				nautilus_window_close (window);
@@ -663,14 +663,23 @@ nautilus_window_slot_open_location_with_selection (NautilusWindowSlot *slot,
 }
 
 void
-nautilus_window_slot_go_home (NautilusWindowSlot *slot)
+nautilus_window_slot_go_home (NautilusWindowSlot *slot, gboolean new_tab)
 {			      
 	GFile *home;
+	NautilusWindowOpenFlags flags;
 
 	g_return_if_fail (NAUTILUS_IS_WINDOW_SLOT (slot));
 
+	if (new_tab) {
+		flags = NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+	} else {
+		flags = 0;
+	}
+
 	home = g_file_new_for_path (g_get_home_dir ());
-	nautilus_window_slot_open_location (slot, home, FALSE);
+	nautilus_window_slot_open_location_full (slot, home, 
+						 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, 
+						 flags, NULL);
 	g_object_unref (home);
 }
 
@@ -1120,13 +1129,13 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
 
 				if (!nautilus_is_root_directory (location)) {
 					if (!nautilus_is_home_directory (location)) {	
-						nautilus_window_slot_go_home (NAUTILUS_WINDOW (window)->details->active_slot);
+						nautilus_window_slot_go_home (NAUTILUS_WINDOW (window)->details->active_slot, FALSE);
 					} else {
 						GFile *root;
 
 						root = g_file_new_for_path ("/");
 						/* the last fallback is to go to a known place that can't be deleted! */
-						nautilus_window_slot_go_to (NAUTILUS_WINDOW (window)->details->active_slot, location);
+						nautilus_window_slot_go_to (NAUTILUS_WINDOW (window)->details->active_slot, location, FALSE);
 						g_object_unref (root);
 					}
 				} else {
@@ -1246,7 +1255,7 @@ create_content_view (NautilusWindowSlot *slot,
 	} else {
 		/* Something is busted, there was no location to load.
 		   Just load the homedir. */
-		nautilus_window_slot_go_home (slot);
+		nautilus_window_slot_go_home (slot, FALSE);
 		
 	}
 }
@@ -2160,13 +2169,12 @@ nautilus_window_manage_views_close_slot (NautilusWindow *window,
 
 void
 nautilus_navigation_window_back_or_forward (NautilusNavigationWindow *window, 
-                                            gboolean back, guint distance)
+                                            gboolean back, guint distance, gboolean new_tab)
 {
 	NautilusWindowSlot *slot;
 	NautilusNavigationWindowSlot *navigation_slot;
 	GList *list;
 	GFile *location;
-        char *scroll_pos;
         guint len;
         NautilusBookmark *bookmark;
 
@@ -2187,16 +2195,27 @@ nautilus_navigation_window_back_or_forward (NautilusNavigationWindow *window,
 
         bookmark = g_list_nth_data (list, distance);
 	location = nautilus_bookmark_get_location (bookmark);
-        scroll_pos = nautilus_bookmark_get_scroll_pos (bookmark);
-	begin_location_change
-		(slot,
-		 location, NULL,
-		 back ? NAUTILUS_LOCATION_CHANGE_BACK : NAUTILUS_LOCATION_CHANGE_FORWARD,
-		 distance,
-                 scroll_pos);
+
+	if (new_tab) {
+		nautilus_window_slot_open_location_full (slot, location,
+							 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
+							 NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB,
+							 NULL);
+	} else {
+        	char *scroll_pos;
+		
+		scroll_pos = nautilus_bookmark_get_scroll_pos (bookmark);
+		begin_location_change
+			(slot,
+			 location, NULL,
+			 back ? NAUTILUS_LOCATION_CHANGE_BACK : NAUTILUS_LOCATION_CHANGE_FORWARD,
+			 distance,
+			 scroll_pos);
+
+		g_free (scroll_pos);
+	}
 
 	g_object_unref (location);
-        g_free (scroll_pos);
 }
 
 /* reload the contents of the window */

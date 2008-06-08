@@ -6,6 +6,74 @@
 
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/nautilus-navigation-action.c (should_open_in_new_tab),
+	(activate_back_or_forward_menu_item), (proxy_button_press_event_cb),
+	(proxy_button_release_event_cb), (connect_proxy), (disconnect_proxy):
+	* src/nautilus-navigation-window-menus.c (should_open_in_new_tab),
+	(action_back_callback), (action_forward_callback),
+	(action_new_tab_callback):
+	* src/nautilus-navigation-window.c
+	  (path_bar_location_changed_callback),
+	  (nautilus_navigation_window_go_back),
+	  (nautilus_navigation_window_go_forward):
+	* src/nautilus-navigation-window.h:
+	* src/nautilus-window-manage-views.c (viewed_file_changed_callback),
+	(nautilus_window_slot_go_home),
+	(got_file_info_for_view_selection_callback), (create_content_view),
+	(nautilus_navigation_window_back_or_forward):
+	* src/nautilus-window-menus.c (should_open_in_new_tabs),
+	(activate_bookmark_in_menu_item), (action_home_callback),
+	(action_go_to_computer_callback), (action_go_to_network_callback),
+	(action_go_to_templates_callback), (action_go_to_trash_callback),
+	(action_go_to_burn_cd_callback), (action_up_callback),
+	(get_event_widget), (proxy_button_press_event_cb),
+	(proxy_button_release_event_cb), (disconnect_proxy_cb),
+	(connect_proxy_cb):
+	* src/nautilus-window-slot.h:
+	* src/nautilus-window.c (nautilus_window_go_to),
+	(nautilus_window_go_up_signal), (nautilus_window_go_up),
+	(nautilus_window_go_home):
+	* src/nautilus-window.h:
+	Middle click on "Home", "Computer", "Up", "Back", or "Forward" in 
+	toolbar, or any entry in "Go" menu or "Bookmarks" menu to open a new 
+	tab.
+
+2008-06-08  Jared Moore  <jaredm@gmx.com>
+
+	* src/nautilus-navigation-action.c (should_open_in_new_tab),
+	(activate_back_or_forward_menu_item), (proxy_button_press_event_cb),
+	(proxy_button_release_event_cb), (connect_proxy), (disconnect_proxy):
+	* src/nautilus-navigation-window-menus.c (should_open_in_new_tab),
+	(action_back_callback), (action_forward_callback),
+	(action_new_tab_callback):
+	* src/nautilus-navigation-window.c
+	  (path_bar_location_changed_callback),
+	  (nautilus_navigation_window_go_back),
+	  (nautilus_navigation_window_go_forward):
+	* src/nautilus-navigation-window.h:
+	* src/nautilus-window-manage-views.c (viewed_file_changed_callback),
+	(nautilus_window_slot_go_home),
+	(got_file_info_for_view_selection_callback), (create_content_view),
+	(nautilus_navigation_window_back_or_forward):
+	* src/nautilus-window-menus.c (should_open_in_new_tabs),
+	(activate_bookmark_in_menu_item), (action_home_callback),
+	(action_go_to_computer_callback), (action_go_to_network_callback),
+	(action_go_to_templates_callback), (action_go_to_trash_callback),
+	(action_go_to_burn_cd_callback), (action_up_callback),
+	(get_event_widget), (proxy_button_press_event_cb),
+	(proxy_button_release_event_cb), (disconnect_proxy_cb),
+	(connect_proxy_cb):
+	* src/nautilus-window-slot.h:
+	* src/nautilus-window.c (nautilus_window_go_to),
+	(nautilus_window_go_up_signal), (nautilus_window_go_up),
+	(nautilus_window_go_home):
+	* src/nautilus-window.h:
+	Middle click on "Home", "Computer", "Up", "Back", or "Forward" in 
+	toolbar, or any entry in "Go" menu or "Bookmarks" menu to open a new 
+	tab.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/nautilus-navigation-window-menus.c
 	(update_tab_action_sensitivity), (tab_menu_action_activate_callback),
 	(reload_tab_menu), (nautilus_navigation_window_sync_tab_menu_title):
