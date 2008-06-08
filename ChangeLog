@@ -1,3 +1,9 @@
+2008-06-08  Christian Neumair  <cneumair@gnome.org>
+
+	* libnautilus-private/nautilus-directory-background.c
+	(initialize_background_from_settings):
+	Use eel_background_set_image_uri() instead of *_sync().
+
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
 	* src/nautilus-navigation-window-menus.c
