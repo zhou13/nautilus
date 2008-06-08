@@ -1,5 +1,10 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* configure.in:
+	Fixed typo, thanks Christopher Bratusek.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/nautilus-navigation-window.c (notebook_popup_menu_move_left_cb),
 	(notebook_popup_menu_move_right_cb), (notebook_popup_menu_close_cb),
 	(notebook_popup_menu_show), (notebook_popup_menu_cb),
