@@ -6310,11 +6310,11 @@ static const GtkActionEntry directory_view_entries[] = {
   /* tooltip */                  N_("Open each selected item in a navigation window"),
                                  G_CALLBACK (action_open_alternate_callback) },
   /* name, stock id */         { "OpenInNewTab", NULL,
-  /* label, accelerator */       N_("Open in New Tab"), "<control><shift>o",
+  /* label, accelerator */       N_("Open in New _Tab"), "<control><shift>o",
   /* tooltip */                  N_("Open each selected item in a new tab"),
                                  G_CALLBACK (action_open_new_tab_callback) },
   /* name, stock id */         { "OpenFolderWindow", NULL,
-  /* label, accelerator */       N_("Open in Folder Window"), NULL,
+  /* label, accelerator */       N_("Open in _Folder Window"), NULL,
   /* tooltip */                  N_("Open each selected item in a folder window"),
                                  G_CALLBACK (action_open_folder_window_callback) },
   /* name, stock id */         { "OtherApplication1", NULL,
@@ -6449,7 +6449,7 @@ static const GtkActionEntry directory_view_entries[] = {
                                  G_CALLBACK (action_location_open_alternate_callback) },
 
   /* name, stock id */         { FM_ACTION_LOCATION_OPEN_FOLDER_WINDOW, NULL,
-  /* label, accelerator */       N_("Open in Folder Window"), "",
+  /* label, accelerator */       N_("Open in _Folder Window"), "",
   /* tooltip */                  N_("Open this folder in a folder window"),
                                  G_CALLBACK (action_location_open_folder_window_callback) },
 
@@ -6971,9 +6971,9 @@ real_update_location_menu (FMDirectoryView *view)
 	show_open_folder_window = FALSE;
 	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION) {
 		if (eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_BROWSER)) {
-			label = _("Open in New Window");
+			label = _("Open in New _Window");
 		} else {
-			label = _("Browse in New Window");
+			label = _("Browse in New _Window");
 			show_open_folder_window = TRUE;
 		}
 	} else {
@@ -7168,19 +7168,19 @@ real_update_menus (FMDirectoryView *view)
 	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION) {
 		if (eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_BROWSER)) {
 			if (selection_count == 0 || selection_count == 1) {
-				label_with_underscore = g_strdup (_("Open in New Window"));
+				label_with_underscore = g_strdup (_("Open in New _Window"));
 			} else {
-				label_with_underscore = g_strdup_printf (ngettext("Open in %'d New Window",
-										  "Open in %'d New Windows",
+				label_with_underscore = g_strdup_printf (ngettext("Open in %'d New _Window",
+										  "Open in %'d New _Windows",
 										  selection_count), 
 									 selection_count);
 			}
 		} else {
 			if (selection_count == 0 || selection_count == 1) {
-				label_with_underscore = g_strdup (_("Browse in New Window"));
+				label_with_underscore = g_strdup (_("Browse in New _Window"));
 			} else {
-				label_with_underscore = g_strdup_printf (ngettext("Browse in %'d New Window",
-										  "Browse in %'d New Windows",
+				label_with_underscore = g_strdup_printf (ngettext("Browse in %'d New _Window",
+										  "Browse in %'d New _Windows",
 										  selection_count), 
 									 selection_count);
 			}
@@ -7206,10 +7206,10 @@ real_update_menus (FMDirectoryView *view)
 	if (nautilus_window_info_get_window_type (view->details->window) == NAUTILUS_WINDOW_NAVIGATION &&
 	    eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
 		if (selection_count == 0 || selection_count == 1) {
-			label_with_underscore = g_strdup (_("Open in New Tab"));
+			label_with_underscore = g_strdup (_("Open in New _Tab"));
 		} else {
-			label_with_underscore = g_strdup_printf (ngettext("Open in %'d New Tab",
-									  "Open in %'d New Tabs",
+			label_with_underscore = g_strdup_printf (ngettext("Open in %'d New _Tab",
+									  "Open in %'d New _Tabs",
 									  selection_count), 
 								 selection_count);
 		}
