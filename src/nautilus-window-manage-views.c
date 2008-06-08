@@ -610,7 +610,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
         }
 
         if ((!do_load_location) ||
-	    (target_window == window &&
+	    (target_window == window && target_slot == slot &&
 	     old_location && g_file_equal (old_location, location))) {
 		g_object_unref (old_location);
                 return;

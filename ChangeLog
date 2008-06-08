@@ -1,5 +1,12 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_slot_open_location_full):
+	Do not skip begin_location_change if opening the same location in 
+	the same window but a different slot.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/nautilus-places-sidebar.c (open_selected_bookmark),
 	(open_shortcut_from_menu), (open_shortcut_cb),
 	(open_shortcut_in_new_window_cb), (open_shortcut_in_new_tab_cb),
