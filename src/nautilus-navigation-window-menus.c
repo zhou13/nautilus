@@ -60,6 +60,7 @@
 #include <libnautilus-private/nautilus-signaller.h>
 
 #define MENU_PATH_HISTORY_PLACEHOLDER			"/MenuBar/Other Menus/Go/History Placeholder"
+#define MENU_PATH_TABS_PLACEHOLDER			"/MenuBar/Other Menus/Tabs/TabsOpen"
 
 #define RESPONSE_FORGET		1000
 #define MENU_ITEM_MAX_WIDTH_CHARS 32
@@ -437,6 +438,7 @@ update_tab_action_sensitivity (NautilusNavigationWindow *window)
 	GtkAction *action;
 	NautilusNotebook *notebook;
 	gboolean sensitive;
+	int tab_num;
 
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
 
@@ -458,14 +460,117 @@ update_tab_action_sensitivity (NautilusNavigationWindow *window)
 	action = gtk_action_group_get_action (action_group, "TabsMoveRight");
 	sensitive = nautilus_notebook_can_reorder_current_child_relative (notebook, 1);
 	g_object_set (action, "sensitive", sensitive, NULL);
+
+	action_group = window->details->tabs_menu_action_group;
+	tab_num = gtk_notebook_get_current_page (GTK_NOTEBOOK (notebook));
+	action = gtk_action_group_get_action (action_group, "Tab0");
+	if (tab_num >= 0 && action != NULL) {
+		gtk_radio_action_set_current_value (GTK_RADIO_ACTION (action), tab_num);
+	}
+}
+
+static void
+tab_menu_action_activate_callback (GtkAction *action,
+				   gpointer user_data)
+{
+	int num;
+	GtkWidget *notebook;
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	notebook = window->notebook;
+
+	num = gtk_radio_action_get_current_value (GTK_RADIO_ACTION (action));
+
+	gtk_notebook_set_current_page (GTK_NOTEBOOK (notebook), num);		       
 }
 
 static void
 reload_tab_menu (NautilusNavigationWindow *window)
 {
+	GtkRadioAction *action;
+	GtkUIManager *ui_manager;
+	int i;
+	gchar action_name[80];
+	gchar *action_label;
+	gchar accelerator[80];
+	GSList *radio_group;
+	NautilusWindowSlot *slot;
+	GtkNotebook *notebook;
+	
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
 
-	/* multiview-TODO rebuild (not yet existing) tab list */
+	/* Remove old tab menu items */
+	ui_manager = nautilus_window_get_ui_manager (NAUTILUS_WINDOW (window));
+	if (window->details->tabs_menu_merge_id != 0) {
+		gtk_ui_manager_remove_ui (ui_manager,
+					  window->details->tabs_menu_merge_id);
+		window->details->tabs_menu_merge_id = 0;
+	}
+	if (window->details->tabs_menu_action_group != NULL) {
+		gtk_ui_manager_remove_action_group (ui_manager,
+						    window->details->tabs_menu_action_group);
+		window->details->tabs_menu_action_group = NULL;
+	}
+
+	/* Add new tab menu items */
+	window->details->tabs_menu_merge_id = gtk_ui_manager_new_merge_id (ui_manager);
+	window->details->tabs_menu_action_group = gtk_action_group_new ("TabsMenuGroup");
+	
+	gtk_ui_manager_insert_action_group (ui_manager,
+					    window->details->tabs_menu_action_group,
+					    -1);
+	g_object_unref (window->details->tabs_menu_action_group);
+
+	notebook = GTK_NOTEBOOK (window->notebook);
+	radio_group = NULL;
+	for (i = 0; i < gtk_notebook_get_n_pages (notebook); i++) {
+
+		snprintf(action_name, sizeof (action_name), "Tab%d", i);
+
+		slot = nautilus_window_get_slot_for_content_box (NAUTILUS_WINDOW (window),
+								 gtk_notebook_get_nth_page (notebook, i));
+		if (slot) {
+			action_label = g_strdup (slot->title);
+		} else {
+			/* Give the action a generic label. This should only happen when the tab is created
+			 * and the slot has not yet be created, so if all goes to plan then the action label
+			 * will be updated when the slot is created. */
+			action_label = g_strdup_printf ("Tab %d", i);
+		}
+
+		action = gtk_radio_action_new (action_name, action_label, NULL, NULL, i);
+
+		g_free (action_label);
+		action_label = NULL;
+		
+		gtk_radio_action_set_group (action, radio_group);
+		radio_group = gtk_radio_action_get_group (action);
+		
+		g_signal_connect (action, "activate", 
+				  G_CALLBACK (tab_menu_action_activate_callback),
+				  window);
+
+		/* Use Alt+(Number) keyboard accelerators for first 10 tabs */
+		if (i < 10) {
+			snprintf(accelerator, sizeof (accelerator), "<Alt>%d", (i+1)%10);
+		} else {
+			accelerator[0] = '\0';
+		}
+		gtk_action_group_add_action_with_accel (window->details->tabs_menu_action_group, 
+							GTK_ACTION (action),
+							accelerator);
+		
+		g_object_unref (action);
+		
+		gtk_ui_manager_add_ui (ui_manager, 
+				       window->details->tabs_menu_merge_id,
+				       MENU_PATH_TABS_PLACEHOLDER,
+				       action_name,
+				       action_name,
+				       GTK_UI_MANAGER_MENUITEM,
+				       FALSE);
+	}
 
 	update_tab_action_sensitivity (window);
 }
@@ -484,6 +589,40 @@ nautilus_navigation_window_initialize_tabs_menu (NautilusNavigationWindow *windo
 				 G_CONNECT_SWAPPED | G_CONNECT_AFTER);
 
 	reload_tab_menu (window);
+}
+
+/* Update the label displayed in the "Tabs" menu. This is called when the title of
+ * a slot changes. */
+void
+nautilus_navigation_window_sync_tab_menu_title (NautilusNavigationWindow *window,
+						NautilusWindowSlot *slot)
+{
+	int tab_num;
+	GtkNotebook *notebook;
+	GtkAction *action;
+	GtkActionGroup *action_group;
+	char action_name[80];
+
+	notebook = GTK_NOTEBOOK (window->notebook);
+
+	/* Find the tab number for that slot. It should (almost?) always be the current
+	 * tab, so check that first in order to avoid searching through the entire tab 
+	 * list. */
+	tab_num = gtk_notebook_get_current_page (notebook);
+	if (slot->content_box != gtk_notebook_get_nth_page (notebook, tab_num)) {
+		tab_num = gtk_notebook_page_num (notebook, slot->content_box);
+	}
+
+	g_return_if_fail (tab_num >= 0);
+
+	/* Find the action associated with that tab */
+	action_group = window->details->tabs_menu_action_group;
+	snprintf (action_name, sizeof (action_name), "Tab%d", tab_num);
+	action = gtk_action_group_get_action (action_group, action_name);
+
+	/* Update the label */
+	g_return_if_fail (action);
+	g_object_set (action, "label", slot->title, NULL);
 }
 
 static void

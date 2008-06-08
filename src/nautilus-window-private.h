@@ -99,6 +99,9 @@ struct _NautilusNavigationWindowDetails {
 	guint refresh_go_menu_idle_id;
         guint go_menu_merge_id;
         
+	GtkActionGroup *tabs_menu_action_group;
+	guint tabs_menu_merge_id;
+
         /* Toolbar */
         GtkWidget *toolbar;
         GtkWidget *location_bar;
@@ -221,6 +224,8 @@ void               nautilus_navigation_window_remove_bookmarks_menu_items       
 void               nautilus_navigation_window_update_show_hide_menu_items           (NautilusNavigationWindow     *window);
 void               nautilus_navigation_window_update_spatial_menu_item              (NautilusNavigationWindow     *window);
 void               nautilus_navigation_window_update_tab_menu_item_visibility       (NautilusNavigationWindow     *window);
+void               nautilus_navigation_window_sync_tab_menu_title                   (NautilusNavigationWindow     *window,
+										     NautilusWindowSlot           *slot);
 void               nautilus_navigation_window_remove_go_menu_callback    (NautilusNavigationWindow    *window);
 void               nautilus_navigation_window_remove_go_menu_items       (NautilusNavigationWindow    *window);
 

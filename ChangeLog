@@ -1,5 +1,17 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/nautilus-navigation-window-menus.c
+	(update_tab_action_sensitivity), (tab_menu_action_activate_callback),
+	(reload_tab_menu), (nautilus_navigation_window_sync_tab_menu_title):
+	* src/nautilus-navigation-window.c (real_sync_title):
+	* src/nautilus-window-private.h:
+	Add tab list to Tabs menu. Use <Alt>(Num) keyboard accelerators to
+	access first 10 tabs. Update tab list labels when slot title changes.
+	Set labels in tab list to the title of the corresponding slot. Update
+	the label when the slot title changes.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/nautilus-history-sidebar.c (open_selected_item),
 	(row_activated_callback), (button_press_event_callback),
 	(nautilus_history_sidebar_init):

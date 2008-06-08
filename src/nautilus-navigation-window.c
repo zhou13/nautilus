@@ -1126,6 +1126,8 @@ real_sync_title (NautilusWindow *window,
 
 	notebook = NAUTILUS_NOTEBOOK (navigation_window->notebook);
 	nautilus_notebook_sync_tab_label (notebook, slot);
+
+	nautilus_navigation_window_sync_tab_menu_title (navigation_window, slot);
 }
 
 static NautilusIconInfo *
