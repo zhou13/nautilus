@@ -221,6 +221,117 @@ notebook_tab_close_requested (NautilusNotebook *notebook,
 }
 
 static void
+notebook_popup_menu_move_left_cb (GtkMenuItem *menuitem,
+				  gpointer user_data)
+{
+    	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	nautilus_notebook_reorder_current_child_relative (NAUTILUS_NOTEBOOK (window->notebook), -1);
+}
+
+static void
+notebook_popup_menu_move_right_cb (GtkMenuItem *menuitem,
+				   gpointer user_data)
+{
+    	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	nautilus_notebook_reorder_current_child_relative (NAUTILUS_NOTEBOOK (window->notebook), 1);
+}
+
+static void
+notebook_popup_menu_close_cb (GtkMenuItem *menuitem,
+			      gpointer user_data)
+{
+    	NautilusNavigationWindow *window;
+	NautilusWindowSlot *slot;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	slot = nautilus_window_get_active_slot (NAUTILUS_WINDOW (window));
+	nautilus_window_slot_close (slot);
+}
+
+static void
+notebook_popup_menu_show (NautilusNavigationWindow *window,
+			  GdkEventButton *event)
+{
+	GtkWidget *popup;
+	GtkWidget *item;
+	GtkWidget *image;
+	int button, event_time;
+
+	popup = gtk_menu_new();
+
+	item = gtk_menu_item_new_with_mnemonic (_("Move Tab _Left"));
+	g_signal_connect (item, "activate", 
+			  G_CALLBACK (notebook_popup_menu_move_left_cb), 
+			  window);
+	gtk_menu_shell_append (GTK_MENU_SHELL (popup), 
+		               item);
+
+	item = gtk_menu_item_new_with_mnemonic (_("Move Tab _Right"));
+	g_signal_connect (item, "activate", 
+			  G_CALLBACK (notebook_popup_menu_move_right_cb), 
+			  window);
+	gtk_menu_shell_append (GTK_MENU_SHELL (popup), 
+		               item);
+
+	item = gtk_image_menu_item_new_with_mnemonic (_("_Close Tab"));
+	image = gtk_image_new_from_stock (GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
+	g_signal_connect (item, "activate", 
+			  G_CALLBACK (notebook_popup_menu_close_cb), window);
+	gtk_menu_shell_append (GTK_MENU_SHELL (popup), 
+		               item);
+
+	gtk_widget_show_all (popup);
+
+	if (event) {
+		button = event->button;
+		event_time = event->time;
+	} else {
+		button = 0;
+		event_time = gtk_get_current_event_time ();
+	}
+	
+	/* TODO is this correct? */
+	gtk_menu_attach_to_widget (GTK_MENU (popup), 
+				   GTK_WIDGET (window->notebook), 
+				   NULL); 
+
+	gtk_menu_popup (GTK_MENU (popup), NULL, NULL, NULL, NULL, 
+			button, event_time);
+}
+
+static gboolean
+notebook_popup_menu_cb (GtkWidget *widget,
+			gpointer user_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	notebook_popup_menu_show (window, NULL);
+	return TRUE;
+}
+
+static gboolean
+notebook_button_press_cb (GtkWidget *widget,
+			  GdkEventButton *event,
+			  gpointer user_data)
+{
+	NautilusNavigationWindow *window;
+
+	window = NAUTILUS_NAVIGATION_WINDOW (user_data);
+	if (GDK_BUTTON_PRESS == event->type && 3 == event->button) {
+		notebook_popup_menu_show (window, event);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void
 nautilus_navigation_window_init (NautilusNavigationWindow *window)
 {
 	GtkUIManager *ui_manager;
@@ -245,6 +356,13 @@ nautilus_navigation_window_init (NautilusNavigationWindow *window)
 	g_signal_connect (window->notebook,
 			  "tab-close-request",
 			  G_CALLBACK (notebook_tab_close_requested),
+			  window);
+	g_signal_connect_after (window->notebook,
+				"button_press_event",
+				G_CALLBACK (notebook_button_press_cb),
+				window);
+	g_signal_connect (window->notebook, "popup-menu",
+			  G_CALLBACK (notebook_popup_menu_cb),
 			  window);
 	nautilus_horizontal_splitter_pack2 (
 		NAUTILUS_HORIZONTAL_SPLITTER (window->details->content_paned),

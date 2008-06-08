@@ -1,5 +1,14 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/nautilus-navigation-window.c (notebook_popup_menu_move_left_cb),
+	(notebook_popup_menu_move_right_cb), (notebook_popup_menu_close_cb),
+	(notebook_popup_menu_show), (notebook_popup_menu_cb),
+	(notebook_button_press_cb), (nautilus_navigation_window_init):
+	Add popup menu to tabs with "Move Tab Left", "Move Tab Right", and
+	"Close Tab"
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/nautilus-window-manage-views.c
 	(nautilus_window_slot_open_location_full):
 	Do not skip begin_location_change if opening the same location in 
