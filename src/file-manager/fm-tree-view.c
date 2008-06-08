@@ -93,7 +93,7 @@ struct FMTreeViewDetails {
 	GVolumeMonitor *volume_monitor;
 
 	NautilusFile *activation_file;
-	gboolean activation_in_new_window;
+	NautilusWindowOpenFlags activation_flags;
 
 	NautilusTreeViewDragDest *drag_dest;
 
@@ -345,7 +345,8 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 
         g_assert (file == view->details->activation_file);
         
-        mode = view->details->activation_in_new_window ? NAUTILUS_WINDOW_OPEN_IN_NAVIGATION : NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE;
+        mode = ((view->details->activation_flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) != 0)
+		? NAUTILUS_WINDOW_OPEN_IN_NAVIGATION : NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE;
 
 	slot = nautilus_window_info_get_active_slot (view->details->window);
 
@@ -374,7 +375,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 				(slot,
 				 location, 
 				 mode,
-				 0,
+				 view->details->activation_flags,
 				 NULL);
 			g_object_unref (location);
 		} else {
@@ -400,7 +401,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 				(slot,
 				 location,
 				 mode,
-				 0,
+				 view->details->activation_flags,
 				 NULL);
 			g_object_unref (location);
 		}
@@ -461,7 +462,7 @@ selection_changed_timer_callback(FMTreeView *view)
 	if (view->details->activation_file == NULL) {
 		return FALSE;
 	}
-	view->details->activation_in_new_window = FALSE;
+	view->details->activation_flags = 0;
 		
 	attributes = NAUTILUS_FILE_ATTRIBUTE_INFO | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 	nautilus_file_call_when_ready (view->details->activation_file, attributes,
@@ -776,14 +777,14 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 static void
 fm_tree_view_activate_file (FMTreeView *view, 
 			    NautilusFile *file,
-			    gboolean open_in_new_window)
+			    NautilusWindowOpenFlags flags)
 {
 	NautilusFileAttributes attributes;
 
 	cancel_activation (view);
 
 	view->details->activation_file = nautilus_file_ref (file);
-	view->details->activation_in_new_window = open_in_new_window;
+	view->details->activation_flags = flags;
 		
 	attributes = NAUTILUS_FILE_ATTRIBUTE_INFO | NAUTILUS_FILE_ATTRIBUTE_LINK_INFO;
 	nautilus_file_call_when_ready (view->details->activation_file, attributes,
@@ -794,14 +795,21 @@ static void
 fm_tree_view_open_cb (GtkWidget *menu_item,
 		      FMTreeView *view)
 {
-	fm_tree_view_activate_file (view, view->details->popup_file, FALSE);
+	fm_tree_view_activate_file (view, view->details->popup_file, 0);
+}
+
+static void
+fm_tree_view_open_in_new_tab_cb (GtkWidget *menu_item,
+				    FMTreeView *view)
+{
+	fm_tree_view_activate_file (view, view->details->popup_file, NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
 }
 
 static void
 fm_tree_view_open_in_new_window_cb (GtkWidget *menu_item,
 				    FMTreeView *view)
 {
-	fm_tree_view_activate_file (view, view->details->popup_file, TRUE);
+	fm_tree_view_activate_file (view, view->details->popup_file, NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW);
 }
 
 static void
@@ -1115,8 +1123,17 @@ create_popup_menu (FMTreeView *view)
 	gtk_menu_shell_append (GTK_MENU_SHELL (popup), menu_item);
 	view->details->popup_open = menu_item;
 	
+	/* add the "open in new tab" menu item */
+	menu_item = gtk_menu_item_new_with_mnemonic (_("Open in New _Tab"));
+	g_signal_connect (menu_item, "activate",
+			  G_CALLBACK (fm_tree_view_open_in_new_tab_cb),
+			  view);
+	gtk_widget_show (menu_item);
+	gtk_menu_shell_append (GTK_MENU_SHELL (popup), menu_item);
+	view->details->popup_open_in_new_window = menu_item;
+	
 	/* add the "open in new window" menu item */
-	menu_item = gtk_image_menu_item_new_with_label (_("Open in New Window"));
+	menu_item = gtk_menu_item_new_with_mnemonic (_("Open in New _Window"));
 	g_signal_connect (menu_item, "activate",
 			  G_CALLBACK (fm_tree_view_open_in_new_window_cb),
 			  view);

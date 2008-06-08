@@ -1,5 +1,14 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/file-manager/fm-tree-view.c (got_activation_uri_callback),
+	(selection_changed_timer_callback), (fm_tree_view_activate_file),
+	(fm_tree_view_open_cb), (fm_tree_view_open_in_new_tab_cb),
+	(fm_tree_view_open_in_new_window_cb), (create_popup_menu):
+	Add mnemonic to "Open in New Window" and add "Open in New Tab" in 
+	tree view sidebar.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/nautilus-places-sidebar.c (bookmarks_button_press_event_cb):
 	Middle click on entry in places sidebar to open a new tab.
 
