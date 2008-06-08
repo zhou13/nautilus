@@ -1,5 +1,12 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/nautilus-history-sidebar.c (open_selected_item),
+	(row_activated_callback), (button_press_event_callback),
+	(nautilus_history_sidebar_init):
+	Middle click on entry in history sidebar to open in new tab.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/file-manager/fm-tree-view.c (button_pressed_callback):
 	Middle click on entry in tree sidebar to open a new tab.
 

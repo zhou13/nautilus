@@ -138,20 +138,17 @@ history_changed_callback (GObject *signaller,
 }
 
 static void
-row_activated_callback (GtkTreeView *tree_view,
-			GtkTreePath *path,
-			GtkTreeViewColumn *column,
-			gpointer user_data)
+open_selected_item (NautilusHistorySidebar *sidebar, 
+		    GtkTreePath *path,
+		    NautilusWindowOpenFlags flags)
 {
-	NautilusHistorySidebar *sidebar;
 	NautilusWindowSlotInfo *slot;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	NautilusBookmark *bookmark;
 	GFile *location;
 	
-	sidebar = NAUTILUS_HISTORY_SIDEBAR (user_data);
-	model = gtk_tree_view_get_model (tree_view);
+	model = gtk_tree_view_get_model (sidebar->tree_view);
 	
 	if (!gtk_tree_model_get_iter (model, &iter, path)) {
 		return;
@@ -165,8 +162,49 @@ row_activated_callback (GtkTreeView *tree_view,
 	slot = nautilus_window_info_get_active_slot (sidebar->window);
 	nautilus_window_slot_info_open_location
 		(slot,
-		 location, NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, 0, NULL);
+		 location, NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE, 
+		 flags, NULL);
 	g_object_unref (location);
+}
+
+static void
+row_activated_callback (GtkTreeView *tree_view,
+			GtkTreePath *path,
+			GtkTreeViewColumn *column,
+			gpointer user_data)
+{
+	NautilusHistorySidebar *sidebar;
+	
+	sidebar = NAUTILUS_HISTORY_SIDEBAR (user_data);
+	g_assert (sidebar->tree_view == tree_view);
+
+	open_selected_item (sidebar, path, 0);
+}
+
+static gboolean
+button_press_event_callback (GtkWidget *widget,
+			     GdkEventButton *event,
+			     gpointer user_data)
+{
+	if (event->button == 2 && event->type == GDK_BUTTON_PRESS) {
+		/* Open new tab on middle click. */
+		NautilusHistorySidebar *sidebar;
+		GtkTreePath *path;
+
+		sidebar = NAUTILUS_HISTORY_SIDEBAR (user_data);
+		g_assert (sidebar->tree_view == GTK_TREE_VIEW (widget));
+
+		if (gtk_tree_view_get_path_at_pos (sidebar->tree_view,
+						   event->x, event->y,
+						   &path, NULL, NULL, NULL)) {
+			open_selected_item (sidebar, 
+					    path,
+					    NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
+			gtk_tree_path_free (path);
+		}
+	}
+
+	return FALSE;
 }
 
 static void
@@ -248,6 +286,9 @@ nautilus_history_sidebar_init (NautilusHistorySidebar *sidebar)
 	g_signal_connect_object (nautilus_signaller_get_current (),
 				 "history_list_changed",
 				 G_CALLBACK (history_changed_callback), sidebar, 0);
+
+	g_signal_connect (tree_view, "button-press-event", 
+			  G_CALLBACK (button_press_event_callback), sidebar);
 
 	eel_preferences_add_callback (NAUTILUS_PREFERENCES_CLICK_POLICY,
 				      click_policy_changed_callback,
