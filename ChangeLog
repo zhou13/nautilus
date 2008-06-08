@@ -1,5 +1,10 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/file-manager/fm-tree-view.c (button_pressed_callback):
+	Middle click on entry in tree sidebar to open a new tab.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/file-manager/fm-tree-view.c (got_activation_uri_callback),
 	(selection_changed_timer_callback), (fm_tree_view_activate_file),
 	(fm_tree_view_open_cb), (fm_tree_view_open_in_new_tab_cb),

@@ -138,6 +138,9 @@ static const GtkTargetEntry clipboard_targets[] = {
 
 static void  fm_tree_view_iface_init        (NautilusSidebarIface         *iface);
 static void  sidebar_provider_iface_init    (NautilusSidebarProviderIface *iface);
+static void  fm_tree_view_activate_file     (FMTreeView *view, 
+			    		     NautilusFile *file,
+					     NautilusWindowOpenFlags flags);
 static GType fm_tree_view_provider_get_type (void);
 
 G_DEFINE_TYPE_WITH_CODE (FMTreeView, fm_tree_view, GTK_TYPE_SCROLLED_WINDOW,
@@ -767,6 +770,24 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 		view->details->popup_file = NULL;
 		
 		g_object_unref (view);
+
+		return TRUE;
+	} else if (event->button == 2 && event->type == GDK_BUTTON_PRESS) {
+		NautilusFile *file;
+
+		if (!gtk_tree_view_get_path_at_pos (treeview, event->x, event->y,
+						    &path, NULL, NULL, NULL)) {
+			return FALSE;
+		}
+
+		file = sort_model_path_to_file (view, path);
+		if (file) {
+			fm_tree_view_activate_file (view, file, 
+						    NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
+			nautilus_file_unref (file);
+		}
+
+		gtk_tree_path_free (path);
 
 		return TRUE;
 	}
