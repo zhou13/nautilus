@@ -1,5 +1,10 @@
 2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
 
+	* src/nautilus-places-sidebar.c (bookmarks_button_press_event_cb):
+	Middle click on entry in places sidebar to open a new tab.
+
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
 	* src/file-manager/fm-directory-view.c (directory_view_entries),
 	(real_update_location_menu), (real_update_menus):
 	Add mnemonics to "Open in New Window", "Open in New Tab", etc.

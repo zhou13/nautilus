@@ -1802,7 +1802,8 @@ bookmarks_popup_menu_cb (GtkWidget *widget,
 }
 
 /* Callback used when a button is pressed on the shortcuts list.  
- * We trap button 3 to bring up a popup menu.
+ * We trap button 3 to bring up a popup menu, and button 2 to
+ * open in a new tab.
  */
 static gboolean
 bookmarks_button_press_event_cb (GtkWidget             *widget,
@@ -1811,6 +1812,24 @@ bookmarks_button_press_event_cb (GtkWidget             *widget,
 {
 	if (event->button == 3) {
 		bookmarks_popup_menu (sidebar, event);
+	} else if (event->button == 2) {
+		GtkTreeModel *model;
+		GtkTreePath *path;
+		GtkTreeView *tree_view;
+
+		tree_view = GTK_TREE_VIEW (widget);
+		g_assert (tree_view == sidebar->tree_view);
+
+		model = gtk_tree_view_get_model (tree_view);
+
+		gtk_tree_view_get_path_at_pos (tree_view, (int) event->x, (int) event->y, 
+					       &path, NULL, NULL, NULL);
+
+		open_selected_bookmark (sidebar, model, path, NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
+
+		if (path != NULL) {
+			gtk_tree_path_free (path);
+		}
 	}
 	return FALSE;
 }
