@@ -1,3 +1,11 @@
+2008-06-08  Jared Moore  <jaredm@svn.gnome.org>
+
+	* src/nautilus-places-sidebar.c (open_selected_bookmark),
+	(open_shortcut_from_menu), (open_shortcut_cb),
+	(open_shortcut_in_new_window_cb), (open_shortcut_in_new_tab_cb),
+	(bookmarks_build_popup_menu):
+	Add "Open in New Tab" to Places sidebar context menu.
+
 2008-05-31  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-window.c (get_first_inactive_slot),

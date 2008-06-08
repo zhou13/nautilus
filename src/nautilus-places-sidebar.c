@@ -134,7 +134,7 @@ static GType nautilus_places_sidebar_provider_get_type (void);
 static void  open_selected_bookmark                    (NautilusPlacesSidebar        *sidebar,
 							GtkTreeModel                 *model,
 							GtkTreePath                  *path,
-							gboolean                      open_in_new_window);
+							NautilusWindowOpenFlags flags);
 static void  nautilus_places_sidebar_style_set         (GtkWidget                    *widget,
 							GtkStyle                     *previous_style);
 
@@ -580,7 +580,7 @@ row_activated_callback (GtkTreeView *tree_view,
 	open_selected_bookmark (NAUTILUS_PLACES_SIDEBAR (user_data),
 				gtk_tree_view_get_model (tree_view),
 				path,
-				FALSE);
+				0);
 }
 
 static void
@@ -1277,7 +1277,7 @@ static void
 open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 			GtkTreeModel	      *model,
 			GtkTreePath	      *path,
-			gboolean	      open_in_new_window)
+			NautilusWindowOpenFlags	      flags)
 {
 	NautilusWindowSlot *slot;
 	GtkTreeIter iter;
@@ -1300,11 +1300,11 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 				    sidebar->window, uri);
 		location = g_file_new_for_uri (uri);
 		/* Navigate to the clicked location */
-		if (!open_in_new_window) {
+		if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) == 0) {
 			slot = nautilus_window_info_get_active_slot (sidebar->window);
 			nautilus_window_slot_info_open_location (slot, location,
 								 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-								 0, NULL);
+								 flags, NULL);
 		} else {
 			NautilusWindow *cur, *new;
 			
@@ -1330,7 +1330,7 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 
 static void
 open_shortcut_from_menu (NautilusPlacesSidebar *sidebar,
-			 gboolean	       open_in_new_window)
+			 NautilusWindowOpenFlags	       flags)
 {
 	GtkTreeModel *model;
 	GtkTreePath *path;
@@ -1338,7 +1338,7 @@ open_shortcut_from_menu (NautilusPlacesSidebar *sidebar,
 	model = gtk_tree_view_get_model (sidebar->tree_view);
 	gtk_tree_view_get_cursor (sidebar->tree_view, &path, NULL);
 
-	open_selected_bookmark (sidebar, model, path, open_in_new_window);
+	open_selected_bookmark (sidebar, model, path, flags);
 
 	gtk_tree_path_free (path);
 }
@@ -1347,14 +1347,21 @@ static void
 open_shortcut_cb (GtkMenuItem		*item,
 		  NautilusPlacesSidebar	*sidebar)
 {
-	open_shortcut_from_menu (sidebar, FALSE);
+	open_shortcut_from_menu (sidebar, 0);
 }
 
 static void
 open_shortcut_in_new_window_cb (GtkMenuItem	      *item,
 				NautilusPlacesSidebar *sidebar)
 {
-	open_shortcut_from_menu (sidebar, TRUE);
+	open_shortcut_from_menu (sidebar, NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW);
+}
+
+static void
+open_shortcut_in_new_tab_cb (GtkMenuItem	      *item,
+				NautilusPlacesSidebar *sidebar)
+{
+	open_shortcut_from_menu (sidebar, NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
 }
 
 /* Rename the selected bookmark */
@@ -1685,6 +1692,12 @@ bookmarks_build_popup_menu (NautilusPlacesSidebar *sidebar)
 				       gtk_image_new_from_stock (GTK_STOCK_OPEN, GTK_ICON_SIZE_MENU));
 	g_signal_connect (item, "activate",
 			  G_CALLBACK (open_shortcut_cb), sidebar);
+	gtk_widget_show (item);
+	gtk_menu_shell_append (GTK_MENU_SHELL (sidebar->popup_menu), item);
+
+	item = gtk_menu_item_new_with_mnemonic (_("Open in New _Tab"));
+	g_signal_connect (item, "activate",
+			  G_CALLBACK (open_shortcut_in_new_tab_cb), sidebar);
 	gtk_widget_show (item);
 	gtk_menu_shell_append (GTK_MENU_SHELL (sidebar->popup_menu), item);
 
