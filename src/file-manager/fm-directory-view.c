@@ -311,6 +311,10 @@ static void     fm_directory_view_init_show_hidden_files       (FMDirectoryView 
 static void     fm_directory_view_load_location                (NautilusView         *nautilus_view,
 								const char           *location);
 static void     fm_directory_view_stop_loading                 (NautilusView         *nautilus_view);
+static void     fm_directory_view_drop_proxy_received_uris     (FMDirectoryView *view,
+								GList *uris,
+								const char *target_uri,
+								GdkDragAction action);
 static void     clipboard_changed_callback                     (NautilusClipboardMonitor *monitor,
 								FMDirectoryView      *view);
 static void     open_one_in_new_window                         (gpointer              data,
@@ -1794,6 +1798,7 @@ fm_directory_view_init_view_iface (NautilusViewIface *iface)
 	iface->get_zoom_level = (gpointer)fm_directory_view_get_zoom_level;
 
 	iface->pop_up_location_context_menu = (gpointer)fm_directory_view_pop_up_location_context_menu;
+	iface->drop_proxy_received_uris = (gpointer)fm_directory_view_drop_proxy_received_uris;
 }
 
 static void
@@ -7452,6 +7457,36 @@ fm_directory_view_pop_up_location_context_menu (FMDirectoryView *view,
 				      EEL_DEFAULT_POPUP_MENU_DISPLACEMENT,
 				      EEL_DEFAULT_POPUP_MENU_DISPLACEMENT,
 				      event);
+}
+
+static void 
+fm_directory_view_drop_proxy_received_uris (FMDirectoryView *view,
+					    GList *uris,
+					    const char *target_uri,
+					    GdkDragAction action)
+{
+	char *container_uri;
+
+	container_uri = NULL;
+	if (target_uri == NULL) {
+		container_uri = fm_directory_view_get_backing_uri (view);
+		g_assert (container_uri != NULL);
+	}
+
+	if (action == GDK_ACTION_ASK) {
+		action = nautilus_drag_drop_action_ask
+			(GTK_WIDGET (view),
+			 GDK_ACTION_MOVE | GDK_ACTION_COPY | GDK_ACTION_LINK);
+		if (action == 0) {
+			return;
+		}
+	}
+
+	fm_directory_view_move_copy_items (uris, NULL,
+					   target_uri != NULL ? target_uri : container_uri,
+					   action, 0, 0, view);
+
+	g_free (container_uri);
 }
 
 static void

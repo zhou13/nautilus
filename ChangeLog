@@ -1,3 +1,19 @@
+2008-06-11  Christian Neumair  <cneumair@gnome.org>
+
+	* libnautilus-private/nautilus-icon-dnd.c (drag_drop_callback):
+	* libnautilus-private/nautilus-view.c
+	(nautilus_view_drop_proxy_received_uris):
+	* libnautilus-private/nautilus-view.h:
+	* src/file-manager/fm-directory-view.c
+	(fm_directory_view_init_view_iface),
+	(fm_directory_view_drop_proxy_received_uris):
+	* src/nautilus-notebook.c (nautilus_notebook_class_init),
+	(notebook_tab_drag_data_received), (find_drop_target),
+	(get_drop_action), (notebook_tab_drag_motion),
+	(notebook_tab_drag_leave), (notebook_tab_drag_drop),
+	(nautilus_notebook_init), (build_tab_label):
+	Enable drop to tab labels, which act as a proxy for the respective view.
+
 2008-06-08  Christian Neumair  <cneumair@gnome.org>
 
 	* libnautilus-private/nautilus-directory-background.c
