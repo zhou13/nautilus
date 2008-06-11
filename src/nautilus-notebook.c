@@ -418,8 +418,6 @@ notebook_tab_drag_drop (GtkWidget *widget,
 {
 	GdkAtom target;
 
-	g_message ("widget window is %p, drag window is %p", widget->window, context->dest_window);
-
 	target = find_drop_target (widget, context);
 	if (target != GDK_NONE) {
 		gtk_drag_get_data (widget, context, target, time);
