@@ -1,5 +1,19 @@
 2008-06-28  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-navigation-window-slot.c
+	(query_editor_changed_callback),
+	(nautilus_navigation_window_slot_update_query_editor),
+	(nautilus_navigation_window_slot_class_init):
+	* src/nautilus-window-slot.c (query_editor_changed_callback),
+	(real_update_query_editor), (nautilus_window_slot_class_init),
+	(nautilus_window_slot_update_query_editor):
+	* src/nautilus-window-slot.h:
+	Add nautilus_window_slot_update_query_editor() for
+	instantiating the query editors, depending on the view's directory
+	type.
+
+2008-06-28  Christian Neumair  <cneumair@gnome.org>
+
 	* src/file-manager/fm-directory-view.c
 	(clipboard_changed_callback):
 	Do not react to changes if inactive.

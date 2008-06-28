@@ -26,6 +26,7 @@
 #define NAUTILUS_WINDOW_SLOT_H
 
 #include "nautilus-window.h"
+#include "nautilus-query-editor.h"
 
 #define NAUTILUS_TYPE_WINDOW_SLOT	 (nautilus_window_slot_get_type())
 #define NAUTILUS_WINDOW_SLOT_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), NAUTILUS_TYPE_WINDOW_SLOT, NautilusWindowSlotClass))
@@ -49,6 +50,8 @@ struct NautilusWindowSlotClass {
 	/* wrapped NautilusWindowInfo signals, for overloading */
 	void (* active)   (NautilusWindowSlot *slot);
 	void (* inactive) (NautilusWindowSlot *slot);
+
+	void (* update_query_editor) (NautilusWindowSlot *slot);
 };
 
 /* Each NautilusWindowSlot corresponds to
@@ -90,6 +93,7 @@ struct NautilusWindowSlot {
 	gboolean allow_stop;
 
 	gboolean search_mode;
+	NautilusQueryEditor *query_editor;
 
 	/* New location. */
 	NautilusLocationChangeType location_change_type;
@@ -110,6 +114,7 @@ GType   nautilus_window_slot_get_type (void);
 char *  nautilus_window_slot_get_title			   (NautilusWindowSlot *slot);
 void    nautilus_window_slot_update_title		   (NautilusWindowSlot *slot);
 void    nautilus_window_slot_update_icon		   (NautilusWindowSlot *slot);
+void    nautilus_window_slot_update_query_editor	   (NautilusWindowSlot *slot);
 
 GFile * nautilus_window_slot_get_location		   (NautilusWindowSlot *slot);
 char *  nautilus_window_slot_get_location_uri		   (NautilusWindowSlot *slot);
