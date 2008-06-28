@@ -606,6 +606,7 @@ static void
 hide_temporary_bars (NautilusNavigationWindow *window)
 {
 	NautilusWindowSlot *slot;
+	NautilusDirectory *directory;
 
 	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
 
@@ -618,7 +619,9 @@ hide_temporary_bars (NautilusNavigationWindow *window)
 		window->details->temporary_location_bar = FALSE;
 	}
 	if (window->details->temporary_navigation_bar) {
-		if (slot->search_mode) {
+		directory = nautilus_directory_get (slot->location);
+
+		if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
 			nautilus_navigation_window_set_bar_mode (window, NAUTILUS_BAR_SEARCH);
 		} else {
 			if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_LOCATION_ENTRY)) {
@@ -626,6 +629,8 @@ hide_temporary_bars (NautilusNavigationWindow *window)
 			}
 		}
 		window->details->temporary_navigation_bar = FALSE;
+
+		nautilus_directory_unref (directory);
 	}
 	if (window->details->temporary_search_bar) {
 		if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_LOCATION_ENTRY)) {
@@ -1314,75 +1319,36 @@ nautilus_navigation_window_show_search (NautilusNavigationWindow *window)
 	nautilus_search_bar_grab_focus (NAUTILUS_SEARCH_BAR (window->search_bar));
 }
 
+/* either called due to slot change, or due to location change in the current slot. */
 static void
-query_editor_changed_callback (NautilusSearchBar *bar,
-			       NautilusQuery *query,
-			       gboolean reload,
-			       NautilusWindowSlot *slot)
+real_sync_search_widgets (NautilusWindow *window)
 {
-	NautilusDirectory *directory;
-
-	g_assert (NAUTILUS_IS_FILE (slot->viewed_file));
-
-	directory = nautilus_directory_get_for_file (slot->viewed_file);
-	g_assert (NAUTILUS_IS_SEARCH_DIRECTORY (directory));
-
-	nautilus_search_directory_set_query (NAUTILUS_SEARCH_DIRECTORY (directory),
-					     query);
-	if (reload) {
-		nautilus_window_slot_reload (slot);
-	}
-
-	nautilus_directory_unref (directory);
-}
-
-static void
-real_set_search_mode (NautilusWindow *window, gboolean search_mode,
-		      NautilusSearchDirectory *search_directory)
-{
+	NautilusNavigationWindow *navigation_window;
 	NautilusWindowSlot *slot;
-	NautilusNavigationWindow *nav_window;
-	GtkWidget *query_editor;
-	NautilusQuery *query;
+	NautilusDirectory *directory;
+	NautilusSearchDirectory *search_directory;
 
-	nav_window = NAUTILUS_NAVIGATION_WINDOW (window);
+	navigation_window = NAUTILUS_NAVIGATION_WINDOW (window);
 
 	slot = window->details->active_slot;
 
-	if (!search_mode) {
-		nav_window->details->temporary_search_bar = TRUE;
-		hide_temporary_bars (nav_window);
-		return;
+	search_directory = NULL;
+
+	directory = nautilus_directory_get (slot->location);
+	if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
+		search_directory = NAUTILUS_SEARCH_DIRECTORY (directory);
 	}
 
-	if (nautilus_search_directory_is_saved_search (search_directory)) {
-		query_editor = nautilus_query_editor_new (TRUE,
-							  nautilus_search_directory_is_indexed (search_directory));
+	if (search_directory != NULL &&
+	    !nautilus_search_directory_is_saved_search (search_directory)) {
+		nautilus_navigation_window_show_location_bar_temporarily (navigation_window);
+		nautilus_navigation_window_set_bar_mode (navigation_window, NAUTILUS_BAR_SEARCH);
+		navigation_window->details->temporary_search_bar = FALSE;
 	} else {
-		nautilus_navigation_window_show_location_bar_temporarily (nav_window);
-		nautilus_navigation_window_set_bar_mode (nav_window, NAUTILUS_BAR_SEARCH);
-		nav_window->details->temporary_search_bar = FALSE;
-
-		query_editor = nautilus_query_editor_new_with_bar (FALSE,
-								   nautilus_search_directory_is_indexed (search_directory),
-								   NAUTILUS_SEARCH_BAR (nav_window->search_bar));
+		navigation_window->details->temporary_search_bar = TRUE;
+		hide_temporary_bars (navigation_window);
 	}
 
-	g_signal_connect_object (query_editor, "changed",
-				 G_CALLBACK (query_editor_changed_callback), slot, 0);
-	
-	query = nautilus_search_directory_get_query (search_directory);
-	if (query != NULL) {
-		nautilus_query_editor_set_query (NAUTILUS_QUERY_EDITOR (query_editor),
-						 query);
-		g_object_unref (query);
-	}else {
-		nautilus_query_editor_set_default_query (NAUTILUS_QUERY_EDITOR (query_editor));
-	}
-	
-	nautilus_window_slot_add_extra_location_widget (slot, query_editor);
-	gtk_widget_show (query_editor);
-	nautilus_query_editor_grab_focus (NAUTILUS_QUERY_EDITOR (query_editor));
 }
 
 static void
@@ -1844,7 +1810,7 @@ nautilus_navigation_window_class_init (NautilusNavigationWindowClass *class)
 	NAUTILUS_WINDOW_CLASS (class)->disconnect_content_view = real_disconnect_content_view;
 	NAUTILUS_WINDOW_CLASS (class)->sync_allow_stop = real_sync_allow_stop;
 	NAUTILUS_WINDOW_CLASS (class)->prompt_for_location = real_prompt_for_location;
-	NAUTILUS_WINDOW_CLASS (class)->set_search_mode = real_set_search_mode;
+	NAUTILUS_WINDOW_CLASS (class)->sync_search_widgets = real_sync_search_widgets;
 	NAUTILUS_WINDOW_CLASS (class)->sync_title = real_sync_title;
 	NAUTILUS_WINDOW_CLASS (class)->get_icon = real_get_icon;
 	NAUTILUS_WINDOW_CLASS (class)->get_default_size = real_get_default_size;

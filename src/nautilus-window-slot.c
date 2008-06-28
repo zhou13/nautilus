@@ -115,6 +115,7 @@ real_active (NautilusWindowSlot *slot)
 	nautilus_window_sync_allow_stop (window, slot);
 	nautilus_window_sync_title (window, slot);
 	nautilus_window_sync_location_widgets (window);
+	nautilus_window_sync_search_widgets (window);
 
 	if (slot->viewed_file != NULL) {
 		nautilus_window_load_view_as_menus (window);
@@ -144,8 +145,6 @@ real_inactive (NautilusWindowSlot *slot)
 
 	window = NAUTILUS_WINDOW (slot->window);
 	g_assert (slot == window->details->active_slot);
-
-	/* multiview-TODO write back locaton widget state */
 }
 
 static void

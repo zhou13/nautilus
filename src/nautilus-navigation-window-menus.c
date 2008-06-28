@@ -666,8 +666,9 @@ action_new_tab_callback (GtkAction *action,
 	NautilusWindowSlot *current_slot;
 	NautilusWindowSlot *new_slot;
 	NautilusWindowOpenFlags flags;
-	GFile *current_location;
+	GFile *location;
 	int new_slot_position;
+	char *scheme;
 
 	if (!eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
 		return;
@@ -675,11 +676,11 @@ action_new_tab_callback (GtkAction *action,
 
 	window = NAUTILUS_WINDOW (user_data);
 	current_slot = window->details->active_slot;
-	current_location = nautilus_window_slot_get_location (current_slot);
+	location = nautilus_window_slot_get_location (current_slot);
 
 	window = NAUTILUS_WINDOW (current_slot->window);
 
-	if (current_location != NULL) {
+	if (location != NULL) {
 		flags = 0;
 
 		new_slot_position = eel_preferences_get_enum (NAUTILUS_PREFERENCES_NEW_TAB_POSITION);
@@ -687,11 +688,17 @@ action_new_tab_callback (GtkAction *action,
 			flags = NAUTILUS_WINDOW_OPEN_SLOT_APPEND;
 		}
 
+		scheme = g_file_get_uri_scheme (location);
+		if (!strcmp (scheme, "x-nautilus-search")) {
+			g_object_unref (location);
+			location = g_file_new_for_path (g_get_home_dir ());
+		}
+		g_free (scheme);
 
 		new_slot = nautilus_window_open_slot (window, flags);
 		nautilus_window_set_active_slot (window, new_slot);
-		nautilus_window_slot_go_to (new_slot, current_location, FALSE);
-		g_object_unref (current_location);
+		nautilus_window_slot_go_to (new_slot, location, FALSE);
+		g_object_unref (location);
 	}
 }
 

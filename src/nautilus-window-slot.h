@@ -92,7 +92,6 @@ struct NautilusWindowSlot {
 
 	gboolean allow_stop;
 
-	gboolean search_mode;
 	NautilusQueryEditor *query_editor;
 
 	/* New location. */

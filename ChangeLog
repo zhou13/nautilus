@@ -1,5 +1,22 @@
 2008-06-28  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-navigation-window-menus.c (action_new_tab_callback):
+	* src/nautilus-navigation-window.c (hide_temporary_bars),
+	(real_sync_search_widgets),
+	(nautilus_navigation_window_class_init):
+	* src/nautilus-spatial-window.c (nautilus_spatial_window_show),
+	(nautilus_spatial_window_class_init):
+	* src/nautilus-window-manage-views.c (found_mount_cb),
+	(update_for_new_location):
+	* src/nautilus-window-slot.h:
+	* src/nautilus-window.c (nautilus_window_sync_search_widgets):
+	* src/nautilus-window.h:
+	Rename nautilus_window_set_search_mode() to
+	nautilus_window_sync_search_widgets(), which just updates the widgets
+	from the slot state. Minor code refactorizations.
+
+2008-06-28  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-query-editor.c (nautilus_query_editor_clear_query),
 	(nautilus_query_editor_new), (detach_from_external_entry),
 	(attach_to_external_entry), (nautilus_query_editor_new_with_bar),

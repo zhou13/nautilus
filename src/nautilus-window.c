@@ -449,21 +449,13 @@ nautilus_window_get_location_uri (NautilusWindow *window)
 }
 
 void
-nautilus_window_set_search_mode (NautilusWindow *window,
-				 gboolean search_mode,
-				 NautilusSearchDirectory *search_directory)
+nautilus_window_sync_search_widgets (NautilusWindow *window)
 {
-	NautilusWindowSlot *slot;
-
 	g_assert (NAUTILUS_IS_WINDOW (window));
 
-	slot = window->details->active_slot;
-	slot->search_mode = search_mode;
-
 	EEL_CALL_METHOD (NAUTILUS_WINDOW_CLASS, window,
-			 set_search_mode, (window, search_mode, search_directory));
+			 sync_search_widgets, (window));
 }
-
 
 void
 nautilus_window_zoom_in (NautilusWindow *window)

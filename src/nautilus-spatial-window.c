@@ -88,8 +88,6 @@ struct _NautilusSpatialWindowDetails {
 	GtkWidget *location_button;
 	GtkWidget *location_label;
 	GtkWidget *location_icon;
-
-	GtkWidget *query_editor;
 };
 
 static const GtkTargetEntry location_button_drag_types[] = {
@@ -328,15 +326,15 @@ nautilus_spatial_window_save_show_hidden_files_mode (NautilusSpatialWindow *wind
 static void
 nautilus_spatial_window_show (GtkWidget *widget)
 {	
-	NautilusSpatialWindow *window;
+	NautilusWindow *window;
 
-	window = NAUTILUS_SPATIAL_WINDOW (widget);
+	window = NAUTILUS_WINDOW (widget);
 	
 	GTK_WIDGET_CLASS (nautilus_spatial_window_parent_class)->show (widget);
 
-	if (NAUTILUS_WINDOW (window)->details->active_slot->search_mode &&
-	    window->details->query_editor != NULL) {
-		nautilus_query_editor_grab_focus (NAUTILUS_QUERY_EDITOR (window->details->query_editor));
+	if (window->details->active_slot != NULL &&
+	    window->details->active_slot->query_editor != NULL) {
+		nautilus_query_editor_grab_focus (NAUTILUS_QUERY_EDITOR (window->details->active_slot->query_editor));
 	}
 }
 
@@ -367,66 +365,6 @@ real_prompt_for_location (NautilusWindow *window,
 	}
 		
 	gtk_widget_show (dialog);
-}
-
-static void
-query_editor_changed_callback (NautilusSearchBar *bar,
-			       NautilusQuery *query,
-			       gboolean reload,
-			       NautilusWindow *window)
-{
-	NautilusDirectory *directory;
-	NautilusWindowSlot *slot;
-
-	slot = window->details->active_slot;
-
-	directory = nautilus_directory_get_for_file (slot->viewed_file);
-	g_assert (NAUTILUS_IS_SEARCH_DIRECTORY (directory));
-
-	nautilus_search_directory_set_query (NAUTILUS_SEARCH_DIRECTORY (directory),
-					     query);
-	if (reload) {
-		nautilus_window_reload (window);
-	}
-
-	nautilus_directory_unref (directory);
-}
-
-static void
-real_set_search_mode (NautilusWindow *window, gboolean search_mode,
-		      NautilusSearchDirectory *search_directory)
-{
-	NautilusWindowSlot *slot;
-	NautilusSpatialWindow *spatial_window;
-	GtkWidget *query_editor;
-	NautilusQuery *query;
-
-	spatial_window = NAUTILUS_SPATIAL_WINDOW (window);
-
-	spatial_window->details->query_editor = NULL;
-
-	slot = window->details->active_slot;
-
-	if (search_mode) {
-		query_editor = nautilus_query_editor_new (nautilus_search_directory_is_saved_search (search_directory),
-							  nautilus_search_directory_is_indexed (search_directory));
-		spatial_window->details->query_editor = query_editor;
-		
-		nautilus_window_slot_add_extra_location_widget (slot, query_editor);
-		gtk_widget_show (query_editor);
-		nautilus_query_editor_grab_focus (NAUTILUS_QUERY_EDITOR (query_editor));
-		g_signal_connect_object (query_editor, "changed",
-					 G_CALLBACK (query_editor_changed_callback), window, 0);
-		
-		query = nautilus_search_directory_get_query (search_directory);
-		if (query != NULL) {
-			nautilus_query_editor_set_query (NAUTILUS_QUERY_EDITOR (query_editor),
-							 query);
-			g_object_unref (query);
-		} else {
-			nautilus_query_editor_set_default_query (NAUTILUS_QUERY_EDITOR (query_editor));
-		}
-	} 
 }
 
 static NautilusIconInfo *
@@ -1086,8 +1024,6 @@ nautilus_spatial_window_class_init (NautilusSpatialWindowClass *class)
 
 	NAUTILUS_WINDOW_CLASS (class)->prompt_for_location = 
 		real_prompt_for_location;
-	NAUTILUS_WINDOW_CLASS (class)->set_search_mode = 
-		real_set_search_mode;
 	NAUTILUS_WINDOW_CLASS (class)->get_icon =
 		real_get_icon;
 	NAUTILUS_WINDOW_CLASS (class)->sync_title = 

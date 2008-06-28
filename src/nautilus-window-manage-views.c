@@ -45,6 +45,7 @@
 #include <eel/eel-gdk-extensions.h>
 #include <eel/eel-glib-extensions.h>
 #include <eel/eel-gtk-extensions.h>
+#include <eel/eel-gtk-macros.h>
 #include <eel/eel-stock-dialogs.h>
 #include <eel/eel-string.h>
 #include <eel/eel-mount-operation.h>
@@ -1510,7 +1511,6 @@ found_mount_cb (GObject *source_object,
 {
 	FindMountData *data = user_data;
 	GMount *mount;
-	NautilusWindow *window;	
 	NautilusWindowSlot *slot;
 
 	if (g_cancellable_is_cancelled (data->cancellable)) {
@@ -1518,7 +1518,6 @@ found_mount_cb (GObject *source_object,
 	}
 
 	slot = data->slot;
-	window = slot->window;
 	
 	mount = g_file_find_enclosing_mount_finish (G_FILE (source_object),
 						    res,
@@ -1577,23 +1576,6 @@ nautilus_window_sync_location_widgets (NautilusWindow *window)
 		nautilus_spatial_window_set_location_button (NAUTILUS_SPATIAL_WINDOW (window),
 							     slot->location);
 	}
-}
-
-static void
-nautilus_window_sync_search_mode (NautilusWindow *window)
-{
-	NautilusWindowSlot *slot;
-	NautilusDirectory *directory;
-
-	slot = window->details->active_slot;
-
-	directory = nautilus_directory_get (slot->location);
-	if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
-		nautilus_window_set_search_mode (window, TRUE, NAUTILUS_SEARCH_DIRECTORY (directory));
-	} else {
-		nautilus_window_set_search_mode (window, FALSE, NULL);
-	}
-	nautilus_directory_unref (directory);
 }
 
 /* Handle the changes for the NautilusWindow itself. */
@@ -1661,10 +1643,7 @@ update_for_new_location (NautilusWindowSlot *slot)
 		
 		directory = nautilus_directory_get (slot->location);
 
-		slot->search_mode = NAUTILUS_IS_SEARCH_DIRECTORY (directory);
-		if (slot == window->details->active_slot) {
-			nautilus_window_sync_search_mode (window);
-		}
+		nautilus_window_slot_update_query_editor (slot);
 
 		if (nautilus_directory_is_in_trash (directory)) {
 			nautilus_window_slot_show_trash_bar (slot);
@@ -1695,6 +1674,11 @@ update_for_new_location (NautilusWindowSlot *slot)
 
 	if (slot == window->details->active_slot) {
 		nautilus_window_sync_location_widgets (window);
+
+		if (location_really_changed) {
+			nautilus_window_sync_search_widgets (window);
+		}
+
 		if (NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
 			nautilus_navigation_window_load_extension_toolbar_items (NAUTILUS_NAVIGATION_WINDOW (window));
 		}
