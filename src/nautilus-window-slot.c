@@ -368,8 +368,10 @@ nautilus_window_slot_update_icon (NautilusWindowSlot *slot)
 void
 nautilus_window_slot_update_query_editor (NautilusWindowSlot *slot)
 {
-	/* at this point, the old query editor must have been destroyed. */
-	g_assert (slot->query_editor == NULL);
+	if (slot->query_editor != NULL) {
+		gtk_widget_destroy (GTK_WIDGET (slot->query_editor));
+		slot->query_editor = NULL;
+	}
 
         EEL_CALL_METHOD (NAUTILUS_WINDOW_SLOT_CLASS, slot,
                          update_query_editor, (slot));

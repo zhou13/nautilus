@@ -1,5 +1,11 @@
 2008-06-28  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window-slot.c
+	(nautilus_window_slot_update_query_editor):
+	Destroy old query editor before creating new one.
+
+2008-06-28  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-navigation-window-menus.c (action_new_tab_callback):
 	* src/nautilus-navigation-window.c (hide_temporary_bars),
 	(real_sync_search_widgets),
