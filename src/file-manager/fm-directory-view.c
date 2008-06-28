@@ -7044,7 +7044,11 @@ clipboard_changed_callback (NautilusClipboardMonitor *monitor, FMDirectoryView *
 {
 	GList *selection;
 	gint selection_count;
-	
+
+	if (!view->details->active) {
+		return;
+	}
+
 	selection = fm_directory_view_get_selection (view);
 	selection_count = g_list_length (selection);
 
