@@ -1,5 +1,15 @@
 2008-06-28  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-query-editor.c (nautilus_query_editor_clear_query),
+	(nautilus_query_editor_new), (detach_from_external_entry),
+	(attach_to_external_entry), (nautilus_query_editor_new_with_bar),
+	(nautilus_query_editor_set_query):
+	* src/nautilus-query-editor.h:
+	Attach to and detach from search bar entry as slot becomes active/
+	inactive, restore search entry text on activation.
+
+2008-06-28  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-navigation-window-slot.c
 	(query_editor_changed_callback),
 	(nautilus_navigation_window_slot_update_query_editor),
