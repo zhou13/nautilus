@@ -1745,11 +1745,6 @@ real_open_slot (NautilusWindow *window,
 	g_signal_handlers_block_by_func (notebook,
 					 G_CALLBACK (notebook_switch_page_cb),
 					 window);
-	/* multiview-TODO add some way to influence the position.
- 	 * We need
- 	 *  + "behind active tab" [for views]
- 	 *  + "at the end" [for loading sessions]
- 	 */
 	nautilus_notebook_add_tab (notebook,
 				   slot,
 				   (flags & NAUTILUS_WINDOW_OPEN_SLOT_APPEND) != 0 ?

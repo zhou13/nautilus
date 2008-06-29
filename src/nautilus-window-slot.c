@@ -173,14 +173,15 @@ nautilus_window_slot_init (NautilusWindowSlot *slot)
 	gtk_widget_show (content_box);
 
 	eventbox = gtk_event_box_new ();
+	slot->extra_location_event_box = eventbox;
 	gtk_widget_set_name (eventbox, "nautilus-extra-view-widget");
 	gtk_box_pack_start (GTK_BOX (content_box), eventbox, FALSE, FALSE, 0);
-	gtk_widget_show (eventbox);
 	
 	extras_vbox = gtk_vbox_new (FALSE, 6);
 	gtk_container_set_border_width (GTK_CONTAINER (extras_vbox), 6);
 	slot->extra_location_widgets = extras_vbox;
 	gtk_container_add (GTK_CONTAINER (eventbox), extras_vbox);
+	gtk_widget_show (extras_vbox);
 
 	slot->view_box = gtk_vbox_new (FALSE, 0);
 	gtk_box_pack_start (GTK_BOX (content_box), slot->view_box, TRUE, TRUE, 0);
@@ -393,7 +394,7 @@ nautilus_window_slot_remove_extra_location_widgets (NautilusWindowSlot *slot)
 	gtk_container_foreach (GTK_CONTAINER (slot->extra_location_widgets),
 			       remove_all,
 			       slot->extra_location_widgets);
-	gtk_widget_hide (slot->extra_location_widgets);
+	gtk_widget_hide (slot->extra_location_event_box);
 }
 
 void
@@ -402,7 +403,7 @@ nautilus_window_slot_add_extra_location_widget (NautilusWindowSlot *slot,
 {
 	gtk_box_pack_start (GTK_BOX (slot->extra_location_widgets),
 			    widget, TRUE, TRUE, 0);
-	gtk_widget_show (slot->extra_location_widgets);
+	gtk_widget_show (slot->extra_location_event_box);
 }
 
 void

@@ -1,5 +1,18 @@
 2008-06-29  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-navigation-window.c (real_open_slot):
+	Remove obsolete multiview-TODO.
+
+	* src/nautilus-window-slot.c (nautilus_window_slot_init),
+	(nautilus_window_slot_remove_extra_location_widgets),
+	(nautilus_window_slot_add_extra_location_widget):
+	* src/nautilus-window-slot.h:
+	Show/hide event box rather than extra widget container. Removes 1 px
+	blue stripe displayed on top of newly-opened tab, before the view has
+	been packed.
+
+2008-06-29  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-application.c (save_session_to_file),
 	(nautilus_application_load_session):
 	Load slots from and save slots in session file.
