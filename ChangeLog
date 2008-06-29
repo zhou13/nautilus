@@ -1,5 +1,12 @@
 2008-06-29  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_slot_open_location_full):
+	Find target slot before checking whether the location actually
+	changed, fall back to opening slot rather than the active slot.
+
+2008-06-29  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-window-slot.c (real_slot_info_get_current_location),
 	(nautilus_window_slot_info_iface_init):
 	Return pending location, fall back to current location. This API is

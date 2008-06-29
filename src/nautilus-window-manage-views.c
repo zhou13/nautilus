@@ -610,6 +610,10 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
                 }
         }
 
+	if (target_slot == NULL) {
+		target_slot = slot;
+	}
+
         if ((!do_load_location) ||
 	    (target_window == window && target_slot == slot &&
 	     old_location && g_file_equal (old_location, location))) {
@@ -619,10 +623,6 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 	
 	if (old_location) {
 		g_object_unref (old_location);
-	}
-
-	if (target_slot == NULL) {
-		target_slot = target_window->details->active_slot;
 	}
 
         begin_location_change (target_slot, location, new_selection,
