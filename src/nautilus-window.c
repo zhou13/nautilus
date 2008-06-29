@@ -1809,6 +1809,14 @@ nautilus_window_get_active_slot (NautilusWindow *window)
 	return window->details->active_slot;
 }
 
+GList *
+nautilus_window_get_slots (NautilusWindow *window)
+{
+	g_assert (NAUTILUS_IS_WINDOW (window));
+
+	return g_list_copy (window->details->slots);
+}
+
 static void
 nautilus_window_info_iface_init (NautilusWindowInfoIface *iface)
 {

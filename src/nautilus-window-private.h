@@ -189,6 +189,7 @@ NautilusWindowSlot *nautilus_window_get_slot_for_view                    (Nautil
 NautilusWindowSlot *nautilus_window_get_slot_for_content_box             (NautilusWindow *window,
 									  GtkWidget *content_box);
 
+GList *              nautilus_window_get_slots                           (NautilusWindow    *window);
 NautilusWindowSlot * nautilus_window_get_active_slot                     (NautilusWindow    *window);
 void                 nautilus_window_set_active_slot                     (NautilusWindow     *window,
 									  NautilusWindowSlot *slot);

@@ -1,5 +1,11 @@
 2008-06-29  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window-private.h:
+	* src/nautilus-window.c (nautilus_window_get_slots):
+	Add nautilus_window_get_slots() API.
+
+2008-06-29  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-window-manage-views.c
 	(nautilus_window_slot_open_location_full):
 	Find target slot before checking whether the location actually
