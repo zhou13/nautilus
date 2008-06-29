@@ -1,5 +1,12 @@
 2008-06-29  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-window-manage-views.c
+	(nautilus_window_slot_open_location_full):
+	When opening a new window, use new window's active slot instead of
+	re-using source slot in source window. Fixes spatial mode.
+
+2008-06-29  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-navigation-window.c (real_open_slot):
 	Remove obsolete multiview-TODO.
 

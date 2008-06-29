@@ -611,7 +611,11 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
         }
 
 	if (target_slot == NULL) {
-		target_slot = slot;
+		if (target_window == window) {
+			target_slot = slot;
+		} else {
+			target_slot = target_window->details->active_slot;
+		}
 	}
 
         if ((!do_load_location) ||
