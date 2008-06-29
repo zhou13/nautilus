@@ -1,5 +1,11 @@
 2008-06-29  Christian Neumair  <cneumair@gnome.org>
 
+	* src/nautilus-application.c (save_session_to_file),
+	(nautilus_application_load_session):
+	Load slots from and save slots in session file.
+
+2008-06-29  Christian Neumair  <cneumair@gnome.org>
+
 	* src/nautilus-window-private.h:
 	* src/nautilus-window.c (nautilus_window_get_slots):
 	Add nautilus_window_get_slots() API.
