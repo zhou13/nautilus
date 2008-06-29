@@ -1,3 +1,11 @@
+2008-06-29  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-window-slot.c (real_slot_info_get_current_location),
+	(nautilus_window_slot_info_iface_init):
+	Return pending location, fall back to current location. This API is
+	used by the side panes, we have to guarantee that a valid URI is
+	returned even if the view has not yet been set up.
+
 2008-06-28  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-window-slot.c
