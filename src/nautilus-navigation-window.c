@@ -260,6 +260,10 @@ notebook_popup_menu_show (NautilusNavigationWindow *window,
 	GtkWidget *item;
 	GtkWidget *image;
 	int button, event_time;
+	gboolean can_move_left, can_move_right;
+
+	can_move_left = nautilus_notebook_can_reorder_current_child_relative (NAUTILUS_NOTEBOOK (window->notebook), -1);
+	can_move_right = nautilus_notebook_can_reorder_current_child_relative (NAUTILUS_NOTEBOOK (window->notebook), 1);
 
 	popup = gtk_menu_new();
 
@@ -269,6 +273,7 @@ notebook_popup_menu_show (NautilusNavigationWindow *window,
 			  window);
 	gtk_menu_shell_append (GTK_MENU_SHELL (popup), 
 		               item);
+	gtk_widget_set_sensitive (item, can_move_left);
 
 	item = gtk_menu_item_new_with_mnemonic (_("Move Tab _Right"));
 	g_signal_connect (item, "activate", 
@@ -276,6 +281,10 @@ notebook_popup_menu_show (NautilusNavigationWindow *window,
 			  window);
 	gtk_menu_shell_append (GTK_MENU_SHELL (popup), 
 		               item);
+	gtk_widget_set_sensitive (item, can_move_right);
+
+	gtk_menu_shell_append (GTK_MENU_SHELL (popup),
+			       gtk_separator_menu_item_new ());
 
 	item = gtk_image_menu_item_new_with_mnemonic (_("_Close Tab"));
 	image = gtk_image_new_from_stock (GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);

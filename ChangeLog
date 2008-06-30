@@ -1,3 +1,9 @@
+2008-06-30  Christian Neumair  <cneumair@gnome.org>
+
+	* src/nautilus-navigation-window.c (notebook_popup_menu_show):
+	Only set move actions sensitive if tab can be moved to left/right. Add
+	separator between move and close actions.
+
 2008-06-29  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-window-manage-views.c
