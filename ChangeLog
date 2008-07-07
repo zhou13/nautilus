@@ -1,5 +1,15 @@
 2008-07-07  Christian Neumair  <cneumair@gnome.org>
 
+	* src/file-manager/fm-directory-view.c (slot_inactive),
+	(fm_directory_view_set_property), (fm_directory_view_parent_set),
+	(fm_directory_view_class_init):
+	Make view active if slot is active during parent_set(), and not during
+	instantiation. Also merge/unmerge slot menus on these occassions.
+	This fixes the warnings about merged action groups with the same name
+	with GTK+ HEAD.
+
+2008-07-07  Christian Neumair  <cneumair@gnome.org>
+
 	* src/file-manager/fm-tree-view.c (got_activation_uri_callback),
 	(button_pressed_callback), (fm_tree_view_activate_file):
 	* src/nautilus-places-sidebar.c (open_selected_bookmark),

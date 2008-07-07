@@ -1687,7 +1687,8 @@ static void
 slot_inactive (NautilusWindowSlot *slot,
 	       FMDirectoryView *view)
 {
-	g_assert (view->details->active);
+	g_assert (view->details->active ||
+		  GTK_WIDGET (view)->parent == NULL);
 	view->details->active = FALSE;
 
 	fm_directory_view_unmerge_menus (view);
@@ -8771,12 +8772,6 @@ fm_directory_view_set_property (GObject         *object,
 				   "hidden-files-mode-changed", G_CALLBACK (hidden_files_mode_changed),
 				   directory_view, 0);
 	  fm_directory_view_init_show_hidden_files (directory_view);
-
-	  if (directory_view->details->slot == 
-	      nautilus_window_info_get_active_slot (window)) {
-	    slot_active (directory_view->details->slot, directory_view);
-	  }
-		  
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -8817,6 +8812,39 @@ fm_directory_view_scroll_event (GtkWidget *widget,
 	return GTK_WIDGET_CLASS (parent_class)->scroll_event (widget, event);
 }
 
+
+static void
+fm_directory_view_parent_set (GtkWidget *widget,
+			      GtkWidget *old_parent)
+{
+	FMDirectoryView *view;
+	GtkWidget *parent;
+
+	view = FM_DIRECTORY_VIEW (widget);
+
+	parent = gtk_widget_get_parent (widget);
+	g_assert (parent == NULL || old_parent == NULL);
+
+	if (GTK_WIDGET_CLASS (parent_class)->parent_set != NULL) {
+		GTK_WIDGET_CLASS (parent_class)->parent_set (widget, old_parent);
+	}
+
+	if (parent != NULL) {
+		g_assert (old_parent == NULL);
+
+		if (view->details->slot == 
+		    nautilus_window_info_get_active_slot (view->details->window)) {
+			view->details->active = TRUE;
+
+			fm_directory_view_merge_menus (view);
+			schedule_update_menus (view);
+		}
+	} else {
+		fm_directory_view_unmerge_menus (view);
+		remove_update_menus_timeout_callback (view);
+	}
+}
+
 static void
 fm_directory_view_class_init (FMDirectoryViewClass *klass)
 {
@@ -8833,6 +8861,7 @@ fm_directory_view_class_init (FMDirectoryViewClass *klass)
 	GTK_OBJECT_CLASS (klass)->destroy = fm_directory_view_destroy;
 
 	widget_class->scroll_event = fm_directory_view_scroll_event;
+	widget_class->parent_set = fm_directory_view_parent_set;
 
 	/* Get rid of the strange 3-pixel gap that GtkScrolledWindow
 	 * uses by default. It does us no good.
