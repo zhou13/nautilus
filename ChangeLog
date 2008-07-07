@@ -1,3 +1,12 @@
+2008-07-07  Christian Neumair  <cneumair@gnome.org>
+
+	* src/file-manager/fm-list-view.c
+	(activate_selected_items_alternate), (fm_list_view_did_not_drag),
+	(button_press_callback), (key_press_callback),
+	(fm_list_view_unmerge_menus), (fm_list_view_dispose),
+	(fm_list_view_class_init):
+	Override unmerge_menus() method. Open in new tab on middle-click.
+
 2008-06-30  Christian Neumair  <cneumair@gnome.org>
 
 	* src/nautilus-navigation-window.c (notebook_popup_menu_show):

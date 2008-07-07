@@ -238,10 +238,19 @@ activate_selected_items (FMListView *view)
 
 static void
 activate_selected_items_alternate (FMListView *view,
-				   NautilusFile *file)
+				   NautilusFile *file,
+				   gboolean open_in_tab)
 {
 	GList *file_list;
+	NautilusWindowOpenFlags flags;
 
+	flags = NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND;
+
+	if (open_in_tab && eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+        } else {
+		flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+        }
 
 	if (file != NULL) {
 		nautilus_file_ref (file);
@@ -252,8 +261,7 @@ activate_selected_items_alternate (FMListView *view,
 	fm_directory_view_activate_files (FM_DIRECTORY_VIEW (view),
 					  file_list,
 					  NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
-					  NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND |
-					  NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW,
+					  flags,
 					  TRUE);
 	nautilus_file_list_free (file_list);
 
@@ -295,7 +303,7 @@ fm_list_view_did_not_drag (FMListView *view,
 			if (event->button == 1) {
 				activate_selected_items (view);
 			} else if (event->button == 2) {
-				activate_selected_items_alternate (view, NULL);
+				activate_selected_items_alternate (view, NULL, TRUE);
 			}
 		}
 		gtk_tree_path_free (path);
@@ -651,14 +659,14 @@ button_press_callback (GtkWidget *widget, GdkEventButton *event, gpointer callba
 					if ((event->button == 1 || event->button == 3)) {
 						activate_selected_items (view);
 					} else if (event->button == 2) {
-						activate_selected_items_alternate (view, NULL);
+						activate_selected_items_alternate (view, NULL, TRUE);
 					}
 				} else if (event->button == 1 &&
 					   (event->state & GDK_SHIFT_MASK) != 0) {
 					NautilusFile *file;
 					file = fm_list_model_file_for_path (view->details->model, path);
 					if (file != NULL) {
-						activate_selected_items_alternate (view, file);
+						activate_selected_items_alternate (view, file, TRUE);
 						nautilus_file_unref (file);
 					}
 				}
@@ -947,7 +955,7 @@ key_press_callback (GtkWidget *widget, GdkEventKey *event, gpointer callback_dat
 			break;
 		}
 		if ((event->state & GDK_SHIFT_MASK) != 0) {
-			activate_selected_items_alternate (FM_LIST_VIEW (view), NULL);
+			activate_selected_items_alternate (FM_LIST_VIEW (view), NULL, TRUE);
 		} else {
 			activate_selected_items (FM_LIST_VIEW (view));
 		}
@@ -956,7 +964,7 @@ key_press_callback (GtkWidget *widget, GdkEventKey *event, gpointer callback_dat
 	case GDK_Return:
 	case GDK_KP_Enter:
 		if ((event->state & GDK_SHIFT_MASK) != 0) {
-			activate_selected_items_alternate (FM_LIST_VIEW (view), NULL);
+			activate_selected_items_alternate (FM_LIST_VIEW (view), NULL, TRUE);
 		} else {
 			activate_selected_items (FM_LIST_VIEW (view));
 		}
@@ -2130,6 +2138,24 @@ fm_list_view_merge_menus (FMDirectoryView *view)
 }
 
 static void
+fm_list_view_unmerge_menus (FMDirectoryView *view)
+{
+	FMListView *list_view;
+	GtkUIManager *ui_manager;
+
+	list_view = FM_LIST_VIEW (view);
+
+	FM_DIRECTORY_VIEW_CLASS (fm_list_view_parent_class)->unmerge_menus (view);
+
+	ui_manager = fm_directory_view_get_ui_manager (view);
+	if (ui_manager != NULL) {
+		nautilus_ui_unmerge_ui (ui_manager,
+					&list_view->details->list_merge_id,
+					&list_view->details->list_action_group);
+	}
+}
+
+static void
 fm_list_view_update_menus (FMDirectoryView *view)
 {
 	FMListView *list_view;
@@ -2505,7 +2531,6 @@ static void
 fm_list_view_dispose (GObject *object)
 {
 	FMListView *list_view;
-	GtkUIManager *ui_manager;
 
 	list_view = FM_LIST_VIEW (object);
 
@@ -2523,13 +2548,6 @@ fm_list_view_dispose (GObject *object)
 	if (list_view->details->renaming_file_activate_timeout != 0) {
 		g_source_remove (list_view->details->renaming_file_activate_timeout);
 		list_view->details->renaming_file_activate_timeout = 0;
-	}
-
-	ui_manager = fm_directory_view_get_ui_manager (FM_DIRECTORY_VIEW (list_view));
-	if (ui_manager != NULL) {
-		nautilus_ui_unmerge_ui (ui_manager,
-					&list_view->details->list_merge_id,
-					&list_view->details->list_action_group);
 	}
 
 	G_OBJECT_CLASS (parent_class)->dispose (object);
@@ -2682,6 +2700,7 @@ fm_list_view_class_init (FMListViewClass *class)
 	fm_directory_view_class->is_empty = fm_list_view_is_empty;
 	fm_directory_view_class->remove_file = fm_list_view_remove_file;
 	fm_directory_view_class->merge_menus = fm_list_view_merge_menus;
+	fm_directory_view_class->unmerge_menus = fm_list_view_unmerge_menus;
 	fm_directory_view_class->update_menus = fm_list_view_update_menus;
 	fm_directory_view_class->reset_to_defaults = fm_list_view_reset_to_defaults;
 	fm_directory_view_class->restore_default_zoom_level = fm_list_view_restore_default_zoom_level;
