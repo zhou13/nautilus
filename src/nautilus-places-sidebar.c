@@ -1292,6 +1292,12 @@ open_selected_bookmark (NautilusPlacesSidebar *sidebar,
 		return;
 	}
 
+	if (flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB &&
+	    !eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		flags &= ~NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+		flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+	}
+
 	gtk_tree_model_get (model, &iter, PLACES_SIDEBAR_COLUMN_URI, &uri, -1);
 
 	if (uri != NULL) {
@@ -1825,10 +1831,14 @@ bookmarks_button_press_event_cb (GtkWidget             *widget,
 		gtk_tree_view_get_path_at_pos (tree_view, (int) event->x, (int) event->y, 
 					       &path, NULL, NULL, NULL);
 
-		open_selected_bookmark (sidebar, model, path, NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
+		open_selected_bookmark (sidebar, model, path,
+					event->state & GDK_CONTROL_MASK ?
+					NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW :
+					NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
 
 		if (path != NULL) {
 			gtk_tree_path_free (path);
+			return TRUE;
 		}
 	}
 	return FALSE;

@@ -338,18 +338,20 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
         char *uri, *file_uri;
         FMTreeView *view;
 	GdkScreen *screen;
-	NautilusWindowOpenMode mode;
 	GFile *location;
 	NautilusWindowSlotInfo *slot;
+	gboolean open_in_same_slot;
 	
         view = FM_TREE_VIEW (callback_data);
 
 	screen = gtk_widget_get_screen (GTK_WIDGET (view->details->tree_widget));
 
         g_assert (file == view->details->activation_file);
-        
-        mode = ((view->details->activation_flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) != 0)
-		? NAUTILUS_WINDOW_OPEN_IN_NAVIGATION : NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE;
+
+	open_in_same_slot =
+		(view->details->activation_flags &
+		 (NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW |
+		  NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB)) == 0;
 
 	slot = nautilus_window_info_get_active_slot (view->details->window);
 
@@ -377,7 +379,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 			nautilus_window_slot_info_open_location
 				(slot,
 				 location, 
-				 mode,
+				 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
 				 view->details->activation_flags,
 				 NULL);
 			g_object_unref (location);
@@ -390,12 +392,16 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 		}
 		   
 	} else if (uri != NULL) {
-		if (view->details->selection_location == NULL ||
+		if (!open_in_same_slot ||
+		    view->details->selection_location == NULL ||
 		    strcmp (uri, view->details->selection_location) != 0) {
-			if (view->details->selection_location != NULL) {
-				g_free (view->details->selection_location);
+			if (open_in_same_slot) {
+				if (view->details->selection_location != NULL) {
+					g_free (view->details->selection_location);
+				}
+				view->details->selection_location = g_strdup (uri);
 			}
-			view->details->selection_location = g_strdup (uri);
+
 			nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
 					    "tree view window_info_open_location window=%p: %s",
 					    view->details->window, uri);
@@ -403,7 +409,7 @@ got_activation_uri_callback (NautilusFile *file, gpointer callback_data)
 			nautilus_window_slot_info_open_location
 				(slot,
 				 location,
-				 mode,
+				 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
 				 view->details->activation_flags,
 				 NULL);
 			g_object_unref (location);
@@ -783,6 +789,8 @@ button_pressed_callback (GtkTreeView *treeview, GdkEventButton *event,
 		file = sort_model_path_to_file (view, path);
 		if (file) {
 			fm_tree_view_activate_file (view, file, 
+						    (event->state & GDK_CONTROL_MASK) != 0 ?
+						    NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW :
 						    NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
 			nautilus_file_unref (file);
 		}
@@ -803,6 +811,13 @@ fm_tree_view_activate_file (FMTreeView *view,
 	NautilusFileAttributes attributes;
 
 	cancel_activation (view);
+
+	if (view->details->activation_flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB &&
+	    !eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		view->details->activation_flags &= ~NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+		view->details->activation_flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+	}
+
 
 	view->details->activation_file = nautilus_file_ref (file);
 	view->details->activation_flags = flags;
