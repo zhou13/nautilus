@@ -31,7 +31,7 @@
 
 #include "nautilus-actions.h"
 #include "nautilus-application.h"
-#include "nautilus-canvas-view.h"
+#include "nautilus-icon-view.h"
 #include "nautilus-connect-server-dialog.h"
 #include "nautilus-file-management-properties.h"
 #include "nautilus-list-view.h"
@@ -448,7 +448,7 @@ action_view_radio_changed (GtkRadioAction *action,
 	if (g_strcmp0 (name, NAUTILUS_ACTION_VIEW_LIST) == 0) {
 		nautilus_window_slot_set_content_view (slot, NAUTILUS_LIST_VIEW_ID);
 	} else if (g_strcmp0 (name, NAUTILUS_ACTION_VIEW_GRID) == 0) {
-		nautilus_window_slot_set_content_view (slot, NAUTILUS_CANVAS_VIEW_ID);
+		nautilus_window_slot_set_content_view (slot, NAUTILUS_ICON_VIEW_ID);
 	}
 }
 

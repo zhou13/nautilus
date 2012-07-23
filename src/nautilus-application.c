@@ -43,6 +43,7 @@
 #include "nautilus-canvas-view.h"
 #include "nautilus-image-properties-page.h"
 #include "nautilus-list-view.h"
+#include "nautilus-icon-view.h"
 #include "nautilus-previewer.h"
 #include "nautilus-progress-ui-handler.h"
 #include "nautilus-self-check-functions.h"
@@ -1435,6 +1436,7 @@ nautilus_application_startup (GApplication *app)
 	/* register views */
 	nautilus_profile_start ("Register views");
 	nautilus_canvas_view_register ();
+	nautilus_icon_view_register ();
 	nautilus_desktop_canvas_view_register ();
 	nautilus_list_view_register ();
 #if ENABLE_EMPTY_VIEW

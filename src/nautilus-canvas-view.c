@@ -2279,12 +2279,12 @@ static NautilusViewInfo nautilus_canvas_view = {
 	NAUTILUS_CANVAS_VIEW_ID,
 	/* translators: this is used in the view selection dropdown
 	 * of navigation windows and in the preferences dialog */
-	N_("Icon View"),
+	N_("Canvas View"),
 	/* translators: this is used in the view menu */
-	N_("_Icons"),
-	N_("The icon view encountered an error."),
-	N_("The icon view encountered an error while starting up."),
-	N_("Display this location with the icon view."),
+	N_("_Canvas"),
+	N_("The canvas view encountered an error."),
+	N_("The canvas view encountered an error while starting up."),
+	N_("Display this location with the canvas view."),
 	nautilus_canvas_view_create,
 	nautilus_canvas_view_supports_uri
 };
