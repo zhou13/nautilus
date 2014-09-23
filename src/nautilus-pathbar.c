@@ -24,6 +24,7 @@
 #include <gio/gio.h>
 
 #include "nautilus-pathbar.h"
+#include "nautilus-pathbar-button-label.h"
 
 #include <libnautilus-private/nautilus-file.h>
 #include <libnautilus-private/nautilus-file-utilities.h>
@@ -54,7 +55,6 @@ typedef enum {
 static guint path_bar_signals [LAST_SIGNAL] = { 0 };
 
 #define NAUTILUS_PATH_BAR_ICON_SIZE 16
-#define NAUTILUS_PATH_BAR_BUTTON_MAX_WIDTH 250
 
 typedef struct {
         GtkWidget *button;
@@ -298,29 +298,6 @@ get_dir_name (ButtonData *button_data)
 	}
 }
 
-/* We always want to request the same size for the label, whether
- * or not the contents are bold
- */
-static void
-set_label_size_request (ButtonData *button_data)
-{
-        gint width, height;
-	GtkRequisition nat_req, bold_req;
-
-	if (button_data->label == NULL) {
-		return;
-	}
-
-	gtk_widget_get_preferred_size (button_data->label, NULL, &nat_req);
-	gtk_widget_get_preferred_size (button_data->bold_label, &bold_req, NULL);
-
-	width = MAX (nat_req.width, bold_req.width);
-	width = MIN (width, NAUTILUS_PATH_BAR_BUTTON_MAX_WIDTH);
-	height = MAX (nat_req.height, bold_req.height);
-
-	gtk_widget_set_size_request (button_data->label, width, height);
-}
-
 /* Size requisition:
  * 
  * Ideally, our size is determined by another widget, and we are just filling
@@ -345,7 +322,6 @@ nautilus_path_bar_get_preferred_width (GtkWidget *widget,
 
 	for (list = path_bar->priv->button_list; list; list = list->next) {
 		button_data = BUTTON_DATA (list->data);
-		set_label_size_request (button_data);
 
 		gtk_widget_get_preferred_width (button_data->button, &child_min, &child_nat);
 		gtk_widget_get_preferred_height (button_data->button, &child_height, NULL);
@@ -354,7 +330,7 @@ nautilus_path_bar_get_preferred_width (GtkWidget *widget,
 		if (button_data->type == NORMAL_BUTTON) {
 			/* Use 2*Height as button width because of ellipsized label.  */
 			child_min = MAX (child_min, child_height * 2);
-			child_nat = MAX (child_min, child_height * 2);
+			child_nat = MAX (child_nat, child_height * 2);
 		}
 
 		*minimum = MAX (*minimum, child_min);
@@ -389,7 +365,6 @@ nautilus_path_bar_get_preferred_height (GtkWidget *widget,
 
 	for (list = path_bar->priv->button_list; list; list = list->next) {
 		button_data = BUTTON_DATA (list->data);
-		set_label_size_request (button_data);
 
 		gtk_widget_get_preferred_height (button_data->button, &child_min, &child_nat);
 
@@ -527,16 +502,19 @@ nautilus_path_bar_size_allocate (GtkWidget     *widget,
 	width = 0;
 
 	gtk_widget_get_preferred_size (BUTTON_DATA (path_bar->priv->button_list->data)->button,
-				       &child_requisition, NULL);
+				       NULL, &child_requisition);
 	width += child_requisition.width;
 
         for (list = path_bar->priv->button_list->next; list; list = list->next) {
         	child = BUTTON_DATA (list->data)->button;
-		gtk_widget_get_preferred_size (child, &child_requisition, NULL);
+		gtk_widget_get_preferred_size (child, NULL, &child_requisition);
                 width += child_requisition.width;
         }
 
-        if (width <= allocation->width) {
+        // Either we have enough width, or there's only one button, so we don't
+        // require sliders.
+        if (width <= allocation->width ||
+           (!path_bar->priv->button_list || path_bar->priv->button_list->next == NULL)) {
 		first_button = g_list_last (path_bar->priv->button_list);
         } else {
                 gboolean reached_end;
@@ -557,12 +535,12 @@ nautilus_path_bar_size_allocate (GtkWidget     *widget,
        		*/
       		/* Count down the path chain towards the end. */
 		gtk_widget_get_preferred_size (BUTTON_DATA (first_button->data)->button,
-					       &child_requisition, NULL);
+					       NULL, &child_requisition);
                 width = child_requisition.width;
                 list = first_button->prev;
                 while (list && !reached_end) {
 	  		child = BUTTON_DATA (list->data)->button;
-			gtk_widget_get_preferred_size (child, &child_requisition, NULL);
+			gtk_widget_get_preferred_size (child, NULL, &child_requisition);
 
 	  		if (width + child_requisition.width + slider_space > allocation->width) {
 	    			reached_end = TRUE;
@@ -577,7 +555,7 @@ nautilus_path_bar_size_allocate (GtkWidget     *widget,
 
                 while (first_button->next && ! reached_end) {
 	  		child = BUTTON_DATA (first_button->next->data)->button;
-			gtk_widget_get_preferred_size (child, &child_requisition, NULL);
+			gtk_widget_get_preferred_size (child, NULL, &child_requisition);
 
 	  		if (width + child_requisition.width + slider_space > allocation->width) {
 	      			reached_end = TRUE;
@@ -614,7 +592,7 @@ nautilus_path_bar_size_allocate (GtkWidget     *widget,
 
         for (list = first_button; list; list = list->prev) {
                 child = BUTTON_DATA (list->data)->button;
-		gtk_widget_get_preferred_size (child, &child_requisition, NULL);
+		gtk_widget_get_preferred_size (child, NULL, &child_requisition);
 
                 child_allocation.width = MIN (child_requisition.width, largest_width);
                 if (direction == GTK_TEXT_DIR_RTL) {
@@ -632,7 +610,6 @@ nautilus_path_bar_size_allocate (GtkWidget     *widget,
 				}	
 			}
 		}
-
 		needs_reorder |= gtk_widget_get_child_visible (child) == FALSE;
                 gtk_widget_set_child_visible (child, TRUE);
                 gtk_widget_size_allocate (child, &child_allocation);
@@ -1379,19 +1356,9 @@ nautilus_path_bar_update_button_appearance (ButtonData *button_data)
         const gchar *dir_name = get_dir_name (button_data);
 	GIcon *icon;
 
-        if (button_data->label != NULL) {
-		char *markup;
-
-		markup = g_markup_printf_escaped ("<b>%s</b>", dir_name);
-
-                if (gtk_label_get_use_markup (GTK_LABEL (button_data->label))) {
-	  		gtk_label_set_markup (GTK_LABEL (button_data->label), markup);
-		} else {
-			gtk_label_set_text (GTK_LABEL (button_data->label), dir_name);
-		}
-
-		gtk_label_set_markup (GTK_LABEL (button_data->bold_label), markup);
-		g_free (markup);
+	if (button_data->label != NULL) {
+		nautilus_pathbar_button_label_set_text(NAUTILUS_PATHBAR_BUTTON_LABEL(button_data->label),
+						       dir_name);
         }
 
 	icon = get_gicon (button_data);
@@ -1409,11 +1376,9 @@ nautilus_path_bar_update_button_state (ButtonData *button_data,
 				       gboolean    current_dir)
 {
 	if (button_data->label != NULL) {
-		gtk_label_set_label (GTK_LABEL (button_data->label), NULL);
-		gtk_label_set_label (GTK_LABEL (button_data->bold_label), NULL);
-		gtk_label_set_use_markup (GTK_LABEL (button_data->label), current_dir);
+		nautilus_pathbar_button_label_set_bold(NAUTILUS_PATHBAR_BUTTON_LABEL(button_data->label),
+						       current_dir);
 	}
-
 	nautilus_path_bar_update_button_appearance (button_data);
 
         if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button_data->button)) != current_dir) {
@@ -1643,22 +1608,12 @@ make_button_data (NautilusPathBar  *path_bar,
 		case MOUNT_BUTTON:
 		case NORMAL_BUTTON:
     		default:
-			button_data->label = gtk_label_new (NULL);
+			button_data->label = nautilus_pathbar_button_label_new ();
                         child = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 2);
 			gtk_box_pack_start (GTK_BOX (child), button_data->image, FALSE, FALSE, 0);
 			gtk_box_pack_start (GTK_BOX (child), button_data->label, FALSE, FALSE, 0);
 			break;
         }
-
-	if (button_data->label != NULL) {
-		gtk_label_set_ellipsize (GTK_LABEL (button_data->label), PANGO_ELLIPSIZE_MIDDLE);
-		gtk_label_set_single_line_mode (GTK_LABEL (button_data->label), TRUE);
-
-		button_data->bold_label = gtk_label_new (NULL);
-		gtk_widget_set_no_show_all (button_data->bold_label, TRUE);
-		gtk_label_set_single_line_mode (GTK_LABEL (button_data->bold_label), TRUE);
-		gtk_box_pack_start (GTK_BOX (child), button_data->bold_label, FALSE, FALSE, 0);
-	}
 
 	if (button_data->path == NULL) {
         	button_data->path = g_object_ref (path);

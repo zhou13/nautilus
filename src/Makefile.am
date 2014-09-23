@@ -185,6 +185,8 @@ nautilus_SOURCES = \
 	nautilus-mime-actions.h 		\
 	nautilus-notebook.c			\
 	nautilus-notebook.h			\
+	nautilus-pathbar-button-label.h 	\
+	nautilus-pathbar-button-label.c 	\
 	nautilus-pathbar.c			\
 	nautilus-pathbar.h			\
 	nautilus-previewer.c			\
