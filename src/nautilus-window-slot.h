@@ -82,6 +82,10 @@ void nautilus_window_slot_open_location_full              (NautilusWindowSlot *s
 							   NautilusWindowGoToCallback callback,
 							   gpointer	       user_data);
 
+void nautilus_window_slot_opening_location              (NautilusWindowSlot *slot,
+							 GVolume	      *location,
+							 NautilusWindowOpenFlags flags);
+
 GFile * nautilus_window_slot_get_location		   (NautilusWindowSlot *slot);
 char *  nautilus_window_slot_get_location_uri		   (NautilusWindowSlot *slot);
 

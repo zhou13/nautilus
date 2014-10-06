@@ -534,6 +534,34 @@ setup_side_pane_width (NautilusWindow *window)
 				window->details->side_pane_width);
 }
 
+static void
+places_sidebar_opening_location_cb (GtkPlacesSidebar	*sidebar,
+				 GVolume			*volume,
+				 GtkPlacesOpenFlags	 open_flags,
+				 gpointer		 user_data)
+{
+	NautilusWindow *window = NAUTILUS_WINDOW (user_data);
+	NautilusWindowOpenFlags flags;
+
+	switch (open_flags) {
+	case GTK_PLACES_OPEN_NEW_TAB:
+		flags = NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+		break;
+
+	case GTK_PLACES_OPEN_NEW_WINDOW:
+		flags = NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+		break;
+
+	case GTK_PLACES_OPEN_NORMAL: /* fall-through */
+	default:
+		flags = 0;
+		break;
+	}
+	g_print("nautilus SIGNAL opening\n");
+	nautilus_window_slot_opening_location (window->details->active_slot, volume, flags);
+
+}
+
 /* Callback used when the places sidebar changes location; we need to change the displayed folder */
 static void
 places_sidebar_open_location_cb (GtkPlacesSidebar	*sidebar,
@@ -541,6 +569,8 @@ places_sidebar_open_location_cb (GtkPlacesSidebar	*sidebar,
 				 GtkPlacesOpenFlags	 open_flags,
 				 gpointer		 user_data)
 {
+
+    g_print("open location cb\n");
 	NautilusWindow *window = NAUTILUS_WINDOW (user_data);
 	NautilusWindowOpenFlags flags;
 
@@ -569,6 +599,7 @@ places_sidebar_show_error_message_cb (GtkPlacesSidebar *sidebar,
 				      const char       *secondary,
 				      gpointer          user_data)
 {
+    g_print("show error message\n");
 	NautilusWindow *window = NAUTILUS_WINDOW (user_data);
 
 	eel_show_error_dialog (primary, secondary, GTK_WINDOW (window));
@@ -801,6 +832,7 @@ places_sidebar_populate_popup_cb (GtkPlacesSidebar *sidebar,
 				  GVolume          *selected_volume,
 				  gpointer          user_data)
 {
+    g_print("populate popup\n");
 	NautilusWindow *window = NAUTILUS_WINDOW (user_data);
 	GtkWidget *item;
 	GFile *trash;
@@ -871,6 +903,8 @@ nautilus_window_set_up_sidebar (NautilusWindow *window)
 
 	g_signal_connect (window->details->places_sidebar, "open-location",
 			  G_CALLBACK (places_sidebar_open_location_cb), window);
+	g_signal_connect (window->details->places_sidebar, "opening-location",
+			  G_CALLBACK (places_sidebar_opening_location_cb), window);
 	g_signal_connect (window->details->places_sidebar, "show-error-message",
 			  G_CALLBACK (places_sidebar_show_error_message_cb), window);
 	g_signal_connect (window->details->places_sidebar, "show-connect-to-server",

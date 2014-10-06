@@ -694,6 +694,17 @@ new_window_show_callback (GtkWidget *widget,
 }
 
 void
+nautilus_window_slot_opening_location (NautilusWindowSlot *slot,
+				       GVolume *volume,
+				       NautilusWindowOpenFlags flags)
+{
+        g_print("opening location\n");
+	gchar *identifier = g_volume_get_identifier (volume, G_VOLUME_IDENTIFIER_KIND_CLASS);
+	gchar *name = g_volume_get_name (volume);
+	g_print("drive name%s\n", name);
+}
+
+void
 nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 					 GFile *location,
 					 NautilusWindowOpenFlags flags,
@@ -701,6 +712,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 					 NautilusWindowGoToCallback callback,
 					 gpointer user_data)
 {
+        g_print("open location full\n");
 	NautilusWindow *window;
         NautilusWindow *target_window;
         NautilusWindowSlot *target_slot;
