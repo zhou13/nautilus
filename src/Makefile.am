@@ -81,6 +81,7 @@ $(dbus_shell_search_provider_built_sources) : Makefile.am $(top_srcdir)/data/she
 
 headers =					\
 	nautilus-special-location-bar.h		\
+	nautilus-view.h				\
 	$(NULL)
 
 resource_files = $(shell glib-compile-resources --sourcedir=$(srcdir) --generate-dependencies $(srcdir)/nautilus.gresource.xml)
@@ -209,6 +210,8 @@ nautilus_SOURCES = \
 	nautilus-toolbar.h			\
 	nautilus-trash-bar.c			\
 	nautilus-trash-bar.h			\
+	nautilus-view.c				\
+	nautilus-view.h				\
 	nautilus-window-slot.c			\
 	nautilus-window-slot.h			\
 	nautilus-window-slot-dnd.c		\
