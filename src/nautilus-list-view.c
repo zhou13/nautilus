@@ -29,7 +29,7 @@
 
 #include "nautilus-list-model.h"
 #include "nautilus-error-reporting.h"
-#include "nautilus-view-dnd.h"
+#include "nautilus-files-view-dnd.h"
 #include "nautilus-toolbar.h"
 
 #include <string.h>
@@ -118,8 +118,8 @@ static GdkCursor *              hand_cursor = NULL;
 
 static GtkTargetList *          source_target_list = NULL;
 
-static GList *nautilus_list_view_get_selection                   (NautilusView   *view);
-static GList *nautilus_list_view_get_selection_for_file_transfer (NautilusView   *view);
+static GList *nautilus_list_view_get_selection                   (NautilusFilesView   *view);
+static GList *nautilus_list_view_get_selection_for_file_transfer (NautilusFilesView   *view);
 static void   nautilus_list_view_set_zoom_level                  (NautilusListView        *view,
 								  NautilusListZoomLevel    new_level);
 static void   nautilus_list_view_scroll_to_file                  (NautilusListView        *view,
@@ -134,7 +134,7 @@ static char **get_column_order                                   (NautilusListVi
 static char **get_default_column_order                           (NautilusListView *list_view);
 
 
-G_DEFINE_TYPE (NautilusListView, nautilus_list_view, NAUTILUS_TYPE_VIEW);
+G_DEFINE_TYPE (NautilusListView, nautilus_list_view, NAUTILUS_TYPE_FILES_VIEW);
 
 static const char * default_search_visible_columns[] = {
 	"name", "size", "where", NULL
@@ -187,11 +187,11 @@ get_default_sort_order (NautilusFile *file, gboolean *reversed)
 static void
 list_selection_changed_callback (GtkTreeSelection *selection, gpointer user_data)
 {
-	NautilusView *view;
+	NautilusFilesView *view;
 
-	view = NAUTILUS_VIEW (user_data);
+	view = NAUTILUS_FILES_VIEW (user_data);
 
-	nautilus_view_notify_selection_changed (view);
+	nautilus_files_view_notify_selection_changed (view);
 }
 
 /* Move these to eel? */
@@ -228,10 +228,10 @@ preview_selected_items (NautilusListView *view)
 {
 	GList *file_list;
 	
-	file_list = nautilus_list_view_get_selection (NAUTILUS_VIEW (view));
+	file_list = nautilus_list_view_get_selection (NAUTILUS_FILES_VIEW (view));
 
 	if (file_list != NULL) {
-		nautilus_view_preview_files (NAUTILUS_VIEW (view),
+		nautilus_files_view_preview_files (NAUTILUS_FILES_VIEW (view),
 					     file_list, NULL);
 		nautilus_file_list_free (file_list);
 	}
@@ -242,8 +242,8 @@ activate_selected_items (NautilusListView *view)
 {
 	GList *file_list;
 	
-	file_list = nautilus_list_view_get_selection (NAUTILUS_VIEW (view));
-	nautilus_view_activate_files (NAUTILUS_VIEW (view),
+	file_list = nautilus_list_view_get_selection (NAUTILUS_FILES_VIEW (view));
+	nautilus_files_view_activate_files (NAUTILUS_FILES_VIEW (view),
 				      file_list,
 				      0, TRUE);
 	nautilus_file_list_free (file_list);
@@ -270,9 +270,9 @@ activate_selected_items_alternate (NautilusListView *view,
 		nautilus_file_ref (file);
 		file_list = g_list_prepend (NULL, file);
 	} else {
-		file_list = nautilus_list_view_get_selection (NAUTILUS_VIEW (view));
+		file_list = nautilus_list_view_get_selection (NAUTILUS_FILES_VIEW (view));
 	}
-	nautilus_view_activate_files (NAUTILUS_VIEW (view),
+	nautilus_files_view_activate_files (NAUTILUS_FILES_VIEW (view),
 				      file_list,
 				      flags,
 				      TRUE);
@@ -604,9 +604,9 @@ static void
 do_popup_menu (GtkWidget *widget, NautilusListView *view, GdkEventButton *event)
 {
  	if (tree_view_has_selection (GTK_TREE_VIEW (widget))) {
-		nautilus_view_pop_up_selection_context_menu (NAUTILUS_VIEW (view), event);
+		nautilus_files_view_pop_up_selection_context_menu (NAUTILUS_FILES_VIEW (view), event);
 	} else {
-                nautilus_view_pop_up_background_context_menu (NAUTILUS_VIEW (view), event);
+                nautilus_files_view_pop_up_background_context_menu (NAUTILUS_FILES_VIEW (view), event);
 	}
 }
 
@@ -880,7 +880,7 @@ row_expanded_callback (GtkTreeView *treeview,
 	DEBUG ("Row expaded callback for uri %s", uri);
 	g_free (uri);
 
-	nautilus_view_add_subdirectory (NAUTILUS_VIEW (view), directory);
+	nautilus_files_view_add_subdirectory (NAUTILUS_FILES_VIEW (view), directory);
 
 	if (nautilus_directory_are_all_files_seen (directory)) {
 		nautilus_list_model_subdirectory_done_loading (view->details->model,
@@ -1018,13 +1018,13 @@ subdirectory_unloaded_callback (NautilusListModel *model,
 	g_signal_handlers_disconnect_by_func (directory,
 					      G_CALLBACK (subdirectory_done_loading_callback),
 					      view);
-	nautilus_view_remove_subdirectory (NAUTILUS_VIEW (view), directory);
+	nautilus_files_view_remove_subdirectory (NAUTILUS_FILES_VIEW (view), directory);
 }
 
 static gboolean
 key_press_callback (GtkWidget *widget, GdkEventKey *event, gpointer callback_data)
 {
-	NautilusView *view;
+	NautilusFilesView *view;
 	GdkEventButton button_event = { 0 };
 	gboolean handled;
 	GtkTreeView *tree_view;
@@ -1032,13 +1032,13 @@ key_press_callback (GtkWidget *widget, GdkEventKey *event, gpointer callback_dat
 
 	tree_view = GTK_TREE_VIEW (widget);
 
-	view = NAUTILUS_VIEW (callback_data);
+	view = NAUTILUS_FILES_VIEW (callback_data);
 	handled = FALSE;
 
 	switch (event->keyval) {
 	case GDK_KEY_F10:
 		if (event->state & GDK_CONTROL_MASK) {
-			nautilus_view_pop_up_background_context_menu (view, &button_event);
+			nautilus_files_view_pop_up_background_context_menu (view, &button_event);
 			handled = TRUE;
 		}
 		break;
@@ -1116,13 +1116,13 @@ test_expand_row_callback (GtkTreeView *tree_view,
 }
 
 static void
-nautilus_list_view_reveal_selection (NautilusView *view)
+nautilus_list_view_reveal_selection (NautilusFilesView *view)
 {
 	GList *selection;
 
 	g_return_if_fail (NAUTILUS_IS_LIST_VIEW (view));
 
-        selection = nautilus_view_get_selection (view);
+        selection = nautilus_files_view_get_selection (view);
 
 	/* Make sure at least one of the selected items is scrolled into view */
 	if (selection != NULL) {
@@ -1180,7 +1180,7 @@ sort_column_changed_callback (GtkTreeSortable *sortable,
 	char *reversed_attr, *default_reversed_attr;
 	gboolean default_sort_reversed;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (view));
 
 	gtk_tree_sortable_get_sort_column_id (sortable, &sort_column_id, &reversed);
 	sort_attr = nautilus_list_model_get_attribute_from_sort_column_id (view->details->model, sort_column_id);
@@ -1221,7 +1221,7 @@ sort_column_changed_callback (GtkTreeSortable *sortable,
 				    default_reversed_attr, reversed_attr);
 
 	/* Make sure selected item(s) is visible after sort */
-	nautilus_list_view_reveal_selection (NAUTILUS_VIEW (view));
+	nautilus_list_view_reveal_selection (NAUTILUS_FILES_VIEW (view));
 
 	view->details->last_sort_attr = sort_attr;
 }
@@ -1234,7 +1234,7 @@ get_root_uri_callback (NautilusTreeViewDragDest *dest,
 	
 	view = NAUTILUS_LIST_VIEW (user_data);
 
-	return nautilus_view_get_uri (NAUTILUS_VIEW (view));
+	return nautilus_files_view_get_uri (NAUTILUS_FILES_VIEW (view));
 }
 
 static NautilusFile *
@@ -1254,7 +1254,7 @@ static void
 list_view_handle_netscape_url (NautilusTreeViewDragDest *dest, const char *encoded_url,
 			       const char *target_uri, GdkDragAction action, int x, int y, NautilusListView *view)
 {
-	nautilus_view_handle_netscape_url_drop (NAUTILUS_VIEW (view),
+	nautilus_files_view_handle_netscape_url_drop (NAUTILUS_FILES_VIEW (view),
 						encoded_url, target_uri, action, x, y);
 }
 
@@ -1263,7 +1263,7 @@ list_view_handle_uri_list (NautilusTreeViewDragDest *dest, const char *item_uris
 			   const char *target_uri,
 			   GdkDragAction action, int x, int y, NautilusListView *view)
 {
-	nautilus_view_handle_uri_list_drop (NAUTILUS_VIEW (view),
+	nautilus_files_view_handle_uri_list_drop (NAUTILUS_FILES_VIEW (view),
 					    item_uris, target_uri, action, x, y);
 }
 
@@ -1272,7 +1272,7 @@ list_view_handle_text (NautilusTreeViewDragDest *dest, const char *text,
 		       const char *target_uri,
 		       GdkDragAction action, int x, int y, NautilusListView *view)
 {
-	nautilus_view_handle_text_drop (NAUTILUS_VIEW (view),
+	nautilus_files_view_handle_text_drop (NAUTILUS_FILES_VIEW (view),
 					text, target_uri, action, x, y);
 }
 
@@ -1281,7 +1281,7 @@ list_view_handle_raw (NautilusTreeViewDragDest *dest, const char *raw_data,
 		      int length, const char *target_uri, const char *direct_save_uri,
 		      GdkDragAction action, int x, int y, NautilusListView *view)
 {
-	nautilus_view_handle_raw_drop (NAUTILUS_VIEW (view),
+	nautilus_files_view_handle_raw_drop (NAUTILUS_FILES_VIEW (view),
 				       raw_data, length, target_uri, direct_save_uri,
 				       action, x, y);
 }
@@ -1291,7 +1291,7 @@ list_view_handle_hover (NautilusTreeViewDragDest *dest,
 			const char *target_uri,
 			NautilusListView *view)
 {
-	nautilus_view_handle_hover (NAUTILUS_VIEW (view), target_uri);
+	nautilus_files_view_handle_hover (NAUTILUS_FILES_VIEW (view), target_uri);
 }
 
 static void
@@ -1304,12 +1304,12 @@ move_copy_items_callback (NautilusTreeViewDragDest *dest,
 			  gpointer user_data)
 
 {
-	NautilusView *view = user_data;
+	NautilusFilesView *view = user_data;
 
 	nautilus_clipboard_clear_if_colliding_uris (GTK_WIDGET (view),
 						    item_uris,
-						    nautilus_view_get_copied_files_atom (view));
-	nautilus_view_move_copy_items (view,
+						    nautilus_files_view_get_copied_files_atom (view));
+	nautilus_files_view_move_copy_items (view,
 				       item_uris,
 				       NULL,
 				       target_uri,
@@ -1329,7 +1329,7 @@ column_header_menu_toggled (GtkCheckMenuItem *menu_item,
 	GList *l;
 	int i;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 	visible_columns = get_visible_columns (list_view);
 	column_order = get_column_order (list_view);
 	column = g_object_get_data (G_OBJECT (menu_item), "column-name");
@@ -1375,7 +1375,7 @@ column_header_menu_use_default (GtkMenuItem *menu_item,
 	char **default_columns;
 	char **default_order;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	nautilus_file_set_metadata_list (file, NAUTILUS_METADATA_KEY_LIST_VIEW_COLUMN_ORDER, NULL);
 	nautilus_file_set_metadata_list (file, NAUTILUS_METADATA_KEY_LIST_VIEW_VISIBLE_COLUMNS, NULL);
@@ -1411,7 +1411,7 @@ column_header_clicked (GtkWidget *column_button,
 		return FALSE;
 	}
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	visible_columns = get_visible_columns (list_view);
 	column_order = get_column_order (list_view);
@@ -1510,7 +1510,7 @@ apply_columns_settings (NautilusListView *list_view,
 	GList *l;
 	int i;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	/* prepare ordered list of view columns using column_order and visible_columns */
 	view_columns = NULL;
@@ -1633,7 +1633,7 @@ location_cell_data_func (GtkTreeViewColumn *column,
 	GFile *base_location;
 	gchar *where = NULL;
 
-	directory = nautilus_view_get_model (NAUTILUS_VIEW (view));
+	directory = nautilus_files_view_get_model (NAUTILUS_FILES_VIEW (view));
 
 	home_location = g_file_new_for_path (g_get_home_dir ());
 
@@ -2035,7 +2035,7 @@ create_and_set_up_tree_view (NautilusListView *view)
 }
 
 static void
-nautilus_list_view_add_file (NautilusView *view, NautilusFile *file, NautilusDirectory *directory)
+nautilus_list_view_add_file (NautilusFilesView *view, NautilusFile *file, NautilusDirectory *directory)
 {
 	NautilusListModel *model;
 
@@ -2049,13 +2049,13 @@ get_default_visible_columns (NautilusListView *list_view)
 	NautilusFile *file;
 	NautilusDirectory *directory;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	if (nautilus_file_is_in_trash (file)) {
 		return g_strdupv ((gchar **) default_trash_visible_columns);
 	}
 
-	directory = nautilus_view_get_model (NAUTILUS_VIEW (list_view));
+	directory = nautilus_files_view_get_model (NAUTILUS_FILES_VIEW (list_view));
 	if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
 		return g_strdupv ((gchar **) default_search_visible_columns);
 	}
@@ -2070,7 +2070,7 @@ get_visible_columns (NautilusListView *list_view)
 	NautilusFile *file;
 	GList *visible_columns;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	visible_columns = nautilus_file_get_metadata_list
 		(file,
@@ -2100,13 +2100,13 @@ get_default_column_order (NautilusListView *list_view)
 	NautilusFile *file;
 	NautilusDirectory *directory;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	if (nautilus_file_is_in_trash (file)) {
 		return g_strdupv ((gchar **) default_trash_columns_order);
 	}
 
-	directory = nautilus_view_get_model (NAUTILUS_VIEW (list_view));
+	directory = nautilus_files_view_get_model (NAUTILUS_FILES_VIEW (list_view));
 	if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
 		return g_strdupv ((gchar **) default_search_columns_order);
 	}
@@ -2121,7 +2121,7 @@ get_column_order (NautilusListView *list_view)
 	NautilusFile *file;
 	GList *column_order;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 
 	column_order = nautilus_file_get_metadata_list
 		(file,
@@ -2169,7 +2169,7 @@ set_sort_order_from_metadata_and_preferences (NautilusListView *list_view)
 	gboolean sort_reversed, default_sort_reversed;
 	const gchar *default_sort_order;
 	
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (list_view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (list_view));
 	sort_attribute = nautilus_file_get_metadata (file,
 						     NAUTILUS_METADATA_KEY_LIST_VIEW_SORT_COLUMN,
 						     NULL);
@@ -2210,7 +2210,7 @@ get_default_zoom_level (void) {
 }
 
 static void
-nautilus_list_view_begin_loading (NautilusView *view)
+nautilus_list_view_begin_loading (NautilusFilesView *view)
 {
 	NautilusListView *list_view;
 
@@ -2221,7 +2221,7 @@ nautilus_list_view_begin_loading (NautilusView *view)
 }
 
 static void
-nautilus_list_view_clear (NautilusView *view)
+nautilus_list_view_clear (NautilusFilesView *view)
 {
 	NautilusListView *list_view;
 
@@ -2233,7 +2233,7 @@ nautilus_list_view_clear (NautilusView *view)
 }
 
 static void
-nautilus_list_view_file_changed (NautilusView *view, NautilusFile *file, NautilusDirectory *directory)
+nautilus_list_view_file_changed (NautilusFilesView *view, NautilusFile *file, NautilusDirectory *directory)
 {
 	NautilusListView *listview;
 
@@ -2307,7 +2307,7 @@ tree_selection_has_common_parent (GtkTreeSelection *selection,
 }
 
 static char *
-nautilus_list_view_get_backing_uri (NautilusView *view)
+nautilus_list_view_get_backing_uri (NautilusFilesView *view)
 {
 	NautilusListView *list_view;
 	NautilusListModel *list_model;
@@ -2372,7 +2372,7 @@ nautilus_list_view_get_backing_uri (NautilusView *view)
 
 		/* Check that all the selected items belong to the same
 		 * directory and that directory is not the root directory (which
-		 * is handled by NautilusView::get_backing_directory.) */
+		 * is handled by NautilusFilesView::get_backing_directory.) */
 
 		tree_selection_has_common_parent (selection, &is_common, &is_root);
 
@@ -2393,7 +2393,7 @@ nautilus_list_view_get_backing_uri (NautilusView *view)
 		return uri;
 	}
 
-	return NAUTILUS_VIEW_CLASS (nautilus_list_view_parent_class)->get_backing_uri (view);
+	return NAUTILUS_FILES_VIEW_CLASS (nautilus_list_view_parent_class)->get_backing_uri (view);
 }
 
 static void
@@ -2414,7 +2414,7 @@ nautilus_list_view_get_selection_foreach_func (GtkTreeModel *model, GtkTreePath 
 }
 
 static GList *
-nautilus_list_view_get_selection (NautilusView *view)
+nautilus_list_view_get_selection (NautilusFilesView *view)
 {
 	GList *list;
 
@@ -2460,7 +2460,7 @@ nautilus_list_view_get_selection_for_file_transfer_foreach_func (GtkTreeModel *m
 
 
 static GList *
-nautilus_list_view_get_selection_for_file_transfer (NautilusView *view)
+nautilus_list_view_get_selection_for_file_transfer (NautilusFilesView *view)
 {
 	struct SelectionForeachData selection_data;
 
@@ -2474,13 +2474,13 @@ nautilus_list_view_get_selection_for_file_transfer (NautilusView *view)
 }
 
 static gboolean
-nautilus_list_view_is_empty (NautilusView *view)
+nautilus_list_view_is_empty (NautilusFilesView *view)
 {
 	return nautilus_list_model_is_empty (NAUTILUS_LIST_VIEW (view)->details->model);
 }
 
 static void
-nautilus_list_view_end_file_changes (NautilusView *view)
+nautilus_list_view_end_file_changes (NautilusFilesView *view)
 {
 	NautilusListView *list_view;
 
@@ -2496,7 +2496,7 @@ nautilus_list_view_end_file_changes (NautilusView *view)
 }
 
 static void
-nautilus_list_view_remove_file (NautilusView *view, NautilusFile *file, NautilusDirectory *directory)
+nautilus_list_view_remove_file (NautilusFilesView *view, NautilusFile *file, NautilusDirectory *directory)
 {
 	GtkTreePath *path;
 	GtkTreePath *file_path;
@@ -2555,7 +2555,7 @@ nautilus_list_view_remove_file (NautilusView *view, NautilusFile *file, Nautilus
 }
 
 static void
-nautilus_list_view_set_selection (NautilusView *view, GList *selection)
+nautilus_list_view_set_selection (NautilusFilesView *view, GList *selection)
 {
 	NautilusListView *list_view;
 	GtkTreeSelection *tree_selection;
@@ -2581,11 +2581,11 @@ nautilus_list_view_set_selection (NautilusView *view, GList *selection)
 	}
 
 	g_signal_handlers_unblock_by_func (tree_selection, list_selection_changed_callback, view);
-	nautilus_view_notify_selection_changed (view);
+	nautilus_files_view_notify_selection_changed (view);
 }
 
 static void
-nautilus_list_view_invert_selection (NautilusView *view)
+nautilus_list_view_invert_selection (NautilusFilesView *view)
 {
 	NautilusListView *list_view;
 	GtkTreeSelection *tree_selection;
@@ -2618,17 +2618,17 @@ nautilus_list_view_invert_selection (NautilusView *view)
 	g_list_free (selection);
 
 	g_signal_handlers_unblock_by_func (tree_selection, list_selection_changed_callback, view);
-	nautilus_view_notify_selection_changed (view);
+	nautilus_files_view_notify_selection_changed (view);
 }
 
 static void
-nautilus_list_view_select_all (NautilusView *view)
+nautilus_list_view_select_all (NautilusFilesView *view)
 {
 	gtk_tree_selection_select_all (gtk_tree_view_get_selection (NAUTILUS_LIST_VIEW (view)->details->tree_view));
 }
 
 static void
-nautilus_list_view_select_first (NautilusView *view)
+nautilus_list_view_select_first (NautilusFilesView *view)
 {
 	GtkTreeSelection *selection;
 	GtkTreeIter iter;
@@ -2641,7 +2641,7 @@ nautilus_list_view_select_first (NautilusView *view)
 }
 
 static void
-nautilus_list_view_zoom_to_level (NautilusView *view,
+nautilus_list_view_zoom_to_level (NautilusFilesView *view,
 				  gint zoom_level)
 {
 	NautilusListView *list_view;
@@ -2655,10 +2655,10 @@ nautilus_list_view_zoom_to_level (NautilusView *view,
 	}
 
 	nautilus_list_view_set_zoom_level (list_view, zoom_level);
-	g_action_group_change_action_state (nautilus_view_get_action_group (view),
+	g_action_group_change_action_state (nautilus_files_view_get_action_group (view),
 					    "zoom-to-level", g_variant_new_int32 (zoom_level));
 
-	nautilus_view_update_toolbar_menus (view);
+	nautilus_files_view_update_toolbar_menus (view);
 }
 
 static void
@@ -2666,12 +2666,12 @@ action_zoom_to_level (GSimpleAction *action,
 		      GVariant      *state,
 		      gpointer       user_data)
 {
-	NautilusView *view;
+	NautilusFilesView *view;
 	NautilusListZoomLevel zoom_level;
 
 	g_assert (NAUTILUS_IS_VIEW (user_data));
 
-	view = NAUTILUS_VIEW (user_data);
+	view = NAUTILUS_FILES_VIEW (user_data);
 	zoom_level = g_variant_get_int32 (state);
 	nautilus_list_view_zoom_to_level (view, zoom_level);
 
@@ -2699,7 +2699,7 @@ column_chooser_changed_callback (NautilusColumnChooser *chooser,
 	GList *list;
 	int i;
 
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (view));
 
 	nautilus_column_chooser_get_settings (chooser,
 					      &visible_columns,
@@ -2773,8 +2773,8 @@ column_chooser_use_default_callback (NautilusColumnChooser *chooser,
 	char **default_columns;
 	char **default_order;
 
-	file = nautilus_view_get_directory_as_file 
-		(NAUTILUS_VIEW (view));
+	file = nautilus_files_view_get_directory_as_file 
+		(NAUTILUS_FILES_VIEW (view));
 
 	nautilus_file_set_metadata_list (file, NAUTILUS_METADATA_KEY_LIST_VIEW_COLUMN_ORDER, NULL);
 	nautilus_file_set_metadata_list (file, NAUTILUS_METADATA_KEY_LIST_VIEW_VISIBLE_COLUMNS, NULL);
@@ -2806,7 +2806,7 @@ create_column_editor (NautilusListView *view)
 	char *name;
 	const char *label_text;
 	
-	file = nautilus_view_get_directory_as_file (NAUTILUS_VIEW (view));
+	file = nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (view));
 	name = nautilus_file_get_display_name (file);
 	str = g_strdup_printf (_("%s Visible Columns"), name);
 	g_free (name);
@@ -2914,7 +2914,7 @@ nautilus_list_view_set_zoom_level (NautilusListView *view,
 }
 
 static void
-nautilus_list_view_bump_zoom_level (NautilusView *view, int zoom_increment)
+nautilus_list_view_bump_zoom_level (NautilusFilesView *view, int zoom_increment)
 {
 	NautilusListView *list_view;
 	gint new_level;
@@ -2931,7 +2931,7 @@ nautilus_list_view_bump_zoom_level (NautilusView *view, int zoom_increment)
 }
 
 static void
-nautilus_list_view_restore_default_zoom_level (NautilusView *view)
+nautilus_list_view_restore_default_zoom_level (NautilusFilesView *view)
 {
 	g_return_if_fail (NAUTILUS_IS_LIST_VIEW (view));
 
@@ -2939,7 +2939,7 @@ nautilus_list_view_restore_default_zoom_level (NautilusView *view)
 }
 
 static gboolean 
-nautilus_list_view_can_zoom_in (NautilusView *view) 
+nautilus_list_view_can_zoom_in (NautilusFilesView *view) 
 {
 	g_return_val_if_fail (NAUTILUS_IS_LIST_VIEW (view), FALSE);
 
@@ -2947,7 +2947,7 @@ nautilus_list_view_can_zoom_in (NautilusView *view)
 }
 
 static gboolean 
-nautilus_list_view_can_zoom_out (NautilusView *view) 
+nautilus_list_view_can_zoom_out (NautilusFilesView *view) 
 {
 	g_return_val_if_fail (NAUTILUS_IS_LIST_VIEW (view), FALSE);
 
@@ -2955,7 +2955,7 @@ nautilus_list_view_can_zoom_out (NautilusView *view)
 }
 
 static void
-nautilus_list_view_click_policy_changed (NautilusView *directory_view)
+nautilus_list_view_click_policy_changed (NautilusFilesView *directory_view)
 {
 	GdkWindow *win;
 	GdkDisplay *display;
@@ -3028,18 +3028,18 @@ default_column_order_changed_callback (gpointer callback_data)
 }
 
 static void
-nautilus_list_view_sort_directories_first_changed (NautilusView *view)
+nautilus_list_view_sort_directories_first_changed (NautilusFilesView *view)
 {
 	NautilusListView *list_view;
 
 	list_view = NAUTILUS_LIST_VIEW (view);
 
 	nautilus_list_model_set_should_sort_directories_first (list_view->details->model,
-							 nautilus_view_should_sort_directories_first (view));
+							 nautilus_files_view_should_sort_directories_first (view));
 }
 
 static int
-nautilus_list_view_compare_files (NautilusView *view, NautilusFile *file1, NautilusFile *file2)
+nautilus_list_view_compare_files (NautilusFilesView *view, NautilusFile *file1, NautilusFile *file2)
 {
 	NautilusListView *list_view;
 
@@ -3048,7 +3048,7 @@ nautilus_list_view_compare_files (NautilusView *view, NautilusFile *file1, Nauti
 }
 
 static gboolean
-nautilus_list_view_using_manual_layout (NautilusView *view)
+nautilus_list_view_using_manual_layout (NautilusFilesView *view)
 {
 	g_return_val_if_fail (NAUTILUS_IS_LIST_VIEW (view), FALSE);
 
@@ -3128,7 +3128,7 @@ nautilus_list_view_finalize (GObject *object)
 }
 
 static char *
-nautilus_list_view_get_first_visible_file (NautilusView *view)
+nautilus_list_view_get_first_visible_file (NautilusFilesView *view)
 {
 	NautilusFile *file;
 	GtkTreePath *path;
@@ -3184,7 +3184,7 @@ nautilus_list_view_scroll_to_file (NautilusListView *view,
 }
 
 static void
-list_view_scroll_to_file (NautilusView *view,
+list_view_scroll_to_file (NautilusFilesView *view,
 			  const char *uri)
 {
 	NautilusFile *file;
@@ -3220,7 +3220,7 @@ list_view_notify_clipboard_info (NautilusClipboardMonitor *monitor,
 }
 
 static void
-nautilus_list_view_end_loading (NautilusView *view,
+nautilus_list_view_end_loading (NautilusFilesView *view,
 				gboolean all_files_seen)
 {
 	NautilusClipboardMonitor *monitor;
@@ -3233,7 +3233,7 @@ nautilus_list_view_end_loading (NautilusView *view,
 }
 
 static const char *
-nautilus_list_view_get_id (NautilusView *view)
+nautilus_list_view_get_id (NautilusFilesView *view)
 {
 	return NAUTILUS_LIST_VIEW_ID;
 }
@@ -3241,40 +3241,40 @@ nautilus_list_view_get_id (NautilusView *view)
 static void
 nautilus_list_view_class_init (NautilusListViewClass *class)
 {
-	NautilusViewClass *nautilus_view_class;
+	NautilusFilesViewClass *nautilus_files_view_class;
 
-	nautilus_view_class = NAUTILUS_VIEW_CLASS (class);
+	nautilus_files_view_class = NAUTILUS_FILES_VIEW_CLASS (class);
 
 	G_OBJECT_CLASS (class)->dispose = nautilus_list_view_dispose;
 	G_OBJECT_CLASS (class)->finalize = nautilus_list_view_finalize;
 
-	nautilus_view_class->add_file = nautilus_list_view_add_file;
-	nautilus_view_class->begin_loading = nautilus_list_view_begin_loading;
-	nautilus_view_class->end_loading = nautilus_list_view_end_loading;
-	nautilus_view_class->bump_zoom_level = nautilus_list_view_bump_zoom_level;
-	nautilus_view_class->can_zoom_in = nautilus_list_view_can_zoom_in;
-	nautilus_view_class->can_zoom_out = nautilus_list_view_can_zoom_out;
-        nautilus_view_class->click_policy_changed = nautilus_list_view_click_policy_changed;
-	nautilus_view_class->clear = nautilus_list_view_clear;
-	nautilus_view_class->file_changed = nautilus_list_view_file_changed;
-	nautilus_view_class->get_backing_uri = nautilus_list_view_get_backing_uri;
-	nautilus_view_class->get_selection = nautilus_list_view_get_selection;
-	nautilus_view_class->get_selection_for_file_transfer = nautilus_list_view_get_selection_for_file_transfer;
-	nautilus_view_class->is_empty = nautilus_list_view_is_empty;
-	nautilus_view_class->remove_file = nautilus_list_view_remove_file;
-	nautilus_view_class->restore_default_zoom_level = nautilus_list_view_restore_default_zoom_level;
-	nautilus_view_class->reveal_selection = nautilus_list_view_reveal_selection;
-	nautilus_view_class->select_all = nautilus_list_view_select_all;
-	nautilus_view_class->select_first = nautilus_list_view_select_first;
-	nautilus_view_class->set_selection = nautilus_list_view_set_selection;
-	nautilus_view_class->invert_selection = nautilus_list_view_invert_selection;
-	nautilus_view_class->compare_files = nautilus_list_view_compare_files;
-	nautilus_view_class->sort_directories_first_changed = nautilus_list_view_sort_directories_first_changed;
-	nautilus_view_class->end_file_changes = nautilus_list_view_end_file_changes;
-	nautilus_view_class->using_manual_layout = nautilus_list_view_using_manual_layout;
-	nautilus_view_class->get_view_id = nautilus_list_view_get_id;
-	nautilus_view_class->get_first_visible_file = nautilus_list_view_get_first_visible_file;
-	nautilus_view_class->scroll_to_file = list_view_scroll_to_file;
+	nautilus_files_view_class->add_file = nautilus_list_view_add_file;
+	nautilus_files_view_class->begin_loading = nautilus_list_view_begin_loading;
+	nautilus_files_view_class->end_loading = nautilus_list_view_end_loading;
+	nautilus_files_view_class->bump_zoom_level = nautilus_list_view_bump_zoom_level;
+	nautilus_files_view_class->can_zoom_in = nautilus_list_view_can_zoom_in;
+	nautilus_files_view_class->can_zoom_out = nautilus_list_view_can_zoom_out;
+        nautilus_files_view_class->click_policy_changed = nautilus_list_view_click_policy_changed;
+	nautilus_files_view_class->clear = nautilus_list_view_clear;
+	nautilus_files_view_class->file_changed = nautilus_list_view_file_changed;
+	nautilus_files_view_class->get_backing_uri = nautilus_list_view_get_backing_uri;
+	nautilus_files_view_class->get_selection = nautilus_list_view_get_selection;
+	nautilus_files_view_class->get_selection_for_file_transfer = nautilus_list_view_get_selection_for_file_transfer;
+	nautilus_files_view_class->is_empty = nautilus_list_view_is_empty;
+	nautilus_files_view_class->remove_file = nautilus_list_view_remove_file;
+	nautilus_files_view_class->restore_default_zoom_level = nautilus_list_view_restore_default_zoom_level;
+	nautilus_files_view_class->reveal_selection = nautilus_list_view_reveal_selection;
+	nautilus_files_view_class->select_all = nautilus_list_view_select_all;
+	nautilus_files_view_class->select_first = nautilus_list_view_select_first;
+	nautilus_files_view_class->set_selection = nautilus_list_view_set_selection;
+	nautilus_files_view_class->invert_selection = nautilus_list_view_invert_selection;
+	nautilus_files_view_class->compare_files = nautilus_list_view_compare_files;
+	nautilus_files_view_class->sort_directories_first_changed = nautilus_list_view_sort_directories_first_changed;
+	nautilus_files_view_class->end_file_changes = nautilus_list_view_end_file_changes;
+	nautilus_files_view_class->using_manual_layout = nautilus_list_view_using_manual_layout;
+	nautilus_files_view_class->get_view_id = nautilus_list_view_get_id;
+	nautilus_files_view_class->get_first_visible_file = nautilus_list_view_get_first_visible_file;
+	nautilus_files_view_class->scroll_to_file = list_view_scroll_to_file;
 }
 
 static void
@@ -3305,9 +3305,9 @@ nautilus_list_view_init (NautilusListView *list_view)
 				  G_CALLBACK (default_column_order_changed_callback),
 				  list_view);
 
-	nautilus_list_view_click_policy_changed (NAUTILUS_VIEW (list_view));
+	nautilus_list_view_click_policy_changed (NAUTILUS_FILES_VIEW (list_view));
 
-	nautilus_list_view_sort_directories_first_changed (NAUTILUS_VIEW (list_view));
+	nautilus_list_view_sort_directories_first_changed (NAUTILUS_FILES_VIEW (list_view));
 	nautilus_list_view_set_zoom_level (list_view, get_default_zoom_level ());
 
 	list_view->details->hover_path = NULL;
@@ -3316,17 +3316,17 @@ nautilus_list_view_init (NautilusListView *list_view)
 		                  "clipboard-info",
 		                  G_CALLBACK (list_view_notify_clipboard_info), list_view);
 
-	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (list_view));
+	view_action_group = nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (list_view));
 	g_action_map_add_action_entries (G_ACTION_MAP (view_action_group),
 					list_view_entries,
 					G_N_ELEMENTS (list_view_entries),
 					list_view);
 	/* Keep the action synced with the actual value, so the toolbar can poll it */
-	g_action_group_change_action_state (nautilus_view_get_action_group (NAUTILUS_VIEW (list_view)),
+	g_action_group_change_action_state (nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (list_view)),
 					    "zoom-to-level", g_variant_new_int32 (get_default_zoom_level ()));
 }
 
-NautilusView *
+NautilusFilesView *
 nautilus_list_view_new (NautilusWindowSlot *slot)
 {
 	return g_object_new (NAUTILUS_TYPE_LIST_VIEW,

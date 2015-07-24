@@ -41,7 +41,7 @@
 #include "nautilus-toolbar.h"
 #include "nautilus-window-slot.h"
 #include "nautilus-list-view.h"
-#include "nautilus-view.h"
+#include "nautilus-files-view.h"
 
 #include <eel/eel-debug.h>
 #include <eel/eel-gtk-extensions.h>
@@ -594,13 +594,13 @@ void
 nautilus_window_grab_focus (NautilusWindow *window)
 {
 	NautilusWindowSlot *slot;
-	NautilusView *view;
+	NautilusFilesView *view;
 
 	slot = nautilus_window_get_active_slot (window);
 	view = nautilus_window_slot_get_view (slot);
 
 	if (view) {
-		nautilus_view_grab_focus (view);
+		nautilus_files_view_grab_focus (view);
 	}
 }
 
@@ -609,7 +609,7 @@ restore_focus_widget (NautilusWindow *window)
 {
 	if (window->priv->last_focus_widget != NULL) {
 		if (NAUTILUS_IS_VIEW (window->priv->last_focus_widget)) {
-			nautilus_view_grab_focus (NAUTILUS_VIEW (window->priv->last_focus_widget));
+			nautilus_files_view_grab_focus (NAUTILUS_FILES_VIEW (window->priv->last_focus_widget));
 		} else {
 			gtk_widget_grab_focus (window->priv->last_focus_widget);
 		}
@@ -1662,7 +1662,7 @@ path_bar_path_event_callback (NautilusPathBar *path_bar,
 	NautilusWindowSlot *slot;
 	NautilusWindowOpenFlags flags;
 	int mask;
-	NautilusView *view;
+	NautilusFilesView *view;
 	char *uri;
 
 	if (event->type == GDK_BUTTON_RELEASE) {
@@ -1688,7 +1688,7 @@ path_bar_path_event_callback (NautilusPathBar *path_bar,
 		view = nautilus_window_slot_get_view (slot);
 		if (view != NULL) {
 			uri = g_file_get_uri (location);
-			nautilus_view_pop_up_pathbar_context_menu (view, event, uri);
+			nautilus_files_view_pop_up_pathbar_context_menu (view, event, uri);
 			g_free (uri);
 		}
 
@@ -2251,7 +2251,7 @@ nautilus_window_finalize (GObject *object)
 
 void
 nautilus_window_view_visible (NautilusWindow *window,
-			      NautilusView   *view)
+			      NautilusFilesView   *view)
 {
 	NautilusWindowSlot *slot;
 	GList *l;
@@ -2264,7 +2264,7 @@ nautilus_window_view_visible (NautilusWindow *window,
 	 *
 	 * Needs more investigation...
 	 */
-	slot = nautilus_view_get_nautilus_window_slot (view);
+	slot = nautilus_files_view_get_nautilus_window_slot (view);
 	if (g_object_get_data (G_OBJECT (slot), "nautilus-window-view-visible") != NULL) {
 		return;
 	}
@@ -2392,7 +2392,7 @@ nautilus_window_key_press_event (GtkWidget *widget,
 {
 	NautilusWindow *window;
 	NautilusWindowSlot *active_slot;
-	NautilusView *view;
+	NautilusFilesView *view;
 	GtkWidget *focus_widget;
 	int i;
 
@@ -2419,7 +2419,7 @@ nautilus_window_key_press_event (GtkWidget *widget,
 
 			action = g_action_map_lookup_action (G_ACTION_MAP (window), extra_window_keybindings[i].action);
 			if (action == NULL) {
-				action_group = nautilus_view_get_action_group (view);
+				action_group = nautilus_files_view_get_action_group (view);
 				action = g_action_map_lookup_action (G_ACTION_MAP (action_group), extra_window_keybindings[i].action);
 			}
 

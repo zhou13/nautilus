@@ -410,14 +410,14 @@ zoom_level_changed (GtkRange *range,
 		    NautilusToolbar *self)
 {
 	NautilusWindowSlot *slot;
-	NautilusView *view;
+	NautilusFilesView *view;
 	gdouble zoom_level;
 
 	zoom_level = gtk_range_get_value (range);
 	slot = nautilus_window_get_active_slot (self->priv->window);
 	view = nautilus_window_slot_get_current_view (slot);
 
-	g_action_group_change_action_state (nautilus_view_get_action_group (view),
+	g_action_group_change_action_state (nautilus_files_view_get_action_group (view),
 					    "zoom-to-level",
 					    g_variant_new_int32 ((gint) zoom_level));
 }
@@ -427,12 +427,12 @@ view_menu_popover_closed (GtkPopover *popover,
 			  NautilusToolbar *self)
 {
 	NautilusWindowSlot *slot;
-	NautilusView *view;
+	NautilusFilesView *view;
 
 	slot = nautilus_window_get_active_slot (self->priv->window);
 	view = nautilus_window_slot_get_current_view (slot);
 
-	nautilus_view_grab_focus (view);
+	nautilus_files_view_grab_focus (view);
 }
 
 static gboolean
@@ -921,7 +921,7 @@ void
 nautilus_toolbar_reset_menus (NautilusToolbar *self)
 {
 	NautilusWindowSlot *slot;
-	NautilusView *view;
+	NautilusFilesView *view;
 	GActionGroup *view_action_group;
 	GVariant *variant;
 	GVariantIter iter;
@@ -932,7 +932,7 @@ nautilus_toolbar_reset_menus (NautilusToolbar *self)
 	 * the view menu and action menu of the toolbar */
 	slot = nautilus_window_get_active_slot (self->priv->window);
 	view = nautilus_window_slot_get_current_view (slot);
-	view_action_group = nautilus_view_get_action_group (view);
+	view_action_group = nautilus_files_view_get_action_group (view);
 	gtk_widget_insert_action_group (GTK_WIDGET (self),
 					"view",
 					G_ACTION_GROUP (view_action_group));

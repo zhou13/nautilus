@@ -82,8 +82,8 @@ struct NautilusWindowSlotDetails {
 	gchar *title;
 
 	/* Viewed file */
-	NautilusView *content_view;
-	NautilusView *new_content_view;
+	NautilusFilesView *content_view;
+	NautilusFilesView *new_content_view;
 	NautilusFile *viewed_file;
 	gboolean viewed_file_seen;
 	gboolean viewed_file_in_trash;
@@ -153,7 +153,7 @@ nautilus_window_slot_sync_search_widgets (NautilusWindowSlot *slot)
 	toggle = slot->details->search_visible;
 
 	if (slot->details->content_view != NULL) {
-		directory = nautilus_view_get_model (slot->details->content_view);
+		directory = nautilus_files_view_get_model (slot->details->content_view);
 		if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
 			toggle = TRUE;
 		}
@@ -169,7 +169,7 @@ nautilus_window_slot_content_view_matches_iid (NautilusWindowSlot *slot,
 	if (slot->details->content_view == NULL) {
 		return FALSE;
 	}
-	return g_strcmp0 (nautilus_view_get_view_id (slot->details->content_view), iid) == 0;
+	return g_strcmp0 (nautilus_files_view_get_view_id (slot->details->content_view), iid) == 0;
 }
 
 void
@@ -229,7 +229,7 @@ check_empty_states (NautilusWindowSlot *slot)
 
         gtk_widget_hide (slot->details->no_search_results_widget);
         gtk_widget_hide (slot->details->folder_is_empty_widget);
-        directory = nautilus_view_get_model (slot->details->content_view);
+        directory = nautilus_files_view_get_model (slot->details->content_view);
         if (!slot->details->busy && directory != NULL) {
 	        files = nautilus_directory_get_file_list (directory);
                 show_hidden_files = g_settings_get_boolean (gtk_filechooser_preferences,
@@ -351,7 +351,7 @@ query_editor_activated_callback (NautilusQueryEditor *editor,
 				 NautilusWindowSlot *slot)
 {
 	if (slot->details->content_view != NULL) {
-		nautilus_view_activate_selection (slot->details->content_view);
+		nautilus_files_view_activate_selection (slot->details->content_view);
 	}
 }
 
@@ -879,7 +879,7 @@ nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
 
 	old_selection = NULL;
 	if (slot->details->content_view != NULL) {
-		old_selection = nautilus_view_get_selection (slot->details->content_view);
+		old_selection = nautilus_files_view_get_selection (slot->details->content_view);
 	}
 
 	if (target_window == window && target_slot == slot && !is_desktop &&
@@ -977,7 +977,7 @@ begin_location_change (NautilusWindowSlot *slot,
         /* We are going to change the location, so make sure we stop any loading
          * or searching of the previous view, so we avoid to be slow */
         if (slot->details->content_view) {
-                nautilus_view_stop_loading (slot->details->content_view);
+                nautilus_files_view_stop_loading (slot->details->content_view);
         }
 
 	/* If there is no new selection and the new location is
@@ -1049,7 +1049,7 @@ begin_location_change (NautilusWindowSlot *slot,
         /* Set current_bookmark scroll pos */
         if (slot->details->current_location_bookmark != NULL &&
             slot->details->content_view != NULL) {
-                current_pos = nautilus_view_get_first_visible_file (slot->details->content_view);
+                current_pos = nautilus_files_view_get_first_visible_file (slot->details->content_view);
                 nautilus_bookmark_set_scroll_pos (slot->details->current_location_bookmark, current_pos);
                 g_free (current_pos);
         }
@@ -1357,7 +1357,7 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
                                  * so the view mode of the current view will be the one search is using,
                                  * which is not the one we are interested in */
                                 if (slot->details->view_mode_before_search == NULL) {
-                                        slot->details->view_mode_before_search = g_strdup (nautilus_view_get_view_id (slot->details->content_view));
+                                        slot->details->view_mode_before_search = g_strdup (nautilus_files_view_get_view_id (slot->details->content_view));
                                 }
                                 view_id = g_strdup (NAUTILUS_LIST_VIEW_IID);
                         } else {
@@ -1375,7 +1375,7 @@ got_file_info_for_view_selection_callback (NautilusFile *file,
                                 g_free (slot->details->view_mode_before_search);
                                 slot->details->view_mode_before_search = NULL;
                         } else {
-			        view_id = g_strdup (nautilus_view_get_view_id (slot->details->content_view));
+			        view_id = g_strdup (nautilus_files_view_get_view_id (slot->details->content_view));
                         }
 		}
 
@@ -1484,7 +1484,7 @@ create_content_view (NautilusWindowSlot *slot,
 		     GError **error_out)
 {
 	NautilusWindow *window;
-        NautilusView *view;
+        NautilusFilesView *view;
 	GList *selection;
 	gboolean ret = TRUE;
 	GError *error = NULL;
@@ -1515,7 +1515,7 @@ create_content_view (NautilusWindowSlot *slot,
 		g_object_ref (view);
         } else {
                 /* create a new content view */
-		view = nautilus_view_new (view_id, slot);
+		view = nautilus_files_view_new (view_id, slot);
 
                 slot->details->new_content_view = view;
         }
@@ -1548,7 +1548,7 @@ create_content_view (NautilusWindowSlot *slot,
 		slot->details->load_with_search = FALSE;
 
 		if (slot->details->pending_selection == NULL) {
-			slot->details->pending_selection = nautilus_view_get_selection (slot->details->content_view);
+			slot->details->pending_selection = nautilus_files_view_get_selection (slot->details->content_view);
 		}
 	}
 
@@ -1564,7 +1564,7 @@ create_content_view (NautilusWindowSlot *slot,
 		g_list_free_full (slot->details->pending_selection, g_object_unref);
 		slot->details->pending_selection = NULL;
 	} else if (old_location != NULL) {
-		selection = nautilus_view_get_selection (slot->details->content_view);
+		selection = nautilus_files_view_get_selection (slot->details->content_view);
 		load_new_location (slot,
 				   old_location,
 				   selection,
@@ -1596,7 +1596,7 @@ load_new_location (NautilusWindowSlot *slot,
 		   gboolean tell_new_content_view)
 {
 	GList *selection_copy;
-	NautilusView *view;
+	NautilusFilesView *view;
 
 	g_assert (slot != NULL);
 	g_assert (location != NULL);
@@ -1608,19 +1608,19 @@ load_new_location (NautilusWindowSlot *slot,
 	/* Note, these may recurse into report_load_underway */
         if (slot->details->content_view != NULL && tell_current_content_view) {
 		view = slot->details->content_view;
-		nautilus_view_load_location (slot->details->content_view, location);
+		nautilus_files_view_load_location (slot->details->content_view, location);
         }
 
         if (slot->details->new_content_view != NULL && tell_new_content_view &&
 	    (!tell_current_content_view ||
 	     slot->details->new_content_view != slot->details->content_view) ) {
 		view = slot->details->new_content_view;
-		nautilus_view_load_location (slot->details->new_content_view, location);
+		nautilus_files_view_load_location (slot->details->new_content_view, location);
         }
 	if (view != NULL) {
 		/* new_content_view might have changed here if
 		   report_load_underway was called from load_location */
-		nautilus_view_set_selection (view, selection_copy);
+		nautilus_files_view_set_selection (view, selection_copy);
 	}
 
 	g_list_free_full (selection_copy, g_object_unref);
@@ -1691,7 +1691,7 @@ cancel_location_change (NautilusWindowSlot *slot)
 	directory = nautilus_directory_get (slot->details->location);
         disconnect_directory_signals (slot, directory);
         /* Stops current loading or search if any, so we are not slow */
-	nautilus_view_stop_loading (slot->details->content_view);
+	nautilus_files_view_stop_loading (slot->details->content_view);
         nautilus_directory_unref (directory);
 
         if (slot->details->pending_location != NULL
@@ -1703,7 +1703,7 @@ cancel_location_change (NautilusWindowSlot *slot)
                  * be told, or it is the very pending change we wish
                  * to cancel.
                  */
-		selection = nautilus_view_get_selection (slot->details->content_view);
+		selection = nautilus_files_view_get_selection (slot->details->content_view);
                 load_new_location (slot,
 				   location,
 				   selection,
@@ -1803,10 +1803,10 @@ nautilus_window_slot_set_content_view (NautilusWindowSlot *slot,
 
         nautilus_window_slot_set_allow_stop (slot, TRUE);
 
-        if (nautilus_view_get_selection_count (slot->details->content_view) == 0) {
+        if (nautilus_files_view_get_selection_count (slot->details->content_view) == 0) {
                 /* If there is no selection, queue a scroll to the same icon that
                  * is currently visible */
-                slot->details->pending_scroll_to = nautilus_view_get_first_visible_file (slot->details->content_view);
+                slot->details->pending_scroll_to = nautilus_files_view_get_first_visible_file (slot->details->content_view);
         }
 	slot->details->location_change_type = NAUTILUS_LOCATION_CHANGE_RELOAD;
 
@@ -1889,8 +1889,8 @@ nautilus_window_slot_force_reload (NautilusWindowSlot *slot)
 	current_pos = NULL;
 	selection = NULL;
 	if (slot->details->content_view != NULL) {
-		current_pos = nautilus_view_get_first_visible_file (slot->details->content_view);
-		selection = nautilus_view_get_selection (slot->details->content_view);
+		current_pos = nautilus_files_view_get_first_visible_file (slot->details->content_view);
+		selection = nautilus_files_view_get_selection (slot->details->content_view);
 	}
 	begin_location_change
 		(slot, location, location, selection,
@@ -1912,7 +1912,7 @@ nautilus_window_slot_queue_reload (NautilusWindowSlot *slot)
 
 	if (slot->details->pending_location != NULL
 	    || slot->details->content_view == NULL
-	    || nautilus_view_get_loading (slot->details->content_view)) {
+	    || nautilus_files_view_get_loading (slot->details->content_view)) {
 		/* there is a reload in flight */
 		slot->details->needs_reload = TRUE;
 		return;
@@ -2187,7 +2187,7 @@ static void
 nautilus_window_slot_show_trash_bar (NautilusWindowSlot *slot)
 {
 	GtkWidget *bar;
-	NautilusView *view;
+	NautilusFilesView *view;
 
 	view = nautilus_window_slot_get_current_view (slot);
 	bar = nautilus_trash_bar_new (view);
@@ -2278,7 +2278,7 @@ nautilus_window_slot_update_for_new_location (NautilusWindowSlot *slot)
 }
 
 static void
-view_end_loading_cb (NautilusView       *view,
+view_end_loading_cb (NautilusFilesView       *view,
 		     gboolean            all_files_seen,
 		     NautilusWindowSlot *slot)
 {
@@ -2286,7 +2286,7 @@ view_end_loading_cb (NautilusView       *view,
 	 * Don't handle it if its from an old view we've switched from */
 	if (view == slot->details->content_view && all_files_seen) {
 		if (slot->details->pending_scroll_to != NULL) {
-			nautilus_view_scroll_to_file (slot->details->content_view,
+			nautilus_files_view_scroll_to_file (slot->details->content_view,
 						      slot->details->pending_scroll_to);
 		}
 		end_location_change (slot);
@@ -2299,7 +2299,7 @@ view_end_loading_cb (NautilusView       *view,
 
         /* If it is a search directory, it will hide the toolbar when the search engine
          * finishes, not every time the view end loading the new files */
-        if (!NAUTILUS_IS_SEARCH_DIRECTORY (nautilus_view_get_model (slot->details->content_view))) {
+        if (!NAUTILUS_IS_SEARCH_DIRECTORY (nautilus_files_view_get_model (slot->details->content_view))) {
                 mark_busy (slot, FALSE);
         }
 
@@ -2322,7 +2322,7 @@ real_setup_loading_floating_bar (NautilusWindowSlot *slot)
 
 	nautilus_floating_bar_cleanup_actions (NAUTILUS_FLOATING_BAR (slot->details->floating_bar));
 	nautilus_floating_bar_set_primary_label (NAUTILUS_FLOATING_BAR (slot->details->floating_bar),
-						 NAUTILUS_IS_SEARCH_DIRECTORY (nautilus_view_get_model (slot->details->content_view)) ?
+						 NAUTILUS_IS_SEARCH_DIRECTORY (nautilus_files_view_get_model (slot->details->content_view)) ?
 						 _("Searching…") : _("Loading…"));
 	nautilus_floating_bar_set_details_label (NAUTILUS_FLOATING_BAR (slot->details->floating_bar), NULL);
 	nautilus_floating_bar_set_show_spinner (NAUTILUS_FLOATING_BAR (slot->details->floating_bar),
@@ -2365,7 +2365,7 @@ setup_loading_floating_bar (NautilusWindowSlot *slot)
 }
 
 static void
-view_begin_loading_cb (NautilusView       *view,
+view_begin_loading_cb (NautilusFilesView       *view,
 		       NautilusWindowSlot *slot)
 {
 	nautilus_profile_start (NULL);
@@ -2445,7 +2445,7 @@ nautilus_window_slot_setup_extra_location_widgets (NautilusWindowSlot *slot)
 }
 
 static void
-view_end_file_changes_cb (NautilusView       *view,
+view_end_file_changes_cb (NautilusFilesView       *view,
                            NautilusWindowSlot *slot)
 {
         /* When creating or deleting a file the done-loading signal is not emitted,
@@ -2723,7 +2723,7 @@ nautilus_window_slot_set_window (NautilusWindowSlot *slot,
 	}
 }
 
-NautilusView *
+NautilusFilesView *
 nautilus_window_slot_get_view (NautilusWindowSlot *slot)
 {
 	return slot->details->content_view;
@@ -2911,7 +2911,7 @@ nautilus_window_slot_get_current_uri (NautilusWindowSlot *slot)
 	return NULL;
 }
 
-NautilusView *
+NautilusFilesView *
 nautilus_window_slot_get_current_view (NautilusWindowSlot *slot)
 {
 	if (slot->details->content_view != NULL) {
