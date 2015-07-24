@@ -38,6 +38,7 @@
 #include "nautilus-properties-window.h"
 #include "nautilus-window.h"
 #include "nautilus-toolbar.h"
+#include "nautilus-view.h"
 
 #if ENABLE_EMPTY_VIEW
 #include "nautilus-empty-view.h"
@@ -137,6 +138,11 @@ enum {
 enum {
 	PROP_WINDOW_SLOT = 1,
 	PROP_SUPPORTS_ZOOMING,
+        PROP_ACTION_GROUP,
+        PROP_LOADING,
+        PROP_LOCATION,
+        PROP_SEARCH_QUERY,
+        PROP_OPERATIONS,
 	NUM_PROPERTIES
 };
 
@@ -226,6 +232,8 @@ struct NautilusFilesViewDetails
 	GMenu *pathbar_menu;
 
 	GActionGroup *view_action_group;
+
+        NautilusViewOperation supported_operations;
 };
 
 typedef struct {
@@ -268,7 +276,16 @@ static void     update_templates_directory                     (NautilusFilesVie
 
 static void unschedule_pop_up_pathbar_context_menu (NautilusFilesView *view);
 
-G_DEFINE_TYPE (NautilusFilesView, nautilus_files_view, GTK_TYPE_SCROLLED_WINDOW);
+static void     nautilus_view_iface_init                         (NautilusViewInterface *view);
+
+static void     nautilus_files_view_pop_up_pathbar_context_menu  (NautilusFilesView *view,
+                                                                  GdkEventButton    *event,
+                                                                  const gchar       *location);
+
+G_DEFINE_TYPE_WITH_CODE (NautilusFilesView,
+                         nautilus_files_view,
+                         GTK_TYPE_SCROLLED_WINDOW,
+                         G_IMPLEMENT_INTERFACE (NAUTILUS_TYPE_VIEW, nautilus_view_iface_init));
 
 static char *
 real_get_backing_uri (NautilusFilesView *view)
@@ -2887,6 +2904,7 @@ done_loading (NautilusFilesView *view,
 
 	view->details->loading = FALSE;
 	g_signal_emit (view, signals[END_LOADING], 0, all_files_seen);
+        g_object_notify (G_OBJECT (view), "loading");
 
 	nautilus_profile_end (NULL);
 }
@@ -3667,12 +3685,12 @@ nautilus_files_view_remove_subdirectory (NautilusFilesView  *view,
  * Return value: #gboolean inicating whether @view is currently loaded.
  * 
  **/
-gboolean
-nautilus_files_view_get_loading (NautilusFilesView *view)
+static gboolean
+nautilus_files_view_get_loading (NautilusView *view)
 {
-	g_return_val_if_fail (NAUTILUS_IS_VIEW (view), FALSE);
+	g_return_val_if_fail (NAUTILUS_IS_FILES_VIEW (view), FALSE);
 
-	return view->details->loading;
+	return NAUTILUS_FILES_VIEW (view)->details->loading;
 }
 
 /**
@@ -5982,12 +6000,12 @@ all_in_trash (GList *files)
 	return TRUE;
 }
 
-GActionGroup *
-nautilus_files_view_get_action_group (NautilusFilesView *view)
+static GActionGroup*
+nautilus_files_view_get_action_group (NautilusView *view)
 {
 	g_assert (NAUTILUS_IS_VIEW (view));
 
-	return view->details->view_action_group;
+	return NAUTILUS_FILES_VIEW (view)->details->view_action_group;
 }
 
 static void
@@ -6593,9 +6611,9 @@ nautilus_files_view_update_toolbar_menus (NautilusFilesView *view)
  * @event: The event that triggered this context menu.
  * 
  **/
-void 
-nautilus_files_view_pop_up_selection_context_menu  (NautilusFilesView *view, 
-					      GdkEventButton  *event)
+static void
+nautilus_files_view_pop_up_selection_context_menu  (NautilusFilesView *view,
+                                                    GdkEventButton    *event)
 {
 	g_assert (NAUTILUS_IS_VIEW (view));
 
@@ -6616,9 +6634,9 @@ nautilus_files_view_pop_up_selection_context_menu  (NautilusFilesView *view,
  * @view: NautilusFilesView of interest.
  *
  **/
-void 
-nautilus_files_view_pop_up_background_context_menu (NautilusFilesView *view, 
-					      GdkEventButton  *event)
+static void
+nautilus_files_view_pop_up_background_context_menu (NautilusFilesView *view,
+                                                    GdkEventButton    *event)
 {
 	g_assert (NAUTILUS_IS_VIEW (view));
 
@@ -6713,10 +6731,10 @@ schedule_pop_up_pathbar_context_menu (NautilusFilesView *view,
  * or NULL for the currently displayed location.
  *
  **/
-void 
-nautilus_files_view_pop_up_pathbar_context_menu (NautilusFilesView *view, 
-					   GdkEventButton  *event,
-					   const char      *location)
+static void
+nautilus_files_view_pop_up_pathbar_context_menu (NautilusFilesView *view,
+                                                 GdkEventButton    *event,
+                                                 const char        *location)
 {
 	NautilusFile *file;
 
@@ -6877,6 +6895,7 @@ load_directory (NautilusFilesView *view,
 	g_signal_emit (view, signals[CLEAR], 0);
 
 	view->details->loading = TRUE;
+        g_object_notify (G_OBJECT (view), "loading");
 
 	/* Update menus when directory is empty, before going to new
 	 * location, so they won't have any false lingering knowledge
@@ -7347,6 +7366,55 @@ real_get_selected_icon_locations (NautilusFilesView *view)
         return g_array_new (FALSE, TRUE, sizeof (GdkPoint));
 }
 
+
+static gint
+nautilus_files_view_get_supported_operations (NautilusView *view)
+{
+  return NAUTILUS_VIEW_OPERATION_BROWSE_GRID |
+         NAUTILUS_VIEW_OPERATION_BROWSE_LIST;
+}
+
+static void
+nautilus_files_view_get_property (GObject    *object,
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
+{
+        NautilusFilesView *self;
+        NautilusView *view;
+        GFile *file;
+
+        self = NAUTILUS_FILES_VIEW (object);
+        view = NAUTILUS_VIEW (object);
+
+        switch (prop_id) {
+        case PROP_ACTION_GROUP:
+                g_value_set_object (value, nautilus_view_get_action_group (view));
+                break;
+
+        case PROP_LOADING:
+                g_value_set_boolean (value, nautilus_view_get_loading (view));
+                break;
+
+        case PROP_LOCATION:
+                file = nautilus_file_get_location (nautilus_files_view_get_directory_as_file (self));
+                g_value_set_object (value, file);
+                break;
+
+        case PROP_OPERATIONS:
+                g_value_set_flags (value, nautilus_files_view_get_supported_operations (view));
+                break;
+
+        case PROP_SEARCH_QUERY:
+                g_value_set_object (value, NULL);
+                break;
+
+        default:
+                G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+                break;
+        }
+}
+
 static void
 nautilus_files_view_set_property (GObject         *object,
 			    guint            prop_id,
@@ -7375,6 +7443,9 @@ nautilus_files_view_set_property (GObject         *object,
 	case PROP_SUPPORTS_ZOOMING:
 		directory_view->details->supports_zooming = g_value_get_boolean (value);
 		break;
+
+        case PROP_SEARCH_QUERY:
+                break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -7479,6 +7550,41 @@ nautilus_files_view_parent_set (GtkWidget *widget,
 }
 
 static void
+nautilus_files_view_pop_up_menu (NautilusView         *view,
+                                 NautilusViewMenutype  menu_type,
+                                 GdkEventButton       *event,
+                                 const gchar          *location)
+{
+        NautilusFilesView *files_view = NAUTILUS_FILES_VIEW (view);
+
+        switch (menu_type) {
+        case NAUTILUS_VIEW_MENU_BACKGROUND:
+                nautilus_files_view_pop_up_background_context_menu (files_view, event);
+                break;
+
+        case NAUTILUS_VIEW_MENU_PATHBAR:
+                nautilus_files_view_pop_up_pathbar_context_menu (files_view, event, location);
+                break;
+
+        case NAUTILUS_VIEW_MENU_SELECTION:
+                nautilus_files_view_pop_up_selection_context_menu (files_view, event);
+                break;
+
+        default:
+                g_assert_not_reached ();
+        }
+}
+
+static void
+nautilus_view_iface_init (NautilusViewInterface *iface)
+{
+        iface->get_action_group = nautilus_files_view_get_action_group;
+        iface->get_loading = nautilus_files_view_get_loading;
+        iface->get_supported_operations = nautilus_files_view_get_supported_operations;
+        iface->popup_menu = nautilus_files_view_pop_up_menu;
+}
+
+static void
 nautilus_files_view_class_init (NautilusFilesViewClass *klass)
 {
 	GObjectClass *oclass;
@@ -7491,6 +7597,7 @@ nautilus_files_view_class_init (NautilusFilesViewClass *klass)
 
 	oclass->finalize = nautilus_files_view_finalize;
 	oclass->set_property = nautilus_files_view_set_property;
+        oclass->get_property = nautilus_files_view_get_property;
 
 	widget_class->destroy = nautilus_files_view_destroy;
 	widget_class->scroll_event = nautilus_files_view_scroll_event;
@@ -7602,7 +7709,28 @@ nautilus_files_view_class_init (NautilusFilesViewClass *klass)
 				      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY |
 				      G_PARAM_STATIC_STRINGS);
 
-	g_object_class_install_properties (oclass, NUM_PROPERTIES, properties);
+        g_object_class_override_property (oclass,
+                                          PROP_ACTION_GROUP,
+                                          "action-group");
+
+        g_object_class_override_property (oclass,
+                                          PROP_LOADING,
+                                          "loading");
+
+        g_object_class_override_property (oclass,
+                                          PROP_LOCATION,
+                                          "location");
+
+
+        g_object_class_override_property (oclass,
+                                          PROP_OPERATIONS,
+                                          "operations");
+
+        g_object_class_override_property (oclass,
+                                          PROP_SEARCH_QUERY,
+                                          "search-query");
+
+        g_object_class_install_properties (oclass, NUM_PROPERTIES, properties);
 }
 
 static void
@@ -7623,6 +7751,9 @@ nautilus_files_view_init (NautilusFilesView *view)
 
 	view->details = G_TYPE_INSTANCE_GET_PRIVATE (view, NAUTILUS_TYPE_FILES_VIEW,
 						     NautilusFilesViewDetails);
+
+        /* Supported operations */
+        view->details->supported_operations = nautilus_files_view_get_supported_operations (NAUTILUS_VIEW (view));
 
 	/* Default to true; desktop-icon-view sets to false */
 	view->details->show_foreign_files = TRUE;

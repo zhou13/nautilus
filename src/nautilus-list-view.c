@@ -604,9 +604,15 @@ static void
 do_popup_menu (GtkWidget *widget, NautilusListView *view, GdkEventButton *event)
 {
  	if (tree_view_has_selection (GTK_TREE_VIEW (widget))) {
-		nautilus_files_view_pop_up_selection_context_menu (NAUTILUS_FILES_VIEW (view), event);
+                nautilus_view_popup_menu (NAUTILUS_VIEW (view),
+                                          NAUTILUS_VIEW_MENU_SELECTION,
+                                          event,
+                                          NULL);
 	} else {
-                nautilus_files_view_pop_up_background_context_menu (NAUTILUS_FILES_VIEW (view), event);
+                nautilus_view_popup_menu (NAUTILUS_VIEW (view),
+                                          NAUTILUS_VIEW_MENU_BACKGROUND,
+                                          event,
+                                          NULL);
 	}
 }
 
@@ -1038,7 +1044,10 @@ key_press_callback (GtkWidget *widget, GdkEventKey *event, gpointer callback_dat
 	switch (event->keyval) {
 	case GDK_KEY_F10:
 		if (event->state & GDK_CONTROL_MASK) {
-			nautilus_files_view_pop_up_background_context_menu (view, &button_event);
+                        nautilus_view_popup_menu (NAUTILUS_VIEW (view),
+                                                  NAUTILUS_VIEW_MENU_BACKGROUND,
+                                                  &button_event,
+                                                  NULL);
 			handled = TRUE;
 		}
 		break;
@@ -2655,7 +2664,7 @@ nautilus_list_view_zoom_to_level (NautilusFilesView *view,
 	}
 
 	nautilus_list_view_set_zoom_level (list_view, zoom_level);
-	g_action_group_change_action_state (nautilus_files_view_get_action_group (view),
+	g_action_group_change_action_state (nautilus_view_get_action_group (NAUTILUS_VIEW (view)),
 					    "zoom-to-level", g_variant_new_int32 (zoom_level));
 
 	nautilus_files_view_update_toolbar_menus (view);
@@ -3316,13 +3325,13 @@ nautilus_list_view_init (NautilusListView *list_view)
 		                  "clipboard-info",
 		                  G_CALLBACK (list_view_notify_clipboard_info), list_view);
 
-	view_action_group = nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (list_view));
+	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (list_view));
 	g_action_map_add_action_entries (G_ACTION_MAP (view_action_group),
 					list_view_entries,
 					G_N_ELEMENTS (list_view_entries),
 					list_view);
 	/* Keep the action synced with the actual value, so the toolbar can poll it */
-	g_action_group_change_action_state (nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (list_view)),
+	g_action_group_change_action_state (nautilus_view_get_action_group (NAUTILUS_VIEW (list_view)),
 					    "zoom-to-level", g_variant_new_int32 (get_default_zoom_level ()));
 }
 

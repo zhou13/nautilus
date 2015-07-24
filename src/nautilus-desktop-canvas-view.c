@@ -648,7 +648,7 @@ real_update_context_menus (NautilusFilesView *view)
 
 	NAUTILUS_FILES_VIEW_CLASS (nautilus_desktop_canvas_view_parent_class)->update_context_menus (view);
 
-	view_action_group = nautilus_files_view_get_action_group (view);
+	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (view));
 	desktop_view = NAUTILUS_DESKTOP_CANVAS_VIEW (view);
 
 	action = g_action_map_lookup_action (G_ACTION_MAP (view_action_group), "empty-trash");
@@ -755,7 +755,7 @@ nautilus_desktop_canvas_view_init (NautilusDesktopCanvasView *desktop_canvas_vie
 				  G_CALLBACK (nautilus_files_view_update_context_menus),
 				  desktop_canvas_view);
 
-	view_action_group = nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (desktop_canvas_view));
+	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (desktop_canvas_view));
 
 	g_action_map_add_action_entries (G_ACTION_MAP (view_action_group),
 					 desktop_view_entries,

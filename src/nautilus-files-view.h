@@ -52,9 +52,9 @@ typedef struct NautilusFilesViewClass NautilusFilesViewClass;
         (G_TYPE_CHECK_INSTANCE_CAST ((obj), NAUTILUS_TYPE_FILES_VIEW, NautilusFilesView))
 #define NAUTILUS_FILES_VIEW_CLASS(klass)\
         (G_TYPE_CHECK_CLASS_CAST ((klass), NAUTILUS_TYPE_FILES_VIEW, NautilusFilesViewClass))
-#define NAUTILUS_IS_VIEW(obj)\
+#define NAUTILUS_IS_FILES_VIEW(obj)\
         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NAUTILUS_TYPE_FILES_VIEW))
-#define NAUTILUS_IS_VIEW_CLASS(klass)\
+#define NAUTILUS_IS_FILES_VIEW_CLASS(klass)\
         (G_TYPE_CHECK_CLASS_TYPE ((klass), NAUTILUS_TYPE_FILES_VIEW))
 #define NAUTILUS_FILES_VIEW_GET_CLASS(obj)\
         (G_TYPE_INSTANCE_GET_CLASS ((obj), NAUTILUS_TYPE_FILES_VIEW, NautilusFilesViewClass))
@@ -296,10 +296,9 @@ GdkAtom                    nautilus_files_view_get_copied_files_atom            
  * only by NautilusFilesView itself. They have corresponding signals
  * that observers might want to connect with.
  */
-gboolean            nautilus_files_view_get_loading                      (NautilusFilesView  *view);
 
-/* Hooks for subclasses to call. These are normally called only by 
- * NautilusFilesView and its subclasses 
+/* Hooks for subclasses to call. These are normally called only by
+ * NautilusFilesView and its subclasses
  */
 void                nautilus_files_view_activate_files                   (NautilusFilesView        *view,
                                                                           GList                    *files,
@@ -313,10 +312,6 @@ void                nautilus_files_view_stop_batching_selection_changes  (Nautil
 void                nautilus_files_view_notify_selection_changed         (NautilusFilesView  *view);
 NautilusDirectory  *nautilus_files_view_get_model                        (NautilusFilesView  *view);
 NautilusFile       *nautilus_files_view_get_directory_as_file            (NautilusFilesView  *view);
-void                nautilus_files_view_pop_up_background_context_menu   (NautilusFilesView  *view,
-                                                                          GdkEventButton     *event);
-void                nautilus_files_view_pop_up_selection_context_menu    (NautilusFilesView  *view,
-                                                                          GdkEventButton     *event); 
 gboolean            nautilus_files_view_should_show_file                 (NautilusFilesView  *view,
                                                                           NautilusFile       *file);
 gboolean            nautilus_files_view_should_sort_directories_first    (NautilusFilesView  *view);
@@ -377,9 +372,6 @@ void              nautilus_files_view_zoom_to_level              (NautilusFilesV
 void              nautilus_files_view_restore_default_zoom_level (NautilusFilesView      *view);
 gboolean          nautilus_files_view_can_zoom_in                (NautilusFilesView      *view);
 gboolean          nautilus_files_view_can_zoom_out               (NautilusFilesView      *view);
-void              nautilus_files_view_pop_up_pathbar_context_menu (NautilusFilesView     *view,
-                                                                   GdkEventButton        *event,
-                                                                   const char            *location);
 void              nautilus_files_view_grab_focus                 (NautilusFilesView      *view);
 void              nautilus_files_view_update_menus               (NautilusFilesView      *view);
 
@@ -389,7 +381,5 @@ void              nautilus_files_view_update_actions_state       (NautilusFilesV
 
 void              nautilus_files_view_action_show_hidden_files   (NautilusFilesView      *view,
                                                                   gboolean                show_hidden);
-
-GActionGroup *    nautilus_files_view_get_action_group           (NautilusFilesView      *view);
 
 #endif /* NAUTILUS_FILES_VIEW_H */

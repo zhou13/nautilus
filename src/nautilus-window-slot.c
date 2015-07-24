@@ -28,7 +28,6 @@
 #include "nautilus-canvas-view.h"
 #include "nautilus-desktop-window.h"
 #include "nautilus-floating-bar.h"
-#include "nautilus-list-view.h"
 #include "nautilus-special-location-bar.h"
 #include "nautilus-trash-bar.h"
 #include "nautilus-window.h"
@@ -82,8 +81,8 @@ struct NautilusWindowSlotDetails {
 	gchar *title;
 
 	/* Viewed file */
-	NautilusFilesView *content_view;
-	NautilusFilesView *new_content_view;
+	NautilusView *content_view;
+	NautilusView *new_content_view;
 	NautilusFile *viewed_file;
 	gboolean viewed_file_seen;
 	gboolean viewed_file_in_trash;
@@ -146,14 +145,15 @@ nautilus_window_slot_sync_search_widgets (NautilusWindowSlot *slot)
 	NautilusDirectory *directory;
 	gboolean toggle;
 
-	if (slot != nautilus_window_get_active_slot (slot->details->window)) {
+        if (!NAUTILUS_IS_FILES_VIEW (slot->details->content_view) ||
+            slot != nautilus_window_get_active_slot (slot->details->window)) {
 		return;
 	}
 
 	toggle = slot->details->search_visible;
 
 	if (slot->details->content_view != NULL) {
-		directory = nautilus_files_view_get_model (slot->details->content_view);
+		directory = nautilus_files_view_get_model (NAUTILUS_FILES_VIEW (slot->details->content_view));
 		if (NAUTILUS_IS_SEARCH_DIRECTORY (directory)) {
 			toggle = TRUE;
 		}
@@ -1484,7 +1484,7 @@ create_content_view (NautilusWindowSlot *slot,
 		     GError **error_out)
 {
 	NautilusWindow *window;
-        NautilusFilesView *view;
+        NautilusView *view;
 	GList *selection;
 	gboolean ret = TRUE;
 	GError *error = NULL;
@@ -1596,7 +1596,7 @@ load_new_location (NautilusWindowSlot *slot,
 		   gboolean tell_new_content_view)
 {
 	GList *selection_copy;
-	NautilusFilesView *view;
+	NautilusView *view;
 
 	g_assert (slot != NULL);
 	g_assert (location != NULL);
@@ -1912,7 +1912,7 @@ nautilus_window_slot_queue_reload (NautilusWindowSlot *slot)
 
 	if (slot->details->pending_location != NULL
 	    || slot->details->content_view == NULL
-	    || nautilus_files_view_get_loading (slot->details->content_view)) {
+	    || nautilus_view_get_loading (slot->details->content_view)) {
 		/* there is a reload in flight */
 		slot->details->needs_reload = TRUE;
 		return;
@@ -2187,7 +2187,7 @@ static void
 nautilus_window_slot_show_trash_bar (NautilusWindowSlot *slot)
 {
 	GtkWidget *bar;
-	NautilusFilesView *view;
+	NautilusView *view;
 
 	view = nautilus_window_slot_get_current_view (slot);
 	bar = nautilus_trash_bar_new (view);
@@ -2723,7 +2723,7 @@ nautilus_window_slot_set_window (NautilusWindowSlot *slot,
 	}
 }
 
-NautilusFilesView *
+NautilusView *
 nautilus_window_slot_get_view (NautilusWindowSlot *slot)
 {
 	return slot->details->content_view;
@@ -2911,7 +2911,7 @@ nautilus_window_slot_get_current_uri (NautilusWindowSlot *slot)
 	return NULL;
 }
 
-NautilusFilesView *
+NautilusView *
 nautilus_window_slot_get_current_view (NautilusWindowSlot *slot)
 {
 	if (slot->details->content_view != NULL) {

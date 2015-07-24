@@ -24,6 +24,7 @@
 #include <config.h>
 
 #include "nautilus-canvas-view.h"
+#include "nautilus-view.h"
 
 #include "nautilus-canvas-view-container.h"
 #include "nautilus-desktop-canvas-view.h"
@@ -387,7 +388,7 @@ nautilus_canvas_view_remove_file (NautilusFilesView *view, NautilusFile *file, N
 		g_warning ("nautilus_canvas_view_remove_file() - directory not canvas view model, shouldn't happen.\n"
 			   "file: %p:%s, dir: %p:%s, model: %p:%s, view loading: %d\n"
 			   "If you see this, please add this info to http://bugzilla.gnome.org/show_bug.cgi?id=368178",
-			   file, file_uri, directory, dir_uri, nautilus_files_view_get_model (view), model_uri, nautilus_files_view_get_loading (view));
+			   file, file_uri, directory, dir_uri, nautilus_files_view_get_model (view), model_uri, nautilus_view_get_loading (NAUTILUS_VIEW (view)));
 		g_free (file_uri);
 		g_free (dir_uri);
 		g_free (model_uri);
@@ -413,7 +414,7 @@ nautilus_canvas_view_add_file (NautilusFilesView *view, NautilusFile *file, Naut
 	canvas_container = get_canvas_container (canvas_view);
 
 	/* Reset scroll region for the first canvas added when loading a directory. */
-	if (nautilus_files_view_get_loading (view) && nautilus_canvas_container_is_empty (canvas_container)) {
+	if (nautilus_view_get_loading (NAUTILUS_VIEW (view)) && nautilus_canvas_container_is_empty (canvas_container)) {
 		nautilus_canvas_container_reset_scroll_region (canvas_container);
 	}
 
@@ -808,7 +809,7 @@ nautilus_canvas_view_zoom_to_level (NautilusFilesView *view,
 		return;
 
 	nautilus_canvas_container_set_zoom_level (canvas_container, new_level);
-	g_action_group_change_action_state (nautilus_files_view_get_action_group (view),
+	g_action_group_change_action_state (nautilus_view_get_action_group (NAUTILUS_VIEW (view)),
 					    "zoom-to-level", g_variant_new_int32 (new_level));
 
 	nautilus_files_view_update_toolbar_menus (view);
@@ -1040,7 +1041,7 @@ update_sort_action_state_hint (NautilusCanvasView *canvas_view)
 
 	state_hint = g_variant_builder_end (&builder);
 
-	action_group = nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (canvas_view));
+	action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (canvas_view));
 	action = g_action_map_lookup_action (G_ACTION_MAP (action_group), "sort");
 	g_simple_action_set_state_hint (G_SIMPLE_ACTION (action), state_hint);
 
@@ -1071,7 +1072,7 @@ nautilus_canvas_view_update_actions_state (NautilusFilesView *view)
 
 	NAUTILUS_FILES_VIEW_CLASS (nautilus_canvas_view_parent_class)->update_actions_state (view);
 
-	view_action_group = nautilus_files_view_get_action_group (view);
+	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (view));
 	if (nautilus_canvas_view_supports_auto_layout (canvas_view)) {
 		GVariant *sort_state;
 		GVariant *reversed_state;
@@ -1356,7 +1357,7 @@ canvas_container_context_click_selection_callback (NautilusCanvasContainer *cont
 	g_assert (NAUTILUS_IS_CANVAS_CONTAINER (container));
 	g_assert (NAUTILUS_IS_CANVAS_VIEW (canvas_view));
 
-	nautilus_files_view_pop_up_selection_context_menu (NAUTILUS_FILES_VIEW (canvas_view), event);
+	nautilus_view_popup_menu (NAUTILUS_VIEW (canvas_view), NAUTILUS_VIEW_MENU_SELECTION, event, NULL);
 }
 
 static void
@@ -1367,7 +1368,7 @@ canvas_container_context_click_background_callback (NautilusCanvasContainer *con
 	g_assert (NAUTILUS_IS_CANVAS_CONTAINER (container));
 	g_assert (NAUTILUS_IS_CANVAS_VIEW (canvas_view));
 
-	nautilus_files_view_pop_up_background_context_menu (NAUTILUS_FILES_VIEW (canvas_view), event);
+        nautilus_view_popup_menu (NAUTILUS_VIEW (canvas_view), NAUTILUS_VIEW_MENU_BACKGROUND, event, NULL);
 }
 
 static void
@@ -1961,13 +1962,13 @@ nautilus_canvas_view_init (NautilusCanvasView *canvas_view)
 		                  "clipboard-info",
 		                  G_CALLBACK (canvas_view_notify_clipboard_info), canvas_view);
 
-	view_action_group = nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (canvas_view));
+	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (canvas_view));
 	g_action_map_add_action_entries (G_ACTION_MAP (view_action_group),
 					 canvas_view_entries,
 					 G_N_ELEMENTS (canvas_view_entries),
 					 canvas_view);
 	/* Keep the action synced with the actual value, so the toolbar can poll it */
-	g_action_group_change_action_state (nautilus_files_view_get_action_group (NAUTILUS_FILES_VIEW (canvas_view)),
+	g_action_group_change_action_state (nautilus_view_get_action_group (NAUTILUS_VIEW (canvas_view)),
 					    "zoom-to-level", g_variant_new_int32 (get_default_zoom_level (canvas_view)));
 }
 

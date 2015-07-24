@@ -25,6 +25,7 @@
 #include <config.h>
 
 #include "nautilus-toolbar.h"
+#include "nautilus-view.h"
 
 #include "nautilus-location-entry.h"
 #include "nautilus-pathbar.h"
@@ -417,7 +418,7 @@ zoom_level_changed (GtkRange *range,
 	slot = nautilus_window_get_active_slot (self->priv->window);
 	view = nautilus_window_slot_get_current_view (slot);
 
-	g_action_group_change_action_state (nautilus_files_view_get_action_group (view),
+	g_action_group_change_action_state (nautilus_view_get_action_group (NAUTILUS_VIEW (view)),
 					    "zoom-to-level",
 					    g_variant_new_int32 ((gint) zoom_level));
 }
@@ -932,7 +933,7 @@ nautilus_toolbar_reset_menus (NautilusToolbar *self)
 	 * the view menu and action menu of the toolbar */
 	slot = nautilus_window_get_active_slot (self->priv->window);
 	view = nautilus_window_slot_get_current_view (slot);
-	view_action_group = nautilus_files_view_get_action_group (view);
+	view_action_group = nautilus_view_get_action_group (NAUTILUS_VIEW (view));
 	gtk_widget_insert_action_group (GTK_WIDGET (self),
 					"view",
 					G_ACTION_GROUP (view_action_group));

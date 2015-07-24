@@ -40,8 +40,7 @@
 #include "nautilus-properties-window.h"
 #include "nautilus-toolbar.h"
 #include "nautilus-window-slot.h"
-#include "nautilus-list-view.h"
-#include "nautilus-files-view.h"
+#include "nautilus-view.h"
 
 #include <eel/eel-debug.h>
 #include <eel/eel-gtk-extensions.h>
@@ -1662,7 +1661,7 @@ path_bar_path_event_callback (NautilusPathBar *path_bar,
 	NautilusWindowSlot *slot;
 	NautilusWindowOpenFlags flags;
 	int mask;
-	NautilusFilesView *view;
+	NautilusView *view;
 	char *uri;
 
 	if (event->type == GDK_BUTTON_RELEASE) {
@@ -1688,7 +1687,7 @@ path_bar_path_event_callback (NautilusPathBar *path_bar,
 		view = nautilus_window_slot_get_view (slot);
 		if (view != NULL) {
 			uri = g_file_get_uri (location);
-			nautilus_files_view_pop_up_pathbar_context_menu (view, event, uri);
+			nautilus_view_popup_menu (view, NAUTILUS_VIEW_MENU_PATHBAR, event, uri);
 			g_free (uri);
 		}
 
@@ -2392,7 +2391,7 @@ nautilus_window_key_press_event (GtkWidget *widget,
 {
 	NautilusWindow *window;
 	NautilusWindowSlot *active_slot;
-	NautilusFilesView *view;
+	NautilusView *view;
 	GtkWidget *focus_widget;
 	int i;
 
@@ -2419,7 +2418,7 @@ nautilus_window_key_press_event (GtkWidget *widget,
 
 			action = g_action_map_lookup_action (G_ACTION_MAP (window), extra_window_keybindings[i].action);
 			if (action == NULL) {
-				action_group = nautilus_files_view_get_action_group (view);
+				action_group = nautilus_view_get_action_group (view);
 				action = g_action_map_lookup_action (G_ACTION_MAP (action_group), extra_window_keybindings[i].action);
 			}
 

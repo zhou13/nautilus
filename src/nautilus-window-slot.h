@@ -29,7 +29,7 @@ typedef struct NautilusWindowSlot NautilusWindowSlot;
 typedef struct NautilusWindowSlotClass NautilusWindowSlotClass;
 typedef struct NautilusWindowSlotDetails NautilusWindowSlotDetails;
 
-#include "nautilus-files-view.h"
+#include "nautilus-view.h"
 #include "nautilus-window.h"
 
 #define NAUTILUS_TYPE_WINDOW_SLOT	 (nautilus_window_slot_get_type())
@@ -87,9 +87,9 @@ char *  nautilus_window_slot_get_location_uri		   (NautilusWindowSlot *slot);
 
 NautilusFile *    nautilus_window_slot_get_file            (NautilusWindowSlot *slot);
 NautilusBookmark *nautilus_window_slot_get_bookmark        (NautilusWindowSlot *slot);
-NautilusFilesView *    nautilus_window_slot_get_view            (NautilusWindowSlot *slot);
+NautilusView*  nautilus_window_slot_get_view               (NautilusWindowSlot *slot);
 
-NautilusFilesView * nautilus_window_slot_get_current_view       (NautilusWindowSlot *slot);
+NautilusView*  nautilus_window_slot_get_current_view       (NautilusWindowSlot *slot);
 char *         nautilus_window_slot_get_current_uri        (NautilusWindowSlot *slot);
 
 GList * nautilus_window_slot_get_back_history              (NautilusWindowSlot *slot);
