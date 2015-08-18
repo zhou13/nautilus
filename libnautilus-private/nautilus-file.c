@@ -7015,6 +7015,31 @@ nautilus_file_is_in_network (NautilusFile *file)
 	return nautilus_directory_is_in_network (file->details->directory);
 }
 
+/**
+ * nautilus_file_is_in_other_locations
+ *
+ * Check if this file is a file in Other Locations.
+ * @file: NautilusFile representing the file in question.
+ *
+ * Returns: TRUE if @file is in Other Locations.
+ *
+ **/
+gboolean
+nautilus_file_is_in_other_locations (NautilusFile *file)
+{
+        gboolean is_other_locations;
+        gchar *uri;
+
+        g_assert (NAUTILUS_IS_FILE (file));
+
+        uri = nautilus_file_get_uri (file);
+        is_other_locations = g_str_has_prefix (uri, "other-locations://");
+
+        g_free (uri);
+
+        return is_other_locations;
+}
+
 GError *
 nautilus_file_get_file_info_error (NautilusFile *file)
 {
