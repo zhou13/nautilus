@@ -7808,15 +7808,22 @@ nautilus_files_view_set_search_query (NautilusView  *view,
                                       NautilusQuery *query)
 {
         NautilusFilesView *files_view;
+        GDateTime *dt;
         GFile *location;
+        GList *mimetypes;
         gchar *text;
         gboolean valid_query = FALSE;
 
         files_view = NAUTILUS_FILES_VIEW (view);
+        mimetypes = NULL;
         location = NULL;
+        dt = NULL;
         if (query) {
+                dt = nautilus_query_get_date (query);
                 text = nautilus_query_get_text (query);
-                valid_query = strlen (text) > 0;
+                mimetypes = nautilus_query_get_mime_types (query);
+
+                valid_query = strlen (text) > 0 || mimetypes != NULL || dt != NULL;
 
                 g_free (text);
         }
@@ -7871,6 +7878,7 @@ nautilus_files_view_set_search_query (NautilusView  *view,
                 }
         }
         check_remote_warning_bar (files_view);
+        g_list_free_full (mimetypes, g_free);
         g_clear_object (&location);
 }
 
