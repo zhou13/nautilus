@@ -41,7 +41,8 @@
 #include <math.h>
 
 #define OPERATION_MINIMUM_TIME 2 //s
-#define NEEDS_ATTENTION_ANIMATION_TIMEOUT 2000 //ms
+#define OPERATIONS_BUTTON_NEEDS_ATTENTION_ANIMATION_TIMEOUT 2000 //ms
+#define TOOLBAR_NEEDS_ATTENTION_ANIMATION_TIMEOUT 600 //ms
 #define REMOVE_FINISHED_OPERATIONS_TIEMOUT 3 //s
 
 typedef enum {
@@ -64,6 +65,7 @@ struct _NautilusToolbarPrivate {
         guint start_operations_timeout_id;
         guint remove_finished_operations_timeout_id;
         guint operations_button_attention_timeout_id;
+        guint toolbar_attention_timeout_id;
 
 	GtkWidget *operations_button;
 	GtkWidget *view_button;
@@ -469,8 +471,53 @@ add_operations_button_attention_style (NautilusToolbar *self)
 
         gtk_style_context_add_class (style_context,
                                      "nautilus-operations-button-needs-attention");
-        self->priv->operations_button_attention_timeout_id = g_timeout_add (NEEDS_ATTENTION_ANIMATION_TIMEOUT,
+        self->priv->operations_button_attention_timeout_id = g_timeout_add (OPERATIONS_BUTTON_NEEDS_ATTENTION_ANIMATION_TIMEOUT,
                                                                             (GSourceFunc) on_remove_operations_button_attention_style_timeout,
+                                                                            self);
+}
+
+static void
+remove_toolbar_attention_style (NautilusToolbar *self)
+{
+        GtkStyleContext *style_context;
+
+        style_context = gtk_widget_get_style_context (GTK_WIDGET (self));
+        gtk_style_context_remove_class (style_context,
+                                        "nautilus-toolbar-needs-attention");
+}
+
+static gboolean
+on_remove_toolbar_attention_style_timeout (NautilusToolbar *self)
+{
+        remove_toolbar_attention_style (self);
+        self->priv->toolbar_attention_timeout_id = 0;
+
+        return G_SOURCE_REMOVE;
+}
+
+static void
+unschedule_toolbar_attention_style (NautilusToolbar *self)
+{
+        if (self->priv->toolbar_attention_timeout_id!= 0) {
+                g_source_remove (self->priv->toolbar_attention_timeout_id);
+                self->priv->toolbar_attention_timeout_id = 0;
+        }
+}
+
+static void
+add_toolbar_attention_style (NautilusToolbar *self)
+{
+        GtkStyleContext *style_context;
+
+        style_context = gtk_widget_get_style_context (GTK_WIDGET (self));
+
+        unschedule_toolbar_attention_style (self);
+        remove_toolbar_attention_style (self);
+
+        gtk_style_context_add_class (style_context,
+                                     "nautilus-toolbar-needs-attention");
+        self->priv->toolbar_attention_timeout_id = g_timeout_add (TOOLBAR_NEEDS_ATTENTION_ANIMATION_TIMEOUT,
+                                                                            (GSourceFunc) on_remove_toolbar_attention_style_timeout,
                                                                             self);
 }
 
@@ -605,6 +652,7 @@ update_operations (NautilusToolbar *self)
         if (should_show_progress_button &&
             !gtk_revealer_get_reveal_child (GTK_REVEALER (self->priv->operations_revealer))) {
                 add_operations_button_attention_style (self);
+                add_toolbar_attention_style (self);
                 gtk_revealer_set_reveal_child (GTK_REVEALER (self->priv->operations_revealer),
                                                TRUE);
                 gtk_widget_queue_draw (self->priv->operations_icon);
@@ -848,6 +896,7 @@ nautilus_toolbar_finalize (GObject *obj)
         unschedule_remove_finished_operations (self);
         unschedule_operations_start (self);
         unschedule_operations_button_attention_style (self);
+        unschedule_toolbar_attention_style (self);
 
         g_signal_handlers_disconnect_by_data (self->priv->progress_manager, self);
         g_clear_object (&self->priv->progress_manager);

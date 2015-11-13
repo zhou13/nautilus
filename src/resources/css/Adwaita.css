@@ -44,19 +44,28 @@
 
 /* Here we use the .button background-image colors from Adwaita, but ligthen them,
  * since is not possible to use lighten () in common css. */
-@keyframes needs_attention_keyframes {
+@keyframes button_needs_attention_keyframes {
     0% {background-image: linear-gradient(to bottom, #fafafa, #ededed 40%,  #e0e0e0); border-color: @borders; }
     /* can't do animation-direction, so holding the color on two keyframes */
     30% {background-image: linear-gradient(to bottom, @theme_base_color); border-color: @theme_fg_color; } 
     90% {background-image: linear-gradient(to bottom, @theme_base_color); border-color: @theme_fg_color; }
     100% {background-image: linear-gradient(to bottom, #fafafa, #ededed 40%,  #e0e0e0); border-color: @borders; }
 }
-.nautilus-operations-button-needs-attention {
-  animation: needs_attention_keyframes 2s ease-in-out;
+
+@keyframes toolbar_needs_attention_keyframes {
+    0% {background-position: -30%; }
+    100% {background-position: 130%; }
 }
-.nautilus-operations-button-needs-attention-multiple {
-  animation: needs_attention_keyframes 3s ease-in-out;
-  animation-iteration-count: 3;
+
+.nautilus-toolbar-needs-attention {
+  background-image: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 45%, rgba(255,255,255,1) 55%, rgba(255,255,255,0) 100%), linear-gradient(to bottom, #fff 2%, #f7f7f7 2%, #ededed 98%, #d9d9d9 100%);
+  background-size: 200px;
+  background-repeat: no-repeat, repeat-x;
+  animation: toolbar_needs_attention_keyframes 600ms ease-in-out;
+}
+
+.nautilus-operations-button-needs-attention {
+  animation: button_needs_attention_keyframes 2s ease-in-out;
 }
 
 /* Floating status bar */
