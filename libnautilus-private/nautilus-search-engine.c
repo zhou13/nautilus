@@ -47,11 +47,15 @@ struct NautilusSearchEngineDetails
 	guint providers_finished;
 	guint providers_error;
 
+	NautilusQuery *query;
+
 	gboolean running;
 	gboolean restart;
 };
 
 static void nautilus_search_provider_init (NautilusSearchProviderIface  *iface);
+static void nautilus_search_engine_start (NautilusSearchProvider *provider);
+static void create_search_providers (NautilusSearchEngine *engine);
 
 G_DEFINE_TYPE_WITH_CODE (NautilusSearchEngine,
 			 nautilus_search_engine,
@@ -64,82 +68,15 @@ nautilus_search_engine_set_query (NautilusSearchProvider *provider,
 				  NautilusQuery          *query)
 {
 	NautilusSearchEngine *engine = NAUTILUS_SEARCH_ENGINE (provider);
+
+        create_search_providers (engine);
 #ifdef ENABLE_TRACKER
 	nautilus_search_provider_set_query (NAUTILUS_SEARCH_PROVIDER (engine->details->tracker), query);
 #endif
 	nautilus_search_provider_set_query (NAUTILUS_SEARCH_PROVIDER (engine->details->model), query);
 	nautilus_search_provider_set_query (NAUTILUS_SEARCH_PROVIDER (engine->details->simple), query);
-}
-
-static void
-search_engine_start_real (NautilusSearchEngine *engine)
-{
-	engine->details->providers_running = 0;
-	engine->details->providers_finished = 0;
-	engine->details->providers_error = 0;
-
-	engine->details->restart = FALSE;
-
-	DEBUG ("Search engine start real");
-
-	g_object_ref (engine);
-
-#ifdef ENABLE_TRACKER
-	nautilus_search_provider_start (NAUTILUS_SEARCH_PROVIDER (engine->details->tracker));
-	engine->details->providers_running++;
-#endif
-	if (nautilus_search_engine_model_get_model (engine->details->model)) {
-		nautilus_search_provider_start (NAUTILUS_SEARCH_PROVIDER (engine->details->model));
-		engine->details->providers_running++;
-	}
-
-	nautilus_search_provider_start (NAUTILUS_SEARCH_PROVIDER (engine->details->simple));
-	engine->details->providers_running++;
-}
-
-static void
-nautilus_search_engine_start (NautilusSearchProvider *provider)
-{
-	NautilusSearchEngine *engine = NAUTILUS_SEARCH_ENGINE (provider);
-	gint num_finished;
-
-	DEBUG ("Search engine start");
-
-	num_finished = engine->details->providers_error + engine->details->providers_finished;
-
-	if (engine->details->running) {
-		if (num_finished == engine->details->providers_running &&
-		    engine->details->restart) {
-			search_engine_start_real (engine);
-		}
-
-		return;
-	}
-
-	engine->details->running = TRUE;
-
-	if (num_finished < engine->details->providers_running) {
-		engine->details->restart = TRUE;
-	} else {
-		search_engine_start_real (engine);
-	}
-}
-
-static void
-nautilus_search_engine_stop (NautilusSearchProvider *provider)
-{
-	NautilusSearchEngine *engine = NAUTILUS_SEARCH_ENGINE (provider);
-
-	DEBUG ("Search engine stop");
-
-#ifdef ENABLE_TRACKER
-	nautilus_search_provider_stop (NAUTILUS_SEARCH_PROVIDER (engine->details->tracker));
-#endif
-	nautilus_search_provider_stop (NAUTILUS_SEARCH_PROVIDER (engine->details->model));
-	nautilus_search_provider_stop (NAUTILUS_SEARCH_PROVIDER (engine->details->simple));
-
-	engine->details->running = FALSE;
-	engine->details->restart = FALSE;
+        g_clear_object (&engine->details->query);
+        engine->details->query = g_object_ref (query);
 }
 
 static void
@@ -175,6 +112,29 @@ search_provider_hits_added (NautilusSearchProvider *provider,
 }
 
 static void
+nautilus_search_engine_stop (NautilusSearchProvider *provider)
+{
+	NautilusSearchEngine *engine = NAUTILUS_SEARCH_ENGINE (provider);
+
+	DEBUG ("Search engine stop");
+
+#ifdef ENABLE_TRACKER
+        if (engine->details->tracker) {
+                nautilus_search_provider_stop (NAUTILUS_SEARCH_PROVIDER (engine->details->tracker));
+        }
+#endif
+        if (engine->details->model) {
+                nautilus_search_provider_stop (NAUTILUS_SEARCH_PROVIDER (engine->details->model));
+        }
+        if (engine->details->simple) {
+                nautilus_search_provider_stop (NAUTILUS_SEARCH_PROVIDER (engine->details->simple));
+        }
+
+	engine->details->running = FALSE;
+	engine->details->restart = FALSE;
+}
+
+static void
 check_providers_status (NautilusSearchEngine *engine)
 {
 	gint num_finished = engine->details->providers_error + engine->details->providers_finished;
@@ -204,8 +164,25 @@ check_providers_status (NautilusSearchEngine *engine)
 	if (engine->details->restart) {
 		nautilus_search_engine_start (NAUTILUS_SEARCH_PROVIDER (engine));
 	}
+}
 
-	g_object_unref (engine);
+static void
+finalize_search_provider (NautilusSearchEngine *engine,
+                          NautilusSearchProvider *provider)
+{
+#ifdef ENABLE_TRACKER
+        if (NAUTILUS_SEARCH_PROVIDER (engine->details->tracker) == provider) {
+                g_clear_object (&engine->details->tracker);
+        }
+#endif
+
+        if (NAUTILUS_SEARCH_PROVIDER (engine->details->model) == provider) {
+                g_clear_object (&engine->details->model);
+        }
+
+        if (NAUTILUS_SEARCH_PROVIDER (engine->details->simple) == provider) {
+                g_clear_object (&engine->details->simple);
+        }
 }
 
 static void
@@ -217,6 +194,7 @@ search_provider_error (NautilusSearchProvider *provider,
 	DEBUG ("Search provider error: %s", error_message);
 	engine->details->providers_error++;
 
+        finalize_search_provider (engine, provider);
 	check_providers_status (engine);
 }
 
@@ -229,6 +207,7 @@ search_provider_finished (NautilusSearchProvider       *provider,
 	DEBUG ("Search provider finished");
 	engine->details->providers_finished++;
 
+        finalize_search_provider (engine, provider);
 	check_providers_status (engine);
 }
 
@@ -245,6 +224,100 @@ connect_provider_signals (NautilusSearchEngine   *engine,
 	g_signal_connect (provider, "error",
 			  G_CALLBACK (search_provider_error),
 			  engine);
+}
+
+static void
+initialize_search_provider (NautilusSearchEngine   *engine,
+                            NautilusSearchProvider *provider)
+{
+        connect_provider_signals (engine, provider);
+
+        if (engine->details->query) {
+                nautilus_search_provider_set_query (provider,
+                                                    engine->details->query);
+                if (engine->details->running) {
+                        nautilus_search_provider_start (provider);
+                }
+        }
+}
+
+static void
+create_search_providers (NautilusSearchEngine *engine)
+{
+#ifdef ENABLE_TRACKER
+        if (!engine->details->tracker) {
+                engine->details->tracker = nautilus_search_engine_tracker_new ();
+                initialize_search_provider (engine,
+                                            NAUTILUS_SEARCH_PROVIDER (engine->details->tracker));
+        }
+#endif
+        if (!engine->details->model) {
+                engine->details->model = nautilus_search_engine_model_new ();
+                initialize_search_provider (engine,
+                                            NAUTILUS_SEARCH_PROVIDER (engine->details->model));
+        }
+
+        if (!engine->details->simple) {
+                engine->details->simple = nautilus_search_engine_simple_new ();
+                initialize_search_provider (engine,
+                                            NAUTILUS_SEARCH_PROVIDER (engine->details->simple));
+        }
+}
+
+static void
+search_engine_start_real (NautilusSearchEngine *engine)
+{
+        create_search_providers (engine);
+
+	engine->details->providers_running = 0;
+	engine->details->providers_finished = 0;
+	engine->details->providers_error = 0;
+
+	engine->details->restart = FALSE;
+
+	DEBUG ("Search engine start real");
+
+#ifdef ENABLE_TRACKER
+	nautilus_search_provider_start (NAUTILUS_SEARCH_PROVIDER (engine->details->tracker));
+	engine->details->providers_running++;
+#endif
+	if (nautilus_search_engine_model_get_model (engine->details->model)) {
+		nautilus_search_provider_start (NAUTILUS_SEARCH_PROVIDER (engine->details->model));
+		engine->details->providers_running++;
+	}
+
+	nautilus_search_provider_start (NAUTILUS_SEARCH_PROVIDER (engine->details->simple));
+	engine->details->providers_running++;
+}
+
+static void
+nautilus_search_engine_start (NautilusSearchProvider *provider)
+{
+	NautilusSearchEngine *engine = NAUTILUS_SEARCH_ENGINE (provider);
+	gint num_finished;
+
+	DEBUG ("Search engine start: already running:? %d and waiting restart? %d providers running %d providers error %d",
+               engine->details->running, engine->details->restart, engine->details->providers_running,
+	       engine->details->providers_error);
+
+	num_finished = engine->details->providers_error + engine->details->providers_finished;
+
+	if (engine->details->running) {
+		if (num_finished == engine->details->providers_running &&
+		    engine->details->restart) {
+			search_engine_start_real (engine);
+		}
+
+		return;
+	}
+
+	engine->details->running = TRUE;
+
+	if (num_finished < engine->details->providers_running) {
+		engine->details->restart = TRUE;
+	} else {
+		search_engine_start_real (engine);
+	}
 }
 
 static void
@@ -267,6 +340,8 @@ nautilus_search_engine_finalize (GObject *object)
 #endif
 	g_clear_object (&engine->details->model);
 	g_clear_object (&engine->details->simple);
+
+        g_clear_object (&engine->details->query);
 
 	G_OBJECT_CLASS (nautilus_search_engine_parent_class)->finalize (object);
 }
@@ -291,16 +366,6 @@ nautilus_search_engine_init (NautilusSearchEngine *engine)
 						       NautilusSearchEngineDetails);
 
 	engine->details->uris = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-
-#ifdef ENABLE_TRACKER
-	engine->details->tracker = nautilus_search_engine_tracker_new ();
-	connect_provider_signals (engine, NAUTILUS_SEARCH_PROVIDER (engine->details->tracker));
-#endif
-	engine->details->model = nautilus_search_engine_model_new ();
-	connect_provider_signals (engine, NAUTILUS_SEARCH_PROVIDER (engine->details->model));
-
-	engine->details->simple = nautilus_search_engine_simple_new ();
-	connect_provider_signals (engine, NAUTILUS_SEARCH_PROVIDER (engine->details->simple));
 }
 
 NautilusSearchEngine *
