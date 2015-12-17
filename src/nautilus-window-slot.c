@@ -267,7 +267,10 @@ check_search_visible (NautilusWindowSlot *slot)
         /* If we changed location just to another search location, for example,
          * when changing the query, just keep the search visible */
         if (nautilus_view_is_searching (view))
+        if (nautilus_view_is_searching (view)) {
+                nautilus_window_slot_set_search_visible (slot, TRUE);
                 return;
+         }
 
         if (query) {
                 text = nautilus_query_get_text (query);
